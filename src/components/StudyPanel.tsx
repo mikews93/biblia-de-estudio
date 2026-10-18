@@ -13,9 +13,11 @@ import {
   View,
 } from 'react-native';
 
+import Appear from '@/components/Appear';
 import { Book, parseRef } from '@/lib/data';
 import { Source, Turn, askStudy } from '@/lib/estudio';
 import { Colors, serif, useColors } from '@/lib/theme';
+import { navigate } from '@/lib/transition';
 
 type Props = {
   book: Book;
@@ -79,7 +81,7 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
   const open = (ref: string) => {
     const { start } = parseRef(ref);
     onClose();
-    router.push(`/${start.book}/${start.chapter}?v=${start.verse}`);
+    navigate(() => router.push(`/${start.book}/${start.chapter}?v=${start.verse}`), 'forward');
   };
 
   const first = turns[0];
@@ -112,14 +114,16 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
             >
               {turns.map((turn, i) =>
                 turn.role === 'user' ? (
-                  <View key={i} style={[styles.question, { backgroundColor: colors.accentSoft }]}>
+                  <Appear key={i} style={[styles.question, { backgroundColor: colors.accentSoft }]}>
                     <Text style={{ color: colors.text, fontSize: 15 }}>{turn.text}</Text>
-                  </View>
+                  </Appear>
                 ) : (
                   <View key={i}>
                     {turn.text ? <Markdown text={turn.text} colors={colors} /> : null}
                     {!!turn.sources?.length && (busy ? i < turns.length - 1 : true) && (
-                      <Sources sources={turn.sources} colors={colors} onOpen={open} />
+                      <Appear>
+                        <Sources sources={turn.sources} colors={colors} onOpen={open} />
+                      </Appear>
                     )}
                   </View>
                 ),

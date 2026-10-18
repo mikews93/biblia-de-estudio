@@ -3,6 +3,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
 import ReaderSettings from '@/components/ReaderSettings';
 import StudyPanel from '@/components/StudyPanel';
@@ -11,6 +12,7 @@ import VersePanel, { Tab } from '@/components/VersePanel';
 import WordCard from '@/components/WordCard';
 import { Book, CrossRef, Verse, Word, getBooks, getChapter, getCrossRefs, getInterlinear, getParagraphEnds } from '@/lib/data';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
+import { navigate } from '@/lib/transition';
 
 export default function Reader() {
   const params = useLocalSearchParams<{ book: string; chapter: string; v?: string }>();
@@ -80,7 +82,7 @@ export default function Reader() {
       i += 1;
       ch = 1;
     }
-    router.replace(`/${books[i].id}/${ch}`);
+    navigate(() => router.replace(`/${books[i].id}/${ch}`), delta > 0 ? 'forward' : 'back');
   };
 
   const select = (n: number) => setSelected(selected === n ? null : n);
@@ -112,7 +114,7 @@ export default function Reader() {
           title,
           headerStyle: { backgroundColor: colors.background },
           headerTitle: () => (
-            <Pressable onPress={() => router.push('/libros')} accessibilityRole="button" accessibilityLabel="Elegir libro y capítulo">
+            <Pressable onPress={() => navigate(() => router.push('/libros'))} accessibilityRole="button" accessibilityLabel="Elegir libro y capítulo">
               <Text style={[styles.headerTitle, { color: colors.text }]}>{title} ▾</Text>
             </Pressable>
           ),
@@ -263,7 +265,7 @@ export default function Reader() {
       </ScrollView>
 
       {selected !== null && book && verses ? (
-        <View style={[styles.actionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Appear key="actions" style={[styles.actionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.actionHead}>
             <Text style={{ color: colors.accent, fontWeight: '700' }}>
               {book.name} {chapter}:{selected}
@@ -287,20 +289,20 @@ export default function Reader() {
             <Action label="Comentario" icon="¶" colors={colors} onPress={() => setPanelTab('comentario')} />
             <Action label={copied ? 'Copiado' : 'Copiar'} icon="⧉" colors={colors} onPress={copy} />
           </View>
-        </View>
+        </Appear>
       ) : (
         verses && (
-          <View style={[styles.navPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Appear key="nav" style={[styles.navPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Pressable onPress={() => go(-1)} hitSlop={8} accessibilityLabel="Capítulo anterior" style={styles.navArrow}>
               <Text style={{ color: colors.text, fontSize: 22 }}>‹</Text>
             </Pressable>
-            <Pressable onPress={() => router.push('/libros')}>
+            <Pressable onPress={() => navigate(() => router.push('/libros'))}>
               <Text style={{ color: colors.text, fontWeight: '600' }}>{title}</Text>
             </Pressable>
             <Pressable onPress={() => go(1)} hitSlop={8} accessibilityLabel="Capítulo siguiente" style={styles.navArrow}>
               <Text style={{ color: colors.text, fontSize: 22 }}>›</Text>
             </Pressable>
-          </View>
+          </Appear>
         )
       )}
 
@@ -334,7 +336,12 @@ type ActionProps = { label: string; icon: string; badge?: number; colors: Return
 
 function Action({ label, icon, badge, colors, onPress }: ActionProps) {
   return (
-    <Pressable onPress={onPress} style={styles.action} accessibilityRole="button" accessibilityLabel={label}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
       <View style={[styles.actionIcon, { backgroundColor: colors.accentSoft }]}>
         <Text style={{ color: colors.accent, fontSize: 18, fontFamily: serif }}>{icon}</Text>
         {!!badge && (
@@ -351,6 +358,7 @@ function Action({ label, icon, badge, colors, onPress }: ActionProps) {
 }
 
 const styles = StyleSheet.create({
+  pressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
   headerTitle: { fontSize: 17, fontWeight: '600' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 8 },
   studyToggle: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },

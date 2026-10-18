@@ -15,6 +15,7 @@ import {
 } from '@/lib/data';
 import { describeMorph } from '@/lib/morph';
 import { Colors, serif, useColors } from '@/lib/theme';
+import { navigate } from '@/lib/transition';
 
 export type Tab = 'interlineal' | 'referencias' | 'comentario';
 
@@ -185,7 +186,7 @@ function RefRow({ refId, books, colors, onNavigate }: { refId: string; books: Bo
     <Pressable
       onPress={() => {
         onNavigate();
-        router.push(`/${start.book}/${start.chapter}?v=${start.verse}`);
+        navigate(() => router.push(`/${start.book}/${start.chapter}?v=${start.verse}`), 'forward');
       }}
       style={[styles.refRow, { borderColor: colors.border }]}
     >
