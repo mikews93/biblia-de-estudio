@@ -128,7 +128,7 @@ export default function Podcast() {
           busy={tool.busy}
           error={tool.error}
           waiting={lines.length ? null : 'Escribiendo la conversación con el texto, el griego y las referencias…'}
-          onRetry={tool.regenerate}
+          onRetry={tool.retry}
         />
 
         <View style={{ marginTop: 16 }} onLayout={(e) => (listY.current = e.nativeEvent.layout.y)}>

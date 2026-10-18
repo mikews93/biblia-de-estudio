@@ -22,6 +22,9 @@
     "api/comentario.ts": {
       "includeFiles": "dist/**",
       "maxDuration": 120
+    },
+    "api/notificaciones.ts": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

@@ -22,6 +22,12 @@ on:
       audicion:
         description: "Solo buscar candidatas para una voz (por ejemplo NARRADOR), sin grabar"
         default: ''
+      pruebas:
+        description: "Pruebas de voz separadas por ; (PAPEL:voice_id:Nombre), grabadas aparte"
+        default: ''
+      hasta:
+        description: Grabar las pruebas solo hasta este versículo
+        default: '13'
 
 permissions:
   contents: write
@@ -64,8 +70,12 @@ jobs:
             guiones=$(ls pipeline/audio_dramatizado/*.json | xargs -n1 basename | sed 's/\.json$//')
           fi
           audicion="${{ github.event.inputs.audicion }}"
+          pruebas="${{ github.event.inputs.pruebas }}"
           for g in $guiones; do
             if [ -n "$audicion" ]; then python3 pipeline/audio_dramatizado/grabar.py "$g" "--audicion=$audicion"
+            elif [ -n "$pruebas" ]; then
+              IFS=';' read -ra voces <<< "$pruebas"
+              for v in "${voces[@]}"; do python3 pipeline/audio_dramatizado/grabar.py "$g" "--voz=$v" "--hasta=${{ github.event.inputs.hasta }}"; done
             else python3 pipeline/audio_dramatizado/grabar.py "$g"; fi
           done
       - name: Guardar las piezas grabadas
@@ -92,10 +102,12 @@ jobs:
           shopt -s nullglob
           files=(pipeline/audio_dramatizado/salida/*.mp3)
           [ ${#files[@]} -gt 0 ] || exit 0
-          mkdir -p public/audio/dramatizado
+          mkdir -p public/audio/dramatizado public/audio/pruebas
           for f in "${files[@]}"; do
             id=$(basename "$f" .mp3)
-            cp "$f" "pipeline/audio_dramatizado/salida/$id.json" public/audio/dramatizado/
+            # Las pruebas de voz se escuchan por su enlace y no entran en el catálogo de la app.
+            case "$id" in *-prueba-*) dest=public/audio/pruebas/ ;; *) dest=public/audio/dramatizado/ ;; esac
+            cp "$f" "pipeline/audio_dramatizado/salida/$id.json" "$dest"
           done
           python3 - <<'PY'
           import json, pathlib

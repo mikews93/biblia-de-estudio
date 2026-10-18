@@ -12,7 +12,7 @@
   "idioma": "es",
   "fondo": { "prompt": "very soft warm ambient pads, slow evolving sustained chords, gentle and reverent, no percussion, no melody, no rhythm, seamless background bed", "ms": 150000, "db": -27, "fuente": "Mike (18-10): pads suaves de fondo en todo el capítulo" },
   "voces": {
-    "NARRADOR": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": "dlGxemPxFMTY7iXagmOj" },
+    "NARRADOR": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": "452WrNT9o8dphaYW5YGU", "biblioteca": "Abel", "fuente": "Mike (18-10): eligió a Abel tras la audición; la voz anterior sonaba demasiado común" },
     "JUAN": { "ficha": "personajes.md#juan-el-bautista", "buscar": { "gender": "male", "age": "young", "use_cases": "characters_animation" }, "voice_id": "WOY6pnQ1WCg0mrOZ54lM" },
     "DIOS_1": { "dios": true, "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "old", "use_cases": "narrative_story" }, "voice_id": null },
     "DIOS_2": { "dios": true, "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": null },

@@ -1,6 +1,7 @@
 import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
 import MicIcon from '@/components/MicIcon';
@@ -8,9 +9,11 @@ import SearchIcon from '@/components/SearchIcon';
 import PlanCard from '@/components/PlanCard';
 import VerseImage from '@/components/VerseImage';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
+import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
+import { seasonTint } from '@/lib/retos';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { dueCards, useCards } from '@/lib/tarjetas';
 import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
@@ -31,11 +34,15 @@ export default function Today() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [sharing, setSharing] = useState(false);
   const daily = verseOfTheDay();
+  const avisos = useAvisos();
+  const [canNotify, setCanNotify] = useState(false);
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
     getLastRead().then(setLast);
     getVersions().then(setVersions).catch(() => {});
+    const s = soporte();
+    setCanNotify(s === 'si' || s === 'ios-instalar');
   }, []);
 
   useEffect(() => {
@@ -50,13 +57,15 @@ export default function Today() {
   const daysThisWeek = week.filter((d) => d.read).length;
   const chaptersRead = Object.values(progress.chapters).reduce((s, c) => s + c.length, 0);
   const continueTo = last ?? { book: 'jhn', chapter: 1 };
-  // Los planes que aún no empiezan (un desafío de temporada) aparecen tres semanas antes
+  // Los planes que aún no empiezan (un reto de temporada) aparecen tres semanas antes
   const soon = dateKey(new Date(Date.now() + 21 * 86_400_000));
   const activePlans = plans.filter((p) => !p.finished && p.started <= soon);
-  // El próximo desafío de temporada se anuncia desde tres semanas antes, si la persona aún no se unió
+  // El próximo reto de temporada se anuncia desde un mes antes, si la persona aún no se unió
   const upcoming = PLANS.filter((p) => p.season)
     .map((def) => ({ def, season: nextSeason(def)! }))
-    .find(({ def, season }) => season.daysToStart <= 21 && !plans.some((p) => p.id === `${def.id}-${season.year}`));
+    .sort((a, b) => a.season.start.localeCompare(b.season.start))
+    .find(({ def, season }) => season.daysToStart <= 30 && !plans.some((p) => p.id === `${def.id}-${season.year}`));
+  const upcomingTint = upcoming ? seasonTint(upcoming.def.season!, colors) : null;
 
 
   return (
@@ -64,10 +73,25 @@ export default function Today() {
       <Stack.Screen options={{ headerShown: false, title: 'Hoy' }} />
 
       <Appear>
-        <Text style={[styles.date, { color: colors.muted }]}>
-          {capitalize(new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }))}
-        </Text>
-        <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>{greeting()}</Text>
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.date, { color: colors.muted }]}>
+              {capitalize(new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }))}
+            </Text>
+            <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>{greeting()}</Text>
+          </View>
+          {canNotify && (
+            <Pressable
+              onPress={() => navigate(() => router.push('/notificaciones' as never), 'forward')}
+              style={({ pressed }) => [styles.bell, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Notificaciones"
+            >
+              <BellIcon color={colors.accent} />
+              {avisos.endpoint && <View style={[styles.bellDot, { backgroundColor: colors.accent, borderColor: colors.surface }]} />}
+            </Pressable>
+          )}
+        </View>
       </Appear>
 
       <Appear delay={20}>
@@ -154,22 +178,53 @@ export default function Today() {
         </Appear>
       )}
 
-      {upcoming && (
+      {upcoming && upcomingTint && (
         <Appear delay={110}>
           <Pressable
             onPress={() => navigate(() => router.push(`/planes/${upcoming.def.id}`), 'forward')}
-            style={({ pressed }) => [styles.card, { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.card, styles.reto, { backgroundColor: upcomingTint.soft, borderColor: upcomingTint.soft }, pressed && styles.pressed]}
             accessibilityRole="button"
           >
-            <Text style={[styles.kicker, { color: colors.accent }]}>
-              {upcoming.season.running ? 'Desafío en curso' : `Empieza en ${upcoming.season.daysToStart} días`}
+            <Text style={[styles.retoGlyph, { color: upcomingTint.accent, fontFamily: serif }]}>{upcoming.def.icon}</Text>
+            <Text style={[styles.kicker, { color: upcomingTint.accent }]}>
+              {upcoming.season.running
+                ? `Reto de ${upcomingTint.name} · en curso`
+                : upcoming.season.daysToStart === 1
+                  ? `Reto de ${upcomingTint.name} · empieza mañana`
+                  : `Reto de ${upcomingTint.name} · empieza en ${upcoming.season.daysToStart} días`}
             </Text>
-            <Text style={[styles.continueTitle, { color: colors.text, fontFamily: serif, fontSize: 22 }]}>
-              {upcoming.def.icon} {upcoming.def.title}
-            </Text>
-            <Text style={{ color: colors.text, marginTop: 6 }}>{upcoming.def.description}</Text>
-            <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 10 }}>Unirme →</Text>
+            <Text style={[styles.continueTitle, { color: colors.text, fontFamily: serif, fontSize: 22 }]}>{upcoming.def.title}</Text>
+            <Text style={{ color: colors.text, marginTop: 6, opacity: 0.85 }}>{upcoming.def.description}</Text>
+            <View style={[styles.retoButton, { backgroundColor: upcomingTint.accent }]}>
+              <Text style={{ color: upcomingTint.soft, fontWeight: '700' }}>Ver el reto →</Text>
+            </View>
           </Pressable>
+        </Appear>
+      )}
+
+      {canNotify && avisos.ready && !avisos.endpoint && !avisos.invitacionVista && (
+        <Appear delay={115}>
+          <View style={[styles.card, styles.invite, { backgroundColor: colors.surface, borderColor: colors.border }]} testID="invitacion-avisos">
+            <View style={[styles.inviteIcon, { backgroundColor: colors.accentSoft }]}>
+              <BellIcon color={colors.accent} size={22} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>¿Te recordamos leer cada día?</Text>
+              <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 4 }}>
+                Elige una hora y te avisamos con tu lectura, tus tarjetas y el día del desafío.
+              </Text>
+              <View style={[styles.row, { marginTop: 12 }]}>
+                <SmallButton
+                  label="Elegir hora"
+                  colors={colors}
+                  onPress={() => navigate(() => router.push('/notificaciones' as never), 'forward')}
+                />
+                <Pressable onPress={cerrarInvitacion} style={styles.small} accessibilityRole="button">
+                  <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>Ahora no</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
         </Appear>
       )}
 
@@ -254,6 +309,15 @@ function SmallButton({ label, colors, onPress }: { label: string; colors: C; onP
   );
 }
 
+function BellIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 6.5 2.5 7.5h-17C4.5 15.5 6 13.5 6 9Z" />
+      <Path d="M10 20a2.2 2.2 0 0 0 4 0" />
+    </Svg>
+  );
+}
+
 function Tile({ icon, label, colors, onPress }: { icon: string; label: string; colors: C; onPress: () => void }) {
   return (
     <Pressable
@@ -273,6 +337,11 @@ function Tile({ icon, label, colors, onPress }: { icon: string; label: string; c
 
 const styles = StyleSheet.create({
   content: { padding: 20, paddingTop: 48, paddingBottom: 64, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bell: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  bellDot: { position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5, borderWidth: 2 },
+  invite: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  inviteIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   date: { fontSize: 14 },
   hello: { fontSize: 34, marginTop: 2 },
   search: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, marginTop: 16, paddingRight: 6 },
@@ -282,6 +351,9 @@ const styles = StyleSheet.create({
   continue: { borderRadius: 20, padding: 20 },
   continueTitle: { fontSize: 28, marginTop: 6 },
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20 },
+  reto: { overflow: 'hidden' },
+  retoGlyph: { position: 'absolute', right: 6, top: -26, fontSize: 130, opacity: 0.1 },
+  retoButton: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 9, marginTop: 14 },
   verse: { fontSize: 21, lineHeight: 31, marginTop: 10 },
   ref: { marginTop: 8, fontSize: 14, fontWeight: '600' },
   row: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },

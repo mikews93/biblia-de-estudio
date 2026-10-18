@@ -18,6 +18,10 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import postgres from 'postgres';
 
+import { notifyUser, PUSH_SCHEMA } from './_push';
+import { planById } from '../src/lib/planesCatalogo';
+import { parseRetoId, seasonRun } from '../src/lib/temporadas';
+
 const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -128,6 +132,7 @@ create table if not exists uso_ia (
 );
 alter table usuarios add column if not exists codigo text unique;
 alter table usuarios add column if not exists compartir_lecturas boolean not null default true;
+alter table grupos add column if not exists plan_reto text;
 create table if not exists amistades (
   de uuid not null references usuarios on delete cascade,
   para uuid not null references usuarios on delete cascade,
@@ -206,7 +211,8 @@ type Verse = [number, string];
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
 type User = { id: string; nombre: string; correo: string | null };
-type Plan = { libro: string | null; inicio: string | null; porDia: number };
+/** El plan del grupo: un libro a un ritmo fijo, o un reto de temporada («adviento-2026») con sus fechas. */
+type Plan = { libro: string | null; inicio: string | null; porDia: number; reto: string | null };
 
 class Fail extends Error {
   status: number;
@@ -224,7 +230,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -320,8 +326,18 @@ function day(value: unknown) {
 
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 
+/** Un reto de temporada válido: del catálogo y de este año o los vecinos. */
+function retoOf(id: unknown) {
+  const parsed = typeof id === 'string' ? parseRetoId(id) : null;
+  const def = parsed && planById(parsed.def);
+  const year = new Date().getFullYear();
+  if (!parsed || !def?.season || Math.abs(parsed.year - year) > 1) throw new Fail('Reto no válido');
+  return { id: `${def.id}-${parsed.year}`, def, run: seasonRun(def, parsed.year) };
+}
+
 /** Los capítulos que tocan hoy según el plan del grupo. */
 async function todaysReading(plan: Plan, today: string) {
+  if (plan.reto) return retoReading(plan.reto, today);
   if (!plan.libro || !plan.inicio) return null;
   const book = await bookOf(plan.libro);
   const elapsed = daysBetween(plan.inicio, today);
@@ -333,11 +349,36 @@ async function todaysReading(plan: Plan, today: string) {
   return { libro: book.id, nombre: book.name, capitulos, estado: 'activo', dia: elapsed + 1, total };
 }
 
+/**
+ * En un reto, la lectura de hoy es la de su fecha. Antes de empezar se anuncia la primera; los días sin
+ * lectura (domingos de Cuaresma) son de descanso y cuenta cualquier capítulo que se lea.
+ */
+async function retoReading(id: string, today: string) {
+  const { def, run } = retoOf(id);
+  const total = run.dates.length;
+  const at = (i: number) => def.spec[i] as [string, number];
+  const index = run.dates.indexOf(today);
+  const passed = run.dates.filter((d) => d <= today).length;
+  const pick = today < run.start ? 0 : today > run.end ? total - 1 : index >= 0 ? index : passed;
+  const [libro, capitulo] = at(Math.min(pick, total - 1));
+  const book = await bookOf(libro);
+  const base = { libro: book.id, nombre: book.name, total, reto: id };
+  // `siguiente`: el capítulo con que empieza (o sigue tras el descanso), para anunciarlo
+  if (today < run.start) return { ...base, capitulos: [] as number[], estado: 'pronto', dia: 0, siguiente: capitulo };
+  if (today > run.end) return { ...base, capitulos: [], estado: 'terminado', dia: total };
+  if (index === -1) return { ...base, capitulos: [], estado: 'descanso', dia: passed, siguiente: capitulo };
+  return { ...base, capitulos: [capitulo], estado: 'activo', dia: index + 1 };
+}
+
 async function readPlan(body: Json): Promise<Plan> {
   const plan = (body.plan ?? null) as Json | null;
-  if (!plan || !plan.libro) return { libro: null, inicio: null, porDia: 1 };
+  if (plan?.reto) {
+    const { id, run } = retoOf(plan.reto);
+    return { libro: null, inicio: run.start, porDia: 1, reto: id };
+  }
+  if (!plan || !plan.libro) return { libro: null, inicio: null, porDia: 1, reto: null };
   const book = await bookOf(plan.libro);
-  return { libro: book.id, inicio: day(plan.inicio), porDia: int(plan.porDia ?? 1, 'Ritmo', 1, 5) };
+  return { libro: book.id, inicio: day(plan.inicio), porDia: int(plan.porDia ?? 1, 'Ritmo', 1, 5), reto: null };
 }
 
 async function auth(sql: Sql, request: Request): Promise<User> {
@@ -391,9 +432,10 @@ type GroupRow = {
   plan_libro: string | null;
   plan_inicio: string | null;
   plan_por_dia: number;
+  plan_reto: string | null;
 };
 
-const planOf = (g: GroupRow): Plan => ({ libro: g.plan_libro, inicio: g.plan_inicio, porDia: g.plan_por_dia });
+const planOf = (g: GroupRow): Plan => ({ libro: g.plan_libro, inicio: g.plan_inicio, porDia: g.plan_por_dia, reto: g.plan_reto });
 
 async function summary(sql: Sql, g: GroupRow, today: string) {
   const reading = await todaysReading(planOf(g), today);
@@ -402,7 +444,7 @@ async function summary(sql: Sql, g: GroupRow, today: string) {
   return { id: g.id, nombre: g.nombre, tipo: g.tipo, miembros: n, leyeronHoy: read.size, lectura: reading };
 }
 
-const GROUP_COLUMNS = 'g.id, g.nombre, g.tipo, g.codigo, g.plan_libro, to_char(g.plan_inicio, \'YYYY-MM-DD\') as plan_inicio, g.plan_por_dia';
+const GROUP_COLUMNS = 'g.id, g.nombre, g.tipo, g.codigo, g.plan_libro, to_char(g.plan_inicio, \'YYYY-MM-DD\') as plan_inicio, g.plan_por_dia, g.plan_reto';
 
 async function getGroup(sql: Sql, id: string) {
   const [g] = await sql.unsafe<GroupRow[]>(`select ${GROUP_COLUMNS} from grupos g where g.id = $1`, [id]);
@@ -413,8 +455,8 @@ async function getGroup(sql: Sql, id: string) {
 async function insertGroupWithCode(sql: Sql, fields: Omit<GroupRow, 'id' | 'codigo'>) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const [row] = await sql<{ id: string }[]>`
-      insert into grupos (nombre, tipo, codigo, plan_libro, plan_inicio, plan_por_dia)
-      values (${fields.nombre}, ${fields.tipo}, ${newCode()}, ${fields.plan_libro}, ${fields.plan_inicio}, ${fields.plan_por_dia})
+      insert into grupos (nombre, tipo, codigo, plan_libro, plan_inicio, plan_por_dia, plan_reto)
+      values (${fields.nombre}, ${fields.tipo}, ${newCode()}, ${fields.plan_libro}, ${fields.plan_inicio}, ${fields.plan_por_dia}, ${fields.plan_reto})
       on conflict (codigo) do nothing returning id`;
     if (row) return row.id;
   }
@@ -619,6 +661,7 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const groups = await sql<{ grupo_id: string }[]>`select grupo_id from miembros where usuario_id = ${user.id}`;
     for (const { grupo_id } of groups) await leave(sql, grupo_id, user.id);
+    await sql`update suscripciones set usuario_id = null where usuario_id = ${user.id}`;
     await sql`delete from usuarios where id = ${user.id}`;
     return {};
   },
@@ -646,6 +689,7 @@ const actions: Record<string, Handler> = {
       plan_libro: plan.libro,
       plan_inicio: plan.inicio,
       plan_por_dia: plan.porDia,
+      plan_reto: plan.reto,
     });
     await sql`insert into miembros (grupo_id, usuario_id, rol) values (${id}, ${user.id}, 'admin')`;
     return { id };
@@ -665,7 +709,9 @@ const actions: Record<string, Handler> = {
     const code = String(body.codigo ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     const [g] = await sql<{ id: string }[]>`select id from grupos where codigo = ${code}`;
     if (!g) throw new Fail('Ese código de invitación no existe o ya cambió', 404);
-    await sql`insert into miembros (grupo_id, usuario_id) values (${g.id}, ${user.id}) on conflict do nothing`;
+    const joined = await sql`
+      insert into miembros (grupo_id, usuario_id) values (${g.id}, ${user.id}) on conflict do nothing returning 1`;
+    if (joined.length) await avisarUnion(sql, g.id, user);
     return { id: g.id };
   },
 
@@ -703,7 +749,7 @@ const actions: Record<string, Handler> = {
     const plan = await readPlan(body);
     await sql`
       update grupos set nombre = ${nombre}, tipo = ${tipo}, plan_libro = ${plan.libro},
-        plan_inicio = ${plan.inicio}, plan_por_dia = ${plan.porDia}
+        plan_inicio = ${plan.inicio}, plan_por_dia = ${plan.porDia}, plan_reto = ${plan.reto}
       where id = ${id}`;
     return {};
   },
@@ -949,7 +995,9 @@ const actions: Record<string, Handler> = {
     if (body.si === false) {
       await sql`delete from me_gusta where publicacion_id = ${post.id} and usuario_id = ${user.id}`;
     } else {
-      await sql`insert into me_gusta (publicacion_id, usuario_id) values (${post.id}, ${user.id}) on conflict do nothing`;
+      const added = await sql`
+        insert into me_gusta (publicacion_id, usuario_id) values (${post.id}, ${user.id}) on conflict do nothing returning 1`;
+      if (added.length && !post.mia) await avisarMeGusta(sql, post, user);
     }
     return {};
   },
@@ -961,6 +1009,14 @@ const actions: Record<string, Handler> = {
     await tooMany(sql, 'comentarios', user.id, COMMENTS_PER_HOUR);
     const [row] = await sql<{ id: string }[]>`
       insert into comentarios (publicacion_id, usuario_id, texto) values (${post.id}, ${user.id}, ${texto}) returning id`;
+    if (!post.mia) {
+      await notifyUser(sql, (post as Json).autorId as string, {
+        title: `${user.nombre} comentó tu publicación`,
+        body: texto.length > 140 ? `${texto.slice(0, 139)}…` : texto,
+        url: `/comunidades/publicacion/${post.id}`,
+        tag: `comentario-${post.id}`,
+      });
+    }
     return { id: row.id };
   },
 
@@ -1023,8 +1079,17 @@ const actions: Record<string, Handler> = {
     if (!exists) throw new Fail('Esa persona ya no está en la comunidad', 404);
     // Si la otra persona ya te había invitado, pedirle amistad es aceptarla.
     const accepted = await sql`update amistades set aceptada = true where de = ${target} and para = ${user.id} returning de`;
-    if (!accepted.length) {
-      await sql`insert into amistades (de, para) values (${user.id}, ${target}) on conflict do nothing`;
+    if (accepted.length) await avisarAmistadAceptada(sql, target, user);
+    else {
+      const sent = await sql`insert into amistades (de, para) values (${user.id}, ${target}) on conflict do nothing returning 1`;
+      if (sent.length) {
+        await notifyUser(sql, target, {
+          title: `${user.nombre} quiere ser tu amigo`,
+          body: 'Acepta su invitación para ver lo que lee y comparte en la comunidad.',
+          url: '/comunidades/amigos',
+          tag: `amistad-${user.id}`,
+        });
+      }
     }
     return { id: target, relacion: await relation(sql, user.id, target) };
   },
@@ -1033,7 +1098,10 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const other = uuid(body.usuario);
     if (body.aceptar === false) await sql`delete from amistades where de = ${other} and para = ${user.id} and not aceptada`;
-    else await sql`update amistades set aceptada = true where de = ${other} and para = ${user.id}`;
+    else {
+      const accepted = await sql`update amistades set aceptada = true where de = ${other} and para = ${user.id} and not aceptada returning 1`;
+      if (accepted.length) await avisarAmistadAceptada(sql, other, user);
+    }
     return { relacion: await relation(sql, user.id, other) };
   },
 
@@ -1064,6 +1132,48 @@ const actions: Record<string, Handler> = {
     };
   },
 };
+
+// --- Avisos push de la comunidad (api/_push.ts). Solo llegan a quien los activó en la pantalla de notificaciones. ---
+
+async function avisarMeGusta(sql: Sql, post: PostRow, user: User) {
+  const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from me_gusta where publicacion_id = ${post.id}`;
+  const otros = n - 1;
+  const quien = otros > 0 ? `A ${user.nombre} y ${otros === 1 ? 'otra persona' : `${otros} personas más`} les gusta` : `A ${user.nombre} le gusta`;
+  const que = post.tipo === 'pregunta' ? 'tu pregunta' : post.tipo === 'lectura' ? 'tu lectura' : 'tu publicación';
+  const cita = post.libroNombre && post.capitulo ? ` de ${post.libroNombre} ${post.capitulo}${post.versiculo ? `:${post.versiculo}` : ''}` : '';
+  await notifyUser(sql, post.autorId as string, {
+    title: `${quien} ${que}${cita}`,
+    body: typeof post.texto === 'string' && post.texto ? post.texto.slice(0, 120) : typeof post.cita === 'string' ? `«${post.cita.slice(0, 118)}»` : 'Ábrela en la comunidad.',
+    url: `/comunidades/publicacion/${post.id}`,
+    // Un solo aviso por publicación: cada nuevo «me gusta» reemplaza al anterior.
+    tag: `megusta-${post.id}`,
+  });
+}
+
+async function avisarAmistadAceptada(sql: Sql, to: string, user: User) {
+  await notifyUser(sql, to, {
+    title: `${user.nombre} aceptó tu amistad`,
+    body: 'Ahora verán lo que cada uno lee y comparte.',
+    url: `/comunidades/persona/${user.id}`,
+    tag: `amistad-${user.id}`,
+  });
+}
+
+async function avisarUnion(sql: Sql, groupId: string, user: User) {
+  const admins = await sql<{ usuario_id: string; nombre: string }[]>`
+    select m.usuario_id, g.nombre from miembros m join grupos g on g.id = m.grupo_id
+    where m.grupo_id = ${groupId} and m.rol = 'admin' and m.usuario_id <> ${user.id}`;
+  await Promise.all(
+    admins.map((a) =>
+      notifyUser(sql, a.usuario_id, {
+        title: `${user.nombre} se unió a ${a.nombre}`,
+        body: 'Aceptó tu invitación. Ya puede leer el plan con el grupo.',
+        url: `/grupos/${groupId}`,
+        tag: `grupo-${groupId}`,
+      }),
+    ),
+  );
+}
 
 /** Sale del grupo; si se va el último administrador, pasa a serlo quien lleva más tiempo, y sin nadie el grupo se borra. */
 async function leave(sql: Sql, groupId: string, userId: string) {

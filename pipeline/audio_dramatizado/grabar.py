@@ -313,6 +313,17 @@ def pick_voices(guion: dict, guion_id: str, informe: dict) -> dict[str, str]:
     return chosen
 
 
+def ensure_voice(voice_id: str, name: str, new_name: str) -> str:
+    """Una voz de la biblioteca elegida a mano: se añade a la cuenta si aún no está (la API solo usa voces de la cuenta)."""
+    if any(v['voice_id'] == voice_id for v in account_voices()):
+        return voice_id
+    res = call('GET', 'shared-voices', query={'language': 'es', 'page_size': 100, 'search': name})
+    match = next((v for v in res.get('voices', []) if v['voice_id'] == voice_id), None)
+    if not match:
+        raise RuntimeError(f'No se encontró la voz «{name}» ({voice_id}) en la biblioteca de ElevenLabs')
+    return call('POST', f'voices/add/{match["public_owner_id"]}/{voice_id}', {'new_name': new_name})['voice_id']
+
+
 # Las voces más usadas de la biblioteca son las que suenan en miles de videos: en las audiciones se saltan.
 TOO_COMMON = 15
 
@@ -503,9 +514,29 @@ def god_voices_elsewhere(guion_id: str) -> set[str]:
     return ids
 
 
-def build(guion_id: str, review: bool) -> None:
+def cut_after(scenes: list[dict], until: int) -> list[dict]:
+    """Las escenas hasta el versículo indicado (para pruebas cortas); lo que sigue a ese versículo en su escena se quita."""
+    out = []
+    for scene in scenes:
+        steps = []
+        for step in scene['pasos']:
+            if step.get('v', 0) > until:
+                break
+            steps.append(step)
+        if any('v' in step for step in steps):
+            out.append({**scene, 'pasos': steps})
+        if len(steps) < len(scene['pasos']):
+            break
+    return out
+
+
+def build(guion_id: str, review: bool, trial: tuple[str, str, str] | None = None, until: int | None = None) -> None:
+    """trial = (papel, voice_id, nombre): prueba de una voz, guardada aparte; until: grabar solo hasta ese versículo."""
     guion = json.loads((HERE / f'{guion_id}.json').read_text())
     check_text(guion)
+    out_id = f'{guion_id}-prueba-{trial[2].lower()}' if trial else guion_id
+    if until:
+        guion['escenas'] = cut_after(guion['escenas'], until)
     chars = sum(chars_of(s, guion) for sc in guion['escenas'] for s in sc['pasos'] if 'v' in s)
     informe: dict = {'guion': guion_id, 'caracteres_dialogo': chars}
     if review:
@@ -540,6 +571,14 @@ def build(guion_id: str, review: bool) -> None:
         warnings.append('Grabación de prueba con Cloudflare: eleven_v3 línea por línea, sin efectos, ambientes ni música.')
     informe['motor'] = ENGINE
 
+    if trial:
+        role, voice_id, name = trial
+        guion['voces'][role]['voice_id'] = ensure_voice(voice_id, name, f'Biblia prueba {role} {name}')
+    if ENGINE != 'cloudflare':
+        # Una voz fijada que se eligió en una audición lleva «biblioteca»: su nombre en la biblioteca de ElevenLabs.
+        for role, cfg in guion['voces'].items():
+            if cfg.get('voice_id') and cfg.get('biblioteca') and not (trial and trial[0] == role):
+                cfg['voice_id'] = ensure_voice(cfg['voice_id'], cfg['biblioteca'], f'Biblia {role} {cfg["biblioteca"]}')
     voices = pick_voices(guion, guion_id, informe)
     OUT.mkdir(parents=True, exist_ok=True)
     tmp = OUT / 'piezas'
@@ -606,18 +645,18 @@ def build(guion_id: str, review: bool) -> None:
         src = music(fondo['prompt'], fondo['ms'])
         if src:
             clips.append((0.0, pad_bed(src, total, piece('fondo')), fondo.get('db', PAD_DB)))
-    final = OUT / f'{guion_id}.mp3'
+    final = OUT / f'{out_id}.mp3'
     mix(clips, total, final)
     seconds = round(duration(final), 1)
 
     meta = {
-        'id': guion_id,
-        'titulo': guion['titulo'],
+        'id': out_id,
+        'titulo': guion['titulo'] + (f' (prueba: {trial[2]})' if trial else ''),
         'duracion': seconds,
         'timestamps': stamps,
         'credito': guion['credito'],
     }
-    (OUT / f'{guion_id}.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2))
+    (OUT / f'{out_id}.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2))
     informe.update({'duracion_segundos': seconds, 'piezas': len(clips), 'creditos_gastados': sum(s['creditos'] for s in spent), 'avisos': warnings})
     (OUT / 'informe.json').write_text(json.dumps(informe, ensure_ascii=False, indent=2))
     notice('notice', 'Informe de grabación:\n' + json.dumps(informe, ensure_ascii=False, indent=1))
@@ -628,11 +667,14 @@ def build(guion_id: str, review: bool) -> None:
 if __name__ == '__main__':
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     role = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--audicion=')), None)
+    # --voz=PAPEL:voice_id:Nombre graba una prueba con otra voz; --hasta=N corta en el versículo N.
+    voz = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--voz=')), None)
+    hasta = next((int(a.split('=', 1)[1]) for a in sys.argv if a.startswith('--hasta=')), None)
     try:
         if role:
             audition(args[0] if args else 'mrk-1', role)
             sys.exit(0)
-        build(args[0] if args else 'mrk-1', '--revisar' in sys.argv)
+        build(args[0] if args else 'mrk-1', '--revisar' in sys.argv, tuple(voz.split(':', 2)) if voz else None, hasta)
     except RuntimeError as err:
         notice('error', f'La grabación se detuvo: {err}\nPiezas nuevas cobradas: {json.dumps(spent, ensure_ascii=False)}')
         sys.exit(1)

@@ -52,3 +52,4 @@ pipeline/audio_dramatizado/salida/
 # Pruebas
 test-results/
 playwright-report/
+pipeline/podcast/salida/

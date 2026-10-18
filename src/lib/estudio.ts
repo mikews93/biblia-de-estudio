@@ -35,6 +35,8 @@ type Request = {
   messages: Turn[];
   taller?: TallerRequest;
   herramienta?: Herramienta;
+  /** Pedir otra versión de la herramienta en vez de la que ya está guardada */
+  nueva?: boolean;
 };
 
 /** Llama a onUpdate con el texto y las fuentes acumulados cada vez que llega algo nuevo. */

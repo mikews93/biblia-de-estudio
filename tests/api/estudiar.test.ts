@@ -2,6 +2,7 @@
 // Las pruebas con cuenta necesitan DATABASE_URL (ver tests/api/helpers.ts) y public/data.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import postgres from 'postgres';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { parseMindMap } from '../../src/lib/mapaMental';
@@ -95,6 +96,8 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(await bad({ ...base, herramienta: 'constructor' })).toBe('Herramienta no válida');
     expect(await bad({ ...base, herramienta: 'mapa', verse: 3 })).toBe('Herramienta no válida');
     expect(await bad({ ...base, herramienta: 'mapa', taller })).toBe('Herramienta no válida');
+    expect(await bad({ ...base, nueva: true })).toBe('Pedido no válido');
+    expect(await bad({ ...base, herramienta: 'mapa', nueva: 'sí' })).toBe('Pedido no válido');
   });
 
   it('estudio de un capítulo: texto por partes, la fuente citada con su referencia y «done»', async () => {
@@ -156,11 +159,39 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(task).toContain('que las preguntas lleven al texto');
   });
 
+  it('la herramienta de un capítulo se guarda para todos y «nueva» pide otra versión', async () => {
+    // Juan 5 empieza sin nada guardado, para que la prueba se pueda repetir con la misma base
+    const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
+    await sql`delete from herramientas_ia where libro = 'jhn' and capitulo = 5`.catch(() => {});
+    await sql.end();
+    const base = { book: 'jhn', chapter: 5, herramienta: 'mapa' };
+    const before = aiRequests.length;
+
+    const first = await events(await ask(base));
+    expect(aiRequests.length).toBe(before + 1);
+    expect(first.at(-1)?.type).toBe('done');
+
+    // Otra persona lo recibe al instante, igual, sin otra llamada a la IA
+    const otra = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Otra persona' })).json.llave;
+    const second = await events(await ask(base, otra));
+    expect(aiRequests.length).toBe(before + 1);
+    expect(textOf(second)).toBe(textOf(first));
+    expect(second.filter((e) => e.type === 'source')).toEqual(first.filter((e) => e.type === 'source'));
+    expect(second.at(-1)?.type).toBe('done');
+
+    // «Preparar otra versión» vuelve a llamar a la IA, y lo nuevo queda guardado
+    await events(await ask({ ...base, nueva: true }));
+    expect(aiRequests.length).toBe(before + 2);
+    await events(await ask(base));
+    expect(aiRequests.length).toBe(before + 2);
+  });
+
   it('las herramientas devuelven un texto que la app sabe leer', async () => {
     const podcast = textOf(await events(await ask({ book: 'jhn', chapter: 3, herramienta: 'podcast' })));
     expect(parseScript(podcast).map((l) => l.speaker)).toEqual(['ana', 'tomas', 'ana']);
 
-    const tarjetas = textOf(await events(await ask({ book: 'jhn', chapter: 3, herramienta: 'tarjetas' })));
+    // «nueva» para que llegue a la IA aunque otra ejecución ya la haya guardado
+    const tarjetas = textOf(await events(await ask({ book: 'jhn', chapter: 3, herramienta: 'tarjetas', nueva: true })));
     expect(lastAiText()).toContain('tarjetas de repaso de Juan 3');
     expect(parseCards(tarjetas, [], 'jhn', 3)).toHaveLength(3);
 

@@ -233,8 +233,15 @@ function playRecording(kind: 'dramatizado' | 'podcast', book: string, chapter: n
 export const playDramatized = (book: string, chapter: number, title: string) =>
   playRecording('dramatizado', book, chapter, title, 'Audio dramatizado');
 
-export const playRecordedPodcast = (book: string, chapter: number, title: string) =>
-  playRecording('podcast', book, chapter, title, 'Pódcast · Ana y Tomás');
+/** Una grabación que no está en /audio (por ejemplo, un pódcast grabado bajo demanda). */
+export type RemoteRecording = { url: string; duracion: number; credito: string };
+
+export function playRecordedPodcast(book: string, chapter: number, title: string, remote?: RemoteRecording) {
+  const label = 'Pódcast · Ana y Tomás';
+  if (!remote) return playRecording('podcast', book, chapter, title, label);
+  const id = start('podcast', book, chapter, title);
+  return playFile(id, async () => ({ label, tracks: [{ url: remote.url, duration: remote.duracion }], timestamps: [], credit: remote.credito }));
+}
 
 // ---------------------------------------------------------------- pódcast con la voz del dispositivo
 
