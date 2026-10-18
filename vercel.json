@@ -1,0 +1,33 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run data && npm run comentarios && npx expo export --platform web && python3 pipeline/seo_pages.py dist",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/estudiar.ts": {
+      "includeFiles": "dist/data/**",
+      "maxDuration": 120
+    },
+    "api/comunidades.ts": {
+      "includeFiles": "dist/data/**",
+      "maxDuration": 60
+    },
+    "api/audio.ts": {
+      "maxDuration": 30
+    },
+    "api/buscar.ts": {
+      "includeFiles": "dist/data/**",
+      "maxDuration": 60
+    },
+    "api/comentario.ts": {
+      "includeFiles": "dist/**",
+      "maxDuration": 120
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/|data/|_expo/|assets/).*)",
+      "destination": "/app.html"
+    }
+  ]
+}
