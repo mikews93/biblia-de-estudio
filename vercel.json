@@ -29,7 +29,7 @@
   },
   "rewrites": [
     {
-      "source": "/((?!api/|data/|_expo/|assets/).*)",
+      "source": "/((?!api/|data/|_expo/|assets/|audio/).*)",
       "destination": "/app.html"
     }
   ]

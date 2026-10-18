@@ -1,0 +1,123 @@
+name: Audio dramatizado
+
+# Graba con ElevenLabs los capítulos dramatizados de pipeline/audio_dramatizado/ (un JSON de guion por capítulo) y
+# sube el MP3, los tiempos por versículo y el informe a la versión de GitHub «audio-dramatizado-borrador». Cada pieza
+# (versículo, efecto, música) queda en caché por su contenido, así que solo se paga lo que cambió en el guion.
+# Necesita el secreto ELEVENLABS_API_KEY. Se lanza al cambiar un guion o el script, o a mano desde la pestaña Actions.
+
+on:
+  push:
+    paths:
+      - pipeline/audio_dramatizado/*.json
+      - pipeline/audio_dramatizado/grabar.py
+      - .github/workflows/audio-dramatizado.yml
+  workflow_dispatch:
+    inputs:
+      guiones:
+        description: Guiones a grabar (separados por espacios, sin .json)
+        default: mrk-1
+      motor:
+        description: "auto (ElevenLabs si hay créditos, si no Cloudflare), elevenlabs o cloudflare"
+        default: auto
+      audicion:
+        description: "Solo buscar candidatas para una voz (por ejemplo NARRADOR), sin grabar"
+        default: ''
+      pruebas:
+        description: "Pruebas de voz separadas por ; (PAPEL:voice_id:Nombre), grabadas aparte"
+        default: ''
+      hasta:
+        description: Grabar las pruebas solo hasta este versículo
+        default: '13'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audio-dramatizado
+  cancel-in-progress: false
+
+jobs:
+  grabar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      # Sin créditos en ElevenLabs, la prueba se graba por Cloudflare AI Gateway (como en deusrex).
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_AI_API_TOKEN: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
+      MOTOR: ${{ github.event.inputs.motor || 'auto' }}
+      GH_TOKEN: ${{ github.token }}
+      TAG: audio-dramatizado-borrador
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Recuperar las piezas ya grabadas
+        uses: actions/cache/restore@v4
+        with:
+          path: pipeline/.cache/eleven
+          key: eleven-${{ github.run_id }}
+          restore-keys: eleven-
+      - name: Grabar
+        run: |
+          guiones="${{ github.event.inputs.guiones }}"
+          if [ -z "$guiones" ]; then
+            guiones=$(ls pipeline/audio_dramatizado/*.json | xargs -n1 basename | sed 's/\.json$//')
+          fi
+          audicion="${{ github.event.inputs.audicion }}"
+          pruebas="${{ github.event.inputs.pruebas }}"
+          for g in $guiones; do
+            if [ -n "$audicion" ]; then python3 pipeline/audio_dramatizado/grabar.py "$g" "--audicion=$audicion"
+            elif [ -n "$pruebas" ]; then
+              IFS=';' read -ra voces <<< "$pruebas"
+              for v in "${voces[@]}"; do python3 pipeline/audio_dramatizado/grabar.py "$g" "--voz=$v" "--hasta=${{ github.event.inputs.hasta }}"; done
+            else python3 pipeline/audio_dramatizado/grabar.py "$g"; fi
+          done
+      - name: Guardar las piezas grabadas
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: pipeline/.cache/eleven
+          key: eleven-${{ github.run_id }}
+      - name: Subir a la versión de GitHub
+        if: hashFiles('pipeline/audio_dramatizado/salida/*.mp3') != ''
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
+            --title "Audio dramatizado (borrador)" \
+            --notes "Grabaciones de prueba del audio dramatizado. Se reemplazan en cada grabación."
+          cd pipeline/audio_dramatizado/salida
+          for f in *.mp3; do gh release upload "$TAG" "$f" "${f%.mp3}.json" --clobber; done
+          cp informe.json "informe-$(date +%Y%m%d-%H%M).json"
+          gh release upload "$TAG" informe-*.json --clobber
+      # La versión de GitHub es privada como el repositorio: para que la app pueda reproducirlo, el MP3 se publica
+      # también en public/audio/, que Vercel sirve tal cual, y se apunta en el catálogo public/audio/index.json.
+      - name: Publicar en la app
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          shopt -s nullglob
+          files=(pipeline/audio_dramatizado/salida/*.mp3)
+          [ ${#files[@]} -gt 0 ] || exit 0
+          mkdir -p public/audio/dramatizado public/audio/pruebas
+          for f in "${files[@]}"; do
+            id=$(basename "$f" .mp3)
+            # Las pruebas de voz se escuchan por su enlace y no entran en el catálogo de la app.
+            case "$id" in *-prueba-*) dest=public/audio/pruebas/ ;; *) dest=public/audio/dramatizado/ ;; esac
+            cp "$f" "pipeline/audio_dramatizado/salida/$id.json" "$dest"
+          done
+          python3 - <<'PY'
+          import json, pathlib
+          root = pathlib.Path('public/audio')
+          catalog = {kind: sorted(p.stem for p in (root / kind).glob('*.mp3')) for kind in ('dramatizado', 'podcast')}
+          (root / 'index.json').write_text(json.dumps(catalog, indent=2) + '\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/audio
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(audio): publish recorded chapters to the app"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done

@@ -3,11 +3,14 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { BackIcon, ForwardIcon, PauseIcon, PlayIcon, TalkIcon } from '@/components/audioIcons';
+
 import { Sources } from '@/components/StudyPanel';
 import { ToolFooter, ToolState } from '@/components/ToolState';
 import { Book, getBooks, parseRef } from '@/lib/data';
 import { useHerramienta } from '@/lib/herramientas';
-import { SPEAKERS, minutes, parseScript, usePodcastPlayer } from '@/lib/podcast';
+import { closeAudio, playRecordedPodcast, playSpeech, recordingId, toggle, useAudio, useCatalog } from '@/lib/audio';
+import { Line, SPEAKERS, minutes, parseScript } from '@/lib/podcast';
 import { bookIdFromParam, verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -20,7 +23,6 @@ export default function Podcast() {
   const [book, setBook] = useState<Book | null>(null);
   const tool = useHerramienta('podcast', bookId, chapter);
   const lines = useMemo(() => parseScript(tool.text), [tool.text]);
-  const player = usePodcastPlayer(lines);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const positions = useRef<Record<number, number>>({});
   const listY = useRef(0);
@@ -28,6 +30,13 @@ export default function Podcast() {
   useEffect(() => {
     getBooks().then((bs) => setBook(bs.find((b) => b.id === bookId) ?? null));
   }, [bookId]);
+
+  const title = book ? `${book.name} ${chapter}` : '';
+  const ready = tool.done && lines.length > 0;
+  const player = useSpeechPlayer(bookId, chapter, title, lines);
+  const recorded = useCatalog().podcast.includes(recordingId(bookId, chapter));
+  const colorOf = (speaker: string) => (speaker === 'ana' ? colors.accent : colors.greek);
+  const tint = ready ? colors.text : colors.border;
 
   // Sigue la intervención que suena
   useEffect(() => {
@@ -37,13 +46,9 @@ export default function Podcast() {
 
   const open = (ref: string) => {
     const { start } = parseRef(ref);
-    player.stop();
+    // El pódcast sigue sonando en la barra mientras se lee el versículo.
     navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward');
   };
-
-  const title = book ? `${book.name} ${chapter}` : '';
-  const ready = tool.done && lines.length > 0;
-  const colorOf = (speaker: string) => (speaker === 'ana' ? colors.accent : colors.greek);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -55,42 +60,63 @@ export default function Podcast() {
           Ana y Tomás conversan sobre el capítulo{ready ? ` · unos ${minutes(lines)} min` : ''}
         </Text>
 
+        {recorded && (
+          <Pressable
+            onPress={() => playRecordedPodcast(bookId, chapter, title)}
+            accessibilityRole="button"
+            accessibilityLabel="Escuchar la versión grabada con voces naturales"
+            style={({ pressed }) => [
+              styles.recorded,
+              { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={[styles.recordedIcon, { backgroundColor: colors.accent }]}>
+              <TalkIcon color={colors.surface} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Versión grabada</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Con voces naturales, lista para escuchar</Text>
+            </View>
+            <PlayIcon color={colors.accent} size={22} />
+          </Pressable>
+        )}
+
         <View style={[styles.player, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Pressable
             onPress={() => player.jump(player.index - 1)}
             disabled={!ready}
+            accessibilityRole="button"
             accessibilityLabel="Intervención anterior"
             hitSlop={8}
-            style={styles.side}
+            style={({ pressed }) => [styles.side, pressed && styles.pressed]}
           >
-            <Text style={{ color: ready ? colors.text : colors.border, fontSize: 22 }}>⏮</Text>
+            <BackIcon color={tint} size={26} />
           </Pressable>
           <Pressable
             onPress={player.toggle}
             disabled={!ready}
             accessibilityRole="button"
             accessibilityLabel={player.playing ? 'Pausar' : 'Escuchar'}
-            style={[styles.play, { backgroundColor: ready ? colors.accent : colors.border }]}
+            style={({ pressed }) => [styles.play, { backgroundColor: ready ? colors.accent : colors.border }, pressed && styles.pressed]}
           >
-            <Text style={{ color: colors.surface, fontSize: 26, marginLeft: player.playing ? 0 : 3 }}>
-              {player.playing ? '❚❚' : '▶'}
-            </Text>
+            {player.playing ? (
+              <PauseIcon color={colors.surface} size={26} />
+            ) : (
+              <View style={{ marginLeft: 4 }}>
+                <PlayIcon color={colors.surface} size={30} />
+              </View>
+            )}
           </Pressable>
           <Pressable
             onPress={() => player.jump(player.index + 1)}
             disabled={!ready}
+            accessibilityRole="button"
             accessibilityLabel="Intervención siguiente"
             hitSlop={8}
-            style={styles.side}
+            style={({ pressed }) => [styles.side, pressed && styles.pressed]}
           >
-            <Text style={{ color: ready ? colors.text : colors.border, fontSize: 22 }}>⏭</Text>
-          </Pressable>
-          <Pressable
-            onPress={player.cycleRate}
-            accessibilityLabel={`Velocidad ${player.rate}`}
-            style={[styles.rate, { borderColor: colors.border }]}
-          >
-            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>{player.rate}×</Text>
+            <ForwardIcon color={tint} size={26} />
           </Pressable>
         </View>
         {ready && (
@@ -147,6 +173,20 @@ export default function Podcast() {
   );
 }
 
+/** El pódcast leído suena en el reproductor único; esta pantalla solo muestra y mueve la intervención actual. */
+function useSpeechPlayer(book: string, chapter: number, title: string, lines: Line[]) {
+  const audio = useAudio();
+  const mine = audio.open && audio.kind === 'podcast' && audio.book === book && audio.chapter === chapter ? audio.speech : null;
+  const jump = (i: number) => playSpeech(book, chapter, title, lines, Math.max(0, Math.min(lines.length - 1, i)));
+  return {
+    index: mine?.index ?? 0,
+    playing: mine?.playing ?? false,
+    toggle: () => (mine ? toggle() : jump(0)),
+    jump,
+    stop: () => mine && closeAudio(),
+  };
+}
+
 const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 64, maxWidth: 680, width: '100%', alignSelf: 'center' },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
@@ -163,7 +203,17 @@ const styles = StyleSheet.create({
   },
   side: { padding: 6 },
   play: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  rate: { position: 'absolute', right: 14, borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
+  pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
+  recorded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    marginTop: 20,
+  },
+  recordedIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   progress: { fontSize: 12, textAlign: 'center', marginTop: 8 },
   line: { flexDirection: 'row', gap: 10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginHorizontal: -10 },
   speaker: { width: 52, fontWeight: '700', fontSize: 13, marginTop: 3 },
