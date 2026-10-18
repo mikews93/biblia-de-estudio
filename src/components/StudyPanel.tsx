@@ -19,6 +19,7 @@ import { Source, Turn, askStudy } from '@/lib/estudio';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
+import StudyBackground from '@/components/StudyBackground';
 
 type Props = {
   book: Book;
@@ -119,6 +120,9 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
               contentContainerStyle={styles.body}
               onContentSizeChange={() => turns.length > 1 && scroll.current?.scrollToEnd({ animated: true })}
             >
+              {!word && (
+                <StudyBackground book={book.id} bookName={book.name} chapter={chapter} verse={verse} onClose={onClose} />
+              )}
               {turns.map((turn, i) =>
                 turn.role === 'user' ? (
                   <Appear key={i} style={[styles.question, { backgroundColor: colors.accentSoft }]}>
