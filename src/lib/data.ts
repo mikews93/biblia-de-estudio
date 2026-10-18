@@ -28,7 +28,7 @@ export type CrossRef = [string, number];
 
 const cache = new Map<string, Promise<unknown>>();
 
-function load<T>(path: string, optional = false): Promise<T> {
+export function load<T>(path: string, optional = false): Promise<T> {
   let p = cache.get(path);
   if (!p) {
     p = fetch(`${BASE}/${path}`).then((res) => {

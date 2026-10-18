@@ -70,6 +70,13 @@ Debajo de los botones de la cabecera del capítulo, con las mismas fuentes y cit
 
 Además de la RV1909 hay dos versiones modernas libres: La Biblia en Español Sencillo (dominio público) y Palabra de Dios para ti (© 2020 Asociación Bíblica Latinoamericana, CC BY 4.0). `pipeline/fetch_versions.py` las descarga una vez y las guarda en `pipeline/versions/`, así la compilación no depende de miles de descargas. El griego, las referencias y el estudio con IA siguen la numeración de la RV1909.
 
+## Genealogías y contexto histórico
+
+El estudio de cada capítulo (o versículo) muestra arriba dos secciones fijas, que no genera la IA:
+
+- **El mundo en …**: el periodo bíblico del capítulo con sus fechas y lo que pasaba en Egipto, Mesopotamia, Persia, Grecia, Roma, India, China o América en esos años, con enlaces a los pasajes relacionados. `/historia` es la línea de tiempo completa. Los datos están en `src/lib/historia.ts`: fechas bíblicas según la cronología conservadora habitual (éxodo c. 1446 a.C., reyes según Thiele, crucifixión c. 30 d.C., con la alternativa en la nota cuando hay una seria) y una selección propia de eventos con las fechas de la historia académica.
+- **Familias y genealogías**: las personas del pasaje con familia conocida. `/genealogia/994-david` dibuja el árbol (abuelos, padres, hermanos, cónyuges e hijos) y el linaje hasta Adán; `/genealogia` busca por nombre. `pipeline/genealogias.py` toma las relaciones de [Theographic Bible Metadata](https://github.com/robertrouse/theographic-bible-metadata) (CC BY-SA 4.0, commit fijado) y busca el nombre de cada persona en la RV1909. No usa las fechas de Theographic (cronología de Ussher/Jones) ni su diccionario.
+
 ## Rutas y Google
 
 Las rutas son en español: `/juan/3` y `/juan/3/16` (`src/lib/routes.ts`); los códigos antiguos como `/jhn/3?v=16` siguen funcionando. Después de exportar la web, `pipeline/seo_pages.py` escribe una página por capítulo con el texto de la RV1909, título, descripción y enlaces, además de `sitemap.xml` y `robots.txt`. La app reemplaza ese contenido al cargar. Las demás rutas sirven `app.html`.

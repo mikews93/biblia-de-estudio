@@ -468,3 +468,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    import genealogias  # módulo aparte: Theographic (CC BY-SA 4.0)
+    genealogias.main()
