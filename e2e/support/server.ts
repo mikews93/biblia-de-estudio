@@ -11,6 +11,7 @@ import { Readable } from 'node:stream';
 import postgres from 'postgres';
 
 import { startMockAnthropic } from './mock-anthropic';
+import { handlePush } from './mock-push';
 
 const PORT = Number(process.env.PORT ?? 8081);
 const AI_PORT = Number(process.env.AI_PORT ?? 8089);
@@ -20,10 +21,12 @@ process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${AI_PORT}`;
 process.env.ANTHROPIC_API_KEY = 'clave-de-prueba';
 process.env.DATABASE_URL ??= 'postgres://postgres:postgres@127.0.0.1:5432/biblia_e2e';
 process.env.DATA_DIR = path.join(DIST, 'data');
+// Los avisos push van al servicio simulado de este mismo servidor (mock-push.ts).
+process.env.PUSH_HOSTS = 'localhost,127.0.0.1';
 
 type Handler = (request: Request) => Promise<Response>;
 const handlers = new Map<string, Promise<Record<string, Handler>>>();
-const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar'];
+const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar', 'notificaciones'];
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -80,6 +83,7 @@ async function api(name: string, req: IncomingMessage, res: ServerResponse) {
 async function handle(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://localhost');
   const pathname = decodeURIComponent(url.pathname);
+  if (pathname.startsWith('/__push') && (await handlePush(req, res))) return;
   if (pathname.startsWith('/api/')) return api(pathname.slice(5).replace(/\/$/, ''), req, res);
   // Como vercel.json: los archivos que existen se sirven tal cual; el resto de rutas abren la app.
   let p = await file(path.join(DIST, path.normalize(pathname)));

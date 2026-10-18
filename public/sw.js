@@ -51,3 +51,43 @@ self.addEventListener('fetch', (event) => {
   }
   event.respondWith(url.pathname.startsWith('/data/') ? downloadedFirst(event, request) : networkFirst(event, request));
 });
+
+// Notificaciones push (src/lib/avisos.ts, api/notificaciones.ts): el aviso trae título, texto y la pantalla
+// que se abre al tocarlo. Mismo «tag»: el aviso nuevo reemplaza al anterior (varios «me gusta» en uno).
+self.addEventListener('push', (event) => {
+  let aviso = {};
+  try {
+    aviso = event.data ? event.data.json() : {};
+  } catch {
+    aviso = { body: event.data ? event.data.text() : '' };
+  }
+  event.waitUntil(
+    self.registration.showNotification(aviso.title || 'Biblia de estudio', {
+      body: aviso.body || '',
+      icon: '/logo192.png',
+      badge: '/logo192.png',
+      tag: aviso.tag || undefined,
+      renotify: Boolean(aviso.tag),
+      lang: 'es',
+      data: { url: aviso.url || '/' },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin);
+  if (url.origin !== self.location.origin) return;
+  event.waitUntil(
+    (async () => {
+      // Si la app ya está abierta, la app misma cambia de pantalla (src/components/AvisosSync.tsx); si no, se abre.
+      const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const client = open.find((c) => new URL(c.url).origin === self.location.origin);
+      if (client) {
+        client.postMessage({ tipo: 'abrir', url: url.pathname + url.search });
+        return client.focus();
+      }
+      return self.clients.openWindow(url.href);
+    })(),
+  );
+});
