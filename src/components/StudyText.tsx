@@ -20,7 +20,34 @@ export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors
 }
 
 /** Markdown mínimo: títulos ##, listas con -, **negritas** y marcas de cita ⟦n⟧. */
-export function Markdown({ text, colors }: { text: string; colors: Colors }) {
+// Iconos de las secciones del estudio profundo, por la palabra con que empieza el título.
+const SECTION_ICONS: [RegExp, string][] = [
+  [/^(panorama|resumen)/i, '◎'],
+  [/^(observa|cómo avanza)/i, '◉'],
+  [/^(palabras|qué dice el)/i, 'α'],
+  [/^interpreta/i, '✎'],
+  [/^pasajes/i, '↗'],
+  [/^hacia cristo/i, '✝'],
+  [/^(para aplicar|para reflexionar|para pensar)/i, '→'],
+  [/^(cómo la traduce|dónde más)/i, '¶'],
+];
+
+/** Título de sección; con «ornate», con su icono en un círculo, como en el estudio profundo. */
+function Heading({ text, colors, ornate }: { text: string; colors: Colors; ornate?: boolean }) {
+  const title = text.replace(/^#{1,3} /, '');
+  const icon = ornate ? SECTION_ICONS.find(([re]) => re.test(title))?.[1] : undefined;
+  if (!icon) return <Text style={[styles.h2, { color: colors.text }]}>{inline(title, colors)}</Text>;
+  return (
+    <View style={styles.ornate}>
+      <View style={[styles.ornateIcon, { backgroundColor: colors.accentSoft }]}>
+        <Text style={{ color: colors.accent, fontFamily: serif, fontSize: 14 }}>{icon}</Text>
+      </View>
+      <Text style={[styles.h2, styles.ornateText, { color: colors.text }]}>{inline(title, colors)}</Text>
+    </View>
+  );
+}
+
+export function Markdown({ text, colors, ornate }: { text: string; colors: Colors; ornate?: boolean }) {
   const blocks = text.split(/\n{2,}/);
   return (
     <View>
@@ -28,19 +55,11 @@ export function Markdown({ text, colors }: { text: string; colors: Colors }) {
         const lines = block.split('\n').filter((l) => l.trim());
         if (!lines.length) return null;
         if (lines.length === 1 && /^#{1,3} /.test(lines[0])) {
-          return (
-            <Text key={i} style={[styles.h2, { color: colors.text }]}>
-              {inline(lines[0].replace(/^#{1,3} /, ''), colors)}
-            </Text>
-          );
+          return <Heading key={i} text={lines[0]} colors={colors} ornate={ornate} />;
         }
         return lines.map((line, j) => {
           if (/^#{1,3} /.test(line)) {
-            return (
-              <Text key={`${i}-${j}`} style={[styles.h2, { color: colors.text }]}>
-                {inline(line.replace(/^#{1,3} /, ''), colors)}
-              </Text>
-            );
+            return <Heading key={`${i}-${j}`} text={line} colors={colors} ornate={ornate} />;
           }
           const bullet = /^\s*[-*] /.test(line);
           return (
@@ -80,6 +99,9 @@ function inline(text: string, colors: Colors): ReactNode[] {
 }
 
 const styles = StyleSheet.create({
+  ornate: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 6 },
+  ornateIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  ornateText: { marginTop: 0, marginBottom: 0, flex: 1 },
   h2: {
     fontSize: 19,
     fontFamily: serif,

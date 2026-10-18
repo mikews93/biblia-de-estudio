@@ -211,7 +211,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                   </Appear>
                 ) : (
                   <View key={i}>
-                    {turn.text ? <Markdown text={turn.text} colors={colors} /> : null}
+                    {turn.text ? <Markdown text={turn.text} colors={colors} ornate /> : null}
                     {!!turn.sources?.length && (busy ? i < turns.length - 1 : true) && (
                       <Appear>
                         <Sources sources={turn.sources} colors={colors} onOpen={open} />
@@ -265,10 +265,12 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               </>
               )}
 
+              {mode === 'profundo' && (
               <Text style={[styles.disclaimer, { color: colors.muted }]}>
                 Generado con IA solo a partir de la Reina-Valera 1909, el {original(book).name} de STEPBible y las referencias de
                 OpenBible.info. Toca los números para ver de dónde sale cada idea.
               </Text>
+              )}
             </ScrollView>
 
             {mode === 'profundo' && (
@@ -315,11 +317,11 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
 }
 
 const MODES: { value: Enfoque; icon: string; label: string; hint: string }[] = [
-  { value: 'devocional', icon: '♡', label: 'Devocional', hint: 'Lee, medita y ora' },
-  { value: 'profundo', icon: '✦', label: 'Profundo', hint: 'Original y contexto' },
+  { value: 'devocional', icon: '♡', label: 'Devocional', hint: 'Lee, medita, vive y ora · unos 10 minutos' },
+  { value: 'profundo', icon: '✦', label: 'Profundo', hint: 'Texto original, contexto y pasajes relacionados' },
 ];
 
-/** Selector entre el devocional guiado y el estudio profundo. */
+/** Selector entre el devocional guiado y el estudio profundo: una píldora con el modo activo resaltado. */
 function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: Enfoque) => void; colors: Colors }) {
   return (
     <View style={[styles.modeWrap, { borderColor: colors.border }]}>
@@ -330,25 +332,20 @@ function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: E
             <Pressable
               key={m.value}
               onPress={() => onChange(m.value)}
-              style={({ pressed }) => [
-                styles.mode,
-                on && { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-                pressed && !on && { opacity: 0.6 },
-              ]}
+              style={({ pressed }) => [styles.mode, on && { backgroundColor: colors.accent }, pressed && !on && { opacity: 0.6 }]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${m.label}: ${m.hint}`}
             >
-              <Text style={[styles.modeLabel, { color: on ? colors.accent : colors.text }]}>
-                <Text style={{ fontFamily: serif }}>{m.icon}</Text> {m.label}
-              </Text>
-              <Text style={[styles.modeHint, { color: colors.muted }]} numberOfLines={1}>
-                {m.hint}
+              <Text style={[styles.modeLabel, { color: on ? colors.surface : colors.text }]} numberOfLines={1}>
+                <Text style={{ fontFamily: serif }}>{m.icon}</Text>  {m.label}
               </Text>
             </Pressable>
           );
         })}
       </View>
+      {/* El devocional ya muestra su paso y su tiempo; el profundo dice qué trae. */}
+      {mode === 'profundo' && <Text style={[styles.modeHint, { color: colors.muted }]}>{MODES[1].hint}</Text>}
     </View>
   );
 }
@@ -376,17 +373,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   modeWrap: { paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  modes: { flexDirection: 'row', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 4, gap: 4 },
-  mode: {
-    flex: 1,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  modeLabel: { fontSize: 15, fontWeight: '700' },
-  modeHint: { fontSize: 12, marginTop: 2 },
+  modes: { flexDirection: 'row', borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, padding: 3, gap: 3 },
+  mode: { flex: 1, borderRadius: 19, paddingVertical: 9, alignItems: 'center' },
+  modeLabel: { fontSize: 14, fontWeight: '700' },
+  modeHint: { fontSize: 12, textAlign: 'center', marginTop: 8 },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   title: { fontSize: 22, fontFamily: serif, marginTop: 2 },
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 },

@@ -27,6 +27,7 @@ export default function Diario() {
   const pasos = entradas.filter((e) => e.paso);
   const hechos = pasos.filter((e) => e.hecho).length;
   const dailyBook = books.find((b) => b.id === daily.book);
+  const doneToday = entradas.some((e) => sameDay(e.created, Date.now()));
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
@@ -48,15 +49,20 @@ export default function Diario() {
         </Appear>
       ) : (
         <>
-          <Appear style={styles.summary}>
-            <Stat value={entradas.length} label={entradas.length === 1 ? 'devocional' : 'devocionales'} colors={colors} />
-            <Stat value={`${hechos}/${pasos.length}`} label="pasos dados" colors={colors} />
-            {dailyBook && (
+          <Appear style={[styles.hero, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.heroKicker, { color: colors.accent }]}>ESTA SEMANA</Text>
+            <Week entradas={entradas} colors={colors} />
+            <View style={styles.summary}>
+              <Stat value={entradas.length} label={entradas.length === 1 ? 'devocional' : 'devocionales'} colors={colors} />
+              <Stat value={`${hechos}/${pasos.length}`} label="pasos dados" colors={colors} />
+            </View>
+            {dailyBook && !doneToday && (
               <Pressable
                 onPress={() => setToday(true)}
-                style={({ pressed }) => [styles.todayBtn, { backgroundColor: colors.accent }, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [styles.todayBtn, { backgroundColor: colors.accent }, pressed && { opacity: 0.85 }]}
               >
-                <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 13 }}>♡ El de hoy</Text>
+                <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>♡ Haz el devocional de hoy</Text>
+                <Text style={{ color: colors.accentSoft, fontSize: 13 }}>10 min</Text>
               </Pressable>
             )}
           </Appear>
@@ -84,6 +90,43 @@ export default function Diario() {
   );
 }
 
+const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString();
+const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+/** Los siete días de la semana (de lunes a domingo), marcados los que tuvieron devocional. */
+function Week({ entradas, colors }: { entradas: Entrada[]; colors: Colors }) {
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  return (
+    <View style={styles.week}>
+      {DAYS.map((label, i) => {
+        const day = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i).getTime();
+        const done = entradas.some((e) => sameDay(e.created, day));
+        const today = sameDay(day, now.getTime());
+        return (
+          <View key={label} style={styles.weekDay}>
+            <View
+              style={[
+                styles.weekDot,
+                {
+                  borderColor: done || today ? colors.accent : colors.border,
+                  backgroundColor: done ? colors.accent : 'transparent',
+                  borderWidth: today && !done ? 2 : 1.5,
+                },
+              ]}
+            >
+              {done && <Text style={{ color: colors.surface, fontSize: 13 }}>♡</Text>}
+            </View>
+            <Text style={{ color: today ? colors.text : colors.muted, fontSize: 12, fontWeight: today ? '700' : '500', marginTop: 6 }}>
+              {label}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function Stat({ value, label, colors }: { value: number | string; label: string; colors: Colors }) {
   return (
     <View style={{ marginRight: 22 }}>
@@ -96,7 +139,9 @@ function Stat({ value, label, colors }: { value: number | string; label: string;
 function EntryCard({ entrada: e, colors }: { entrada: Entrada; colors: Colors }) {
   const [prayer, setPrayer] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const date = new Date(e.created).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+  const created = new Date(e.created);
+  const weekday = created.toLocaleDateString('es', { weekday: 'long' });
+  const month = created.toLocaleDateString('es', { month: 'short' }).replace('.', '');
   const open = () =>
     navigate(
       () => router.push(e.verse ? verseHref(e.book, e.chapter, e.verse) : chapterHref(e.book, e.chapter)),
@@ -105,7 +150,13 @@ function EntryCard({ entrada: e, colors }: { entrada: Entrada; colors: Colors })
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.date, { color: colors.muted }]}>{date[0].toUpperCase() + date.slice(1)}</Text>
+      <View style={styles.cardRow}>
+      <View style={[styles.dateCol, { borderColor: colors.border }]}>
+        <Text style={[styles.dateDay, { color: colors.accent }]}>{created.getDate()}</Text>
+        <Text style={[styles.dateMonth, { color: colors.muted }]}>{month.toUpperCase()}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+      <Text style={[styles.date, { color: colors.muted }]}>{weekday[0].toUpperCase() + weekday.slice(1)}</Text>
       <Pressable onPress={open} accessibilityRole="link">
         <Text style={[styles.ref, { color: colors.text }]}>
           {e.reference} <Text style={{ color: colors.accent, fontSize: 16 }}>›</Text>
@@ -147,12 +198,14 @@ function EntryCard({ entrada: e, colors }: { entrada: Entrada; colors: Colors })
           </Pressable>
         ))}
 
-      {e.llevar && (
+      {e.llevar && !e.palabra.includes(e.llevar.text) && (
         <Text style={[styles.carry, { color: colors.muted }]}>
           Para llevar: «{e.llevar.text}» (v. {e.llevar.verse})
         </Text>
       )}
 
+      </View>
+      </View>
       <Pressable
         onPress={() => (confirm ? deleteEntrada(e.id) : setConfirm(true))}
         onBlur={() => setConfirm(false)}
@@ -171,8 +224,25 @@ const styles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 64, maxWidth: 680, width: '100%', alignSelf: 'center' },
   empty: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 20, padding: 28, alignItems: 'center', marginTop: 12 },
   cta: { borderRadius: 24, paddingHorizontal: 22, paddingVertical: 12, marginTop: 20 },
-  summary: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  todayBtn: { marginLeft: 'auto', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9 },
+  hero: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 22, padding: 20, marginBottom: 18 },
+  heroKicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, marginBottom: 14 },
+  week: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekDay: { alignItems: 'center', flex: 1 },
+  weekDot: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  summary: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
+  todayBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    marginTop: 16,
+  },
+  cardRow: { flexDirection: 'row', gap: 16 },
+  dateCol: { alignItems: 'center', width: 44, borderRightWidth: StyleSheet.hairlineWidth, paddingRight: 14 },
+  dateDay: { fontFamily: serif, fontSize: 28, lineHeight: 32 },
+  dateMonth: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
   card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 18, marginBottom: 14 },
   date: { fontSize: 12, fontWeight: '600' },
   ref: { fontFamily: serif, fontSize: 22, marginTop: 2 },
