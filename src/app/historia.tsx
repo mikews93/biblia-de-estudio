@@ -102,17 +102,24 @@ export default function Historia() {
       </View>
 
       <ScrollView ref={scroll} contentContainerStyle={styles.content}>
-        <Text style={{ color: colors.muted, marginBottom: 8, lineHeight: 20 }}>
-          La historia bíblica (puntos rellenos) junto a lo que pasaba en el mundo (puntos de color). Toca un periodo
-          para leerlo.
-        </Text>
+        <Text style={[styles.intro, { color: colors.text }]}>La Biblia y el mundo, siglo a siglo</Text>
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.dotBig, { marginTop: 0, backgroundColor: colors.accent, borderColor: colors.accent }]} />
+            <Text style={{ color: colors.muted, fontSize: 13 }}>Historia bíblica: toca para leer</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.dot, { marginTop: 0, borderColor: colors.muted }]} />
+            <Text style={{ color: colors.muted, fontSize: 13 }}>Lo que pasaba en el mundo</Text>
+          </View>
+        </View>
         {eras.map(({ era, items }) => (
           <View key={era.titulo} onLayout={(e) => onMeasured(eraKey(era.titulo), e.nativeEvent.layout.y)}>
-            <View style={[styles.eraHeader, { borderColor: era.color }]}>
-              <Text style={[styles.eraTitle, { color: colors.text }]}>{era.titulo}</Text>
-              <Text style={{ color: colors.muted, fontSize: 13 }}>
+            <View style={[styles.eraHeader, { backgroundColor: `${era.color}1F`, borderColor: era.color }]}>
+              <Text style={[styles.eraKicker, { color: era.color }]}>
                 {fechaPeriodo({ id: '', titulo: '', ref: '', desde: era.desde, hasta: Math.min(era.hasta, 100) })}
               </Text>
+              <Text style={[styles.eraTitle, { color: colors.text }]}>{era.titulo}</Text>
             </View>
             {era.titulo === ERAS[0].titulo && (
               <Pressable onPress={() => openRef(PERIODOS.origenes.ref)} style={[styles.note, { backgroundColor: colors.accentSoft }]}>
@@ -130,14 +137,23 @@ export default function Historia() {
                     key={`p-${p.id}`}
                     onLayout={(e) => onMeasured(`p-${p.id}`, e.nativeEvent.layout.y, eraKey(era.titulo))}
                     onPress={() => openRef(p.ref)}
-                    style={[styles.row, here && { backgroundColor: colors.accentSoft, borderRadius: 12 }]}
+                    style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
                   >
-                    <Text style={[styles.year, { color: colors.text }]}>{fechaPeriodo(p)}</Text>
-                    <Rail color={era.color} filled last={isLast} line={colors.border} />
-                    <View style={{ flex: 1, paddingBottom: 14 }}>
+                    <Text style={[styles.year, { color: colors.text, fontWeight: '600' }]}>{fechaPeriodo(p)}</Text>
+                    <Rail color={era.color} filled last={isLast} line={`${era.color}55`} />
+                    <View
+                      style={[
+                        styles.bibleCard,
+                        {
+                          backgroundColor: here ? colors.accentSoft : colors.surface,
+                          borderColor: here ? colors.accent : colors.border,
+                          borderLeftColor: era.color,
+                        },
+                      ]}
+                    >
+                      {here && <Text style={[styles.here, { color: colors.accent }]}>AQUÍ ESTÁS</Text>}
                       <Text style={[styles.bibleTitle, { color: colors.text }]}>{p.titulo}</Text>
-                      <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>
-                        {here ? 'Aquí estás · ' : ''}
+                      <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
                         {books.length ? formatRef(`${p.ref}.1`, books).replace(/:1$/, '') : p.ref} ›
                       </Text>
                     </View>
@@ -149,16 +165,20 @@ export default function Historia() {
               return (
                 <View key={`e-${e.titulo}`} style={styles.row}>
                   <Text style={[styles.year, { color: colors.muted }]}>{fechaEvento(e)}</Text>
-                  <Rail color={color} last={isLast} line={colors.border} />
-                  <View style={{ flex: 1, paddingBottom: 14 }}>
+                  <Rail color={color} last={isLast} line={`${era.color}55`} />
+                  <View style={{ flex: 1, paddingBottom: 18, paddingTop: 2 }}>
                     <Text style={{ color, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>
                       {e.region.toUpperCase()}
                     </Text>
                     <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>{e.titulo}</Text>
                     <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>{e.texto}</Text>
                     {e.ref && (
-                      <Pressable onPress={() => openRef(e.ref!)} hitSlop={6}>
-                        <Text style={{ color: colors.accent, fontSize: 13, marginTop: 2 }}>
+                      <Pressable
+                        onPress={() => openRef(e.ref!)}
+                        hitSlop={6}
+                        style={[styles.refPill, { backgroundColor: colors.accentSoft }]}
+                      >
+                        <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '700' }}>
                           {books.length ? formatRef(e.ref, books) : e.ref} ›
                         </Text>
                       </Pressable>
@@ -194,15 +214,22 @@ const styles = StyleSheet.create({
   eraBarContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   eraChip: { borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
   content: { padding: 16, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
-  eraHeader: { borderLeftWidth: 4, paddingLeft: 10, marginTop: 24, marginBottom: 12 },
-  eraTitle: { fontSize: 22, fontFamily: serif, fontWeight: '600' },
+  intro: { fontSize: 24, fontFamily: serif, fontWeight: '600', marginTop: 4 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 8, marginBottom: 4 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  eraHeader: { borderLeftWidth: 4, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginTop: 28, marginBottom: 14 },
+  eraKicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  eraTitle: { fontSize: 22, fontFamily: serif, fontWeight: '600', marginTop: 1 },
+  bibleCard: { flex: 1, borderWidth: 1, borderLeftWidth: 4, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 14 },
+  here: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, marginBottom: 2 },
+  refPill: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, marginTop: 6 },
   note: { borderRadius: 12, padding: 12, marginBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 4 },
   year: { width: 92, fontSize: 12, paddingTop: 3, textAlign: 'right' },
   rail: { width: 28, alignItems: 'center' },
   railLine: { position: 'absolute', top: 0, bottom: 0, width: 2 },
-  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginTop: 5 },
-  dotBig: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, marginTop: 3 },
+  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginTop: 6 },
+  dotBig: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, marginTop: 14 },
   bibleTitle: { fontSize: 17, fontFamily: serif, fontWeight: '600' },
   source: { fontSize: 12, lineHeight: 17, marginTop: 32, textAlign: 'center' },
 });

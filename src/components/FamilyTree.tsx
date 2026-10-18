@@ -1,6 +1,8 @@
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
+
+import { personaColor } from '@/components/Avatar';
 
 import { Persona, Personas, hermanosDe, relacion } from '@/lib/genealogia';
 import { Colors, serif } from '@/lib/theme';
@@ -117,31 +119,38 @@ export default function FamilyTree({ persona, all, colors, onSelect }: Props) {
   const top = (row: number) => PAD + row * (H + GY);
   const cx = (n: { x: number }) => n.x + dx + W / 2;
 
-  // Líneas: matrimonio entre los padres, tronco hasta el bus y bajada a cada hijo
+  // Líneas: matrimonio entre los padres (con un punto), tronco hasta el bus y bajada a cada hijo con esquinas redondeadas
   const paths: string[] = [];
+  const rings: { x: number; y: number }[] = [];
+  const R = 8;
+  const marriage = (a: number, b: number, y: number) => {
+    paths.push(`M${a + W / 2} ${y} H${b - W / 2}`);
+    rings.push({ x: (a + b) / 2, y });
+  };
   const family = (couple: Node[], children: { x: number }[], row: number) => {
     if (!couple.length || !children.length) return;
     const y = top(row) + H / 2;
     let trunk = cx(couple[0]);
     if (couple.length > 1) {
-      const a = cx(couple[0]);
-      const b = cx(couple[couple.length - 1]);
-      paths.push(`M${a + W / 2} ${y} H${b - W / 2}`);
+      marriage(cx(couple[0]), cx(couple[couple.length - 1]), y);
       trunk = (cx(couple[0]) + cx(couple[1])) / 2;
     }
     const startY = couple.length > 1 ? y : top(row) + H;
     const bus = top(row + 1) - GY / 2;
-    const xs = children.map(cx);
-    paths.push(`M${trunk} ${startY} V${bus}`);
-    paths.push(`M${Math.min(trunk, ...xs)} ${bus} H${Math.max(trunk, ...xs)}`);
-    xs.forEach((cxv) => paths.push(`M${cxv} ${bus} V${top(row + 1)}`));
+    const end = top(row + 1);
+    children.map(cx).forEach((c) => {
+      if (Math.abs(c - trunk) < 1) return paths.push(`M${trunk} ${startY} V${end}`);
+      const dir = c > trunk ? 1 : -1;
+      const r = Math.min(R, Math.abs(c - trunk) / 2);
+      paths.push(
+        `M${trunk} ${startY} V${bus - r} Q${trunk} ${bus} ${trunk + dir * r} ${bus} ` +
+          `H${c - dir * r} Q${c} ${bus} ${c} ${bus + r} V${end}`,
+      );
+    });
   };
   grandNodes.forEach((g, i) => family(g, [parentNodes[i]], rowOf.grand));
   family(parentNodes, [...sibNodes, { x: focusX }], rowOf.parents);
-  if (spouseNodes.length) {
-    const y = top(rowOf.focus) + H / 2;
-    paths.push(`M${cx({ x: focusX }) + W / 2} ${y} H${cx(spouseNodes[spouseNodes.length - 1]) - W / 2}`);
-  }
+  if (spouseNodes.length) marriage(cx({ x: focusX }), cx(spouseNodes[spouseNodes.length - 1]), top(rowOf.focus) + H / 2);
   const kidTargets = [...kidNodes, ...(kids.length > MAX_KIDS ? [nodes[nodes.length - 1]] : [])];
   family([{ key: 'f', x: focusX, row: rowOf.focus, label: '' }, ...spouseNodes.slice(0, 1)], kidTargets, rowOf.focus);
 
@@ -157,42 +166,50 @@ export default function FamilyTree({ persona, all, colors, onSelect }: Props) {
         <View style={{ width: canvas, height }}>
           <Svg width={canvas} height={height} style={StyleSheet.absoluteFill}>
             {paths.map((d, i) => (
-              <Path key={i} d={d} stroke={colors.muted} strokeWidth={1.2} fill="none" opacity={0.6} />
+              <Path key={i} d={d} stroke={colors.muted} strokeWidth={1.4} fill="none" opacity={0.45} />
+            ))}
+            {rings.map((r, i) => (
+              <Circle key={`r${i}`} cx={r.x} cy={r.y} r={4} fill={colors.accent} stroke={colors.surface} strokeWidth={2} />
             ))}
           </Svg>
           {nodes.map((n) => {
-            const style = [
-              styles.node,
-              { left: n.x + dx, top: top(n.row), borderColor: n.focus ? colors.accent : colors.border },
-              { backgroundColor: n.focus ? colors.accent : n.persona ? colors.surface : colors.background },
-            ];
+            const box = { left: n.x + dx, top: top(n.row) };
             if (!n.persona) {
               return (
-                <View key={n.key} style={[style, { borderStyle: 'dashed' }]}>
-                  <Text style={{ color: colors.muted, fontSize: 13 }}>{n.label}</Text>
+                <View
+                  key={n.key}
+                  style={[styles.node, box, { borderColor: colors.border, borderStyle: 'dashed', backgroundColor: colors.background }]}
+                >
+                  <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}>{n.label}</Text>
                 </View>
               );
             }
             const p = n.persona;
+            const tint = personaColor(p, colors);
             return (
               <Pressable
                 key={n.key}
                 onPress={() => !n.focus && onSelect(p.id)}
                 disabled={n.focus}
                 accessibilityLabel={n.label ? `${n.label}: ${p.nombre}` : p.nombre}
-                style={({ pressed }) => [style, pressed && { opacity: 0.7 }]}
+                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                  styles.node,
+                  box,
+                  n.focus
+                    ? [styles.focus, { backgroundColor: colors.accent, borderColor: colors.accent, shadowColor: colors.accent }]
+                    : { backgroundColor: colors.surface, borderColor: hovered ? tint : colors.border },
+                  pressed && { transform: [{ scale: 0.97 }] },
+                ]}
               >
-                <Text
-                  numberOfLines={1}
-                  style={[styles.name, { color: n.focus ? colors.surface : colors.text }]}
-                >
-                  {p.nombre}
-                </Text>
+                {!n.focus && <View style={[styles.stripe, { backgroundColor: tint }]} />}
                 {!!n.label && (
-                  <Text numberOfLines={1} style={[styles.label, { color: colors.muted }]}>
-                    {n.label}
+                  <Text numberOfLines={1} style={[styles.label, { color: n.focus ? colors.surface : tint }]}>
+                    {n.label.toUpperCase()}
                   </Text>
                 )}
+                <Text numberOfLines={1} style={[styles.name, { color: n.focus ? colors.surface : colors.text }]}>
+                  {p.nombre}
+                </Text>
               </Pressable>
             );
           })}
@@ -208,11 +225,14 @@ const styles = StyleSheet.create({
     width: W,
     height: H,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  name: { fontFamily: serif, fontSize: 14, fontWeight: '600' },
-  label: { fontSize: 11, marginTop: 1 },
+  focus: { shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  stripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
+  name: { fontFamily: serif, fontSize: 15, fontWeight: '600' },
+  label: { fontSize: 9, fontWeight: '700', letterSpacing: 0.8, marginBottom: 1 },
 });
