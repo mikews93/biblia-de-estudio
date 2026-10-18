@@ -8,17 +8,32 @@ import ChapterEnd from '@/components/ChapterEnd';
 import ReaderSettings from '@/components/ReaderSettings';
 import StudyPanel from '@/components/StudyPanel';
 import StudyVerse from '@/components/StudyVerse';
+import VersionPicker from '@/components/VersionPicker';
 import VersePanel, { Tab } from '@/components/VersePanel';
 import WordCard from '@/components/WordCard';
-import { Book, CrossRef, Verse, Word, getBooks, getChapter, getCrossRefs, getInterlinear, getParagraphEnds } from '@/lib/data';
+import {
+  Book,
+  CrossRef,
+  Verse,
+  Version,
+  Word,
+  getBooks,
+  getChapter,
+  getCrossRefs,
+  getInterlinear,
+  getParagraphEnds,
+  getVersions,
+} from '@/lib/data';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
+import { bookIdFromParam, chapterHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
 export default function Reader() {
-  const params = useLocalSearchParams<{ book: string; chapter: string; v?: string }>();
-  const bookId = params.book;
+  const params = useLocalSearchParams<{ book: string; chapter: string; verse?: string; v?: string }>();
+  const bookId = bookIdFromParam(params.book);
   const chapter = Number(params.chapter);
-  const target = params.v ? Number(params.v) : null;
+  const verseParam = params.verse ?? params.v; // ?v= es el formato antiguo
+  const target = verseParam ? Number(verseParam) : null;
 
   const colors = useColors();
   const { settings, update } = useSettings();
@@ -26,6 +41,8 @@ export default function Reader() {
   const size = settings.fontSize;
 
   const [books, setBooks] = useState<Book[]>([]);
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [showVersions, setShowVersions] = useState(false);
   const [verses, setVerses] = useState<Verse[] | null>(null);
   const [xrefs, setXrefs] = useState<Record<string, CrossRef[]>>({});
   const [paragraphEnds, setParagraphEnds] = useState<number[]>([]);
@@ -43,6 +60,7 @@ export default function Reader() {
 
   useEffect(() => {
     getBooks().then(setBooks).catch((e) => setError(String(e.message)));
+    getVersions().then(setVersions).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -54,13 +72,13 @@ export default function Reader() {
     setSelected(target);
     setPanelTab(null);
     setProgress(0);
-    getChapter(bookId, chapter)
+    getChapter(bookId, chapter, settings.version)
       .then(setVerses)
       .catch((e) => setError(String(e.message)));
     getCrossRefs(bookId, chapter).then(setXrefs).catch(() => {});
     getParagraphEnds(bookId, chapter).then(setParagraphEnds).catch(() => {});
     saveLastRead(bookId, chapter);
-  }, [bookId, chapter, target]);
+  }, [bookId, chapter, target, settings.version]);
 
   const index = books.findIndex((b) => b.id === bookId);
   const book = books[index];
@@ -82,7 +100,7 @@ export default function Reader() {
       i += 1;
       ch = 1;
     }
-    navigate(() => router.replace(`/${books[i].id}/${ch}`), delta > 0 ? 'forward' : 'back');
+    navigate(() => router.replace(chapterHref(books[i].id, ch)), delta > 0 ? 'forward' : 'back');
   };
 
   const select = (n: number) => setSelected(selected === n ? null : n);
@@ -99,10 +117,11 @@ export default function Reader() {
   const verseBlocks = settings.study || settings.layout === 'versiculo';
   const selectedText = verses?.find(([n]) => n === selected)?.[1] ?? '';
   const title = book ? `${book.name} ${chapter}` : '';
+  const version = versions.find((v) => v.id === settings.version);
 
   const copy = async () => {
     if (!book || selected === null) return;
-    await Clipboard.setStringAsync(`«${selectedText}» ${book.name} ${chapter}:${selected} (RV1909)`);
+    await Clipboard.setStringAsync(`«${selectedText}» ${book.name} ${chapter}:${selected} (${version?.abbr ?? 'RV1909'})`);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -113,6 +132,17 @@ export default function Reader() {
         options={{
           title,
           headerStyle: { backgroundColor: colors.background },
+          headerLeft: () => (
+            <Pressable
+              onPress={() => navigate(() => router.dismissTo('/'), 'back')}
+              accessibilityRole="button"
+              accessibilityLabel="Ir a Hoy"
+              hitSlop={8}
+              style={styles.home}
+            >
+              <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '600' }}>‹ Hoy</Text>
+            </Pressable>
+          ),
           headerTitle: () => (
             <Pressable onPress={() => navigate(() => router.push('/libros'))} accessibilityRole="button" accessibilityLabel="Elegir libro y capítulo">
               <Text style={[styles.headerTitle, { color: colors.text }]}>{title} ▾</Text>
@@ -160,13 +190,27 @@ export default function Reader() {
           <View style={styles.chapterHead}>
             <Text style={[styles.bookName, { color: colors.accent }]}>{book.name}</Text>
             <Text style={[styles.chapterNumber, { color: colors.text, fontFamily: serif }]}>{chapter}</Text>
-            <Pressable
-              onPress={() => setStudy({})}
-              style={[styles.studyChapter, { backgroundColor: colors.accentSoft }]}
-              accessibilityRole="button"
-            >
-              <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>✦ Estudiar este capítulo</Text>
-            </Pressable>
+            <View style={styles.headPills}>
+              <Pressable
+                onPress={() => setShowVersions(true)}
+                style={({ pressed }) => [styles.pill, { borderColor: colors.border }, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`Versión: ${version?.name ?? 'Reina-Valera 1909'}. Cambiar versión`}
+              >
+                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>{version?.abbr ?? 'RV1909'} ▾</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setStudy({})}
+                style={({ pressed }) => [
+                  styles.pill,
+                  { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft },
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+              >
+                <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>✦ Estudiar este capítulo</Text>
+              </Pressable>
+            </View>
             {settings.study && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
                 {book.interlinear
@@ -192,7 +236,7 @@ export default function Reader() {
                 key={group[0][0]}
                 style={{ fontFamily, fontSize: size, lineHeight: size * 1.7, color: colors.text, marginBottom: size * 0.8 }}
               >
-                {group.map(([n, text], i) => (
+                {group.map(([n, text, label], i) => (
                   <Text
                     key={n}
                     onPress={() => select(n)}
@@ -204,7 +248,7 @@ export default function Reader() {
                   >
                     <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>
                       {i === 0 ? '' : ' '}
-                      {n}
+                      {label ?? n}
                       {'\u2009'}
                     </Text>
                     {text}
@@ -217,7 +261,7 @@ export default function Reader() {
 
         {verses &&
           verseBlocks &&
-          verses.map(([n, text]) =>
+          verses.map(([n, text, label]) =>
             settings.study ? (
               <View key={n} onLayout={(e) => n === target && scrollToY(e.nativeEvent.layout.y)}>
                 <StudyVerse
@@ -245,7 +289,7 @@ export default function Reader() {
                 style={[styles.verseLine, n === selected && { backgroundColor: colors.highlight }]}
               >
                 <Text style={{ fontFamily, fontSize: size, lineHeight: size * 1.6, color: colors.text }}>
-                  <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>{n} </Text>
+                  <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>{label ?? n} </Text>
                   {text}
                 </Text>
               </Pressable>
@@ -261,7 +305,9 @@ export default function Reader() {
             onNext={() => go(1)}
           />
         )}
-        <Text style={[styles.credit, { color: colors.muted }]}>Reina-Valera 1909 · dominio público</Text>
+        <Text style={[styles.credit, { color: colors.muted }]}>
+          {version?.credit ?? 'Reina-Valera 1909 · dominio público'}
+        </Text>
       </ScrollView>
 
       {selected !== null && book && verses ? (
@@ -328,6 +374,7 @@ export default function Reader() {
         <StudyPanel book={book} chapter={chapter} verse={study.verse} onClose={() => setStudy(null)} />
       )}
       {showSettings && <ReaderSettings onClose={() => setShowSettings(false)} />}
+      {showVersions && <VersionPicker versions={versions} onClose={() => setShowVersions(false)} />}
     </View>
   );
 }
@@ -369,7 +416,9 @@ const styles = StyleSheet.create({
   chapterHead: { alignItems: 'center', marginTop: 16, marginBottom: 20 },
   bookName: { fontSize: 13, fontWeight: '700', letterSpacing: 2.5, textTransform: 'uppercase' },
   chapterNumber: { fontSize: 64, lineHeight: 72, marginTop: 4 },
-  studyChapter: { marginTop: 12, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 7 },
+  home: { paddingHorizontal: 8 },
+  headPills: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
+  pill: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 6 },
   studyHint: { fontSize: 13, textAlign: 'center', marginTop: 8, maxWidth: 360 },
   verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
   credit: { fontSize: 12, textAlign: 'center', marginTop: 24 },

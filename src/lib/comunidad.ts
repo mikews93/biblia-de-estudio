@@ -4,6 +4,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { chapterHref as routeToChapter, verseHref } from './routes';
+
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const KEY = 'cuenta';
@@ -71,9 +73,9 @@ export const TIPOS: { tipo: TipoGrupo; label: string }[] = [
 
 export const tipoLabel = (t: TipoGrupo) => TIPOS.find((x) => x.tipo === t)?.label ?? 'Grupo';
 
-/** Enlace a un capítulo del lector. Único sitio donde las comunidades conocen la forma de las rutas. */
+/** Enlace a un capítulo o versículo del lector, con las rutas en español. */
 export const chapterHref = (book: string, chapter: number, verse?: number) =>
-  `/${book}/${chapter}${verse ? `?v=${verse}` : ''}`;
+  verse ? verseHref(book, chapter, verse) : routeToChapter(book, chapter);
 
 /** Enlace de invitación que se comparte fuera de la app. */
 export function inviteUrl(codigo: string) {

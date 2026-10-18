@@ -6,8 +6,10 @@ Fuentes (se descargan, no se guardan en el repositorio):
 - Reina-Valera 1909 (dominio público), vía scrollmapper/bible_databases
 - Referencias cruzadas de OpenBible.info (CC BY), vía scrollmapper/bible_databases
 - TAGNT de STEPBible / Tyndale House (CC BY 4.0): griego del NT con morfología y glosas
+- Español Sencillo y Palabra de Dios para ti, ya descargadas en pipeline/versions/ (ver fetch_versions.py)
 """
 
+import gzip
 import json
 import re
 import sys
@@ -153,11 +155,32 @@ def build_interlinear(out):
         write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
 
 
+VERSIONS = [
+    {"id": "rv1909", "name": "Reina-Valera 1909", "abbr": "RV1909", "credit": "Reina-Valera 1909 · dominio público"},
+    {"id": "bes", "name": "La Biblia en Español Sencillo", "abbr": "BES",
+     "credit": "La Biblia en Español Sencillo · AudioBiblia.org, Irma Flores · dominio público"},
+    {"id": "pdt", "name": "Palabra de Dios para ti", "abbr": "PDT",
+     "credit": "Palabra de Dios para ti · © 2020 Asociación Bíblica Latinoamericana · CC BY 4.0"},
+]
+
+
+def build_versions(out):
+    """Versiones modernas guardadas por pipeline/fetch_versions.py."""
+    for v in VERSIONS[1:]:
+        with gzip.open(ROOT / "versions" / f"{v['id']}.json.gz", "rt", encoding="utf-8") as f:
+            bible = json.load(f)
+        for bid, chapters in bible.items():
+            for ch, verses in chapters.items():
+                write(out, f"text/{v['id']}/{bid}/{ch}.json", verses)
+    write(out, "versions.json", VERSIONS)
+
+
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "public" / "data"
     chapters = build_text(out)
     build_xrefs(out)
     build_interlinear(out)
+    build_versions(out)
     books = [
         {"id": b[0], "name": b[1], "abbr": b[2], "chapters": chapters[b[0]],
          "testament": "NT" if b[4] else "AT", "interlinear": bool(b[4]), "ewSlug": b[5]}

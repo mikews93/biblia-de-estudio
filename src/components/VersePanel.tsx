@@ -16,6 +16,7 @@ import {
 import GroupNotes from '@/components/comunidad/GroupNotes';
 import { describeMorph } from '@/lib/morph';
 import { Colors, serif, useColors } from '@/lib/theme';
+import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
 export type Tab = 'interlineal' | 'referencias' | 'comentario' | 'grupo';
@@ -189,7 +190,7 @@ function RefRow({ refId, books, colors, onNavigate }: { refId: string; books: Bo
     <Pressable
       onPress={() => {
         onNavigate();
-        navigate(() => router.push(`/${start.book}/${start.chapter}?v=${start.verse}`), 'forward');
+        navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward');
       }}
       style={[styles.refRow, { borderColor: colors.border }]}
     >
