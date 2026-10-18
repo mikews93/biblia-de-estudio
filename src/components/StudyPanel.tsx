@@ -17,6 +17,7 @@ import Appear from '@/components/Appear';
 import { Book, parseRef } from '@/lib/data';
 import { Source, Turn, askStudy } from '@/lib/estudio';
 import { Colors, serif, useColors } from '@/lib/theme';
+import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
 type Props = {
@@ -81,7 +82,7 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
   const open = (ref: string) => {
     const { start } = parseRef(ref);
     onClose();
-    navigate(() => router.push(`/${start.book}/${start.chapter}?v=${start.verse}`), 'forward');
+    navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward');
   };
 
   const first = turns[0];

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 
 import { Book, getBooks } from '@/lib/data';
 import { useColors } from '@/lib/theme';
+import { chapterHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
 export default function BookPicker() {
@@ -34,7 +35,7 @@ export default function BookPicker() {
                 {Array.from({ length: b.chapters }, (_, i) => i + 1).map((ch) => (
                   <Pressable
                     key={ch}
-                    onPress={() => navigate(() => router.dismissTo(`/${b.id}/${ch}`))}
+                    onPress={() => navigate(() => router.dismissTo(chapterHref(b.id, ch)))}
                     style={[styles.chapter, { backgroundColor: colors.accentSoft }]}
                   >
                     <Text style={{ color: colors.text, fontSize: 16 }}>{ch}</Text>

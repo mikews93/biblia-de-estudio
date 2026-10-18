@@ -14,7 +14,10 @@ export type Book = {
   ewSlug: string;
 };
 
-export type Verse = [number, string];
+/** [número, texto, etiqueta si la versión une versículos («9-20»)] */
+export type Verse = [number, string, string?];
+
+export type Version = { id: string; name: string; abbr: string; credit: string };
 
 // [griego, transliteración, glosa española, glosa inglesa, lema, significado del lema, Strong, morfología]
 export type Word = [string, string, string, string, string, string, string, string];
@@ -38,8 +41,9 @@ function load<T>(path: string, optional = false): Promise<T> {
 }
 
 export const getBooks = () => load<Book[]>('books.json');
-export const getChapter = (book: string, chapter: number) =>
-  load<Verse[]>(`text/rv1909/${book}/${chapter}.json`);
+export const getVersions = () => load<Version[]>('versions.json');
+export const getChapter = (book: string, chapter: number, version = 'rv1909') =>
+  load<Verse[]>(`text/${version}/${book}/${chapter}.json`);
 export const getInterlinear = (book: string, chapter: number) =>
   load<Record<string, Word[]>>(`interlinear/${book}/${chapter}.json`, true);
 export const getCrossRefs = (book: string, chapter: number) =>

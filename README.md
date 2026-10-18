@@ -45,6 +45,14 @@ Variables en Vercel:
 
 En el teléfono, `EXPO_PUBLIC_API_URL` apunta a la web publicada.
 
+## Versiones
+
+Además de la RV1909 hay dos versiones modernas libres: La Biblia en Español Sencillo (dominio público) y Palabra de Dios para ti (© 2020 Asociación Bíblica Latinoamericana, CC BY 4.0). `pipeline/fetch_versions.py` las descarga una vez y las guarda en `pipeline/versions/`, así la compilación no depende de miles de descargas. El griego, las referencias y el estudio con IA siguen la numeración de la RV1909.
+
+## Rutas y Google
+
+Las rutas son en español: `/juan/3` y `/juan/3/16` (`src/lib/routes.ts`); los códigos antiguos como `/jhn/3?v=16` siguen funcionando. Después de exportar la web, `pipeline/seo_pages.py` escribe una página por capítulo con el texto de la RV1909, título, descripción y enlaces, además de `sitemap.xml` y `robots.txt`. La app reemplaza ese contenido al cargar. Las demás rutas sirven `app.html`.
+
 ## Publicación
 
 La web está en https://biblia.migueblanco.com (proyecto `biblia-de-estudio` en Vercel). El DNS está en Cloudflare: un CNAME `biblia` → `cname.vercel-dns.com` sin proxy (nube gris), igual que `hoyvemos`. Mientras el MVP no esté en `main`, el dominio sigue la rama `claude/estudiar`; las publicaciones de esa rama son de tipo Preview, así que `ANTHROPIC_API_KEY` tiene que estar también en Preview.
