@@ -1,6 +1,7 @@
 import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
 import MicIcon from '@/components/MicIcon';
@@ -8,6 +9,7 @@ import SearchIcon from '@/components/SearchIcon';
 import PlanCard from '@/components/PlanCard';
 import VerseImage from '@/components/VerseImage';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
+import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
@@ -31,11 +33,15 @@ export default function Today() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [sharing, setSharing] = useState(false);
   const daily = verseOfTheDay();
+  const avisos = useAvisos();
+  const [canNotify, setCanNotify] = useState(false);
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
     getLastRead().then(setLast);
     getVersions().then(setVersions).catch(() => {});
+    const s = soporte();
+    setCanNotify(s === 'si' || s === 'ios-instalar');
   }, []);
 
   useEffect(() => {
@@ -64,10 +70,25 @@ export default function Today() {
       <Stack.Screen options={{ headerShown: false, title: 'Hoy' }} />
 
       <Appear>
-        <Text style={[styles.date, { color: colors.muted }]}>
-          {capitalize(new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }))}
-        </Text>
-        <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>{greeting()}</Text>
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.date, { color: colors.muted }]}>
+              {capitalize(new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }))}
+            </Text>
+            <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>{greeting()}</Text>
+          </View>
+          {canNotify && (
+            <Pressable
+              onPress={() => navigate(() => router.push('/notificaciones' as never), 'forward')}
+              style={({ pressed }) => [styles.bell, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Notificaciones"
+            >
+              <BellIcon color={colors.accent} />
+              {avisos.endpoint && <View style={[styles.bellDot, { backgroundColor: colors.accent, borderColor: colors.surface }]} />}
+            </Pressable>
+          )}
+        </View>
       </Appear>
 
       <Appear delay={20}>
@@ -173,6 +194,32 @@ export default function Today() {
         </Appear>
       )}
 
+      {canNotify && avisos.ready && !avisos.endpoint && !avisos.invitacionVista && (
+        <Appear delay={115}>
+          <View style={[styles.card, styles.invite, { backgroundColor: colors.surface, borderColor: colors.border }]} testID="invitacion-avisos">
+            <View style={[styles.inviteIcon, { backgroundColor: colors.accentSoft }]}>
+              <BellIcon color={colors.accent} size={22} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>¿Te recordamos leer cada día?</Text>
+              <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 4 }}>
+                Elige una hora y te avisamos con tu lectura, tus tarjetas y el día del desafío.
+              </Text>
+              <View style={[styles.row, { marginTop: 12 }]}>
+                <SmallButton
+                  label="Elegir hora"
+                  colors={colors}
+                  onPress={() => navigate(() => router.push('/notificaciones' as never), 'forward')}
+                />
+                <Pressable onPress={cerrarInvitacion} style={styles.small} accessibilityRole="button">
+                  <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>Ahora no</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Appear>
+      )}
+
       <Appear delay={120}>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.kicker, { color: colors.accent }]}>Tu semana</Text>
@@ -254,6 +301,15 @@ function SmallButton({ label, colors, onPress }: { label: string; colors: C; onP
   );
 }
 
+function BellIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 6.5 2.5 7.5h-17C4.5 15.5 6 13.5 6 9Z" />
+      <Path d="M10 20a2.2 2.2 0 0 0 4 0" />
+    </Svg>
+  );
+}
+
 function Tile({ icon, label, colors, onPress }: { icon: string; label: string; colors: C; onPress: () => void }) {
   return (
     <Pressable
@@ -273,6 +329,11 @@ function Tile({ icon, label, colors, onPress }: { icon: string; label: string; c
 
 const styles = StyleSheet.create({
   content: { padding: 20, paddingTop: 48, paddingBottom: 64, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bell: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  bellDot: { position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5, borderWidth: 2 },
+  invite: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  inviteIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   date: { fontSize: 14 },
   hello: { fontSize: 34, marginTop: 2 },
   search: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, marginTop: 16, paddingRight: 6 },

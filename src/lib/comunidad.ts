@@ -224,6 +224,12 @@ export async function aiHeaders(): Promise<Record<string, string>> {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${account.llave}` };
 }
 
+/** La llave de sesión, o null sin cuenta (para /api/notificaciones, que también funciona sin cuenta). */
+export async function sessionKey() {
+  await load();
+  return account.llave;
+}
+
 /** Respuesta 401 de una función con IA: la sesión ya no vale y se olvida en este dispositivo. */
 export function aiDenied(): never {
   set({ llave: null, usuario: null, grupos: null });
