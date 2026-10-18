@@ -7,6 +7,7 @@ Fuentes (se descargan, no se guardan en el repositorio):
 - Referencias cruzadas de OpenBible.info (CC BY), vía scrollmapper/bible_databases
 - TAGNT de STEPBible / Tyndale House (CC BY 4.0): griego del NT con morfología y glosas
 - Español Sencillo y Palabra de Dios para ti, ya descargadas en pipeline/versions/ (ver fetch_versions.py)
+- Medidas antiguas (pipeline/medidas.py) e imágenes libres de Wikimedia Commons (pipeline/imagenes.py)
 """
 
 import gzip
@@ -18,6 +19,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from books import BOOKS
+from imagenes import chapter_objects, resolve as resolve_images
+from medidas import chapter_measures
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / ".cache"
@@ -175,12 +178,34 @@ def build_versions(out):
     write(out, "versions.json", VERSIONS)
 
 
+def build_context(out):
+    """Para el estudio de cada capítulo: medidas antiguas con su equivalencia y objetos o mapas con imagen."""
+    images = resolve_images(CACHE / "imagenes.json")
+    src = json.loads(fetch("rv1909.json").read_text(encoding="utf-8"))
+    count = 0
+    for meta, book in zip(BOOKS, src["books"]):
+        bid = meta[0]
+        for ch in book["chapters"]:
+            verses = [(v["verse"], v["text"]) for v in ch["verses"]]
+            measures = chapter_measures(bid, ch["chapter"], verses)
+            pictures = [
+                {"id": o["id"], "kind": o.get("kind", "objeto"), "title": o["title"], "caption": o["caption"],
+                 "verses": hits, **images[o["id"]]}
+                for o, hits in chapter_objects(bid, ch["chapter"], verses) if o["id"] in images
+            ]
+            if measures or pictures:
+                write(out, f"contexto/{bid}/{ch['chapter']}.json", {"medidas": measures, "imagenes": pictures})
+                count += 1
+    print(f"Capítulos con medidas o imágenes: {count}")
+
+
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "public" / "data"
     chapters = build_text(out)
     build_xrefs(out)
     build_interlinear(out)
     build_versions(out)
+    build_context(out)
     books = [
         {"id": b[0], "name": b[1], "abbr": b[2], "chapters": chapters[b[0]],
          "testament": "NT" if b[4] else "AT", "interlinear": bool(b[4]), "ewSlug": b[5]}
