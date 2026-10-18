@@ -25,6 +25,7 @@ import {
   getVersions,
 } from '@/lib/data';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
+import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
 import { bookIdFromParam, chapterHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
@@ -114,6 +115,14 @@ export default function Reader() {
     scrollToY(140 + (before / total) * paragraphHeight.current);
   };
 
+  const marks = useChapterHighlights(bookId, chapter);
+  const mark = (n: number) => (marks[n] ? HIGHLIGHT_COLORS[marks[n]] : undefined);
+  const paint = (color: HighlightColor) => {
+    if (selected === null) return;
+    setHighlight(bookId, chapter, selected, marks[selected] === color ? null : color);
+    setSelected(null);
+  };
+
   const verseBlocks = settings.study || settings.layout === 'versiculo';
   const selectedText = verses?.find(([n]) => n === selected)?.[1] ?? '';
   const title = book ? `${book.name} ${chapter}` : '';
@@ -132,17 +141,6 @@ export default function Reader() {
         options={{
           title,
           headerStyle: { backgroundColor: colors.background },
-          headerLeft: () => (
-            <Pressable
-              onPress={() => navigate(() => router.dismissTo('/'), 'back')}
-              accessibilityRole="button"
-              accessibilityLabel="Ir a Hoy"
-              hitSlop={8}
-              style={styles.home}
-            >
-              <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '600' }}>‹ Hoy</Text>
-            </Pressable>
-          ),
           headerTitle: () => (
             <Pressable onPress={() => navigate(() => router.push('/libros'))} accessibilityRole="button" accessibilityLabel="Elegir libro y capítulo">
               <Text style={[styles.headerTitle, { color: colors.text }]}>{title} ▾</Text>
@@ -242,8 +240,12 @@ export default function Reader() {
                     onPress={() => select(n)}
                     style={
                       n === selected
-                        ? { backgroundColor: colors.highlight, textDecorationLine: 'underline', textDecorationColor: colors.accent }
-                        : undefined
+                        ? {
+                            backgroundColor: mark(n) ?? colors.highlight,
+                            textDecorationLine: 'underline',
+                            textDecorationColor: colors.accent,
+                          }
+                        : { backgroundColor: mark(n) }
                     }
                   >
                     <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>
@@ -270,6 +272,7 @@ export default function Reader() {
                   words={interlinear[String(n)]}
                   refCount={xrefs[String(n)]?.length ?? 0}
                   selected={n === selected}
+                  mark={mark(n)}
                   fontSize={size}
                   fontFamily={fontFamily}
                   colors={colors}
@@ -286,7 +289,11 @@ export default function Reader() {
                 key={n}
                 onPress={() => select(n)}
                 onLayout={(e) => n === target && scrollToY(e.nativeEvent.layout.y)}
-                style={[styles.verseLine, n === selected && { backgroundColor: colors.highlight }]}
+                style={[
+                  styles.verseLine,
+                  { backgroundColor: mark(n) },
+                  n === selected && { backgroundColor: colors.highlight },
+                ]}
               >
                 <Text style={{ fontFamily, fontSize: size, lineHeight: size * 1.6, color: colors.text }}>
                   <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>{label ?? n} </Text>
@@ -316,6 +323,24 @@ export default function Reader() {
             <Text style={{ color: colors.accent, fontWeight: '700' }}>
               {book.name} {chapter}:{selected}
             </Text>
+            <View style={styles.swatches}>
+              {(Object.keys(HIGHLIGHT_COLORS) as HighlightColor[]).map((c) => (
+                <Pressable
+                  key={c}
+                  onPress={() => paint(c)}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel={marks[selected] === c ? `Quitar resaltado ${c}` : `Resaltar en ${c}`}
+                  style={({ pressed }) => [
+                    styles.swatch,
+                    { backgroundColor: HIGHLIGHT_COLORS[c], borderColor: marks[selected] === c ? colors.accent : colors.border },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  {marks[selected] === c && <Text style={{ color: colors.text, fontSize: 11 }}>✕</Text>}
+                </Pressable>
+              ))}
+            </View>
             <Pressable onPress={() => setSelected(null)} accessibilityLabel="Quitar selección" hitSlop={12}>
               <Text style={{ color: colors.muted, fontSize: 18 }}>✕</Text>
             </Pressable>
@@ -416,7 +441,6 @@ const styles = StyleSheet.create({
   chapterHead: { alignItems: 'center', marginTop: 16, marginBottom: 20 },
   bookName: { fontSize: 13, fontWeight: '700', letterSpacing: 2.5, textTransform: 'uppercase' },
   chapterNumber: { fontSize: 64, lineHeight: 72, marginTop: 4 },
-  home: { paddingHorizontal: 8 },
   headPills: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
   pill: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 6 },
   studyHint: { fontSize: 13, textAlign: 'center', marginTop: 8, maxWidth: 360 },
@@ -457,7 +481,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  actionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  actionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  swatches: { flexDirection: 'row', gap: 10, marginLeft: 'auto', marginRight: 8 },
+  swatch: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   actions: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 12 },
   action: { alignItems: 'center', flex: 1 },
   badge: { position: 'absolute', top: -2, right: -6, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },

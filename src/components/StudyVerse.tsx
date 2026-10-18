@@ -9,6 +9,8 @@ type Props = {
   words?: Word[];
   refCount: number;
   selected: boolean;
+  /** Color del resaltado, si lo hay. */
+  mark?: string;
   fontSize: number;
   fontFamily?: string;
   colors: Colors;
@@ -18,9 +20,15 @@ type Props = {
 };
 
 /** Versículo en modo estudio: el texto, debajo el griego palabra por palabra y las referencias a un toque. */
-export default function StudyVerse({ n, text, words, refCount, selected, fontSize, fontFamily, colors, onSelect, onWord, onRefs }: Props) {
+export default function StudyVerse({ n, text, words, refCount, selected, mark, fontSize, fontFamily, colors, onSelect, onWord, onRefs }: Props) {
   return (
-    <View style={[styles.block, { borderColor: colors.border }, selected && { backgroundColor: colors.highlight }]}>
+    <View
+      style={[
+        styles.block,
+        { borderColor: colors.border, backgroundColor: mark },
+        selected && { backgroundColor: colors.highlight },
+      ]}
+    >
       <Pressable onPress={onSelect}>
         <Text style={{ fontFamily, fontSize, lineHeight: fontSize * 1.55, color: colors.text }}>
           <Text style={{ fontSize: fontSize * 0.62, color: colors.accent, fontWeight: '700' }}>{n} </Text>
