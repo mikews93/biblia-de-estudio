@@ -388,18 +388,22 @@ export default function Search() {
 
       {!listening && busy && <Searching colors={colors} asked={asked} />}
 
-      {!listening && error && (
+      {!listening && error === NEEDS_ACCOUNT && (
+        <Appear style={{ marginTop: 8 }}>
+          <Welcome
+            kind="ia"
+            title="Busca por idea"
+            intro="La IA encuentra los pasajes que hablan de lo que describes. Necesitas una cuenta gratuita; buscar una cita, como «Juan 3:16», no la necesita."
+            onReady={() => asked && runIdea(asked)}
+          />
+        </Appear>
+      )}
+
+      {!listening && error && error !== NEEDS_ACCOUNT && (
         <Appear>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}>
-            {error === NEEDS_ACCOUNT ? (
-              <Welcome
-                intro="Buscar por idea usa IA. Para usarla, entra con tu cuenta o crea una gratis. Buscar una cita, como «Juan 3:16», no la necesita."
-                onReady={() => asked && runIdea(asked)}
-              />
-            ) : (
-              <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>{error}</Text>
-            )}
-            {asked && error !== NEEDS_ACCOUNT ? (
+            <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>{error}</Text>
+            {asked ? (
               <Pressable onPress={() => runIdea(asked)} style={[styles.secondary, { backgroundColor: colors.accentSoft }]}>
                 <Text style={{ color: colors.accent, fontWeight: '700' }}>Intentar otra vez</Text>
               </Pressable>

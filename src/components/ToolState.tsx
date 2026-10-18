@@ -18,7 +18,7 @@ export function ToolState({ colors, busy, error, waiting, onRetry }: Props) {
   if (error === NEEDS_ACCOUNT) {
     return (
       <View style={styles.box}>
-        <Welcome intro="Estas herramientas se preparan con IA. Para usarlas, entra con tu cuenta o crea una gratis." onReady={onRetry} />
+        <Welcome kind="ia" title="Se prepara con IA" intro="El resumen en audio, las tarjetas y el mapa mental se hacen con IA a partir del capítulo. Solo necesitas una cuenta gratuita." onReady={onRetry} />
       </View>
     );
   }

@@ -173,7 +173,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
 
               {error === NEEDS_ACCOUNT ? (
                 <View style={styles.waiting}>
-                  <Welcome intro="La IA prepara estudios, responde tus preguntas y te ayuda en el Taller. Para usarla, entra con tu cuenta o crea una gratis." onReady={() => run(lastHistory.current)} />
+                  <Welcome kind="ia" title="Estudia con IA" intro="Te explica el pasaje con el texto original y las referencias, y responde tus preguntas. Solo necesitas una cuenta gratuita." onReady={() => run(lastHistory.current)} />
                 </View>
               ) : error && (
                 <View style={styles.waiting}>

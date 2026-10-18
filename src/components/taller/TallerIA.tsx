@@ -171,7 +171,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
               )}
               {error === NEEDS_ACCOUNT ? (
                 <View style={styles.waiting}>
-                  <Welcome intro="La IA prepara estudios, responde tus preguntas y te ayuda en el Taller. Para usarla, entra con tu cuenta o crea una gratis." onReady={() => run(lastHistory.current)} />
+                  <Welcome kind="ia" title="Prepara con IA" intro="Te hace preguntas y te sugiere ideas a partir del pasaje; el mensaje lo escribes tú. Solo necesitas una cuenta gratuita." onReady={() => run(lastHistory.current)} />
                 </View>
               ) : error && (
                 <View style={styles.waiting}>
