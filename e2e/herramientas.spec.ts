@@ -56,6 +56,8 @@ test.describe('Herramientas del capítulo con IA', () => {
     // Saltar a la intervención siguiente
     await v(page.getByLabel('Intervención siguiente')).click();
     await expect(v(page.getByText('2 de 3 · voz del dispositivo'))).toBeVisible();
+    // El pódcast suena en el reproductor único, como todo lo demás
+    await expect(v(page.getByText('Pódcast · habla Tomás'))).toBeVisible();
     expect((await peticionesIA(request, marca)).length).toBe(antes + 1);
 
     // Al volver a abrirlo sale lo guardado, sin otra petición
