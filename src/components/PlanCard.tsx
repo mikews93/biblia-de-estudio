@@ -46,7 +46,7 @@ export default function PlanCard({ plan, books, words, colors }: { plan: MyPlan;
       <View style={styles.head}>
         <Text style={[styles.kicker, { color: colors.accent }]}>{def?.season ? 'Desafío de temporada' : 'Tu plan'}</Text>
         <Text style={{ color: colors.muted, fontSize: 12 }}>
-          {status.doneDays} de {days.length} días
+          {status.doneDays} de {days.length} {days.length === 1 ? 'día' : 'días'}
         </Text>
       </View>
       <Text style={[styles.title, { color: colors.text, fontFamily: serif }]}>{plan.title}</Text>
