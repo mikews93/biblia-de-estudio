@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+<linearGradient id="fl" gradientUnits="userSpaceOnUse" x1="0" y1="800" x2="0" y2="180">
+<stop offset="0" stop-color="#B83A12"/>
+<stop offset=".45" stop-color="#F08A2C"/>
+<stop offset=".85" stop-color="#FFD27A"/>
+<stop offset="1" stop-color="#FFF1C9"/>
+</linearGradient>
+<clipPath id="c">
+<path d="M500 800 C 372 786 292 704 292 584 C 292 466 380 398 430 280 C 468 360 500 432 500 510 Z"/>
+<path d="M524 800 C 652 786 732 704 732 584 C 732 432 640 340 600 176 C 556 300 524 400 524 510 Z"/>
+</clipPath>
+</defs>
+<g clip-path="url(#c)">
+<path d="M512 800 Q 152 791 -164 619" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 156 744 -135 532" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 167 698 -94 450" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 183 654 -43 374" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 205 612 17 305" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 232 573 86 245" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 264 539 162 194" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 300 509 244 153" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 340 484 331 124" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 383 464 421 106" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 512 450 512 100" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 641 464 603 106" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 684 484 693 124" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 724 509 780 153" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 760 539 862 194" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 792 573 938 245" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 819 612 1007 305" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 841 654 1067 374" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 857 698 1118 450" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 868 744 1159 532" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+<path d="M512 800 Q 872 791 1188 619" stroke="url(#fl)" stroke-width="18" stroke-linecap="round" fill="none"/>
+</g>
+<path d="M210 812 C 330 782 440 790 512 840 C 584 790 694 782 814 812" stroke="#FFF1D6" stroke-width="30" stroke-linecap="round" fill="none"/>
+</svg>

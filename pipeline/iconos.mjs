@@ -5,24 +5,24 @@ import fs from 'fs';
 
 const svg = (f) => `data:image/svg+xml;base64,${fs.readFileSync(`assets/icono/${f}.svg`).toString('base64')}`;
 const FONDO = svg('fondo');
-const LAMPARA = svg('lampara');
+const LLAMA = svg('llama');
 
 // capas: [imagen, escala]; la escala encoge la figura hacia el centro (zonas seguras).
 const SALIDAS = [
   // Icono completo (iOS recorta las esquinas solo).
-  { out: 'assets/icon.png', size: 1024, capas: [[FONDO, 1], [LAMPARA, 1]] },
-  { out: 'assets/favicon.png', size: 48, capas: [[FONDO, 1], [LAMPARA, 1.12]], redondo: 0.22 },
+  { out: 'assets/icon.png', size: 1024, capas: [[FONDO, 1], [LLAMA, 1]] },
+  { out: 'assets/favicon.png', size: 48, capas: [[FONDO, 1], [LLAMA, 1.1]], redondo: 0.22 },
   // Android adaptativo: la figura debe caber en el círculo de 66/108.
   { out: 'assets/android-icon-background.png', size: 1024, capas: [[FONDO, 1]] },
-  { out: 'assets/android-icon-foreground.png', size: 1024, capas: [[LAMPARA, 0.86]] },
-  { out: 'assets/android-icon-monochrome.png', size: 1024, capas: [[LAMPARA, 0.86]], mono: true },
+  { out: 'assets/android-icon-foreground.png', size: 1024, capas: [[LLAMA, 0.7]] },
+  { out: 'assets/android-icon-monochrome.png', size: 1024, capas: [[LLAMA, 0.7]], mono: true },
   // Pantalla de inicio nativa (expo-splash-screen).
-  { out: 'assets/splash-icon.png', size: 1024, capas: [[LAMPARA, 1]] },
+  { out: 'assets/splash-icon.png', size: 1024, capas: [[LLAMA, 1]] },
   // Web / PWA.
-  { out: 'public/logo192.png', size: 192, capas: [[FONDO, 1], [LAMPARA, 1]] },
-  { out: 'public/logo512.png', size: 512, capas: [[FONDO, 1], [LAMPARA, 1]] },
-  { out: 'public/maskable512.png', size: 512, capas: [[FONDO, 1], [LAMPARA, 0.9]] },
-  { out: 'public/apple-touch-icon.png', size: 180, capas: [[FONDO, 1], [LAMPARA, 1]] },
+  { out: 'public/logo192.png', size: 192, capas: [[FONDO, 1], [LLAMA, 1]] },
+  { out: 'public/logo512.png', size: 512, capas: [[FONDO, 1], [LLAMA, 1]] },
+  { out: 'public/maskable512.png', size: 512, capas: [[FONDO, 1], [LLAMA, 0.85]] },
+  { out: 'public/apple-touch-icon.png', size: 180, capas: [[FONDO, 1], [LLAMA, 1]] },
 ];
 
 const browser = await chromium.launch();
