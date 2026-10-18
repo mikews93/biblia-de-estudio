@@ -124,7 +124,7 @@ def parse_usfm(source):
             n = int(re.match(r"\d+", label).group())
             text = usfm_text(chunk)
             if n == 1 and title:
-                text = f"{title} {text}"
+                text = f"{title}{'' if title[-1] in '.:;!?' else '.'} {text}"
             verses.append([n, text] if label == str(n) else [n, text, label])
     for vs in chapters.values():
         for v in vs:
