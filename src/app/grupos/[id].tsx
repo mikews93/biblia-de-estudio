@@ -12,6 +12,9 @@ import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, Card, Meter, SectionTitle, text } from '@/components/comunidad/ui';
 import { Grupo, Miembro, api, chapterHref, refreshGroups, tipoLabel, useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
+import { planById } from '@/lib/planesCatalogo';
+import { seasonTint } from '@/lib/retos';
+import { parseRetoId } from '@/lib/temporadas';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -96,6 +99,8 @@ export default function GroupScreen() {
   const readCount = group.miembros.filter((m) => m.leyoHoy).length;
   const firstChapter = reading?.capitulos[0];
   const weekDone = group.semana.dias >= group.semana.meta && group.semana.meta > 0;
+  const retoDef = reading?.reto ? planById(parseRetoId(reading.reto)?.def ?? '') : undefined;
+  const reto = retoDef?.season ? { def: retoDef, tint: seasonTint(retoDef.season, colors) } : null;
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
@@ -122,8 +127,11 @@ export default function GroupScreen() {
       )}
 
       {/* La lectura de hoy y quién ya la leyó */}
-      <Card style={{ marginTop: 20 }}>
-        {reading?.estado === 'activo' && firstChapter ? (
+      <Card style={{ marginTop: 20, overflow: 'hidden' }}>
+        {reto && <View style={[styles.stripe, { backgroundColor: reto.tint.accent }]} />}
+        {reto && reading ? (
+          <RetoReading reading={reading} reto={reto} start={group.plan.inicio} admin={group.soyAdmin} />
+        ) : reading?.estado === 'activo' && firstChapter ? (
           <>
             <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6 }}>
               LECTURA DE HOY · DÍA {reading.dia} DE {reading.total}
@@ -264,7 +272,89 @@ export default function GroupScreen() {
   );
 }
 
+/** La lectura de hoy cuando el grupo sigue un reto de temporada: el título del día y la pregunta para conversar. */
+function RetoReading({
+  reading,
+  reto,
+  start,
+  admin,
+}: {
+  reading: NonNullable<Grupo['lectura']>;
+  reto: { def: NonNullable<ReturnType<typeof planById>>; tint: ReturnType<typeof seasonTint> };
+  start: string | null;
+  admin: boolean;
+}) {
+  const colors = useColors();
+  const { def, tint } = reto;
+  const i = reading.dia - 1;
+  const open = (chapter: number) => navigate(() => router.push(chapterHref(reading.libro, chapter)), 'forward');
+  const kicker = `Reto de ${tint.name}`.toUpperCase();
+  if (reading.estado === 'activo' && reading.capitulos[0]) {
+    return (
+      <>
+        <Text style={[styles.kicker, { color: tint.accent }]}>
+          {kicker} · DÍA {reading.dia} DE {reading.total}
+        </Text>
+        <Text style={[styles.reading, { color: colors.text }]}>{def.days?.[i]}</Text>
+        <Text style={{ color: colors.muted, marginTop: 2 }}>
+          {reading.nombre} {reading.capitulos[0]}
+        </Text>
+        <Pressable
+          onPress={() => open(reading.capitulos[0])}
+          style={({ pressed }) => [styles.retoButton, { backgroundColor: tint.accent }, pressed && { opacity: 0.85 }]}
+          accessibilityRole="button"
+        >
+          <Text style={{ color: tint.soft, fontWeight: '700', fontSize: 15 }}>
+            Leer {reading.nombre} {reading.capitulos[0]}
+          </Text>
+        </Pressable>
+        {def.questions?.[i] && (
+          <View style={[styles.talk, { backgroundColor: tint.soft }]}>
+            <Text style={{ color: tint.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.8 }}>PARA CONVERSAR</Text>
+            <Text style={{ color: colors.text, fontFamily: serif, fontSize: 17, lineHeight: 25, marginTop: 4 }}>{def.questions[i]}</Text>
+          </View>
+        )}
+      </>
+    );
+  }
+  if (reading.estado === 'pronto') {
+    return (
+      <>
+        <Text style={[styles.kicker, { color: tint.accent }]}>{kicker}</Text>
+        <Text style={[styles.reading, { color: colors.text }]}>{def.title}</Text>
+        <Text style={[text.body, { color: colors.text, marginTop: 6 }]}>
+          Empieza el {start ? longDate(start) : 'pronto'} con {reading.nombre} {reading.siguiente}. Mientras tanto cuenta cualquier capítulo que lean.
+        </Text>
+      </>
+    );
+  }
+  if (reading.estado === 'descanso') {
+    return (
+      <>
+        <Text style={[styles.kicker, { color: tint.accent }]}>{kicker} · DÍA DE DESCANSO</Text>
+        <Text style={[styles.reading, { color: colors.text }]}>Hoy no hay lectura nueva</Text>
+        <Text style={[text.body, { color: colors.text, marginTop: 6 }]}>
+          Es día para descansar o ponerse al día. Mañana siguen con {reading.nombre} {reading.siguiente}.
+        </Text>
+      </>
+    );
+  }
+  return (
+    <>
+      <Text style={[styles.kicker, { color: tint.accent }]}>{kicker}</Text>
+      <Text style={[styles.reading, { color: tint.accent }]}>¡Terminaron el reto juntos!</Text>
+      <Text style={[text.body, { color: colors.text, marginTop: 6 }]}>
+        {admin ? 'Elijan el siguiente plan en «Editar».' : 'Quien administra el grupo puede elegir el siguiente plan.'}
+      </Text>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
+  stripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
+  kicker: { fontSize: 12, fontWeight: '700', letterSpacing: 0.6 },
+  retoButton: { borderRadius: 24, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
+  talk: { borderRadius: 14, padding: 14, marginTop: 14 },
   page: { padding: 20, paddingBottom: 80, maxWidth: 640, width: '100%', alignSelf: 'center' },
   reading: { fontFamily: serif, fontSize: 24, fontWeight: '700', marginTop: 4 },
   members: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18, marginBottom: 10 },
