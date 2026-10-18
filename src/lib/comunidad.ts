@@ -64,6 +64,16 @@ export type Peticion = {
   yoOrando: boolean;
 };
 
+export type Guia = {
+  id: string;
+  titulo: string;
+  pasaje: string | null;
+  texto: string;
+  creado: string;
+  autor: string;
+  mia: boolean;
+};
+
 export const TIPOS: { tipo: TipoGrupo; label: string }[] = [
   { tipo: 'iglesia', label: 'Iglesia' },
   { tipo: 'celula', label: 'Célula' },

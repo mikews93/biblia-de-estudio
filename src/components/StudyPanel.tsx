@@ -224,7 +224,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
   );
 }
 
-function Sources({ sources, colors, onOpen }: { sources: Source[]; colors: Colors; onOpen: (ref: string) => void }) {
+export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors: Colors; onOpen: (ref: string) => void }) {
   return (
     <View style={[styles.sources, { borderColor: colors.border }]}>
       <Text style={[styles.sourcesTitle, { color: colors.muted }]}>FUENTES</Text>
@@ -240,7 +240,7 @@ function Sources({ sources, colors, onOpen }: { sources: Source[]; colors: Color
 }
 
 /** Markdown mínimo: títulos ##, listas con -, **negritas** y marcas de cita ⟦n⟧. */
-function Markdown({ text, colors }: { text: string; colors: Colors }) {
+export function Markdown({ text, colors }: { text: string; colors: Colors }) {
   const blocks = text.split(/\n{2,}/);
   return (
     <View>

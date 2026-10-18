@@ -36,6 +36,14 @@ export default function Planes() {
         nada.
       </Text>
 
+      <View style={{ marginTop: 16 }}>
+        <PlanRow
+          def={{ icon: '◎', title: 'Planes en grupo', description: 'Lee con tu iglesia o tus amigos el mismo plan y comenten juntos.' }}
+          colors={colors}
+          onPress={() => navigate(() => router.push('/grupos' as never), 'forward')}
+        />
+      </View>
+
       {active.length > 0 && (
         <>
           <SectionTitle>Tus planes</SectionTitle>
@@ -108,7 +116,13 @@ export default function Planes() {
   );
 }
 
-function PlanRow({ def, note, colors, onPress }: { def: PlanDef; note?: string; colors: Colors; onPress: () => void }) {
+function PlanRow({
+  def,
+  note,
+  colors,
+  onPress,
+}: {
+  def: Pick<PlanDef, 'icon' | 'title' | 'description'>; note?: string; colors: Colors; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}

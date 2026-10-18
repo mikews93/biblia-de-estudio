@@ -40,6 +40,10 @@ function AppStack() {
         <Stack.Screen name="planes/index" options={{ title: 'Planes de lectura' }} />
         <Stack.Screen name="planes/[id]" options={{ title: '' }} />
         <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
+        <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
+        <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
+        <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
+        <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
       </Stack>
       <AudioBar />
       <TabBar />

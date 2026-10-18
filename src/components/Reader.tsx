@@ -372,6 +372,14 @@ export default function Reader() {
             <Action label="Comentario" icon="¶" colors={colors} onPress={() => setPanelTab('comentario')} />
             <Action label={notes[selected] ? 'Mi nota' : 'Nota'} icon="✎" colors={colors} onPress={() => setWriting(true)} />
             <Action label="Compartir" icon="⇪" colors={colors} onPress={() => setSharing(true)} />
+            <Action
+              label="Preparar"
+              icon="✎"
+              colors={colors}
+              onPress={() =>
+                navigate(() => router.push(`/taller?libro=${book.id}&capitulo=${chapter}&versiculo=${selected}`), 'forward')
+              }
+            />
           </View>
         </Appear>
       ) : (
