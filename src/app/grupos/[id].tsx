@@ -52,7 +52,7 @@ export default function GroupScreen() {
     await api('salir', { grupo: id, usuario: self ? undefined : m!.id }).catch((e) => setError(e.message));
     if (self) {
       await refreshGroups().catch(() => {});
-      navigate(() => router.replace('/comunidades'), 'back');
+      navigate(() => router.replace('/grupos'), 'back');
     } else load();
   };
 
@@ -85,7 +85,7 @@ export default function GroupScreen() {
       <View style={styles.page}>
         <Stack.Screen options={{ title: 'Grupo' }} />
         <Text style={[text.body, { color: colors.text }]}>{error}</Text>
-        <Button label="Ver mis grupos" kind="outline" onPress={() => router.replace('/comunidades')} style={{ marginTop: 16 }} />
+        <Button label="Ver mis grupos" kind="outline" onPress={() => router.replace('/grupos')} style={{ marginTop: 16 }} />
       </View>
     );
   }
@@ -103,7 +103,7 @@ export default function GroupScreen() {
           title: group.nombre,
           headerRight: () =>
             group.soyAdmin ? (
-              <Pressable onPress={() => navigate(() => router.push(`/comunidades/nuevo?editar=${group.id}`), 'forward')} hitSlop={8} style={{ marginRight: 16 }}>
+              <Pressable onPress={() => navigate(() => router.push(`/grupos/nuevo?editar=${group.id}`), 'forward')} hitSlop={8} style={{ marginRight: 16 }}>
                 <Text style={{ color: colors.accent, fontWeight: '600' }}>Editar</Text>
               </Pressable>
             ) : null,

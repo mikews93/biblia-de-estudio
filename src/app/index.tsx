@@ -125,7 +125,7 @@ export default function Today() {
         />
         <Tile
           icon="◎"
-          label="Comunidades"
+          label="Comunidad"
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />

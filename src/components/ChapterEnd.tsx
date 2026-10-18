@@ -60,7 +60,7 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
           {grupos?.map((g) => (
             <Pressable
               key={g.id}
-              onPress={() => navigate(() => router.push(`/comunidades/${g.id}`), 'forward')}
+              onPress={() => navigate(() => router.push(`/grupos/${g.id}`), 'forward')}
               style={[styles.group, { borderColor: colors.border }]}
             >
               <Text style={{ color: colors.text, fontSize: 13 }}>

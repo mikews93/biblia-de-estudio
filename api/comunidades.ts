@@ -1,5 +1,7 @@
 // Función de Vercel para las comunidades: grupos privados por invitación con un plan de lectura en común,
 // notas compartidas en un versículo, peticiones de oración y preguntas para la reunión sugeridas por la IA.
+// También la red de la pestaña Comunidad: amigos, publicaciones (lo que cada quien lee, versículos resaltados,
+// imágenes de versículos y preguntas), «me gusta» y comentarios.
 //
 // Todo va por POST con {"accion": "...", ...}. Para empezar basta un nombre: al registrarse se recibe una
 // llave de sesión que la app guarda y envía como "Authorization: Bearer <llave>" (en la base solo queda su
@@ -24,6 +26,15 @@ const MAX_PRAYER = 500;
 const AI_PER_DAY = 20;
 const WEEKLY_GOAL = 5;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const MAX_POST = 1000;
+const MAX_COMMENT = 500;
+const POSTS_PER_HOUR = 20;
+const COMMENTS_PER_HOUR = 60;
+const PAGE = 30;
+// Con tantos reportes una publicación deja de verse para los demás (quien la reporta deja de verla al instante).
+const REPORTS_TO_HIDE = 3;
+const POST_TYPES = ['resaltado', 'imagen', 'pregunta', 'reflexion'];
+const HIGHLIGHTS = ['amarillo', 'verde', 'azul', 'rosa'];
 
 const SCHEMA = `
 create table if not exists usuarios (
@@ -102,6 +113,55 @@ create table if not exists uso_ia (
   dia date not null,
   n int not null default 0,
   primary key (grupo_id, dia)
+);
+alter table usuarios add column if not exists codigo text unique;
+alter table usuarios add column if not exists compartir_lecturas boolean not null default true;
+create table if not exists amistades (
+  de uuid not null references usuarios on delete cascade,
+  para uuid not null references usuarios on delete cascade,
+  aceptada boolean not null default false,
+  creado timestamptz not null default now(),
+  primary key (de, para)
+);
+create index if not exists amistades_para on amistades (para);
+create table if not exists publicaciones (
+  id uuid primary key default gen_random_uuid(),
+  usuario_id uuid not null references usuarios on delete cascade,
+  tipo text not null,
+  audiencia text not null default 'amigos',
+  libro text,
+  capitulo int,
+  versiculo int,
+  version text,
+  cita text,
+  texto text,
+  datos jsonb not null default '{}',
+  clave text,
+  creado timestamptz not null default now(),
+  actualizado timestamptz not null default now()
+);
+create unique index if not exists publicaciones_clave on publicaciones (usuario_id, clave);
+create index if not exists publicaciones_recientes on publicaciones (actualizado desc);
+create index if not exists publicaciones_usuario on publicaciones (usuario_id, actualizado desc);
+create table if not exists me_gusta (
+  publicacion_id uuid not null references publicaciones on delete cascade,
+  usuario_id uuid not null references usuarios on delete cascade,
+  creado timestamptz not null default now(),
+  primary key (publicacion_id, usuario_id)
+);
+create table if not exists comentarios (
+  id uuid primary key default gen_random_uuid(),
+  publicacion_id uuid not null references publicaciones on delete cascade,
+  usuario_id uuid not null references usuarios on delete cascade,
+  texto text not null,
+  creado timestamptz not null default now()
+);
+create index if not exists comentarios_publicacion on comentarios (publicacion_id, creado);
+create table if not exists reportes (
+  publicacion_id uuid not null references publicaciones on delete cascade,
+  usuario_id uuid not null references usuarios on delete cascade,
+  creado timestamptz not null default now(),
+  primary key (publicacion_id, usuario_id)
 );`;
 
 const QUESTIONS_SYSTEM = `Preparas preguntas para la reunión de un grupo pequeño cristiano (una célula, una familia o un grupo de la iglesia) que lee la Biblia en una app gratuita en español.
@@ -129,6 +189,7 @@ Reglas:
 - (una idea breve de por qué orar juntos, a partir del pasaje)`;
 
 type Book = { id: string; name: string; chapters: number };
+type Version = { id: string; abbr: string };
 type Verse = [number, string];
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
@@ -146,6 +207,7 @@ class Fail extends Error {
 let sql: Sql | null = null;
 let ready: Promise<unknown> | null = null;
 let booksCache: Promise<Book[]> | null = null;
+let versionsCache: Promise<Version[]> | null = null;
 
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
@@ -161,6 +223,19 @@ async function db() {
 function books() {
   booksCache ??= readFile(path.join(DATA_DIR, 'books.json'), 'utf8').then((raw) => JSON.parse(raw) as Book[]);
   return booksCache;
+}
+
+/** El texto de un versículo, leído de los datos de la app (nunca el que manda el teléfono). */
+async function verseText(version: unknown, book: Book, chapter: number, verse: number) {
+  versionsCache ??= readFile(path.join(DATA_DIR, 'versions.json'), 'utf8').then((raw) => JSON.parse(raw) as Version[]);
+  const versions = await versionsCache;
+  const v = versions.find((x) => x.id === version || x.abbr === version) ?? versions.find((x) => x.id === 'rv1909')!;
+  const verses = JSON.parse(
+    await readFile(path.join(DATA_DIR, 'text', v.id, book.id, `${chapter}.json`), 'utf8'),
+  ) as Verse[];
+  const found = verses.find(([n]) => n === verse);
+  if (!found) throw new Fail('Versículo no válido');
+  return { version: v.abbr, cita: found[1] };
 }
 
 async function bookOf(id: unknown) {
@@ -366,6 +441,103 @@ async function suggestQuestions(book: Book, chapter: number) {
     .trim();
 }
 
+// --- Comunidad: amigos y publicaciones ---
+
+type Relation = 'yo' | 'amigos' | 'enviada' | 'recibida' | null;
+
+/** Ids de los amigos de la persona (amistades aceptadas, en cualquier dirección). */
+const friendIds = (sql: Sql, me: string) => sql`
+  select case when de = ${me} then para else de end from amistades where aceptada and (de = ${me} or para = ${me})`;
+
+/** Lo que una persona puede ver: lo suyo, lo de sus amigos y lo público que no se ha reportado de más. */
+const visible = (sql: Sql, me: string) => sql`
+  (p.usuario_id = ${me}
+    or p.usuario_id in (${friendIds(sql, me)})
+    or (p.audiencia = 'todos' and (select count(*) from reportes r where r.publicacion_id = p.id) < ${REPORTS_TO_HIDE}))
+  and not exists (select 1 from reportes r where r.publicacion_id = p.id and r.usuario_id = ${me})`;
+
+type PostRow = { id: string; libro: string | null; mia: boolean } & Json;
+type Fragment = postgres.PendingQuery<postgres.Row[]>;
+
+async function posts(sql: Sql, me: string, where: Fragment, limit = PAGE) {
+  const rows = await sql<PostRow[]>`
+    select p.id, p.tipo, p.audiencia, p.libro, p.capitulo, p.versiculo, p.version, p.cita, p.texto, p.datos,
+      p.creado, p.actualizado, u.id as "autorId", u.nombre as autor, p.usuario_id = ${me} as mia,
+      (select count(*)::int from me_gusta g where g.publicacion_id = p.id) as "meGusta",
+      exists (select 1 from me_gusta g where g.publicacion_id = p.id and g.usuario_id = ${me}) as "yoMeGusta",
+      (select count(*)::int from comentarios c where c.publicacion_id = p.id) as comentarios
+    from publicaciones p join usuarios u on u.id = p.usuario_id
+    where ${visible(sql, me)} and ${where}
+    order by p.actualizado desc limit ${limit}`;
+  const all = await books();
+  return rows.map((r) => ({ ...r, libroNombre: all.find((b) => b.id === r.libro)?.name ?? null }));
+}
+
+async function visiblePost(sql: Sql, me: string, id: unknown) {
+  const [post] = await posts(sql, me, sql`p.id = ${uuid(id)}`, 1);
+  if (!post) throw new Fail('Esta publicación ya no existe', 404);
+  return post;
+}
+
+async function relation(sql: Sql, me: string, other: string): Promise<Relation> {
+  if (me === other) return 'yo';
+  const rows = await sql<{ de: string; aceptada: boolean }[]>`
+    select de, aceptada from amistades where (de = ${me} and para = ${other}) or (de = ${other} and para = ${me})`;
+  if (rows.some((r) => r.aceptada)) return 'amigos';
+  if (rows.some((r) => r.de === me)) return 'enviada';
+  if (rows.length) return 'recibida';
+  return null;
+}
+
+/** El código para que otros te agreguen como amigo; se crea la primera vez que se pide. */
+async function friendCode(sql: Sql, userId: string) {
+  const [row] = await sql<{ codigo: string | null }[]>`select codigo from usuarios where id = ${userId}`;
+  if (row?.codigo) return row.codigo;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const codigo = newCode();
+    const rows = await sql`
+      update usuarios set codigo = ${codigo} where id = ${userId} and codigo is null
+      and not exists (select 1 from usuarios where codigo = ${codigo}) returning id`;
+    if (rows.length) return codigo;
+  }
+  throw new Fail('No se pudo crear tu código, inténtalo de nuevo', 500);
+}
+
+async function personByCode(sql: Sql, code: unknown) {
+  const clean = String(code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const [p] = await sql<{ id: string; nombre: string }[]>`select id, nombre from usuarios where codigo = ${clean}`;
+  if (!p) throw new Fail('Ese código de amistad no existe', 404);
+  return p;
+}
+
+/** Freno para que nadie llene la comunidad de mensajes. */
+async function tooMany(sql: Sql, table: 'publicaciones' | 'comentarios', userId: string, max: number) {
+  const [{ n }] = await sql<{ n: number }[]>`
+    select count(*)::int as n from ${sql(table)} where usuario_id = ${userId} and creado > now() - interval '1 hour'`;
+  if (n >= max) throw new Fail('Has publicado mucho en poco tiempo. Vuelve a intentarlo en un rato.', 429);
+}
+
+/** Lo que se leyó hoy aparece en el muro de los amigos: una publicación por libro y día que va sumando capítulos. */
+async function shareReading(sql: Sql, userId: string, book: Book, chapter: number, today: string) {
+  const [{ compartir }] = await sql<{ compartir: boolean }[]>`
+    select compartir_lecturas as compartir from usuarios where id = ${userId}`;
+  if (!compartir) return;
+  const key = `lectura:${today}:${book.id}`;
+  const [row] = await sql<{ id: string; datos: { capitulos?: number[] } }[]>`
+    select id, datos from publicaciones where usuario_id = ${userId} and clave = ${key}`;
+  if (!row) {
+    await sql`
+      insert into publicaciones (usuario_id, tipo, audiencia, libro, datos, clave)
+      values (${userId}, 'lectura', 'amigos', ${book.id}, ${sql.json({ capitulos: [chapter] })}, ${key})
+      on conflict (usuario_id, clave) do nothing`;
+    return;
+  }
+  const chapters = row.datos.capitulos ?? [];
+  if (chapters.includes(chapter)) return;
+  const capitulos = [...chapters, chapter].sort((a, b) => a - b);
+  await sql`update publicaciones set datos = ${sql.json({ capitulos })}, actualizado = now() where id = ${row.id}`;
+}
+
 const GROUP_TYPES = ['iglesia', 'celula', 'familia', 'amigos'];
 
 type Handler = (ctx: { sql: Sql; body: Json; request: Request }) => Promise<Json>;
@@ -435,9 +607,11 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const book = await bookOf(body.libro);
     const chapter = int(body.capitulo, 'Capítulo', 1, book.chapters);
+    const today = day(body.hoy);
     await sql`
-      insert into lecturas (usuario_id, libro, capitulo, dia) values (${user.id}, ${book.id}, ${chapter}, ${day(body.hoy)})
+      insert into lecturas (usuario_id, libro, capitulo, dia) values (${user.id}, ${book.id}, ${chapter}, ${today})
       on conflict do nothing`;
+    await shareReading(sql, user.id, book, chapter, today);
     return {};
   },
 
@@ -658,6 +832,182 @@ const actions: Record<string, Handler> = {
       insert into preguntas (grupo_id, libro, capitulo, texto) values (${id}, ${book.id}, ${chapter}, ${texto})
       on conflict (grupo_id, libro, capitulo) do update set texto = excluded.texto, creado = now()`;
     return { texto };
+  },
+  // --- Comunidad ---
+
+  async muro({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const where: Fragment = body.filtro === 'todos' ? sql`true` : sql`(p.usuario_id = ${user.id} or p.usuario_id in (${friendIds(sql, user.id)}))`;
+    const before = typeof body.antes === 'string' && !isNaN(Date.parse(body.antes)) ? body.antes : null;
+    return { publicaciones: await posts(sql, user.id, before ? sql`${where} and p.actualizado < ${before}` : where) };
+  },
+
+  async publicacion({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const post = await visiblePost(sql, user.id, body.id);
+    const comentarios = await sql`
+      select c.id, c.texto, c.creado, u.id as "autorId", u.nombre as autor, c.usuario_id = ${user.id} as mio
+      from comentarios c join usuarios u on u.id = c.usuario_id
+      where c.publicacion_id = ${post.id} order by c.creado limit 200`;
+    return { publicacion: post, comentarios };
+  },
+
+  async publicar({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const tipo = String(body.tipo);
+    if (!POST_TYPES.includes(tipo)) throw new Fail('Tipo de publicación no válido');
+    const audiencia = body.audiencia === 'todos' ? 'todos' : 'amigos';
+    const needsVerse = tipo === 'resaltado' || tipo === 'imagen';
+    const book = body.libro || needsVerse ? await bookOf(body.libro) : null;
+    const chapter = book ? int(body.capitulo, 'Capítulo', 1, book.chapters) : null;
+    const verse = book ? int(body.versiculo, 'Versículo', 1, 200) : null;
+    const quote = book ? await verseText(body.version, book, chapter!, verse!) : null;
+    const texto = needsVerse
+      ? body.texto && String(body.texto).trim()
+        ? text(body.texto, MAX_POST, 'lo que quieres decir')
+        : null
+      : text(body.texto, MAX_POST, tipo === 'pregunta' ? 'tu pregunta' : 'lo que quieres compartir');
+    const raw = (body.datos ?? {}) as Json;
+    const datos =
+      tipo === 'resaltado'
+        ? { color: HIGHLIGHTS.includes(raw.color as string) ? raw.color : 'amarillo' }
+        : tipo === 'imagen'
+          ? { estilo: String(raw.estilo ?? '').slice(0, 20), formato: raw.formato === 'historia' ? 'historia' : 'cuadrado' }
+          : {};
+    await tooMany(sql, 'publicaciones', user.id, POSTS_PER_HOUR);
+    const [row] = await sql<{ id: string }[]>`
+      insert into publicaciones (usuario_id, tipo, audiencia, libro, capitulo, versiculo, version, cita, texto, datos)
+      values (${user.id}, ${tipo}, ${audiencia}, ${book?.id ?? null}, ${chapter}, ${verse}, ${quote?.version ?? null},
+        ${quote?.cita ?? null}, ${texto}, ${sql.json(datos as postgres.JSONValue)})
+      returning id`;
+    return { id: row.id };
+  },
+
+  async borrarPublicacion({ sql, body, request }) {
+    const user = await auth(sql, request);
+    await sql`delete from publicaciones where id = ${uuid(body.id)} and usuario_id = ${user.id}`;
+    return {};
+  },
+
+  async meGusta({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const post = await visiblePost(sql, user.id, body.id);
+    if (body.si === false) {
+      await sql`delete from me_gusta where publicacion_id = ${post.id} and usuario_id = ${user.id}`;
+    } else {
+      await sql`insert into me_gusta (publicacion_id, usuario_id) values (${post.id}, ${user.id}) on conflict do nothing`;
+    }
+    return {};
+  },
+
+  async comentar({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const post = await visiblePost(sql, user.id, body.id);
+    const texto = text(body.texto, MAX_COMMENT, 'tu comentario');
+    await tooMany(sql, 'comentarios', user.id, COMMENTS_PER_HOUR);
+    const [row] = await sql<{ id: string }[]>`
+      insert into comentarios (publicacion_id, usuario_id, texto) values (${post.id}, ${user.id}, ${texto}) returning id`;
+    return { id: row.id };
+  },
+
+  async borrarComentario({ sql, body, request }) {
+    const user = await auth(sql, request);
+    // Cada quien borra sus comentarios, y quien publicó puede borrar los de su publicación.
+    await sql`
+      delete from comentarios c using publicaciones p
+      where c.id = ${uuid(body.id)} and p.id = c.publicacion_id and (c.usuario_id = ${user.id} or p.usuario_id = ${user.id})`;
+    return {};
+  },
+
+  async reportar({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const post = await visiblePost(sql, user.id, body.id);
+    if (post.mia) throw new Fail('No puedes reportar tu propia publicación');
+    await sql`insert into reportes (publicacion_id, usuario_id) values (${post.id}, ${user.id}) on conflict do nothing`;
+    return {};
+  },
+
+  async amigos({ sql, request }) {
+    const user = await auth(sql, request);
+    const codigo = await friendCode(sql, user.id);
+    const [{ compartir }] = await sql<{ compartir: boolean }[]>`
+      select compartir_lecturas as compartir from usuarios where id = ${user.id}`;
+    const links = await sql<{ id: string; nombre: string; estado: string }[]>`
+      select u.id, u.nombre, case when a.aceptada then 'amigos' when a.de = ${user.id} then 'enviada' else 'recibida' end as estado
+      from amistades a join usuarios u on u.id = case when a.de = ${user.id} then a.para else a.de end
+      where a.de = ${user.id} or a.para = ${user.id}
+      order by u.nombre`;
+    // Sugerencias: gente de tus grupos con la que aún no tienes amistad.
+    const sugerencias = await sql`
+      select distinct on (u.id) u.id, u.nombre, g.nombre as grupo
+      from miembros mine join miembros other on other.grupo_id = mine.grupo_id and other.usuario_id <> ${user.id}
+      join usuarios u on u.id = other.usuario_id join grupos g on g.id = mine.grupo_id
+      where mine.usuario_id = ${user.id}
+        and not exists (select 1 from amistades a where (a.de = ${user.id} and a.para = u.id) or (a.de = u.id and a.para = ${user.id}))
+      order by u.id limit 30`;
+    const pick = (estado: string) => links.filter((l) => l.estado === estado).map(({ id, nombre }) => ({ id, nombre }));
+    return {
+      codigo,
+      compartirLecturas: compartir,
+      amigos: pick('amigos'),
+      recibidas: pick('recibida'),
+      enviadas: pick('enviada'),
+      sugerencias,
+    };
+  },
+
+  async verCodigoAmigo({ sql, body }) {
+    const p = await personByCode(sql, body.codigo);
+    return { persona: { id: p.id, nombre: p.nombre } };
+  },
+
+  async pedirAmistad({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const target = body.codigo ? (await personByCode(sql, body.codigo)).id : uuid(body.usuario);
+    if (target === user.id) throw new Fail('Ese es tu propio código');
+    const [exists] = await sql`select 1 from usuarios where id = ${target}`;
+    if (!exists) throw new Fail('Esa persona ya no está en la comunidad', 404);
+    // Si la otra persona ya te había invitado, pedirle amistad es aceptarla.
+    const accepted = await sql`update amistades set aceptada = true where de = ${target} and para = ${user.id} returning de`;
+    if (!accepted.length) {
+      await sql`insert into amistades (de, para) values (${user.id}, ${target}) on conflict do nothing`;
+    }
+    return { id: target, relacion: await relation(sql, user.id, target) };
+  },
+
+  async responderAmistad({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const other = uuid(body.usuario);
+    if (body.aceptar === false) await sql`delete from amistades where de = ${other} and para = ${user.id} and not aceptada`;
+    else await sql`update amistades set aceptada = true where de = ${other} and para = ${user.id}`;
+    return { relacion: await relation(sql, user.id, other) };
+  },
+
+  async quitarAmigo({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const other = uuid(body.usuario);
+    await sql`delete from amistades where (de = ${user.id} and para = ${other}) or (de = ${other} and para = ${user.id})`;
+    return {};
+  },
+
+  async compartirLecturas({ sql, body, request }) {
+    const user = await auth(sql, request);
+    await sql`update usuarios set compartir_lecturas = ${Boolean(body.si)} where id = ${user.id}`;
+    return {};
+  },
+
+  async persona({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const id = uuid(body.usuario);
+    const [p] = await sql<{ id: string; nombre: string; amigos: number }[]>`
+      select u.id, u.nombre,
+        (select count(*)::int from amistades a where a.aceptada and (a.de = u.id or a.para = u.id)) as amigos
+      from usuarios u where u.id = ${id}`;
+    if (!p) throw new Fail('Esa persona ya no está en la comunidad', 404);
+    return {
+      persona: { ...p, relacion: await relation(sql, user.id, id) },
+      publicaciones: await posts(sql, user.id, sql`p.usuario_id = ${id}`),
+    };
   },
 };
 

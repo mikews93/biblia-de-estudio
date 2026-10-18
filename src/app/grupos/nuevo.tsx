@@ -83,7 +83,7 @@ export default function NewGroup() {
       } else {
         const { id } = await api<{ id: string }>('crearGrupo', body);
         await refreshGroups();
-        navigate(() => router.replace(`/comunidades/${id}?nuevo=1`), 'forward');
+        navigate(() => router.replace(`/grupos/${id}?nuevo=1`), 'forward');
       }
     });
 

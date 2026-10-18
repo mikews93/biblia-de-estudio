@@ -23,10 +23,16 @@ function AppStack() {
         <Stack.Screen name="[book]/[chapter]/index" options={{ title: '' }} />
         <Stack.Screen name="[book]/[chapter]/[verse]" options={{ title: '' }} />
         <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
-        <Stack.Screen name="comunidades/index" options={{ title: 'Comunidades' }} />
-        <Stack.Screen name="comunidades/[id]" options={{ title: '' }} />
-        <Stack.Screen name="comunidades/nuevo" options={{ title: 'Nuevo grupo' }} />
-        <Stack.Screen name="comunidades/cuenta" options={{ title: 'Tu cuenta' }} />
+        <Stack.Screen name="comunidades/index" options={{ title: 'Comunidad' }} />
+        <Stack.Screen name="comunidades/amigos" options={{ title: 'Amigos' }} />
+        <Stack.Screen name="comunidades/publicar" options={{ title: 'Publicar' }} />
+        <Stack.Screen name="comunidades/publicacion/[id]" options={{ title: '' }} />
+        <Stack.Screen name="comunidades/persona/[id]" options={{ title: '' }} />
+        <Stack.Screen name="amigo/[codigo]" options={{ title: 'Amistad' }} />
+        <Stack.Screen name="grupos/index" options={{ title: 'Planes en grupo' }} />
+        <Stack.Screen name="grupos/[id]" options={{ title: '' }} />
+        <Stack.Screen name="grupos/nuevo" options={{ title: 'Nuevo grupo' }} />
+        <Stack.Screen name="cuenta" options={{ title: 'Tu cuenta' }} />
         <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
       </Stack>
       <TabBar />

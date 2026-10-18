@@ -30,7 +30,7 @@ export default function Welcome({ intro }: { intro?: string }) {
       {mode === 'nueva' ? (
         <>
           <Field
-            label="¿Cómo te llamamos en tus grupos?"
+            label="¿Cómo te llamamos?"
             value={name}
             onChangeText={setName}
             placeholder="Tu nombre"
@@ -42,8 +42,8 @@ export default function Welcome({ intro }: { intro?: string }) {
           <ErrorText>{error}</ErrorText>
           <Button label="Ya tengo cuenta" kind="quiet" onPress={() => switchTo('entrar')} />
           <Text style={[text.small, { color: colors.muted }]}>
-            Solo verán tu nombre las personas de tus grupos. Después puedes añadir un correo para entrar desde otro
-            dispositivo.
+            Tu nombre lo ven tus grupos, tus amigos y quien vea lo que publiques para toda la comunidad. Después puedes
+            añadir un correo para entrar desde otro dispositivo.
           </Text>
         </>
       ) : (
