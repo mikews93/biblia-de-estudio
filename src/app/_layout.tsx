@@ -4,7 +4,9 @@ import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
+import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
+import { init as initDownloads } from '@/lib/descargas';
 import { fixedInTransition } from '@/lib/transition';
 import { SettingsProvider, isDark, useColors } from '@/lib/theme';
 
@@ -28,6 +30,11 @@ function AppStack() {
     document.documentElement.style.backgroundColor = colors.background;
     document.documentElement.style.setProperty('--papel', colors.background);
   }, [colors.background]);
+
+  // Con algo descargado, mantiene al día la copia de la app para abrirla sin conexión.
+  useEffect(() => {
+    if (Platform.OS === 'web') initDownloads().catch(() => {});
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -70,12 +77,14 @@ function AppStack() {
         <Stack.Screen name="planes/index" options={{ title: 'Planes de lectura' }} />
         <Stack.Screen name="planes/[id]" options={{ title: '' }} />
         <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
+        <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
         <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
         <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
         <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
         <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
       </Stack>
       <AudioBar />
+      <OfflineBanner />
       <TabBar />
       {Platform.OS === 'web' && (
         <>

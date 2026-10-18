@@ -227,6 +227,7 @@ export default function Today() {
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
+        <Tile icon="⤓" label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
       </Appear>
       {sharing && verseText && (
         <VerseImage

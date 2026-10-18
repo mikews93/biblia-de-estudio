@@ -6,6 +6,7 @@ import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
 import NoteEditor from '@/components/NoteEditor';
 import ReaderSettings from '@/components/ReaderSettings';
+import { NeedsConnection } from '@/components/SinConexion';
 import StudyPanel from '@/components/StudyPanel';
 import StudyVerse from '@/components/StudyVerse';
 import VersionPicker from '@/components/VersionPicker';
@@ -15,6 +16,7 @@ import WordCard from '@/components/WordCard';
 import {
   Book,
   CrossRef,
+  NOT_DOWNLOADED,
   Verse,
   Version,
   Word,
@@ -289,7 +291,16 @@ export default function Reader() {
           </View>
         )}
 
-        {error && <Text style={{ color: colors.muted }}>{error}</Text>}
+        {error === NOT_DOWNLOADED ? (
+          <Appear style={{ marginTop: 24 }}>
+            <NeedsConnection
+              title="Este capítulo no está descargado"
+              intro={`Sin conexión solo se abre lo que guardaste en este dispositivo. Descarga ${book?.name ?? 'este libro'} o toda la Biblia para leerla en cualquier lugar.`}
+            />
+          </Appear>
+        ) : (
+          error && <Text style={{ color: colors.muted }}>{error}</Text>
+        )}
         {!verses && !error && <ActivityIndicator color={colors.accent} style={{ marginTop: 48 }} />}
 
         {verses && !verseBlocks && (

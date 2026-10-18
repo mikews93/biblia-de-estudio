@@ -6,10 +6,12 @@ import { AccessibilityInfo, Animated, Platform, Pressable, ScrollView, StyleShee
 
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
+import { NeedsConnection } from '@/components/SinConexion';
 import MicIcon from '@/components/MicIcon';
 import SearchIcon from '@/components/SearchIcon';
 import { IdeaResult, addRecent, clearRecent, getRecent, searchByIdea } from '@/lib/buscar';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { Cita, citaLabel, parseCita } from '@/lib/cita';
 import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/lib/data';
 import { chapterHref, verseHref } from '@/lib/routes';
@@ -47,7 +49,10 @@ export default function Search() {
 
   const available = versions.map((v) => v.id);
   const read = (text: string) => (books.length ? parseCita(text, books, available) : null);
-  const cita = useMemo(() => read(query), [query, books, versions]); // eslint-disable-line react-hooks/exhaustive-deps
+  // La cita se lee cuando la persona hace una pausa, no a cada letra: cambiar la pantalla mientras el teclado del
+  // teléfono está componiendo una palabra hacía que Chrome en Android borrara lo escrito.
+  const settled = useSettled(query, 350);
+  const cita = useMemo(() => read(settled), [settled, books, versions]); // eslint-disable-line react-hooks/exhaustive-deps
   // La versión en la que se abrirá: la pedida si está en la app; si no, la que ya se usa.
   const openVersion = cita?.version?.id ?? settings.version;
   // La cita no existe («Juan 30», «Salmo 119:200»): se queda el aviso y no se abre
@@ -187,7 +192,7 @@ export default function Search() {
     navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward');
   };
 
-  const idle = !asked && !cita && !listening && !query.trim() && !error;
+  const idle = !asked && !cita && !listening && !settled.trim() && !error;
   const versionName = versions.find((v) => v.id === openVersion)?.name ?? 'Reina-Valera 1909';
   const bookName = cita ? (books.find((b) => b.id === cita.book)?.name ?? '') : '';
 
@@ -219,7 +224,7 @@ export default function Search() {
             onBlur={() => setFocused(false)}
             placeholder={listening ? 'Te escucho…' : '1 Reyes 2:5 NBLA'}
             placeholderTextColor={colors.muted}
-            returnKeyType={cita && !blocked ? 'go' : 'search'}
+            returnKeyType="search"
             autoCorrect={false}
             maxLength={200}
             autoFocus={!params.q && !params.voz}
@@ -399,7 +404,16 @@ export default function Search() {
         </Appear>
       )}
 
-      {!listening && error && error !== NEEDS_ACCOUNT && (
+      {!listening && error === NEEDS_CONNECTION && (
+        <Appear style={{ marginTop: 8 }}>
+          <NeedsConnection
+            title="Buscar por idea necesita internet"
+            intro="La IA busca los pasajes en el servidor. Sin conexión puedes abrir una cita directamente, como «Juan 3:16» o «Sal 23»."
+          />
+        </Appear>
+      )}
+
+      {!listening && error && error !== NEEDS_ACCOUNT && error !== NEEDS_CONNECTION && (
         <Appear>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}>
             <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>{error}</Text>
@@ -457,6 +471,20 @@ export default function Search() {
       )}
     </ScrollView>
   );
+}
+
+/** El valor después de `ms` sin cambios; vacío al instante, para que borrar no deje la tarjeta anterior. */
+function useSettled(value: string, ms: number) {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    if (!value.trim()) {
+      setSettled(value);
+      return;
+    }
+    const t = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return settled;
 }
 
 function Chip({
