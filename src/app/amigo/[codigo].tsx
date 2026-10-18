@@ -52,7 +52,7 @@ export default function FriendInvite() {
           ) : usuario ? (
             <Button label={`Agregar a ${person.nombre}`} onPress={add} busy={busy} style={{ alignSelf: 'stretch' }} />
           ) : (
-            <Welcome intro="Para agregar amigos, crea tu cuenta. Solo te pedimos tu nombre." />
+            <Welcome intro="Para agregar amigos, entra con tu cuenta o crea una gratis." />
           )}
           <ErrorText>{error}</ErrorText>
         </View>

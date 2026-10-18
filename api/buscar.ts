@@ -8,6 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { needsAccount } from './_cuenta';
 import { formatRef, parseRef } from '../src/lib/refs';
 
 const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
@@ -76,6 +77,8 @@ function badRequest(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
+  const denied = await needsAccount(request);
+  if (denied) return denied;
   let query: string;
   try {
     query = String(((await request.json()) as { query?: unknown }).query ?? '').trim();

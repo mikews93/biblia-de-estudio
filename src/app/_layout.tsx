@@ -43,6 +43,8 @@ function AppStack() {
         <Stack.Screen name="grupos/[id]" options={{ title: '' }} />
         <Stack.Screen name="grupos/nuevo" options={{ title: 'Nuevo grupo' }} />
         <Stack.Screen name="cuenta" options={{ title: 'Tu cuenta' }} />
+        <Stack.Screen name="entrar" options={{ title: '' }} />
+        <Stack.Screen name="registro" options={{ title: '' }} />
         <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
         <Stack.Screen name="planes/index" options={{ title: 'Planes de lectura' }} />
         <Stack.Screen name="planes/[id]" options={{ title: '' }} />

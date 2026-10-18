@@ -211,8 +211,8 @@ function PublishToCommunity({
   if (!usuario) {
     return (
       <View style={[styles.publishBox, { borderColor: colors.border }]}>
-        <Text style={{ color: colors.text, textAlign: 'center' }}>Para publicar en Comunidad necesitas una cuenta. Solo te pedimos tu nombre.</Text>
-        <Pressable onPress={goToCommunity} hitSlop={8}>
+        <Text style={{ color: colors.text, textAlign: 'center' }}>Para publicar en Comunidad necesitas una cuenta gratuita.</Text>
+        <Pressable onPress={() => router.push('/registro')} hitSlop={8}>
           <Text style={{ color: colors.accent, fontWeight: '700' }}>Crear mi cuenta</Text>
         </Pressable>
       </View>
