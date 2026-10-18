@@ -1,0 +1,140 @@
+"""Descarga las fuentes libres y genera los archivos JSON que lee la app.
+
+Uso: python3 pipeline/build_data.py [carpeta_salida]   (por defecto: public/data)
+
+Fuentes (se descargan, no se guardan en el repositorio):
+- Reina-Valera 1909 (dominio público), vía scrollmapper/bible_databases
+- Referencias cruzadas de OpenBible.info (CC BY), vía scrollmapper/bible_databases
+- TAGNT de STEPBible / Tyndale House (CC BY 4.0): griego del NT con morfología y glosas
+"""
+
+import json
+import re
+import sys
+import urllib.request
+from collections import defaultdict
+from pathlib import Path
+
+from books import BOOKS
+
+ROOT = Path(__file__).resolve().parent
+CACHE = ROOT / ".cache"
+STEP = "https://raw.githubusercontent.com/STEPBible/STEPBible-Data/master/Translators%20Amalgamated%20OT%2BNT/"
+SOURCES = {
+    "rv1909.json": "https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/json/SpaRV.json",
+    "xref.txt": "https://raw.githubusercontent.com/scrollmapper/bible_databases/master/sources/extras/cross_references.txt",
+    "tagnt1.txt": STEP + "TAGNT%20Mat-Jhn%20-%20Translators%20Amalgamated%20Greek%20NT%20-%20STEPBible.org%20CC-BY.txt",
+    "tagnt2.txt": STEP + "TAGNT%20Act-Rev%20-%20Translators%20Amalgamated%20Greek%20NT%20-%20STEPBible.org%20CC-BY.txt",
+}
+MAX_XREFS = 12
+
+XREF_TO_ID = {b[3]: b[0] for b in BOOKS}
+STEP_TO_ID = {b[4]: b[0] for b in BOOKS if b[4]}
+# "Mat.1.1#01=NKO" o "1Jn.2.14[2.13]#03=NKO"; los corchetes dan la versificación de la KJV, que sigue la RV1909
+TAGNT_REF = re.compile(r"^(\w+)\.(\d+)\.(\d+)(?:\[(\d+)\.(\d+)\])?\S*#\d+=(\S+)$")
+
+
+def fetch(name):
+    path = CACHE / name
+    if not path.exists():
+        CACHE.mkdir(exist_ok=True)
+        print(f"Descargando {name}…")
+        urllib.request.urlretrieve(SOURCES[name], path)
+    return path
+
+
+def write(out, rel, data):
+    path = out / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
+def build_text(out):
+    src = json.loads(fetch("rv1909.json").read_text(encoding="utf-8"))
+    assert len(src["books"]) == len(BOOKS)
+    chapters = {}
+    for meta, book in zip(BOOKS, src["books"]):
+        bid = meta[0]
+        chapters[bid] = len(book["chapters"])
+        for ch in book["chapters"]:
+            verses = [[v["verse"], v["text"].strip()] for v in ch["verses"]]
+            write(out, f"text/rv1909/{bid}/{ch['chapter']}.json", verses)
+    return chapters
+
+
+def convert_ref(ref):
+    """'Prov.8.22-Prov.8.30' -> 'pro.8.22-pro.8.30'"""
+    parts = []
+    for p in ref.split("-"):
+        book, ch, v = p.split(".")
+        parts.append(f"{XREF_TO_ID[book]}.{ch}.{v}")
+    return "-".join(parts)
+
+
+def build_xrefs(out):
+    by_verse = defaultdict(list)
+    with fetch("xref.txt").open(encoding="utf-8") as f:
+        next(f)
+        for line in f:
+            src, dst, votes = line.rstrip("\n").split("\t")
+            votes = int(votes)
+            if votes <= 0:
+                continue
+            by_verse[convert_ref(src)].append((votes, convert_ref(dst)))
+    by_chapter = defaultdict(dict)
+    for key, refs in by_verse.items():
+        bid, ch, v = key.split(".")
+        refs.sort(reverse=True)
+        by_chapter[(bid, ch)][v] = [[r, n] for n, r in refs[:MAX_XREFS]]
+    for (bid, ch), verses in by_chapter.items():
+        write(out, f"xrefs/{bid}/{ch}.json", verses)
+
+
+def build_interlinear(out):
+    by_chapter = defaultdict(lambda: defaultdict(list))
+    for name in ("tagnt1.txt", "tagnt2.txt"):
+        with fetch(name).open(encoding="utf-8-sig") as f:
+            for line in f:
+                cols = line.rstrip("\n").split("\t")
+                m = TAGNT_REF.match(cols[0])
+                if not m:
+                    continue
+                book, ch, v, kch, kv, kind = m.groups()
+                # Solo palabras del texto tradicional (K/k): la RV1909 se tradujo del Textus Receptus
+                if "K" not in kind.upper():
+                    continue
+                if kch:
+                    ch, v = kch, kv
+                greek, _, translit = cols[1].partition(" (")
+                strong, _, morph = cols[3].partition("=")
+                lemma, _, lemma_gloss = cols[4].partition("=")
+                by_chapter[(STEP_TO_ID[book], ch)][v].append([
+                    greek.strip(),
+                    translit.rstrip(")").strip(),
+                    cols[8].strip(),
+                    cols[2].strip(),
+                    lemma.strip(),
+                    lemma_gloss.strip(),
+                    strong.strip(),
+                    morph.strip(),
+                ])
+    for (bid, ch), verses in by_chapter.items():
+        write(out, f"interlinear/{bid}/{ch}.json", verses)
+
+
+def main():
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "public" / "data"
+    chapters = build_text(out)
+    build_xrefs(out)
+    build_interlinear(out)
+    books = [
+        {"id": b[0], "name": b[1], "abbr": b[2], "chapters": chapters[b[0]],
+         "testament": "NT" if b[4] else "AT", "interlinear": bool(b[4]), "ewSlug": b[5]}
+        for b in BOOKS
+    ]
+    write(out, "books.json", books)
+    print(f"Listo: {out}")
+
+
+if __name__ == "__main__":
+    main()
