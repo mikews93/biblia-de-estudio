@@ -11,18 +11,18 @@
   "modelo": "eleven_v4",
   "idioma": "es",
   "voces": {
-    "NARRADOR": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": null },
-    "JUAN": { "ficha": "personajes.md#juan-el-bautista", "buscar": { "gender": "male", "age": "young", "use_cases": "characters_animation" }, "voice_id": null },
+    "NARRADOR": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": "dlGxemPxFMTY7iXagmOj" },
+    "JUAN": { "ficha": "personajes.md#juan-el-bautista", "buscar": { "gender": "male", "age": "young", "use_cases": "characters_animation" }, "voice_id": "WOY6pnQ1WCg0mrOZ54lM" },
     "DIOS_1": { "dios": true, "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "old", "use_cases": "narrative_story" }, "voice_id": null },
     "DIOS_2": { "dios": true, "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": null },
     "DIOS_3": { "dios": true, "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "young", "use_cases": "narrative_story" }, "voice_id": null },
-    "JESUS": { "ficha": "personajes.md#jesús", "buscar": { "gender": "male", "age": "young", "use_cases": "narrative_story" }, "voice_id": null },
-    "ESPIRITU": { "ficha": "personajes.md#espíritu-inmundo", "buscar": { "gender": "male", "age": "old", "use_cases": "characters_animation" }, "voice_id": null },
-    "GENTE_1": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": null },
-    "GENTE_2": { "buscar": { "gender": "female", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": null },
-    "GENTE_3": { "buscar": { "gender": "male", "age": "old", "use_cases": "conversational" }, "voice_id": null },
-    "SIMON": { "ficha": "personajes.md#simón-pedro", "acento_distinto": true, "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": null },
-    "LEPROSO": { "ficha": "personajes.md#leproso", "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "characters_animation" }, "voice_id": null }
+    "JESUS": { "ficha": "personajes.md#jesús", "buscar": { "gender": "male", "age": "young", "use_cases": "narrative_story" }, "voice_id": "qRUgOhnxGASxirG4fKjv" },
+    "ESPIRITU": { "ficha": "personajes.md#espíritu-inmundo", "buscar": { "gender": "male", "age": "old", "use_cases": "characters_animation" }, "voice_id": "Yb8JGzcZyW5YYzenhRCm" },
+    "GENTE_1": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": "94zOad0g7T7K4oa7zhDq" },
+    "GENTE_2": { "buscar": { "gender": "female", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": "iBGVhgcEZS6A5gTOjqSJ" },
+    "GENTE_3": { "buscar": { "gender": "male", "age": "old", "use_cases": "conversational" }, "voice_id": "wfTWLJ20rcMqvU8gIiAB" },
+    "SIMON": { "ficha": "personajes.md#simón-pedro", "acento_distinto": true, "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": "ByVRQtaK1WDOvTmP1PKO" },
+    "LEPROSO": { "ficha": "personajes.md#leproso", "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "characters_animation" }, "voice_id": "CE9m1PQE2E76CKUkNL7C" }
   },
   "registros": {
     "aprobacion": {

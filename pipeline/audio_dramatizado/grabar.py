@@ -228,7 +228,19 @@ def pick_voices(guion: dict, guion_id: str, informe: dict) -> dict[str, str]:
     chosen: dict[str, str] = {}
     mine = account_voices()
     by_name = {v['name']: v['voice_id'] for v in mine}
-    used: set[str] = set()
+    # Las voces ya decididas (fijadas o en la cuenta) se reservan antes de buscar, para que una voz de Dios nunca
+    # coincida con la de un personaje que se elige más abajo en el guion.
+    owner: dict[str, str] = {}
+    # Primero los personajes y después Dios: si una voz de Dios coincide con la de un personaje, la cede.
+    for role, cfg in sorted(guion['voces'].items(), key=lambda item: bool(item[1].get('dios'))):
+        name = f'Biblia {guion_id} {role}' if cfg.get('dios') else f'Biblia {guion["libro"]} {role}'
+        vid = cfg.get('voice_id') or (by_name.get(name) if ENGINE != 'cloudflare' else None)
+        if vid and vid not in owner:
+            owner[vid] = role
+    used: set[str] = set(owner)
+    for v in mine:
+        if v['name'].startswith('Biblia ') and (v.get('sharing') or {}).get('original_voice_id'):
+            used.add(v['sharing']['original_voice_id'])
     elsewhere = god_voices_elsewhere(guion_id)
     accents: dict[str, str] = {}
     informe['voces'] = {}
@@ -240,7 +252,7 @@ def pick_voices(guion: dict, guion_id: str, informe: dict) -> dict[str, str]:
             continue
         # Las voces de Dios son de este capítulo y no se reutilizan en otros.
         name = f'Biblia {guion_id} {role}' if cfg.get('dios') else f'Biblia {guion["libro"]} {role}'
-        if name in by_name and ENGINE != 'cloudflare':
+        if name in by_name and ENGINE != 'cloudflare' and owner.get(by_name[name]) == role:
             chosen[role] = by_name[name]
             used.add(by_name[name])
             informe['voces'][role] = {'voice_id': by_name[name], 'ya_en_cuenta': True}
