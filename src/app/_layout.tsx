@@ -79,6 +79,7 @@ function AppStack() {
         <Stack.Screen name="planes/index" options={{ title: 'Planes de lectura' }} />
         <Stack.Screen name="planes/[id]" options={{ title: '' }} />
         <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
+        <Stack.Screen name="diario" options={{ title: 'Mi diario devocional' }} />
         <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
         <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
         <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />

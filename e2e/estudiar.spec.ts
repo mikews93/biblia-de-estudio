@@ -3,7 +3,7 @@
 
 import type { Page, Request } from '@playwright/test';
 
-import { conSesion, correoUnico, cuentaNueva, expect, peticionesIA, test } from './support/fixtures';
+import { conSesion, correoUnico, cuentaNueva, expect, modoProfundo, peticionesIA, test } from './support/fixtures';
 
 // «amó» en griego, tal como viene en los datos de STEPBible (con oxía, no con tonos)
 const AMO = 'ἠγ\u1f71πησεν';
@@ -11,6 +11,8 @@ const ESTUDIO = 'Estudio simulado del pasaje: Dios ama al mundo y da a su Hijo.'
 
 const esEstudio = (r: Request) => r.url().endsWith('/api/estudiar') && r.method() === 'POST';
 const panel = (page: Page, kicker = '✦ ESTUDIO') => page.getByRole('dialog').filter({ hasText: kicker });
+
+test.beforeEach(({ page }) => modoProfundo(page));
 
 test('sin cuenta, el estudio pide crearla y al registrarse sigue solo', async ({ page }) => {
   await page.goto('/juan/3/16');

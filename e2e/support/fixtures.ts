@@ -26,6 +26,13 @@ export async function conSesion(page: Page, cuenta: Cuenta) {
   }, JSON.stringify(cuenta));
 }
 
+/** Deja elegido el estudio profundo (el modo por omisión es el devocional guiado). */
+export async function modoProfundo(page: Page) {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('ajustes', JSON.stringify({ enfoque: 'profundo' }));
+  });
+}
+
 /** Peticiones que recibió la IA simulada cuyo primer mensaje o el último contienen `marca`. */
 export async function peticionesIA(request: APIRequestContext, marca: string) {
   const res = await request.get(`${AI}/__requests`);
