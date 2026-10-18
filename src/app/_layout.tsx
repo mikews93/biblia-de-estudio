@@ -20,6 +20,11 @@ function AppStack() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="[book]/[chapter]" options={{ title: '' }} />
         <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
+        <Stack.Screen name="comunidades/index" options={{ title: 'Comunidades' }} />
+        <Stack.Screen name="comunidades/[id]" options={{ title: '' }} />
+        <Stack.Screen name="comunidades/nuevo" options={{ title: 'Nuevo grupo' }} />
+        <Stack.Screen name="comunidades/cuenta" options={{ title: 'Tu cuenta' }} />
+        <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
       </Stack>
     </>
   );

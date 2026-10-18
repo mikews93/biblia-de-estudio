@@ -45,6 +45,22 @@ Variables en Vercel:
 
 En el teléfono, `EXPO_PUBLIC_API_URL` apunta a la web publicada.
 
+## Comunidades
+
+En `/comunidades` cada persona crea su cuenta solo con un nombre (y, si quiere, correo y contraseña para entrar desde otro dispositivo) y puede crear grupos privados para su iglesia, célula, familia o amigos. Se entra únicamente con el enlace `/unirse/CODIGO`.
+
+- **Plan de lectura en común:** un libro, un ritmo (1 a 3 capítulos al día) y una fecha de inicio. El grupo ve quién ya leyó la lectura de hoy, sin «me gusta» ni rankings, y una meta de la semana compartida (hasta 5 días por persona).
+- **Notas compartidas en un versículo:** pestaña «Grupo» del panel del versículo y pestaña «Notas» del grupo.
+- **Peticiones de oración** con «Estoy orando» y «Dios respondió».
+- **Preguntas para la reunión** sugeridas por la IA a partir del capítulo (RV1909). Solo propone preguntas al estilo del Estudio Bíblico de Descubrimiento; no escribe la enseñanza.
+
+Al marcar un capítulo como leído, la app lo avisa a los grupos de la persona.
+
+Todo pasa por `api/comunidades.ts`, una función de Vercel con Postgres. Variables en Vercel:
+
+- `DATABASE_URL` (o `POSTGRES_URL`): la base de Neon que crea la integración del Marketplace de Vercel. Las tablas se crean solas la primera vez.
+- `ANTHROPIC_API_KEY` para las preguntas de la reunión (la misma del estudio).
+
 ## Publicación
 
 La web está en https://biblia.migueblanco.com (proyecto `biblia-de-estudio` en Vercel). El DNS está en Cloudflare: un CNAME `biblia` → `cname.vercel-dns.com` sin proxy (nube gris), igual que `hoyvemos`. Mientras el MVP no esté en `main`, el dominio sigue la rama `claude/estudiar`; las publicaciones de esa rama son de tipo Preview, así que `ANTHROPIC_API_KEY` tiene que estar también en Preview.
@@ -56,4 +72,5 @@ La web está en https://biblia.migueblanco.com (proyecto `biblia-de-estudio` en 
 - `src/lib/data.ts`: carga de datos; `src/lib/refs.ts`: formato de referencias.
 - `src/components/StudyPanel.tsx` y `src/lib/estudio.ts`: estudio con IA.
 - `api/estudiar.ts`: función de Vercel que genera el estudio.
+- `api/comunidades.ts`, `src/lib/comunidad.ts`, `src/app/comunidades/` y `src/components/comunidad/`: comunidades.
 - `pipeline/`: generación de datos.

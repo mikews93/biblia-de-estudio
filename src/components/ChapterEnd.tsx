@@ -1,8 +1,11 @@
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useAccount } from '@/lib/comunidad';
 import { Book } from '@/lib/data';
 import { WEEKLY_GOAL, markChapterRead, useProgress, weekDays } from '@/lib/progress';
 import { Colors, serif } from '@/lib/theme';
+import { navigate } from '@/lib/transition';
 
 type Props = { book: Book; chapter: number; next: string | null; colors: Colors; onNext: () => void };
 
@@ -13,6 +16,7 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
   const done = readInBook.includes(chapter);
   const week = weekDays(progress.days);
   const daysThisWeek = week.filter((d) => d.read).length;
+  const { grupos } = useAccount();
 
   return (
     <View style={styles.wrap}>
@@ -53,6 +57,17 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
               ? `Terminaste ${book.name}.`
               : `${readInBook.length} de ${book.chapters} capítulos de ${book.name}`}
           </Text>
+          {grupos?.map((g) => (
+            <Pressable
+              key={g.id}
+              onPress={() => navigate(() => router.push(`/comunidades/${g.id}`), 'forward')}
+              style={[styles.group, { borderColor: colors.border }]}
+            >
+              <Text style={{ color: colors.text, fontSize: 13 }}>
+                {g.nombre}: {g.leyeronHoy} de {g.miembros} leyeron hoy ›
+              </Text>
+            </Pressable>
+          ))}
         </View>
       ) : (
         <Pressable
@@ -87,5 +102,6 @@ const styles = StyleSheet.create({
   bar: { height: 6, borderRadius: 3, alignSelf: 'stretch', marginTop: 16, overflow: 'hidden' },
   barFill: { height: 6, borderRadius: 3 },
   small: { fontSize: 12, marginTop: 6 },
+  group: { alignSelf: 'stretch', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, marginTop: 12, alignItems: 'center' },
   next: { borderRadius: 14, paddingVertical: 14, paddingHorizontal: 22, alignItems: 'center' },
 });

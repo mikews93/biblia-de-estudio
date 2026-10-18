@@ -13,11 +13,12 @@ import {
   getInterlinear,
   parseRef,
 } from '@/lib/data';
+import GroupNotes from '@/components/comunidad/GroupNotes';
 import { describeMorph } from '@/lib/morph';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-export type Tab = 'interlineal' | 'referencias' | 'comentario';
+export type Tab = 'interlineal' | 'referencias' | 'comentario' | 'grupo';
 
 type Props = {
   book: Book;
@@ -37,6 +38,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
     ['interlineal', 'Interlineal'],
     ['referencias', 'Referencias'],
     ['comentario', 'Comentario'],
+    ['grupo', 'Grupo'],
   ];
 
   return (
@@ -71,6 +73,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
             <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
           )}
           {tab === 'comentario' && <Commentary book={book} chapter={chapter} colors={colors} />}
+          {tab === 'grupo' && <GroupNotes book={book} books={books} chapter={chapter} verse={verse} onNavigate={onClose} />}
         </ScrollView>
       </View>
     </Modal>

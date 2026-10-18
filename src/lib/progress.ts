@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { reportReading } from './comunidad';
+
 // Progreso de lectura guardado en el dispositivo. La racha es semanal y perdona días:
 // cuenta cuántos días distintos se leyó en la semana, con una meta de 5 de 7.
 
@@ -36,6 +38,7 @@ export async function markChapterRead(book: string, chapter: number) {
   state = { chapters: { ...state.chapters, [book]: [...read].sort((a, b) => a - b) }, days };
   AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
   listeners.forEach((l) => l());
+  reportReading(book, chapter);
 }
 
 /** Lunes a domingo de la semana actual, con si hubo lectura ese día. */
