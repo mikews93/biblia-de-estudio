@@ -20,6 +20,7 @@ type ChapterAudio = {
   tracks: Track[];
   timestamps: [number, number][];
   credit: string;
+  note?: string;
 };
 
 export type AudioState = {

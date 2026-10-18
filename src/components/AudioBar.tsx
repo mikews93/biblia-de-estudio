@@ -142,6 +142,7 @@ function Bar() {
             <View style={styles.small} />
             <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]}>{clock(total)}</Text>
           </View>
+          {audio.audio.note && <Text style={[styles.note, { color: colors.muted }]}>{audio.audio.note}</Text>}
           <Text style={[styles.credit, { color: colors.muted }]} numberOfLines={2}>
             {audio.audio.credit}
           </Text>
@@ -174,5 +175,6 @@ const styles = StyleSheet.create({
   time: { fontSize: 12, width: 40, fontVariant: ['tabular-nums'] },
   small: { minWidth: 44, alignItems: 'center' },
   play: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  note: { fontSize: 12, textAlign: 'center', marginTop: 4 },
   credit: { fontSize: 10, textAlign: 'center', marginTop: 6 },
 });
