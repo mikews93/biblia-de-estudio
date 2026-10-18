@@ -1,12 +1,11 @@
 import * as Speech from 'expo-speech';
-import { useEffect, useRef, useState } from 'react';
 
-import { pauseAudio } from './audio';
 import { splitCites } from './herramientas';
 
 // Resumen en audio de un capítulo, al estilo de los «Audio Overviews» de NotebookLM: la IA escribe una
 // conversación entre Ana y Tomás y el teléfono la lee con sus voces en español (sin servidor de voz:
-// funciona igual en web, iOS y Android, y no cuesta nada por minuto escuchado).
+// funciona igual en web, iOS y Android, y no cuesta nada por minuto escuchado). Lo reproduce el reproductor único
+// (src/lib/audio.ts), como todo lo demás que suena en la app.
 
 export type Speaker = 'ana' | 'tomas';
 export type Line = { speaker: Speaker; text: string; cites: number[] };
@@ -41,12 +40,12 @@ export const minutes = (lines: Line[]) =>
 const FEMALE = /paulina|m[oó]nica|helena|laura|elvira|dalia|sabina|paloma|marisol|francisca|isabela|lucia|luc[ií]a|camila|valeria|elena|esperanza|google espa|female|mujer/i;
 const MALE = /jorge|diego|juan|pablo|carlos|[aá]lvaro|ra[uú]l|enrique|jos[eé]|gonzalo|andr[eé]s|tom[aá]s|male|hombre/i;
 
-type Voices = Record<Speaker, { voice?: string; pitch: number }>;
+export type Voices = Record<Speaker, { voice?: string; pitch: number }>;
 
 let voicesPromise: Promise<Voices> | null = null;
 
 /** Elige dos voces distintas en español; si el sistema tiene una sola, cambia el tono. */
-function pickVoices(): Promise<Voices> {
+export function pickVoices(): Promise<Voices> {
   // En la web la lista llega con «voiceschanged»; si el navegador no tiene voces, ese aviso no llega nunca.
   const timeout = new Promise<Speech.Voice[]>((resolve) => setTimeout(() => resolve([]), 1500));
   voicesPromise ??= Promise.race([Speech.getAvailableVoicesAsync(), timeout])
@@ -76,7 +75,7 @@ function pickVoices(): Promise<Voices> {
 }
 
 /** Trozos cortos: algunos navegadores cortan las frases muy largas a mitad. */
-function chunks(text: string): string[] {
+export function chunks(text: string): string[] {
   const parts = text.match(/[^.!?…]+[.!?…»"]*\s*/g) ?? [text];
   const out: string[] = [];
   for (const p of parts) {
@@ -85,81 +84,4 @@ function chunks(text: string): string[] {
     else out.push(p);
   }
   return out.map((s) => s.trim()).filter(Boolean);
-}
-
-export const RATES = [0.9, 1, 1.15, 1.3];
-
-/** Reproduce el guion con la voz del dispositivo. Pausar detiene la voz y reanudar repite la intervención. */
-export function usePodcastPlayer(lines: Line[]) {
-  const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [rate, setRate] = useState(1);
-  const token = useRef(0);
-  const linesRef = useRef(lines);
-  linesRef.current = lines;
-
-  const stop = () => {
-    token.current++;
-    Speech.stop();
-  };
-
-  const play = async (from: number, speed = rate) => {
-    stop();
-    const my = token.current;
-    const all = linesRef.current;
-    if (from >= all.length) {
-      setPlaying(false);
-      setIndex(0);
-      return;
-    }
-    pauseAudio();
-    setIndex(from);
-    setPlaying(true);
-    const voices = await pickVoices();
-    const line = all[from];
-    const parts = chunks(line.text);
-    const v = voices[line.speaker];
-    const speakPart = (i: number) => {
-      if (my !== token.current) return;
-      if (i >= parts.length) {
-        play(from + 1, speed);
-        return;
-      }
-      Speech.speak(parts[i], {
-        language: 'es',
-        voice: v.voice,
-        pitch: v.pitch,
-        rate: speed,
-        onDone: () => speakPart(i + 1),
-        onError: () => {
-          if (my === token.current) setPlaying(false);
-        },
-      });
-    };
-    speakPart(0);
-  };
-
-  useEffect(() => stop, []);
-
-  return {
-    index,
-    playing,
-    rate,
-    toggle: () => {
-      if (playing) {
-        stop();
-        setPlaying(false);
-      } else play(index);
-    },
-    jump: (i: number) => play(Math.max(0, Math.min(lines.length - 1, i))),
-    cycleRate: () => {
-      const next = RATES[(RATES.indexOf(rate) + 1) % RATES.length];
-      setRate(next);
-      if (playing) play(index, next);
-    },
-    stop: () => {
-      stop();
-      setPlaying(false);
-    },
-  };
 }

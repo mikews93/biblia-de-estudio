@@ -28,7 +28,7 @@ import {
   getVersions,
   original,
 } from '@/lib/data';
-import { playChapter } from '@/lib/audio';
+import { playChapter, playDramatized, recordingId, useCatalog } from '@/lib/audio';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
 import { useChapterNotes } from '@/lib/notas';
@@ -47,6 +47,7 @@ export default function Reader() {
 
   const colors = useColors();
   const { settings, update } = useSettings();
+  const catalog = useCatalog();
   const fontFamily = settings.font === 'serif' ? serif : sans;
   const size = settings.fontSize;
 
@@ -259,10 +260,20 @@ export default function Reader() {
                 onPress={() => playChapter(bookId, chapter, title)}
                 style={({ pressed }) => [styles.pill, { borderColor: colors.border }, pressed && styles.pressed]}
                 accessibilityRole="button"
-                accessibilityLabel="Escuchar el capítulo dramatizado"
+                accessibilityLabel="Escuchar la lectura del capítulo"
               >
                 <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>▶ Escuchar</Text>
               </Pressable>
+              {catalog.dramatizado.includes(recordingId(bookId, chapter)) && (
+                <Pressable
+                  onPress={() => playDramatized(bookId, chapter, title)}
+                  style={({ pressed }) => [styles.pill, { borderColor: colors.accent }, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Escuchar el capítulo dramatizado, con voces, efectos y música"
+                >
+                  <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>🎭 Dramatizado</Text>
+                </Pressable>
+              )}
             </View>
             <View style={styles.tools}>
               {(

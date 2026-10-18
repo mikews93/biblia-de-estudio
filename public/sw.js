@@ -44,6 +44,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   // Las descargas piden con no-store y guardan ellas mismas su copia.
   if (request.cache === 'no-store') return;
+  // Las grabaciones (MP3 de varios MB) llegan por trozos: el navegador las pide directo, sin pasar por la caché.
+  if (url.pathname.startsWith('/audio/') && url.pathname !== '/audio/index.json') return;
   // De las funciones solo se guardan los comentarios ya abiertos; la IA y la comunidad necesitan red.
   if (url.pathname.startsWith('/api/')) {
     if (url.pathname === '/api/comentario') event.respondWith(networkFirst(event, request));

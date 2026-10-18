@@ -1,10 +1,15 @@
-// Función de Vercel: audio dramatizado en español de Bible Brain (Faith Comes By Hearing).
-// La clave (BIBLE_BRAIN_KEY) solo vive aquí; la app recibe las URL firmadas, que caducan en un día.
-// Licencia de la API: gratis mientras la app sea gratis para quien la usa.
-//   GET /api/audio?versiones=1                 versiones dramatizadas en español disponibles
+// Función de Vercel: lectura en audio de un capítulo.
+// - Bible Brain (Faith Comes By Hearing): audio dramatizado en español. La clave (BIBLE_BRAIN_KEY) solo vive
+//   aquí; la app recibe las URL firmadas, que caducan en un día. Gratis mientras la app sea gratis.
+// - LibriVox: la Reina-Valera 1909 leída por voluntarios, de dominio público. Siempre disponible, y es la
+//   que suena si no hay clave o Bible Brain no tiene el capítulo.
+//   GET /api/audio?versiones=1                 versiones disponibles
 //   GET /api/audio?book=jhn&chapter=3[&bible=] pistas del capítulo, tiempos por versículo y créditos
 
+import { librivoxChapter } from './_librivox';
+
 const API = 'https://4.dbt.io/api';
+const LIBRIVOX = { id: 'rv1909', name: 'Reina-Valera 1909 (LibriVox)' };
 const KEY = process.env.BIBLE_BRAIN_KEY;
 // Orden de preferencia de versiones (ids de Bible Brain separados por comas); si no hay, se elige por nombre.
 const PREFERRED = (process.env.BIBLE_BRAIN_BIBLES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -94,9 +99,11 @@ async function credit(fileset: string, versionName: string): Promise<string> {
   return `Audio: ${versionName} · Faith Comes By Hearing (Bible Brain)`;
 }
 
+const testamentOf = (book: string) => (NT_BOOKS.has(book) ? 'nt' : 'ot');
+
 async function chapterAudio(book: string, chapter: number, bibleId?: string) {
   const versions = await getVersions();
-  const testament = NT_BOOKS.has(book) ? 'nt' : 'ot';
+  const testament = testamentOf(book);
   const usable = versions.filter((v) => v[testament]);
   const version = usable.find((v) => v.id === bibleId) ?? usable[0];
   if (!version) throw new HttpError(404, 'Todavía no hay audio dramatizado en español para este testamento.');
@@ -126,6 +133,20 @@ async function chapterAudio(book: string, chapter: number, bibleId?: string) {
   return { version: { id: version.id, name: version.name }, testament, tracks, timestamps, credit: text };
 }
 
+/** Bible Brain si hay clave; LibriVox si se elige, si no hay clave o si Bible Brain no tiene el capítulo. */
+async function anyAudio(book: string, chapter: number, bibleId?: string) {
+  if (KEY && bibleId !== LIBRIVOX.id) {
+    try {
+      return await chapterAudio(book, chapter, bibleId);
+    } catch (err) {
+      if (bibleId) throw err; // la persona eligió esa versión: se le dice por qué no suena
+    }
+  }
+  const audio = await librivoxChapter(book, chapter);
+  if (!audio) throw new HttpError(404, 'Este capítulo todavía no tiene audio.');
+  return { version: LIBRIVOX, testament: testamentOf(book), timestamps: [], ...audio };
+}
+
 function json(body: unknown, status = 200, cache?: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json; charset=utf-8' };
   if (cache) headers['Cache-Control'] = cache;
@@ -133,13 +154,16 @@ function json(body: unknown, status = 200, cache?: string) {
 }
 
 export async function GET(request: Request) {
-  if (!KEY) return json({ error: 'El audio todavía no está configurado.', code: 'sin_clave' }, 503);
   const query = new URL(request.url).searchParams;
   try {
     if (query.get('versiones')) {
-      const versions = await getVersions();
+      const dramatized = KEY ? await getVersions().catch(() => []) : [];
+      const versions = [
+        ...dramatized.map(({ id, name, nt, ot }) => ({ id, name, nt: !!nt, ot: !!ot })),
+        { ...LIBRIVOX, nt: true, ot: true },
+      ];
       return json(
-        { versions: versions.map(({ id, name, nt, ot }) => ({ id, name, nt: !!nt, ot: !!ot })) },
+        { versions },
         200,
         'public, s-maxage=43200, stale-while-revalidate=86400',
       );
@@ -149,7 +173,7 @@ export async function GET(request: Request) {
     if (!/^[1-3]?[a-z]{2,3}$/.test(book) || !Number.isInteger(chapter) || chapter < 1 || chapter > 150) {
       return json({ error: 'Falta el libro o el capítulo.' }, 400);
     }
-    const audio = await chapterAudio(book, chapter, query.get('bible') ?? undefined);
+    const audio = await anyAudio(book, chapter, query.get('bible') || undefined);
     // Las URL firmadas duran un día: una hora de caché en el CDN deja margen de sobra.
     return json(audio, 200, 'public, s-maxage=3600, stale-while-revalidate=600');
   } catch (err) {

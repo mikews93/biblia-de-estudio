@@ -1,0 +1,60 @@
+{
+  "id": "mrk-1-prueba-abel",
+  "titulo": "Marcos 1 (prueba: Abel)",
+  "duracion": 116.7,
+  "timestamps": [
+    [
+      1,
+      2.5
+    ],
+    [
+      2,
+      8.18
+    ],
+    [
+      3,
+      16.89
+    ],
+    [
+      4,
+      23.87
+    ],
+    [
+      5,
+      33.31
+    ],
+    [
+      6,
+      44.75
+    ],
+    [
+      7,
+      53.07
+    ],
+    [
+      8,
+      63.45
+    ],
+    [
+      9,
+      71.52
+    ],
+    [
+      10,
+      80.68
+    ],
+    [
+      11,
+      87.96
+    ],
+    [
+      12,
+      97.99
+    ],
+    [
+      13,
+      100.69
+    ]
+  ],
+  "credito": "Audio dramatizado: Marcos 1, Biblia en Español Sencillo (CC BY 4.0, ℗ AudioBiblia.org), con correcciones menores. Voces, efectos y música generados con ElevenLabs. Guion basado en Matthew Henry, Jamieson-Fausset-Brown y Josefo."
+}
