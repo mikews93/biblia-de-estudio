@@ -22,6 +22,9 @@
     "api/comentario.ts": {
       "includeFiles": "dist/**",
       "maxDuration": 120
+    },
+    "api/podcast-grabado.ts": {
+      "maxDuration": 300
     }
   },
   "rewrites": [
