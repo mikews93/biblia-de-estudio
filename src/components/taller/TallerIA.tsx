@@ -16,7 +16,9 @@ import {
 import { Markdown, Sources } from '@/components/StudyPanel';
 import { parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
+import { NeedsConnection } from '@/components/SinConexion';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { TallerRequest, Turn, askStudy } from '@/lib/estudio';
 import { verseHref } from '@/lib/routes';
 import { Mensaje, borradorParaIA, plantilla } from '@/lib/taller';
@@ -171,7 +173,11 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                   <Text style={{ color: colors.muted, marginTop: 10, textAlign: 'center' }}>Leyendo el pasaje y tu borrador…</Text>
                 </View>
               )}
-              {error === NEEDS_ACCOUNT ? (
+              {error === NEEDS_CONNECTION ? (
+                <View style={styles.waiting}>
+                  <NeedsConnection title="La IA necesita internet" intro="Tu borrador queda guardado en este dispositivo. Cuando vuelvas a tener conexión, la IA te hará preguntas y sugerencias." />
+                </View>
+              ) : error === NEEDS_ACCOUNT ? (
                 <View style={styles.waiting}>
                   <Welcome kind="ia" title="Prepara con IA" intro="Te hace preguntas y te sugiere ideas a partir del pasaje; el mensaje lo escribes tú. Solo necesitas una cuenta gratuita." onReady={() => run(lastHistory.current)} />
                 </View>

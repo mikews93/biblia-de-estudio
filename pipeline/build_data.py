@@ -468,7 +468,30 @@ def main():
         for b in BOOKS
     ]
     write(out, "books.json", books)
+    build_downloads(out, books)
     print(f"Listo: {out}")
+
+
+def build_downloads(out, books):
+    """Tamaño de cada libro por recurso, para la pantalla de descargas sin conexión (src/lib/descargas.ts).
+
+    {"text/rv1909": {"gen": [bytes]}, "paragraphs": {"gen": [bytes, [1, 3, …]]}}: la lista de capítulos
+    solo aparece cuando al libro le faltan archivos, para no pedirlos y recibir 404.
+    """
+    resources = [f"text/{v['id']}" for v in VERSIONS] + ["interlinear", "paragraphs", "xrefs"]
+    sizes = {}
+    for res in resources:
+        sizes[res] = {}
+        for b in books:
+            folder = out / res / b["id"]
+            files = {int(f.stem): f.stat().st_size for f in folder.glob("*.json")} if folder.is_dir() else {}
+            if not files:
+                continue
+            entry = [sum(files.values())]
+            if len(files) < b["chapters"]:
+                entry.append(sorted(files))
+            sizes[res][b["id"]] = entry
+    write(out, "descargas.json", sizes)
 
 
 if __name__ == "__main__":

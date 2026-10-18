@@ -26,16 +26,31 @@ export { original } from './original';
 
 export type CrossRef = [string, number];
 
+/** Dirección de un archivo de datos (books.json, text/rv1909/jhn/3.json…). */
+export const dataUrl = (path: string) => `${BASE}/${path}`;
+
+/** Error de un archivo que no se pudo pedir porque no hay conexión y no está guardado en el dispositivo. */
+export const NOT_DOWNLOADED = 'Sin conexión, y esto no está descargado en este dispositivo.';
+
 const cache = new Map<string, Promise<unknown>>();
 
 export function load<T>(path: string, optional = false): Promise<T> {
   let p = cache.get(path);
   if (!p) {
-    p = fetch(`${BASE}/${path}`).then((res) => {
-      if (res.ok) return res.json();
-      if (optional && res.status === 404) return {};
-      throw new Error(`No se pudo cargar ${path} (${res.status})`);
-    });
+    p = fetch(dataUrl(path)).then(
+      (res) => {
+        if (res.ok) return res.json();
+        if (optional && res.status === 404) return {};
+        throw new Error(`No se pudo cargar ${path} (${res.status})`);
+      },
+      () => {
+        // Sin red (y sin copia guardada): lo opcional queda vacío y lo demás avisa. No se recuerda, para
+        // volver a pedirlo cuando haya conexión.
+        cache.delete(path);
+        if (optional) return {};
+        throw new Error(NOT_DOWNLOADED);
+      },
+    );
     p.catch(() => cache.delete(path));
     cache.set(path, p);
   }

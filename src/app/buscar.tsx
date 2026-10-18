@@ -6,10 +6,12 @@ import { AccessibilityInfo, Animated, Platform, Pressable, ScrollView, StyleShee
 
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
+import { NeedsConnection } from '@/components/SinConexion';
 import MicIcon from '@/components/MicIcon';
 import SearchIcon from '@/components/SearchIcon';
 import { IdeaResult, addRecent, clearRecent, getRecent, searchByIdea } from '@/lib/buscar';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { Cita, citaLabel, parseCita } from '@/lib/cita';
 import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/lib/data';
 import { chapterHref, verseHref } from '@/lib/routes';
@@ -399,7 +401,16 @@ export default function Search() {
         </Appear>
       )}
 
-      {!listening && error && error !== NEEDS_ACCOUNT && (
+      {!listening && error === NEEDS_CONNECTION && (
+        <Appear style={{ marginTop: 8 }}>
+          <NeedsConnection
+            title="Buscar por idea necesita internet"
+            intro="La IA busca los pasajes en el servidor. Sin conexión puedes abrir una cita directamente, como «Juan 3:16» o «Sal 23»."
+          />
+        </Appear>
+      )}
+
+      {!listening && error && error !== NEEDS_ACCOUNT && error !== NEEDS_CONNECTION && (
         <Appear>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}>
             <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>{error}</Text>
