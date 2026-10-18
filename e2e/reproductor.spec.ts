@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import type { Locator, Page } from '@playwright/test';
 
-import { expect, test } from './support/fixtures';
+import { conSesion, cuentaNueva, expect, test } from './support/fixtures';
 
 // Reproductor único: el audio dramatizado (y todo lo que suena) va a la misma barra, sigue sonando al cambiar
 // de pantalla y se anuncia a la Media Session del navegador para controlarlo desde la pantalla de bloqueo.
@@ -58,5 +58,33 @@ test.describe('Reproductor único', () => {
     await page.goto('/marcos/1');
     await expect(v(page.getByRole('button', { name: 'Escuchar la lectura del capítulo' }))).toBeVisible();
     await expect(page.getByRole('button', { name: /dramatizado/ })).toHaveCount(0);
+  });
+
+  test('el pódcast con voces naturales se graba al pedirlo y suena en la barra', async ({ page, request }, info) => {
+    // Cada proyecto usa su capítulo: el guion lo prepara la IA simulada y el servidor lo guarda para todos.
+    const cap = info.project.name === 'movil' ? 14 : 15;
+    await page.route('**/audio/index.json', (r) => r.fulfill({ json: { dramatizado: [], podcast: [] } }));
+    let grabado = false;
+    await page.route('**/api/podcast-grabado**', async (r) => {
+      if (r.request().method() === 'POST') {
+        await new Promise((ok) => setTimeout(ok, 600));
+        grabado = true;
+      }
+      await r.fulfill({
+        json: grabado ? { estado: 'listo', url: '/prueba/podcast.mp3', duracion: 12, credito: 'Voces de prueba' } : { estado: 'ninguno' },
+      });
+    });
+    await page.route('**/prueba/podcast.mp3', (r) => r.fulfill({ body: TONO, contentType: 'audio/mpeg' }));
+    await conSesion(page, await cuentaNueva(request, 'Oyente'));
+
+    await page.goto(`/podcast/juan/${cap}`);
+    await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
+    await v(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' })).click();
+    await expect(v(page.getByText('Grabando con voces naturales…'))).toBeVisible();
+    await v(page.getByRole('button', { name: 'Escuchar la versión grabada con voces naturales' })).click();
+
+    await expect(v(page.getByText('Pódcast · Ana y Tomás'))).toBeVisible();
+    await expect(v(page.getByText('Voces de prueba'))).toBeVisible();
+    await expect(v(page.getByRole('button', { name: 'Pausa' }))).toBeVisible();
   });
 });

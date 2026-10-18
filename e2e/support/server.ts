@@ -23,7 +23,7 @@ process.env.DATA_DIR = path.join(DIST, 'data');
 
 type Handler = (request: Request) => Promise<Response>;
 const handlers = new Map<string, Promise<Record<string, Handler>>>();
-const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar'];
+const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar', 'podcast-grabado'];
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
