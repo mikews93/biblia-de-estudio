@@ -108,7 +108,7 @@ export default function Reader() {
       i += 1;
       ch = 1;
     }
-    navigate(() => router.replace(chapterHref(books[i].id, ch)), delta > 0 ? 'forward' : 'back');
+    navigate(() => router.replace(chapterHref(books[i].id, ch)), delta > 0 ? 'turn-forward' : 'turn-back');
   };
 
   const select = (n: number) => setSelected(selected === n ? null : n);

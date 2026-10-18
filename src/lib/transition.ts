@@ -1,14 +1,14 @@
 import { Platform, type ViewStyle } from 'react-native';
 
-export type Direction = 'forward' | 'back' | 'fade';
+export type Direction = 'forward' | 'back' | 'fade' | 'turn-forward' | 'turn-back';
 
 type ViewTransitionDocument = Document & {
   startViewTransition?: (update: () => Promise<void>) => { finished: Promise<void> };
 };
 
 /**
- * Cambia de pantalla con una View Transition en la web (deslizamiento corto o fundido, ver
- * public/index.html). En el teléfono y en navegadores sin soporte navega sin más: allí anima el Stack.
+ * Cambia de pantalla con una View Transition en la web (deslizamiento corto, fundido o pasar la hoja
+ * entre capítulos, ver public/index.html). En el teléfono y en navegadores sin soporte navega sin más: allí anima el Stack.
  */
 export function navigate(update: () => void, direction: Direction = 'fade') {
   const doc = Platform.OS === 'web' ? (globalThis.document as ViewTransitionDocument | undefined) : undefined;

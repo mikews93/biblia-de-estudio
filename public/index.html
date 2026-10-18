@@ -68,6 +68,28 @@
         animation-duration: 160ms;
         animation-timing-function: ease;
       }
+      /* Capítulo siguiente o anterior: se pasa la hoja. Hacia adelante la página actual gira sobre su borde
+         izquierdo y deja ver la nueva debajo; hacia atrás la anterior vuelve a caer encima. Sin fundidos. */
+      html[data-nav='turn-forward']::view-transition-old(root),
+      html[data-nav='turn-back']::view-transition-new(root) {
+        z-index: 2;
+        transform-origin: left center;
+        backface-visibility: hidden;
+        animation: vt-turn-away 460ms cubic-bezier(0.45, 0, 0.2, 1) both;
+      }
+      html[data-nav='turn-back']::view-transition-new(root) { animation-name: vt-turn-in; }
+      html[data-nav='turn-forward']::view-transition-new(root) { animation: vt-uncover 460ms ease both; }
+      html[data-nav='turn-back']::view-transition-old(root) { animation: vt-cover 460ms ease both; }
+      @keyframes vt-turn-away {
+        from { transform: perspective(1800px) rotateY(0deg); }
+        to { transform: perspective(1800px) rotateY(-100deg); filter: brightness(0.7); }
+      }
+      @keyframes vt-turn-in {
+        from { transform: perspective(1800px) rotateY(-100deg); filter: brightness(0.7); }
+        to { transform: perspective(1800px) rotateY(0deg); }
+      }
+      @keyframes vt-uncover { from { filter: brightness(0.82); } }
+      @keyframes vt-cover { to { filter: brightness(0.82); } }
       @keyframes vt-fade-in { from { opacity: 0; } }
       @keyframes vt-fade-out { to { opacity: 0; } }
       @keyframes vt-from-right { from { transform: translateX(28px); } }

@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { useEffect } from 'react';
+import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
 import TabBar from '@/components/TabBar';
@@ -19,6 +20,12 @@ const fixedHeader = {
 
 function AppStack() {
   const colors = useColors();
+
+  // Fondo de la página con el color del tema: lo que se ve debajo durante las transiciones. Si quedaba
+  // blanco, el fundido entre pantallas destellaba (sobre todo en modo oscuro y sepia).
+  useEffect(() => {
+    if (Platform.OS === 'web') document.documentElement.style.backgroundColor = colors.background;
+  }, [colors.background]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
