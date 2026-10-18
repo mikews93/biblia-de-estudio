@@ -67,6 +67,7 @@ export function indexAudiobooks(audiobooks: Audiobook[]): Map<string, Clip[]> {
       if (books.length === 1) {
         const ch = chapters(title);
         if (ch) add(books[0], clip(ch[0], ch[1]));
+        else if (sections.length === 1) add(books[0], clip(1, WHOLE_BOOK)); // «Jonás», «Carta del Apóstol Judas»
         else if (!numbered && Number(s.section_number)) add(books[0], clip(Number(s.section_number), Number(s.section_number)));
         continue;
       }
