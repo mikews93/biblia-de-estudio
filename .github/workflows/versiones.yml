@@ -1,0 +1,42 @@
+name: Versiones de la Biblia
+
+# Descarga de eBible.org las versiones en USFM (blm, rvg) con pipeline/fetch_versions.py y sube los archivos
+# pipeline/versions/*.json.gz a la misma rama. Se usa porque eBible.org no se puede abrir desde todos los entornos
+# de desarrollo. Se lanza al cambiar el script o a mano desde la pestaña Actions.
+
+on:
+  push:
+    paths:
+      - pipeline/fetch_versions.py
+      - .github/workflows/versiones.yml
+  workflow_dispatch:
+    inputs:
+      versiones:
+        description: Versiones a descargar (separadas por espacios)
+        default: blm rvg
+
+permissions:
+  contents: write
+
+jobs:
+  descargar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Texto de la RV1909 para comparar la numeración
+        run: |
+          mkdir -p pipeline/.cache
+          python3 -c "import sys; sys.path.insert(0, 'pipeline'); import build_data; build_data.fetch('rv1909.json')"
+      - name: Descargar
+        run: python3 pipeline/fetch_versions.py ${{ github.event.inputs.versiones || 'blm rvg' }}
+      - name: Subir los archivos si cambiaron
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pipeline/versions
+          if git diff --cached --quiet; then echo "Sin cambios."; exit 0; fi
+          git commit -m "Versiones descargadas de eBible.org"
+          git push

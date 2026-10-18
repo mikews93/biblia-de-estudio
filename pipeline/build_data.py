@@ -271,6 +271,7 @@ def build_hebrew(out):
 
 VERSIONS = [
     {"id": "rv1909", "name": "Reina-Valera 1909", "abbr": "RV1909", "credit": "Reina-Valera 1909 · dominio público"},
+    {"id": "rv1865", "name": "Reina-Valera 1865", "abbr": "RV1865", "credit": "Reina-Valera 1865 · dominio público"},
     {"id": "bes", "name": "La Biblia en Español Sencillo", "abbr": "BES",
      "credit": "La Biblia en Español Sencillo · AudioBiblia.org, Irma Flores · dominio público"},
     {"id": "pdt", "name": "Palabra de Dios para ti", "abbr": "PDT",
