@@ -5,21 +5,24 @@ import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, T
 import {
   Book,
   CrossRef,
+  Place,
   Word,
   enduringWordUrl,
   formatRef,
   getChapter,
   getCrossRefs,
   getInterlinear,
+  getPlaces,
   parseRef,
 } from '@/lib/data';
 import GroupNotes from '@/components/comunidad/GroupNotes';
+import PlaceMap from '@/components/PlaceMap';
 import { describeMorph } from '@/lib/morph';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
-export type Tab = 'interlineal' | 'referencias' | 'comentario' | 'grupo';
+export type Tab = 'interlineal' | 'referencias' | 'mapa' | 'comentario' | 'grupo';
 
 type Props = {
   book: Book;
@@ -38,6 +41,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
   const tabs: [Tab, string][] = [
     ['interlineal', 'Interlineal'],
     ['referencias', 'Referencias'],
+    ['mapa', 'Mapa'],
     ['comentario', 'Comentario'],
     ['grupo', 'Grupo'],
   ];
@@ -55,7 +59,12 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
         <Text style={[styles.verseText, { color: colors.text }]} numberOfLines={3}>
           {text}
         </Text>
-        <View style={[styles.tabs, { borderColor: colors.border }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={[styles.tabs, { borderColor: colors.border }]}
+          contentContainerStyle={{ flexGrow: 0 }}
+        >
           {tabs.map(([key, label]) => (
             <Pressable
               key={key}
@@ -67,12 +76,13 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
               <Text style={{ color: tab === key ? colors.text : colors.muted, fontWeight: '600' }}>{label}</Text>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
         <ScrollView contentContainerStyle={styles.body}>
           {tab === 'interlineal' && <Interlinear book={book} chapter={chapter} verse={verse} colors={colors} />}
           {tab === 'referencias' && (
             <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
           )}
+          {tab === 'mapa' && <Places book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />}
           {tab === 'comentario' && <Commentary book={book} chapter={chapter} colors={colors} />}
           {tab === 'grupo' && <GroupNotes book={book} books={books} chapter={chapter} verse={verse} onNavigate={onClose} />}
         </ScrollView>
@@ -202,6 +212,49 @@ function RefRow({ refId, books, colors, onNavigate }: { refId: string; books: Bo
   );
 }
 
+function Places({
+  book,
+  chapter,
+  verse,
+  colors,
+  onNavigate,
+}: {
+  book: Book;
+  chapter: number;
+  verse: number;
+  colors: Colors;
+  onNavigate: () => void;
+}) {
+  const [places, setPlaces] = useState<Place[] | null>(null);
+
+  useEffect(() => {
+    getPlaces(book.id, chapter).then(setPlaces);
+  }, [book, chapter]);
+
+  if (!places) return <ActivityIndicator color={colors.accent} />;
+  if (!places.length) return <Text style={{ color: colors.muted }}>Este capítulo no nombra lugares que se puedan ubicar.</Text>;
+  const here = places.filter((p) => p.verses.includes(verse));
+
+  return (
+    <View>
+      <Text style={[styles.hint, { color: colors.muted }]}>
+        {here.length
+          ? `En este versículo: ${here.map((p) => p.name).join(', ')}. En gris, los demás lugares del capítulo.`
+          : 'Este versículo no nombra lugares; estos son los del capítulo.'}
+      </Text>
+      <PlaceMap
+        places={places}
+        verse={verse}
+        colors={colors}
+        onVerse={(v) => {
+          onNavigate();
+          navigate(() => router.push(verseHref(book.id, chapter, v)), 'forward');
+        }}
+      />
+    </View>
+  );
+}
+
 function Commentary({ book, chapter, colors }: { book: Book; chapter: number; colors: Colors }) {
   return (
     <View>
@@ -245,8 +298,8 @@ const styles = StyleSheet.create({
   handle: { width: 40, height: 4, borderRadius: 2 },
   ref: { fontSize: 15, fontWeight: '700' },
   verseText: { fontFamily: serif, fontSize: 16, lineHeight: 24, marginTop: 4 },
-  tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 12 },
-  tab: { paddingVertical: 10, marginRight: 20, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabs: { flexGrow: 0, borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 12 },
+  tab: { paddingVertical: 10, marginRight: 18, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   body: { paddingVertical: 16, paddingBottom: 40 },
   words: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   word: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minWidth: 64 },
