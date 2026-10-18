@@ -1,4 +1,5 @@
-import { createContext, useContext } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createContext, createElement, ReactNode, useContext, useEffect, useState } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
 const light = {
@@ -10,9 +11,24 @@ const light = {
   accent: '#8A4B2A',
   accentSoft: '#F3E6DC',
   highlight: '#FFF1C7',
+  greek: '#2F4A6B',
 };
 
-const dark: typeof light = {
+export type Colors = typeof light;
+
+const sepia: Colors = {
+  background: '#F4ECD8',
+  surface: '#FBF5E6',
+  text: '#3B2F22',
+  muted: '#7A6A55',
+  border: '#E0D3B8',
+  accent: '#8A4B2A',
+  accentSoft: '#EADBC0',
+  highlight: '#F2DFA6',
+  greek: '#3D5470',
+};
+
+const dark: Colors = {
   background: '#151311',
   surface: '#1E1B18',
   text: '#EDE7DE',
@@ -21,23 +37,85 @@ const dark: typeof light = {
   accent: '#E0A07A',
   accentSoft: '#3A2A20',
   highlight: '#4A3F1E',
+  greek: '#9DB8D9',
 };
 
-export type Colors = typeof light;
+export type ThemeName = 'auto' | 'claro' | 'sepia' | 'oscuro';
 
-export function useColors(): Colors {
-  return useColorScheme() === 'dark' ? dark : light;
+export type Settings = {
+  theme: ThemeName;
+  fontSize: number;
+  font: 'serif' | 'sans';
+  layout: 'parrafo' | 'versiculo';
+  study: boolean;
+};
+
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false };
+const KEY = 'ajustes';
+
+type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };
+
+const SettingsContext = createContext<Ctx>({ settings: DEFAULTS, update: () => {} });
+
+export function SettingsProvider({ children }: { children: ReactNode }) {
+  const [settings, setSettings] = useState(DEFAULTS);
+
+  useEffect(() => {
+    AsyncStorage.getItem(KEY)
+      .then((raw) => raw && setSettings((s) => ({ ...s, ...JSON.parse(raw) })))
+      .catch(() => {});
+  }, []);
+
+  const update = (patch: Partial<Settings>) =>
+    setSettings((s) => {
+      const next = { ...s, ...patch };
+      AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+
+  return createElement(SettingsContext.Provider, { value: { settings, update } }, children);
 }
 
-export const FontSizeContext = createContext<{ size: number; setSize: (n: number) => void }>({
-  size: 19,
-  setSize: () => {},
-});
+export const useSettings = () => useContext(SettingsContext);
 
-export const useFontSize = () => useContext(FontSizeContext);
+export function useColors(): Colors {
+  const scheme = useColorScheme();
+  const { theme } = useSettings().settings;
+  if (theme === 'sepia') return sepia;
+  if (theme === 'oscuro' || (theme === 'auto' && scheme === 'dark')) return dark;
+  return light;
+}
+
+export const isDark = (c: Colors) => c === dark;
 
 export const serif = Platform.select({
   web: 'Georgia, "Iowan Old Style", "Times New Roman", serif',
   ios: 'Georgia',
   default: 'serif',
 });
+
+export const sans = Platform.select({
+  web: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  default: undefined,
+});
+
+export const themeSwatches: { name: ThemeName; label: string; colors: Colors | null }[] = [
+  { name: 'auto', label: 'Auto', colors: null },
+  { name: 'claro', label: 'Claro', colors: light },
+  { name: 'sepia', label: 'Sepia', colors: sepia },
+  { name: 'oscuro', label: 'Oscuro', colors: dark },
+];
+
+const LAST = 'ultima-lectura';
+
+export const saveLastRead = (book: string, chapter: number) =>
+  AsyncStorage.setItem(LAST, JSON.stringify({ book, chapter })).catch(() => {});
+
+export async function getLastRead(): Promise<{ book: string; chapter: number } | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LAST);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}

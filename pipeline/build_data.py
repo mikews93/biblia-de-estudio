@@ -92,6 +92,7 @@ def build_xrefs(out):
 
 def build_interlinear(out):
     by_chapter = defaultdict(lambda: defaultdict(list))
+    paragraph_ends = defaultdict(set)
     for name in ("tagnt1.txt", "tagnt2.txt"):
         with fetch(name).open(encoding="utf-8-sig") as f:
             for line in f:
@@ -106,6 +107,10 @@ def build_interlinear(out):
                 if kch:
                     ch, v = kch, kv
                 greek, _, translit = cols[1].partition(" (")
+                # ¶ marca el final de un párrafo en el griego: lo usamos para dividir el texto en párrafos
+                if "¶" in greek:
+                    paragraph_ends[(STEP_TO_ID[book], ch)].add(int(v))
+                    greek = greek.replace("¶", "")
                 strong, _, morph = cols[3].partition("=")
                 lemma, _, lemma_gloss = cols[4].partition("=")
                 by_chapter[(STEP_TO_ID[book], ch)][v].append([
@@ -120,6 +125,8 @@ def build_interlinear(out):
                 ])
     for (bid, ch), verses in by_chapter.items():
         write(out, f"interlinear/{bid}/{ch}.json", verses)
+    for (bid, ch), ends in paragraph_ends.items():
+        write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
 
 
 def main():

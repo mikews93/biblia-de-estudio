@@ -13,9 +13,10 @@ import {
   getInterlinear,
   parseRef,
 } from '@/lib/data';
+import { describeMorph } from '@/lib/morph';
 import { Colors, serif, useColors } from '@/lib/theme';
 
-type Tab = 'interlineal' | 'referencias' | 'comentario';
+export type Tab = 'interlineal' | 'referencias' | 'comentario';
 
 type Props = {
   book: Book;
@@ -23,12 +24,13 @@ type Props = {
   chapter: number;
   verse: number;
   text: string;
+  initialTab?: Tab;
   onClose: () => void;
 };
 
-export default function VersePanel({ book, books, chapter, verse, text, onClose }: Props) {
+export default function VersePanel({ book, books, chapter, verse, text, initialTab, onClose }: Props) {
   const colors = useColors();
-  const [tab, setTab] = useState<Tab>(book.interlinear ? 'interlineal' : 'referencias');
+  const [tab, setTab] = useState<Tab>(initialTab ?? (book.interlinear ? 'interlineal' : 'referencias'));
 
   const tabs: [Tab, string][] = [
     ['interlineal', 'Interlineal'],
@@ -105,7 +107,7 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
             Significado: {w[5]} · Traducción aquí: {w[2] || w[3]}
           </Text>
           <Text style={{ color: colors.muted, marginTop: 4, fontSize: 13 }}>
-            Strong {w[6]} · Morfología {w[7]}
+            {describeMorph(w[7])} · Strong {w[6]}
           </Text>
         </View>
       ) : (
@@ -118,7 +120,7 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
             onPress={() => setActive(active === i ? null : i)}
             style={[styles.word, { borderColor: active === i ? colors.accent : colors.border }]}
           >
-            <Text style={[styles.greek, { color: colors.text }]}>{greek}</Text>
+            <Text style={[styles.greek, { color: colors.greek }]}>{greek}</Text>
             <Text style={[styles.translit, { color: colors.muted }]}>{translit}</Text>
             <Text style={[styles.gloss, { color: colors.accent }]}>{es || '—'}</Text>
           </Pressable>

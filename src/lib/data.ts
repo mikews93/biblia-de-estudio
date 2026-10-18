@@ -75,3 +75,7 @@ export function formatRef(ref: string, books: Book[]): string {
 export function enduringWordUrl(book: Book, chapter: number) {
   return `https://enduringword.com/bible-commentary/es/${book.ewSlug}-${chapter}/`;
 }
+
+/** Versículos que cierran párrafo (solo NT, a partir del griego). */
+export const getParagraphEnds = (book: string, chapter: number) =>
+  load<number[]>(`paragraphs/${book}/${chapter}.json`, true).then((r) => (Array.isArray(r) ? r : []));

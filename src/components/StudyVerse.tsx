@@ -1,0 +1,58 @@
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { Word } from '@/lib/data';
+import { Colors, serif } from '@/lib/theme';
+
+type Props = {
+  n: number;
+  text: string;
+  words?: Word[];
+  refCount: number;
+  selected: boolean;
+  fontSize: number;
+  fontFamily?: string;
+  colors: Colors;
+  onSelect: () => void;
+  onWord: (index: number) => void;
+  onRefs: () => void;
+};
+
+/** Versículo en modo estudio: el texto, debajo el griego palabra por palabra y las referencias a un toque. */
+export default function StudyVerse({ n, text, words, refCount, selected, fontSize, fontFamily, colors, onSelect, onWord, onRefs }: Props) {
+  return (
+    <View style={[styles.block, { borderColor: colors.border }, selected && { backgroundColor: colors.highlight }]}>
+      <Pressable onPress={onSelect}>
+        <Text style={{ fontFamily, fontSize, lineHeight: fontSize * 1.55, color: colors.text }}>
+          <Text style={{ fontSize: fontSize * 0.62, color: colors.accent, fontWeight: '700' }}>{n} </Text>
+          {text}
+        </Text>
+      </Pressable>
+      {words && words.length > 0 && (
+        <View style={styles.words}>
+          {words.map(([greek, , es], i) => (
+            <Pressable key={i} onPress={() => onWord(i)} style={styles.word} accessibilityLabel={`${greek}, ${es}`}>
+              <Text style={{ fontFamily: serif, fontSize: fontSize * 0.82, color: colors.greek }}>{greek}</Text>
+              <Text style={{ fontSize: Math.max(11, fontSize * 0.55), color: colors.muted }} numberOfLines={1}>
+                {es || '·'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+      {refCount > 0 && (
+        <Pressable onPress={onRefs} style={[styles.chip, { backgroundColor: colors.accentSoft }]}>
+          <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '600' }}>
+            ↗ {refCount} {refCount === 1 ? 'referencia' : 'referencias'}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  block: { paddingVertical: 12, paddingHorizontal: 8, marginHorizontal: -8, borderRadius: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  words: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 6, marginTop: 8 },
+  word: { alignItems: 'center', maxWidth: 120 },
+  chip: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginTop: 10 },
+});

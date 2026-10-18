@@ -1,16 +1,14 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
 
-import { FontSizeContext, useColors } from '@/lib/theme';
+import { SettingsProvider, isDark, useColors } from '@/lib/theme';
 
-export default function RootLayout() {
+function AppStack() {
   const colors = useColors();
-  const [size, setSize] = useState(19);
 
   return (
-    <FontSizeContext.Provider value={{ size, setSize }}>
-      <StatusBar style="auto" />
+    <>
+      <StatusBar style={isDark(colors) ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
@@ -23,6 +21,14 @@ export default function RootLayout() {
         <Stack.Screen name="[book]/[chapter]" options={{ title: '' }} />
         <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
       </Stack>
-    </FontSizeContext.Provider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SettingsProvider>
+      <AppStack />
+    </SettingsProvider>
   );
 }
