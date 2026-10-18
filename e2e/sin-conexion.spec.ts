@@ -1,5 +1,5 @@
-// Sin conexión: descargar un libro desde «Sin conexión», leerlo sin internet (el service worker lo sirve de
-// lo descargado), el aviso en lo que no está descargado y en lo que necesita internet (comunidad, IA).
+// Sin conexión: descargar la traducción completa desde «Sin conexión», leerla sin internet (el service worker la
+// sirve de lo descargado), el aviso en lo que no está descargado y en lo que necesita internet (comunidad, IA).
 
 import type { Page } from '@playwright/test';
 
@@ -29,7 +29,12 @@ async function withServiceWorker(page: Page) {
   });
 }
 
-test('se descarga Judas y se lee sin conexión; lo demás avisa que necesita internet', async ({ page, context, request }) => {
+test('se descarga la traducción completa y se lee sin conexión; lo demás avisa que necesita internet', async ({
+  page,
+  context,
+  request,
+}) => {
+  test.setTimeout(120_000);
   const judas: [number, string][] = await (await request.get('/data/text/rv1909/jud/1.json')).json();
 
   await page.goto('/descargas');
@@ -37,20 +42,19 @@ test('se descarga Judas y se lee sin conexión; lo demás avisa que necesita int
   await expect(visible(page, 'Lee sin conexión')).toBeVisible();
   await expect(visible(page, 'Nada descargado aún')).toBeVisible();
 
-  // La versión que se lee va primero: se eligen libros y se toca Judas
+  // La versión que se lee va primero y se descarga entera
   const card = page.getByTestId('paquete-texto:rv1909');
   await expect(card.getByText('La que lees', { exact: true })).toBeVisible();
   await expect(card.getByText('Reina-Valera 1909', { exact: true })).toBeVisible();
-  await expect(card.getByRole('button', { name: /^Toda la Biblia · \d/ })).toBeVisible();
-  await card.getByRole('button', { name: 'Elegir libros' }).click();
-  await card.getByRole('checkbox', { name: 'Judas', exact: true }).click();
-  await expect(card.getByRole('checkbox', { name: 'Judas, descargado' })).toBeVisible({ timeout: 20_000 });
-  await expect(card.getByText('1 de 66 libros')).toBeVisible();
-  await expect(visible(page, /KB guardados/)).toBeVisible();
+  await card.getByRole('button', { name: /^Descargar la traducción completa · [\d,]+ MB$/ }).click();
+  await expect(card.getByRole('progressbar')).toBeVisible();
+  await expect(card.getByText('Descargada', { exact: true })).toBeVisible({ timeout: 90_000 });
+  await expect(card.getByRole('button', { name: /^Quitar · / })).toBeVisible();
+  await expect(visible(page, /MB guardados/)).toBeVisible();
 
-  // En la lista de libros, Judas aparece como disponible sin conexión
+  // En la lista de libros, todos aparecen disponibles sin conexión
   await page.goto('/libros');
-  await expect(page.getByLabel('Descargado para leer sin conexión')).toHaveCount(1);
+  await expect(page.getByLabel('Descargado para leer sin conexión')).toHaveCount(66);
 
   await offline(context, true);
 
@@ -59,7 +63,8 @@ test('se descarga Judas y se lee sin conexión; lo demás avisa que necesita int
   await expect(visible(page, judas[0][1].slice(0, 40))).toBeVisible();
   await expect(visible(page, 'Sin conexión')).toBeVisible();
 
-  // Romanos no está descargado
+  // Otra versión, no descargada, avisa
+  await page.evaluate(() => localStorage.setItem('ajustes', JSON.stringify({ version: 'bes' })));
   await page.goto('/romanos/1');
   await expect(visible(page, 'Este capítulo no está descargado')).toBeVisible();
   await visible(page, 'Ver lo que puedes leer sin conexión').click();
@@ -70,16 +75,12 @@ test('se descarga Judas y se lee sin conexión; lo demás avisa que necesita int
   await page.goto('/comunidades');
   await expect(visible(page, 'La comunidad necesita internet')).toBeVisible();
 
-  // Al volver la conexión desaparece el aviso
+  // Al volver la conexión desaparece el aviso, y quitar la versión la borra del dispositivo
   await offline(context, false);
   await page.goto('/descargas');
   await expect(visible(page, 'Con conexión')).toBeVisible();
   await expect(page.getByText('lees lo guardado')).toHaveCount(0);
-
-  // Quitar el libro lo borra del dispositivo
-  const again = page.getByTestId('paquete-texto:rv1909');
-  await again.getByRole('button', { name: 'Elegir libros' }).click();
-  await again.getByRole('checkbox', { name: 'Judas, descargado' }).click();
+  await page.getByTestId('paquete-texto:rv1909').getByRole('button', { name: /^Quitar · / }).click();
   await expect(visible(page, 'Nada descargado aún')).toBeVisible();
 });
 

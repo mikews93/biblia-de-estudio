@@ -55,7 +55,7 @@ export default function Descargas() {
           </View>
           <Text style={[styles.heroTitle, { color: colors.text }]}>Lee sin conexión</Text>
           <Text style={[text.body, { color: colors.muted, textAlign: 'center', maxWidth: 460 }]}>
-            Descarga las versiones y los libros que quieras. Se guardan en este dispositivo y se abren aunque no tengas internet: en el avión, en el campo o con pocos datos.
+            Descarga las traducciones completas que quieras. Se guardan en este dispositivo y se abren aunque no tengas internet: en el avión, en el campo o con pocos datos.
           </Text>
           <View style={styles.pills}>
             <View style={[styles.pill, { backgroundColor: colors.accentSoft }]} accessibilityLabel={online ? 'Con conexión' : 'Sin conexión'}>
@@ -102,11 +102,7 @@ export default function Descargas() {
                   tag={v.id === settings.version ? 'La que lees' : v.abbr}
                   subtitle={v.credit.replace(`${v.name} · `, '')}
                   quiet={v.id !== settings.version}
-                  options={[
-                    { label: 'Toda la Biblia', ids: ids() },
-                    { label: 'Antiguo Testamento', ids: ids('AT') },
-                    { label: 'Nuevo Testamento', ids: ids('NT') },
-                  ]}
+                  options={[{ label: 'Descargar la traducción completa', ids: ids() }]}
                 />
               </Appear>
             ))}
@@ -123,9 +119,9 @@ export default function Descargas() {
                   tag="Interlineal"
                   subtitle="Cada palabra en hebreo o en griego, con su significado y su forma (STEPBible, CC BY 4.0). Es lo que más ocupa."
                   options={[
-                    { label: 'Griego · Nuevo Testamento', ids: ids('NT') },
-                    { label: 'Hebreo · Antiguo Testamento', ids: ids('AT') },
-                    { label: 'Los dos', ids: ids() },
+                    { label: 'Hebreo y griego', ids: ids() },
+                    { label: 'Solo griego · NT', ids: ids('NT') },
+                    { label: 'Solo hebreo · AT', ids: ids('AT') },
                   ]}
                 />
               </Appear>
@@ -137,7 +133,7 @@ export default function Descargas() {
                   title="Referencias cruzadas"
                   tag="Versículos"
                   subtitle="Otros pasajes que hablan de lo mismo, en el panel de cada versículo (OpenBible.info, CC BY)."
-                  options={[{ label: 'Toda la Biblia', ids: ids() }]}
+                  options={[{ label: 'Descargar', ids: ids() }]}
                 />
               </Appear>
             </>
@@ -208,14 +204,13 @@ function PackCard({
   quiet?: boolean;
 }) {
   const colors = useColors();
-  const [picking, setPicking] = useState(false);
   const have = d.index[pack] ?? [];
   const job = d.jobs[pack];
   const all = d.books.map((b) => b.id);
   const complete = all.length > 0 && all.every((id) => have.includes(id));
   const missing = (ids: string[]) => ids.filter((id) => !have.includes(id));
   const fullSize = packBytes(d.manifest, pack, all);
-  const busyIds = job && !job.error ? job.books.filter((id) => !have.includes(id)) : [];
+  const pending = job ? job.books.filter((id) => !have.includes(id)).length : 0;
   const pct = job?.total ? Math.round((job.done / job.total) * 100) : 0;
   const status = complete ? 'Descargada' : have.length ? `${have.length} de ${all.length} libros` : null;
 
@@ -245,7 +240,7 @@ function PackCard({
               Descargando… {pct} %
               <Text style={{ color: colors.muted, fontWeight: '400' }}>
                 {'  '}
-                {job.books.length - busyIds.length} de {job.books.length} {job.books.length === 1 ? 'libro' : 'libros'}
+                {job.books.length - pending} de {job.books.length} {job.books.length === 1 ? 'libro' : 'libros'}
               </Text>
             </Text>
             <Pressable onPress={() => cancel(pack)} hitSlop={8} accessibilityRole="button">
@@ -271,7 +266,6 @@ function PackCard({
           ) : (
             options
               .filter((o) => missing(o.ids).length > 0)
-              .slice(0, picking ? undefined : 1)
               .map((o, i) => (
                 <ActionButton
                   key={o.label}
@@ -283,54 +277,12 @@ function PackCard({
                 />
               ))
           )}
-          <Pressable onPress={() => setPicking(!picking)} hitSlop={8} style={styles.pickToggle} accessibilityRole="button" accessibilityState={{ expanded: picking }}>
-            <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>{picking ? 'Listo' : 'Elegir libros'}</Text>
-          </Pressable>
         </View>
       )}
       {!job && !online && !complete && (
         <Text style={{ color: colors.muted, fontSize: 12, marginTop: 8 }}>Conéctate a internet para descargar.</Text>
       )}
 
-      {picking && (
-        <View style={{ marginTop: 14 }}>
-          {(['AT', 'NT'] as const).map((t) => (
-            <View key={t} style={{ marginBottom: 10 }}>
-              <Text style={[styles.testament, { color: colors.muted }]}>{t === 'AT' ? 'Antiguo Testamento' : 'Nuevo Testamento'}</Text>
-              <View style={styles.books}>
-                {d.books
-                  .filter((b) => b.testament === t)
-                  .map((b) => {
-                    const on = have.includes(b.id);
-                    const busy = busyIds.includes(b.id);
-                    return (
-                      <Pressable
-                        key={b.id}
-                        onPress={() => (on ? remove(pack, [b.id]) : download(pack, [b.id]))}
-                        disabled={busy || (!on && !online)}
-                        style={({ pressed }) => [
-                          styles.book,
-                          { borderColor: on ? colors.accent : colors.border },
-                          on && { backgroundColor: colors.accent },
-                          busy && { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft },
-                          pressed && { opacity: 0.7 },
-                        ]}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: on, busy }}
-                        accessibilityLabel={`${b.name}${on ? ', descargado' : ''}`}
-                      >
-                        {on && <CheckIcon color={colors.surface} size={12} />}
-                        {busy && <ActivityIndicator size="small" color={colors.accent} style={{ transform: [{ scale: 0.6 }], marginHorizontal: -4 }} />}
-                        <Text style={{ color: on ? colors.surface : colors.text, fontSize: 13, fontWeight: on ? '700' : '500' }}>{b.name}</Text>
-                      </Pressable>
-                    );
-                  })}
-              </View>
-            </View>
-          ))}
-          <Text style={{ color: colors.muted, fontSize: 12 }}>Toca un libro para descargarlo; si ya está, para quitarlo.</Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -392,10 +344,6 @@ const styles = StyleSheet.create({
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, padding: 12, marginTop: 14 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 14 },
   action: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10 },
-  pickToggle: { paddingHorizontal: 8, paddingVertical: 8 },
-  testament: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
-  books: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  book: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6 },
   netRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 12 },
   clearAll: { alignSelf: 'center', padding: 12, marginTop: 4 },
 });
