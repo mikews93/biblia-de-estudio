@@ -1,4 +1,3 @@
-import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +8,7 @@ import ReaderSettings from '@/components/ReaderSettings';
 import StudyPanel from '@/components/StudyPanel';
 import StudyVerse from '@/components/StudyVerse';
 import VersionPicker from '@/components/VersionPicker';
+import VerseImage from '@/components/VerseImage';
 import VersePanel, { Tab } from '@/components/VersePanel';
 import WordCard from '@/components/WordCard';
 import {
@@ -53,7 +53,7 @@ export default function Reader() {
   const [word, setWord] = useState<{ verse: number; index: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [study, setStudy] = useState<{ verse?: number } | null>(null);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const paragraphHeight = useRef(0);
@@ -119,12 +119,6 @@ export default function Reader() {
   const title = book ? `${book.name} ${chapter}` : '';
   const version = versions.find((v) => v.id === settings.version);
 
-  const copy = async () => {
-    if (!book || selected === null) return;
-    await Clipboard.setStringAsync(`«${selectedText}» ${book.name} ${chapter}:${selected} (${version?.abbr ?? 'RV1909'})`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -333,7 +327,7 @@ export default function Reader() {
               onPress={() => setPanelTab('referencias')}
             />
             <Action label="Comentario" icon="¶" colors={colors} onPress={() => setPanelTab('comentario')} />
-            <Action label={copied ? 'Copiado' : 'Copiar'} icon="⧉" colors={colors} onPress={copy} />
+            <Action label="Compartir" icon="⇪" colors={colors} onPress={() => setSharing(true)} />
           </View>
         </Appear>
       ) : (
@@ -372,6 +366,19 @@ export default function Reader() {
       )}
       {study && book && (
         <StudyPanel book={book} chapter={chapter} verse={study.verse} onClose={() => setStudy(null)} />
+      )}
+      {sharing && book && selected !== null && (
+        <VerseImage
+          verse={{
+            book: book.id,
+            chapter,
+            verse: selected,
+            text: selectedText,
+            reference: `${book.name} ${chapter}:${selected}`,
+            version: version?.abbr ?? 'RV1909',
+          }}
+          onClose={() => setSharing(false)}
+        />
       )}
       {showSettings && <ReaderSettings onClose={() => setShowSettings(false)} />}
       {showVersions && <VersionPicker versions={versions} onClose={() => setShowVersions(false)} />}

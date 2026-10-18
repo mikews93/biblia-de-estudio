@@ -69,6 +69,10 @@ Todo pasa por `api/comunidades.ts`, una función de Vercel con Postgres. Variabl
 - `DATABASE_URL` (o `POSTGRES_URL`): la base de Neon que crea la integración del Marketplace de Vercel. Las tablas se crean solas la primera vez.
 - `ANTHROPIC_API_KEY` para las preguntas de la reunión (la misma del estudio).
 
+## Compartir versículos
+
+El botón «Compartir» de la barra del versículo abre `src/components/VerseImage.tsx`: una imagen del versículo en formato publicación (1080×1080) o historia (1080×1920), con cuatro estilos, para compartir en redes o descargar, además de compartir o copiar el texto con su enlace. En web la imagen se dibuja en un canvas (`src/lib/compartir.ts`); en el teléfono se captura la vista previa con `react-native-view-shot` y se comparte con `expo-sharing`.
+
 ## Publicación
 
 La web está en https://biblia.migueblanco.com (proyecto `biblia-de-estudio` en Vercel). El DNS está en Cloudflare: un CNAME `biblia` → `cname.vercel-dns.com` sin proxy (nube gris), igual que `hoyvemos`. Mientras el MVP no esté en `main`, el dominio sigue la rama `claude/estudiar`; las publicaciones de esa rama son de tipo Preview, así que `ANTHROPIC_API_KEY` tiene que estar también en Preview.
