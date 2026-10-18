@@ -19,6 +19,8 @@ export function navigate(update: () => void, direction: Direction = 'fade') {
   const from = location.href;
   doc.documentElement.dataset.nav = direction;
   const transition = doc.startViewTransition(async () => {
+    // El pliegue de pasar la hoja solo aparece en el estado nuevo (ya tomada la foto del anterior).
+    if (direction.startsWith('turn')) doc.documentElement.dataset.fold = '';
     update();
     // El router pinta en el siguiente render: se espera a que cambie la URL y a un instante más.
     // No sirve requestAnimationFrame: el navegador no pinta mientras dura esta función, así que nunca
@@ -26,7 +28,10 @@ export function navigate(update: () => void, direction: Direction = 'fade') {
     for (let i = 0; i < 25 && location.href === from; i++) await tick();
     await tick();
   });
-  transition.finished.finally(() => delete doc.documentElement.dataset.nav);
+  transition.finished.finally(() => {
+    delete doc.documentElement.dataset.nav;
+    delete doc.documentElement.dataset.fold;
+  });
 }
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 12));

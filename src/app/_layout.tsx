@@ -24,7 +24,9 @@ function AppStack() {
   // Fondo de la página con el color del tema: lo que se ve debajo durante las transiciones. Si quedaba
   // blanco, el fundido entre pantallas destellaba (sobre todo en modo oscuro y sepia).
   useEffect(() => {
-    if (Platform.OS === 'web') document.documentElement.style.backgroundColor = colors.background;
+    if (Platform.OS !== 'web') return;
+    document.documentElement.style.backgroundColor = colors.background;
+    document.documentElement.style.setProperty('--papel', colors.background);
   }, [colors.background]);
 
   return (
@@ -75,6 +77,7 @@ function AppStack() {
       </Stack>
       <AudioBar />
       <TabBar />
+      {Platform.OS === 'web' && <View nativeID="pliegue" pointerEvents="none" style={fixedInTransition('pliegue')} />}
     </View>
   );
 }

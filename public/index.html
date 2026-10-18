@@ -68,28 +68,61 @@
         animation-duration: 160ms;
         animation-timing-function: ease;
       }
-      /* Capítulo siguiente o anterior: se pasa la hoja. Hacia adelante la página actual gira sobre su borde
-         izquierdo y deja ver la nueva debajo; hacia atrás la anterior vuelve a caer encima. Sin fundidos. */
+      /* Por encima del pliegue de pasar la hoja. */
+      ::view-transition-group(pestanas),
+      ::view-transition-group(cabecera),
+      ::view-transition-group(cabecera-izq),
+      ::view-transition-group(cabecera-titulo),
+      ::view-transition-group(cabecera-der),
+      ::view-transition-group(progreso),
+      ::view-transition-group(capitulos),
+      ::view-transition-group(audio) { z-index: 4; }
+      /* Capítulo siguiente o anterior: se pasa la hoja como papel. Hacia adelante un pliegue barre la página
+         de derecha a izquierda: a su derecha aparece el capítulo nuevo y a su izquierda se ve el dorso de la
+         hoja que se levanta, con su sombra. Hacia atrás es la misma película al revés. El pliegue es
+         #pliegue (src/app/_layout.tsx), que solo existe en el estado nuevo de la transición. */
+      #pliegue { display: none; }
+      html[data-fold] #pliegue {
+        display: block;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 44vw;
+        pointer-events: none;
+        background: linear-gradient(
+          to right,
+          rgba(0, 0, 0, 0) 0%,
+          rgba(0, 0, 0, 0.14) 6%,
+          color-mix(in srgb, var(--papel) 92%, black) 8%,
+          color-mix(in srgb, var(--papel) 80%, white) 45%,
+          color-mix(in srgb, var(--papel) 96%, white) 70%,
+          color-mix(in srgb, var(--papel) 86%, black) 79.4%,
+          rgba(0, 0, 0, 0.28) 79.5%,
+          rgba(0, 0, 0, 0.08) 88%,
+          rgba(0, 0, 0, 0) 100%
+        );
+      }
+      html[data-nav^='turn']::view-transition-group(pliegue) { z-index: 3; animation: vt-fold-sweep 560ms cubic-bezier(0.45, 0, 0.35, 1) both; }
+      html[data-nav^='turn']::view-transition-new(pliegue) { animation: none; }
       html[data-nav='turn-forward']::view-transition-old(root),
       html[data-nav='turn-back']::view-transition-new(root) {
         z-index: 2;
-        transform-origin: left center;
-        backface-visibility: hidden;
-        animation: vt-turn-away 460ms cubic-bezier(0.45, 0, 0.2, 1) both;
+        animation: vt-fold-clip 560ms cubic-bezier(0.45, 0, 0.35, 1) both;
       }
-      html[data-nav='turn-back']::view-transition-new(root) { animation-name: vt-turn-in; }
-      html[data-nav='turn-forward']::view-transition-new(root) { animation: vt-uncover 460ms ease both; }
-      html[data-nav='turn-back']::view-transition-old(root) { animation: vt-cover 460ms ease both; }
-      @keyframes vt-turn-away {
-        from { transform: perspective(1800px) rotateY(0deg); }
-        to { transform: perspective(1800px) rotateY(-100deg); filter: brightness(0.7); }
+      html[data-nav='turn-back']::view-transition-group(pliegue),
+      html[data-nav='turn-back']::view-transition-new(root) { animation-direction: reverse; }
+      html[data-nav='turn-forward']::view-transition-new(root),
+      html[data-nav='turn-back']::view-transition-old(root) { animation: none; }
+      /* El borde del pliegue (79,5 % del ancho de #pliegue) coincide en todo momento con el recorte de la hoja. */
+      @keyframes vt-fold-clip {
+        from { clip-path: polygon(0 0, 135% 0, 135% 100%, 0 100%); }
+        to { clip-path: polygon(0 0, -9% 0, -9% 100%, 0 100%); }
       }
-      @keyframes vt-turn-in {
-        from { transform: perspective(1800px) rotateY(-100deg); filter: brightness(0.7); }
-        to { transform: perspective(1800px) rotateY(0deg); }
+      @keyframes vt-fold-sweep {
+        from { transform: translateX(100vw); }
+        to { transform: translateX(-44vw); }
       }
-      @keyframes vt-uncover { from { filter: brightness(0.82); } }
-      @keyframes vt-cover { to { filter: brightness(0.82); } }
       @keyframes vt-fade-in { from { opacity: 0; } }
       @keyframes vt-fade-out { to { opacity: 0; } }
       @keyframes vt-from-right { from { transform: translateX(28px); } }
