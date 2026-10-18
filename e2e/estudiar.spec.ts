@@ -109,7 +109,7 @@ test('estudia el capítulo entero y sigue con una sugerencia', async ({ page, re
   await page.goto('/juan/3');
 
   const pedido = page.waitForRequest(esEstudio);
-  await page.getByRole('button', { name: '✦ Estudiar este capítulo' }).click();
+  await page.getByRole('button', { name: 'Estudiar este capítulo' }).click();
   const cuerpo = (await pedido).postDataJSON();
   expect(cuerpo).toMatchObject({ book: 'jhn', chapter: 3, messages: [] });
   expect(cuerpo.verse).toBeUndefined();

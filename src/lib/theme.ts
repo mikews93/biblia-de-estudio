@@ -58,8 +58,19 @@ type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };
 
 const SettingsContext = createContext<Ctx>({ settings: DEFAULTS, update: () => {} });
 
+/** En la web los ajustes se leen ya en el primer render: si no, la app se pinta un instante con el tema por defecto. */
+function initialSettings(): Settings {
+  if (Platform.OS !== 'web') return DEFAULTS;
+  try {
+    const raw = globalThis.localStorage?.getItem(KEY);
+    return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : DEFAULTS;
+  } catch {
+    return DEFAULTS;
+  }
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState(DEFAULTS);
+  const [settings, setSettings] = useState(initialSettings);
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)

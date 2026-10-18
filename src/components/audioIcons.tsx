@@ -1,5 +1,5 @@
 // Íconos del reproductor, con el mismo trazo que los de las pantallas de cuenta (comunidad/icons.tsx).
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Text as SvgText } from 'react-native-svg';
 
 type Props = { color: string; size?: number };
 
@@ -9,6 +9,7 @@ const Line = ({ size = 22, color, children }: Props & { children: React.ReactNod
   </Svg>
 );
 
+/** El triángulo tiene su centro de gravedad en el centro de la caja: así se ve centrado en un botón redondo. */
 export const PlayIcon = ({ size = 22, color }: Props) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path d="M8 5.2v13.6c0 .8.9 1.3 1.6.9l10.6-6.8c.6-.4.6-1.4 0-1.8L9.6 4.3C8.9 3.9 8 4.4 8 5.2z" fill={color} />
@@ -35,6 +36,28 @@ export const ForwardIcon = (p: Props) => (
     <Path d="M19.5 3.8v3.4h-3.4" />
   </Line>
 );
+
+/**
+ * Atrás o adelante unos segundos: la flecha en círculo con el número dentro, dibujado en el mismo SVG para que
+ * quede centrado en cualquier tamaño y tipo de letra.
+ */
+const Skip = ({ size = 26, color, seconds, forward }: Props & { seconds: number; forward?: boolean }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d={forward ? 'M19.4 9.2A8 8 0 1 1 15.6 4.8' : 'M4.6 9.2A8 8 0 1 0 8.4 4.8'}
+      stroke={color}
+      strokeWidth={1.7}
+      strokeLinecap="round"
+    />
+    <Path d={forward ? 'M15.4 2.2l.6 3.1-3.1.8' : 'M8.6 2.2 8 5.3l3.1.8'} stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+    <SvgText x={12} y={15.6} fill={color} fontSize={8} fontWeight="700" textAnchor="middle">
+      {seconds}
+    </SvgText>
+  </Svg>
+);
+
+export const SkipBackIcon = (p: Props & { seconds?: number }) => <Skip {...p} seconds={p.seconds ?? 10} />;
+export const SkipForwardIcon = (p: Props & { seconds?: number }) => <Skip {...p} seconds={p.seconds ?? 10} forward />;
 
 export const CloseIcon = (p: Props) => (
   <Line {...p}>

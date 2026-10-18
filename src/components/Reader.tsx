@@ -1,6 +1,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
@@ -36,7 +36,28 @@ import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
 import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
-import SearchIcon from '@/components/SearchIcon';
+import ReaderHeader, { HEADER_HEIGHT } from '@/components/ReaderHeader';
+import ToolButton from '@/components/ToolButton';
+import {
+  CardsIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  CommentaryIcon,
+  DramaIcon,
+  LecternIcon,
+  LinkIcon,
+  ListenIcon,
+  MindMapIcon,
+  PencilIcon,
+  ShareIcon,
+  SparkIcon,
+  TalkIcon,
+} from '@/components/icons';
+import { chrome, setChromeHidden, useAutoHide } from '@/lib/chrome';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function Reader() {
   const params = useLocalSearchParams<{ book: string; chapter: string; verse?: string; v?: string }>();
@@ -48,6 +69,8 @@ export default function Reader() {
   const colors = useColors();
   const { settings, update } = useSettings();
   const catalog = useCatalog();
+  const insets = useSafeAreaInsets();
+  const autoHide = useAutoHide();
   const fontFamily = settings.font === 'serif' ? serif : sans;
   const size = settings.fontSize;
 
@@ -84,6 +107,7 @@ export default function Reader() {
     setSelected(target);
     setPanelTab(null);
     setProgress(0);
+    setChromeHidden(false);
     getChapter(bookId, chapter, settings.version)
       .then(setVerses)
       .catch((e) => setError(String(e.message)));
@@ -124,7 +148,10 @@ export default function Reader() {
   usePageSwipe(neighbor);
 
   const select = (n: number) => setSelected(selected === n ? null : n);
-  const scrollToY = (y: number) => scroll.current?.scrollTo({ y: Math.max(0, y - 80), animated: false });
+  const scrollToY = (y: number) => {
+    autoHide.pause();
+    scroll.current?.scrollTo({ y: Math.max(0, y - 80), animated: false });
+  };
 
   // En modo párrafo no hay posición por versículo: se estima por la proporción de texto anterior
   const scrollToTargetInParagraph = () => {
@@ -177,123 +204,155 @@ export default function Reader() {
   const title = book ? `${book.name} ${chapter}` : '';
   const version = versions.find((v) => v.id === settings.version);
 
+  const chapterTools = [
+    {
+      key: 'escuchar',
+      label: 'Escuchar',
+      hint: 'Escuchar la lectura del capítulo',
+      icon: (c: string) => <ListenIcon color={c} size={22} />,
+      onPress: () => playChapter(bookId, chapter, title),
+    },
+    ...(catalog.dramatizado.includes(recordingId(bookId, chapter))
+      ? [
+          {
+            key: 'dramatizado',
+            label: 'Dramatizado',
+            hint: 'Escuchar el capítulo dramatizado, con voces, efectos y música',
+            icon: (c: string) => <DramaIcon color={c} size={22} />,
+            onPress: () => playDramatized(bookId, chapter, title),
+          },
+        ]
+      : []),
+    {
+      key: 'podcast',
+      label: 'Pódcast',
+      hint: 'Resumen del capítulo en audio, como una conversación',
+      icon: (c: string) => <TalkIcon color={c} size={22} />,
+      onPress: () => tool('podcast'),
+    },
+    {
+      key: 'mapa',
+      label: 'Mapa mental',
+      hint: 'Mapa mental del capítulo',
+      icon: (c: string) => <MindMapIcon color={c} size={22} />,
+      onPress: () => tool('mapa-mental'),
+    },
+    {
+      key: 'tarjetas',
+      label: 'Tarjetas',
+      hint: 'Tarjetas de repaso del capítulo',
+      icon: (c: string) => <CardsIcon color={c} size={22} />,
+      onPress: () => tool('tarjetas'),
+    },
+  ];
+
+  const verseActions =
+    selected === null || !book
+      ? []
+      : [
+          { key: 'estudiar', label: 'Estudiar', icon: (c: string) => <SparkIcon color={c} size={21} />, onPress: () => setStudy({ verse: selected }) },
+          ...(book.interlinear
+            ? [
+                {
+                  key: 'original',
+                  label: 'Original',
+                  icon: (c: string) => <Text style={[styles.letter, { color: c }]}>{original(book).icon}</Text>,
+                  onPress: () => setPanelTab('interlineal'),
+                },
+              ]
+            : []),
+          {
+            key: 'referencias',
+            label: 'Referencias',
+            badge: xrefs[String(selected)]?.length,
+            icon: (c: string) => <LinkIcon color={c} size={21} />,
+            onPress: () => setPanelTab('referencias'),
+          },
+          { key: 'comentario', label: 'Comentario', icon: (c: string) => <CommentaryIcon color={c} size={21} />, onPress: () => setPanelTab('comentario') },
+          { key: 'nota', label: notes[selected] ? 'Mi nota' : 'Nota', icon: (c: string) => <PencilIcon color={c} size={21} />, onPress: () => setWriting(true) },
+          { key: 'compartir', label: 'Compartir', icon: (c: string) => <ShareIcon color={c} size={21} />, onPress: () => setSharing(true) },
+          {
+            key: 'memorizar',
+            label: memorizing ? 'En repaso' : 'Memorizar',
+            icon: (c: string) => (memorizing ? <CheckIcon color={c} size={21} /> : <CardsIcon color={c} size={21} />),
+            onPress: memorize,
+          },
+          {
+            key: 'preparar',
+            label: 'Preparar',
+            icon: (c: string) => <LecternIcon color={c} size={21} />,
+            onPress: () => navigate(() => router.push(`/taller?libro=${book.id}&capitulo=${chapter}&versiculo=${selected}`), 'forward'),
+          },
+        ];
+
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Stack.Screen
-        options={{
-          title,
-          headerStyle: { backgroundColor: colors.background },
-          headerTitle: () => (
-            <Pressable onPress={() => navigate(() => router.push('/libros'))} accessibilityRole="button" accessibilityLabel="Elegir libro y capítulo">
-              <Text style={[styles.headerTitle, { color: colors.text }]}>{title} ▾</Text>
-            </Pressable>
-          ),
-          headerRight: () => (
-            <View style={styles.headerRight}>
-              <Pressable onPress={() => navigate(() => router.push('/buscar'), 'forward')} accessibilityRole="search" accessibilityLabel="Buscar">
-                <SearchIcon color={colors.text} size={21} />
-              </Pressable>
-              <Pressable
-                onPress={() => update({ study: !settings.study })}
-                style={[
-                  styles.studyToggle,
-                  { borderColor: colors.accent },
-                  settings.study && { backgroundColor: colors.accent },
-                ]}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: settings.study }}
-                accessibilityLabel="Modo estudio"
-              >
-                <Text style={{ color: settings.study ? colors.surface : colors.accent, fontWeight: '700', fontSize: 13 }}>
-                  Estudio
-                </Text>
-              </Pressable>
-              <Pressable onPress={() => setShowSettings(true)} accessibilityLabel="Ajustes de lectura" style={styles.aa}>
-                <Text style={{ color: colors.text, fontSize: 18, fontFamily: serif }}>Aa</Text>
-              </Pressable>
-            </View>
-          ),
-        }}
-      />
-      <View style={[styles.progressTrack, { backgroundColor: colors.border }, fixedInTransition('progreso')]}>
-        <View style={[styles.progressBar, { backgroundColor: colors.accent, width: `${progress * 100}%` }]} />
-      </View>
+      <Stack.Screen options={{ title, headerShown: false }} />
+      <ReaderHeader title={title} progress={progress} onSettings={() => setShowSettings(true)} />
 
       <ScrollView
         ref={scroll}
         // En la web el gesto horizontal es para pasar la hoja (usePageSwipe): el navegador solo desplaza en vertical.
         style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : undefined}
-        contentContainerStyle={styles.content}
-        scrollEventThrottle={32}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + 10 }]}
+        scrollEventThrottle={16}
         onScroll={(e) => {
           const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
           const max = contentSize.height - layoutMeasurement.height;
           setProgress(max > 0 ? Math.min(1, Math.max(0, contentOffset.y / max)) : 1);
+          autoHide.onScroll(e);
         }}
       >
         {book && (
           <View style={styles.chapterHead}>
             <Text style={[styles.bookName, { color: colors.accent }]}>{book.name}</Text>
             <Text style={[styles.chapterNumber, { color: colors.text, fontFamily: serif }]}>{chapter}</Text>
-            <View style={styles.headPills}>
-              <Pressable
-                onPress={() => setShowVersions(true)}
-                style={({ pressed }) => [styles.pill, { borderColor: colors.border }, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityLabel={`Versión: ${version?.name ?? 'Reina-Valera 1909'}. Cambiar versión`}
-              >
-                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>{version?.abbr ?? 'RV1909'} ▾</Text>
-              </Pressable>
+            <Pressable
+              onPress={() => setShowVersions(true)}
+              style={({ pressed }) => [styles.version, { borderColor: colors.border }, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`Versión: ${version?.name ?? 'Reina-Valera 1909'}. Cambiar versión`}
+            >
+              <Text style={[styles.versionText, { color: colors.muted }]}>{version?.abbr ?? 'RV1909'}</Text>
+              <ChevronDownIcon color={colors.muted} size={14} strokeWidth={2.2} />
+            </Pressable>
+
+            <Appear delay={40} style={styles.studyWrap}>
               <Pressable
                 onPress={() => setStudy({})}
-                style={({ pressed }) => [
-                  styles.pill,
-                  { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft },
-                  pressed && styles.pressed,
+                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                  styles.study,
+                  { backgroundColor: colors.accentSoft, borderColor: hovered ? colors.accent : colors.accentSoft },
+                  pressed && styles.pressedSoft,
                 ]}
                 accessibilityRole="button"
+                accessibilityLabel="Estudiar este capítulo"
               >
-                <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>✦ Estudiar este capítulo</Text>
+                <View style={[styles.studyIcon, { backgroundColor: colors.accent }]}>
+                  <SparkIcon color={colors.surface} size={20} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.studyTitle, { color: colors.accent }]}>Estudiar este capítulo</Text>
+                  <Text style={[styles.studySub, { color: colors.muted }]} numberOfLines={1}>
+                    Contexto, preguntas y fuentes
+                  </Text>
+                </View>
+                <ChevronRightIcon color={colors.accent} size={20} />
               </Pressable>
-              <Pressable
-                onPress={() => playChapter(bookId, chapter, title)}
-                style={({ pressed }) => [styles.pill, { borderColor: colors.border }, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityLabel="Escuchar la lectura del capítulo"
-              >
-                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>▶ Escuchar</Text>
-              </Pressable>
-              {catalog.dramatizado.includes(recordingId(bookId, chapter)) && (
-                <Pressable
-                  onPress={() => playDramatized(bookId, chapter, title)}
-                  style={({ pressed }) => [styles.pill, { borderColor: colors.accent }, pressed && styles.pressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Escuchar el capítulo dramatizado, con voces, efectos y música"
-                >
-                  <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>🎭 Dramatizado</Text>
-                </Pressable>
-              )}
-            </View>
-            <View style={styles.tools}>
-              {(
-                [
-                  ['podcast', '🎧 Pódcast', 'Resumen del capítulo en audio, como una conversación'],
-                  ['mapa-mental', '◉ Mapa mental', 'Mapa mental del capítulo'],
-                  ['tarjetas', '▤ Tarjetas', 'Tarjetas de repaso del capítulo'],
-                ] as const
-              ).map(([path, label, hint]) => (
-                <Pressable
-                  key={path}
-                  onPress={() => tool(path)}
-                  style={({ pressed }) => [styles.toolPill, { borderColor: colors.border }, pressed && styles.pressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel={hint}
-                >
-                  <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 12.5 }}>{label}</Text>
-                </Pressable>
+            </Appear>
+
+            {/* Escuchar y las herramientas del capítulo en una sola fila; en un teléfono estrecho se desliza */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.toolsScroll}
+              contentContainerStyle={styles.tools}
+            >
+              {chapterTools.map((t, i) => (
+                <ToolButton key={t.key} index={i + 2} label={t.label} hint={t.hint} icon={t.icon} colors={colors} onPress={t.onPress} />
               ))}
-            </View>
+            </ScrollView>
             {settings.study && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
                 {`Toca una ${original(book).word} para ver su significado y gramática.`}
@@ -407,9 +466,11 @@ export default function Reader() {
             onNext={() => go(1)}
           />
         )}
-        <Text style={[styles.credit, { color: colors.muted }]}>
-          {version?.credit ?? 'Reina-Valera 1909 · dominio público'}
-        </Text>
+        {verses && (
+          <Text style={[styles.credit, { color: colors.muted }]}>
+            {version?.credit ?? 'Reina-Valera 1909 · dominio público'}
+          </Text>
+        )}
       </ScrollView>
 
       {selected !== null && book && verses ? (
@@ -432,54 +493,65 @@ export default function Reader() {
                     pressed && styles.pressed,
                   ]}
                 >
-                  {marks[selected] === c && <Text style={{ color: colors.text, fontSize: 11 }}>✕</Text>}
+                  {marks[selected] === c && <CloseIcon color={colors.text} size={12} />}
                 </Pressable>
               ))}
             </View>
-            <Pressable onPress={() => setSelected(null)} accessibilityLabel="Quitar selección" hitSlop={12}>
-              <Text style={{ color: colors.muted, fontSize: 18 }}>✕</Text>
+            <Pressable
+              onPress={() => setSelected(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Quitar selección"
+              hitSlop={8}
+              style={({ pressed }) => [styles.close, { backgroundColor: colors.background }, pressed && styles.pressed]}
+            >
+              <CloseIcon color={colors.muted} size={16} />
             </Pressable>
           </View>
-          {/* Con ocho acciones no caben los nombres en un teléfono: la fila se desliza */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.actionsScroll} contentContainerStyle={styles.actions}>
-            <Action label="Estudiar" icon="✦" colors={colors} onPress={() => setStudy({ verse: selected })} />
-            {book.interlinear && (
-              <Action label="Original" icon={original(book).icon} colors={colors} onPress={() => setPanelTab('interlineal')} />
-            )}
-            <Action
-              label="Referencias"
-              icon="↗"
-              badge={xrefs[String(selected)]?.length}
-              colors={colors}
-              onPress={() => setPanelTab('referencias')}
-            />
-            <Action label="Comentario" icon="¶" colors={colors} onPress={() => setPanelTab('comentario')} />
-            <Action label={notes[selected] ? 'Mi nota' : 'Nota'} icon="✎" colors={colors} onPress={() => setWriting(true)} />
-            <Action label="Compartir" icon="⇪" colors={colors} onPress={() => setSharing(true)} />
-            <Action label={memorizing ? 'En repaso' : 'Memorizar'} icon={memorizing ? '✓' : '▤'} colors={colors} onPress={memorize} />
-            <Action
-              label="Preparar"
-              icon="✎"
-              colors={colors}
-              onPress={() =>
-                navigate(() => router.push(`/taller?libro=${book.id}&capitulo=${chapter}&versiculo=${selected}`), 'forward')
-              }
-            />
-          </ScrollView>
+          {/* Todas las acciones a la vista, en una rejilla de cuatro columnas */}
+          <View style={styles.actions}>
+            {verseActions.map((t, i) => (
+              <ToolButton key={t.key} index={i} label={t.label} icon={t.icon} badge={t.badge} colors={colors} onPress={t.onPress} width="25%" />
+            ))}
+          </View>
         </Appear>
       ) : (
         verses && (
-          <Appear key="nav" style={[styles.navPill, { backgroundColor: colors.surface, borderColor: colors.border }, fixedInTransition('capitulos')]}>
-            <Pressable onPress={() => go(-1)} hitSlop={8} accessibilityLabel="Capítulo anterior" style={styles.navArrow}>
-              <Text style={{ color: colors.text, fontSize: 22 }}>‹</Text>
-            </Pressable>
-            <Pressable onPress={() => navigate(() => router.push('/libros'))}>
-              <Text style={{ color: colors.text, fontWeight: '600' }}>{title}</Text>
-            </Pressable>
-            <Pressable onPress={() => go(1)} hitSlop={8} accessibilityLabel="Capítulo siguiente" style={styles.navArrow}>
-              <Text style={{ color: colors.text, fontSize: 22 }}>›</Text>
-            </Pressable>
-          </Appear>
+          <Animated.View
+            style={[
+              styles.navWrap,
+              {
+                opacity: chrome.interpolate({ inputRange: [0, 0.7], outputRange: [1, 0], extrapolate: 'clamp' }),
+                transform: [{ translateY: chrome.interpolate({ inputRange: [0, 1], outputRange: [0, 96] }) }],
+              },
+            ]}
+            pointerEvents="box-none"
+          >
+            <Appear key="nav" style={[styles.navPill, { backgroundColor: colors.surface, borderColor: colors.border }, fixedInTransition('capitulos')]}>
+              <Pressable
+                onPress={() => go(-1)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Capítulo anterior"
+                style={({ pressed }) => [styles.navArrow, pressed && { backgroundColor: colors.accentSoft }]}
+              >
+                <ChevronLeftIcon color={colors.text} size={20} strokeWidth={2} />
+              </Pressable>
+              <Pressable onPress={() => navigate(() => router.push('/libros'))} accessibilityRole="button" style={styles.navTitle}>
+                <Text style={[styles.navTitleText, { color: colors.text }]} numberOfLines={1}>
+                  {title}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => go(1)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Capítulo siguiente"
+                style={({ pressed }) => [styles.navArrow, pressed && { backgroundColor: colors.accentSoft }]}
+              >
+                <ChevronRightIcon color={colors.text} size={20} strokeWidth={2} />
+              </Pressable>
+            </Appear>
+          </Animated.View>
         )
       )}
 
@@ -534,79 +606,73 @@ export default function Reader() {
   );
 }
 
-type ActionProps = { label: string; icon: string; badge?: number; colors: ReturnType<typeof useColors>; onPress: () => void };
-
-function Action({ label, icon, badge, colors, onPress }: ActionProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <View style={[styles.actionIcon, { backgroundColor: colors.accentSoft }]}>
-        <Text style={{ color: colors.accent, fontSize: 18, fontFamily: serif }}>{icon}</Text>
-        {!!badge && (
-          <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-            <Text style={{ color: colors.surface, fontSize: 10, fontWeight: '700' }}>{badge}</Text>
-          </View>
-        )}
-      </View>
-      <Text style={{ color: colors.text, fontSize: 10.5, letterSpacing: -0.2, marginTop: 4 }} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   pressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
-  headerTitle: { fontSize: 17, fontWeight: '600' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 8 },
-  studyToggle: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
-  aa: { paddingHorizontal: 4 },
-  progressTrack: { height: 2 },
-  progressBar: { height: 2 },
-  content: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 140, maxWidth: 680, width: '100%', alignSelf: 'center' },
-  chapterHead: { alignItems: 'center', marginTop: 16, marginBottom: 20 },
+  pressedSoft: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  content: { paddingHorizontal: 24, paddingBottom: 140, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  chapterHead: { alignItems: 'center', marginTop: 16, marginBottom: 24 },
   bookName: { fontSize: 13, fontWeight: '700', letterSpacing: 2.5, textTransform: 'uppercase' },
   chapterNumber: { fontSize: 64, lineHeight: 72, marginTop: 4 },
-  headPills: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
-  pill: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 6 },
-  tools: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 8 },
-  toolPill: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 10, paddingVertical: 4 },
-  studyHint: { fontSize: 13, textAlign: 'center', marginTop: 8, maxWidth: 360 },
-  verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
-  credit: { fontSize: 12, textAlign: 'center', marginTop: 24 },
-  navPill: {
-    position: 'absolute',
-    bottom: 24,
-    alignSelf: 'center',
+  version: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingLeft: 12,
+    paddingRight: 9,
+    marginTop: 6,
+  },
+  versionText: { fontSize: 12.5, fontWeight: '700', letterSpacing: 0.4, lineHeight: 16 },
+  studyWrap: { width: '100%', maxWidth: 420, marginTop: 18 },
+  study: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingLeft: 10,
+    paddingRight: 14,
+  },
+  studyIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  studyTitle: { fontSize: 15, fontWeight: '700' },
+  studySub: { fontSize: 12.5, marginTop: 1 },
+  toolsScroll: { alignSelf: 'stretch', marginHorizontal: -24, marginTop: 16, flexGrow: 0 },
+  tools: { flexGrow: 1, flexDirection: 'row', justifyContent: 'center', gap: 2, paddingHorizontal: 16 },
+  studyHint: { fontSize: 13, textAlign: 'center', marginTop: 12, maxWidth: 360 },
+  verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
+  credit: { fontSize: 12, textAlign: 'center', marginTop: 24 },
+  navWrap: { position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center' },
+  navPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 24,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    padding: 4,
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-  navArrow: { paddingHorizontal: 10 },
+  navArrow: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  navTitle: { height: 38, justifyContent: 'center', paddingHorizontal: 10, minWidth: 96, alignItems: 'center' },
+  navTitleText: { fontWeight: '600', fontSize: 15, lineHeight: 20 },
   actionBar: {
     position: 'absolute',
     left: 12,
     right: 12,
     bottom: 20,
-    maxWidth: 520,
+    maxWidth: 560,
     alignSelf: 'center',
     marginHorizontal: 'auto',
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingHorizontal: 14,
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 16,
@@ -614,13 +680,11 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   actionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  swatches: { flexDirection: 'row', gap: 10, marginLeft: 'auto', marginRight: 8 },
+  swatches: { flexDirection: 'row', gap: 10, marginLeft: 'auto', marginRight: 4 },
   swatch: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  actionsScroll: { marginTop: 12, marginHorizontal: -14 },
-  actions: { flexDirection: 'row', flexGrow: 1, justifyContent: 'space-around', paddingHorizontal: 6 },
-  action: { alignItems: 'center', width: 64 },
-  badge: { position: 'absolute', top: -2, right: -6, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
-  actionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 12, marginTop: 14, marginHorizontal: -6 },
+  letter: { fontFamily: serif, fontSize: 21, lineHeight: 24, textAlign: 'center', width: 22, includeFontPadding: false },
 });
 
 /** Agrupa los versículos en párrafos según los finales de párrafo del griego o del hebreo (sin datos: un solo párrafo). */
