@@ -25,6 +25,9 @@
     },
     "api/podcast-grabado.ts": {
       "maxDuration": 300
+    },
+    "api/notificaciones.ts": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

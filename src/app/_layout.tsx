@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
+import AvisosSync from '@/components/AvisosSync';
 import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
 import { init as initDownloads } from '@/lib/descargas';
@@ -71,6 +72,7 @@ function AppStack() {
         <Stack.Screen name="grupos/[id]" options={{ title: '' }} />
         <Stack.Screen name="grupos/nuevo" options={{ title: 'Nuevo grupo' }} />
         <Stack.Screen name="cuenta" options={{ title: 'Tu cuenta' }} />
+        <Stack.Screen name="notificaciones" options={{ title: 'Notificaciones' }} />
         <Stack.Screen name="entrar" options={{ title: '' }} />
         <Stack.Screen name="registro" options={{ title: '' }} />
         <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
@@ -86,6 +88,7 @@ function AppStack() {
       <AudioBar />
       <OfflineBanner />
       <TabBar />
+      {Platform.OS === 'web' && <AvisosSync />}
       {Platform.OS === 'web' && (
         <>
           <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />

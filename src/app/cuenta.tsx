@@ -115,6 +115,13 @@ export default function AccountScreen() {
       </View>
       {saved && <Text style={{ color: colors.accent, marginTop: 12, fontWeight: '600' }}>{saved}</Text>}
 
+      <SectionTitle>Notificaciones</SectionTitle>
+      <Button
+        label="Recordatorio diario y avisos"
+        kind="outline"
+        onPress={() => navigate(() => router.push('/notificaciones' as never), 'forward')}
+      />
+
       <SectionTitle>Sesión</SectionTitle>
       <View style={styles.row}>
         <Button label="Cerrar sesión" kind="quiet" onPress={out} />
