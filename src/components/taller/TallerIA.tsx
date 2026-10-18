@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,7 +16,9 @@ import {
 import { Markdown, Sources } from '@/components/StudyPanel';
 import { parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
+import { NeedsConnection } from '@/components/SinConexion';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { TallerRequest, Turn, askStudy } from '@/lib/estudio';
 import { verseHref } from '@/lib/routes';
 import { Mensaje, borradorParaIA, plantilla } from '@/lib/taller';
@@ -37,6 +39,8 @@ type Props = { mensaje: Mensaje; paso: Paso; modo: Modo; title: string; onClose:
 /** La IA del Taller: pregunta, sugiere o revisa con citas de las fuentes de la app. Nunca escribe el mensaje. */
 export default function TallerIA({ mensaje, paso, modo: initialModo, title, onClose }: Props) {
   const colors = useColors();
+  // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
+  const focused = useIsFocused();
   const [modo, setModo] = useState<Modo>(initialModo);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
@@ -109,7 +113,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
   const waiting = busy && !turns[turns.length - 1]?.text;
 
   return (
-    <Modal transparent animationType="slide" visible onRequestClose={onClose}>
+    <Modal transparent animationType="slide" visible={focused} onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTop} onPress={onClose} accessibilityLabel="Cerrar" />
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -169,7 +173,11 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                   <Text style={{ color: colors.muted, marginTop: 10, textAlign: 'center' }}>Leyendo el pasaje y tu borrador…</Text>
                 </View>
               )}
-              {error === NEEDS_ACCOUNT ? (
+              {error === NEEDS_CONNECTION ? (
+                <View style={styles.waiting}>
+                  <NeedsConnection title="La IA necesita internet" intro="Tu borrador queda guardado en este dispositivo. Cuando vuelvas a tener conexión, la IA te hará preguntas y sugerencias." />
+                </View>
+              ) : error === NEEDS_ACCOUNT ? (
                 <View style={styles.waiting}>
                   <Welcome kind="ia" title="Prepara con IA" intro="Te hace preguntas y te sugiere ideas a partir del pasaje; el mensaje lo escribes tú. Solo necesitas una cuenta gratuita." onReady={() => run(lastHistory.current)} />
                 </View>

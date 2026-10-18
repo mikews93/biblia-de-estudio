@@ -5,6 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { requireConnection } from './conexion';
 import { chapterHref as routeToChapter, verseHref } from './routes';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
@@ -212,8 +213,12 @@ export async function refreshGroups() {
 /** Error que muestran las funciones con IA cuando hace falta entrar; las pantallas lo cambian por <Welcome>. */
 export const NEEDS_ACCOUNT = 'Para usar la IA necesitas una cuenta gratuita.';
 
-/** Cabeceras para /api/estudiar y /api/buscar. Sin cuenta lanza NEEDS_ACCOUNT sin llamar al servidor. */
+/**
+ * Cabeceras para /api/estudiar y /api/buscar. Sin conexión lanza NEEDS_CONNECTION y sin cuenta NEEDS_ACCOUNT,
+ * sin llamar al servidor.
+ */
 export async function aiHeaders(): Promise<Record<string, string>> {
+  requireConnection();
   await load();
   if (!account.llave) throw new Error(NEEDS_ACCOUNT);
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${account.llave}` };

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { ComponentRef, ReactNode, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,7 +17,9 @@ import Appear from '@/components/Appear';
 import StudyContext from '@/components/StudyContext';
 import { Book, original, parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
+import { NeedsConnection } from '@/components/SinConexion';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { Source, Turn, askStudy } from '@/lib/estudio';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { BOOK_SLUGS, verseHref } from '@/lib/routes';
@@ -39,6 +41,8 @@ const WORD_SUGGESTIONS = ['Explícamelo más sencillo', '¿Por qué no se traduj
 /** Estudio generado con IA a partir de las fuentes de la app, con citas y preguntas de seguimiento. */
 export default function StudyPanel({ book, chapter, verse, word, onClose }: Props) {
   const colors = useColors();
+  // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
+  const focused = useIsFocused();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +109,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
   const waiting = busy && !turns[turns.length - 1]?.text;
 
   return (
-    <Modal transparent animationType="slide" visible onRequestClose={onClose}>
+    <Modal transparent animationType="slide" visible={focused} onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTop} onPress={onClose} accessibilityLabel="Cerrar estudio" />
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -171,7 +175,11 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                 </View>
               )}
 
-              {error === NEEDS_ACCOUNT ? (
+              {error === NEEDS_CONNECTION ? (
+                <View style={styles.waiting}>
+                  <NeedsConnection title="Estudiar con IA necesita internet" intro="La IA prepara el estudio en el servidor. Sin conexión puedes seguir leyendo, ver el texto original y las referencias que descargaste." />
+                </View>
+              ) : error === NEEDS_ACCOUNT ? (
                 <View style={styles.waiting}>
                   <Welcome kind="ia" title="Estudia con IA" intro="Te explica el pasaje con el texto original y las referencias, y responde tus preguntas. Solo necesitas una cuenta gratuita." onReady={() => run(lastHistory.current)} />
                 </View>
