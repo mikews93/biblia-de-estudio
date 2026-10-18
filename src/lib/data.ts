@@ -76,3 +76,27 @@ export type Basemap = {
 export const getPlaces = (book: string, chapter: number) =>
   load<Place[]>(`places/${book}/${chapter}.json`, true).then((r) => (Array.isArray(r) ? r : []));
 export const getBasemap = () => load<Basemap>('basemap.json');
+
+/** Medida antigua que aparece en el capítulo, con su equivalencia moderna aproximada. */
+export type Measure = { id: string; kind: string; name: string; value: string; note: string; verses: number[] };
+
+/** Imagen libre de Wikimedia Commons de un objeto, lugar o mapa del capítulo (verses vacío: todo el capítulo). */
+export type Picture = {
+  id: string;
+  kind: 'objeto' | 'lugar' | 'mapa';
+  title: string;
+  caption: string;
+  verses: number[];
+  img: string;
+  w: number;
+  h: number;
+  page: string;
+  author: string | null;
+  license: string;
+};
+
+export const getStudyContext = (book: string, chapter: number) =>
+  load<{ medidas?: Measure[]; imagenes?: Picture[] }>(`contexto/${book}/${chapter}.json`, true).then((r) => ({
+    medidas: r.medidas ?? [],
+    imagenes: r.imagenes ?? [],
+  }));

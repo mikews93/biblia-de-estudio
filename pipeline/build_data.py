@@ -10,6 +10,7 @@ Fuentes (se descargan, no se guardan en el repositorio):
   las glosas españolas son propias y están en pipeline/hebreo/glosas.tsv.gz
 - Español Sencillo y Palabra de Dios para ti, ya descargadas en pipeline/versions/ (ver fetch_versions.py)
 - Lugares bíblicos de OpenBible.info Bible Geocoding Data (CC BY 4.0), con el mapa de fondo de pipeline/geo/basemap.json
+- Medidas antiguas (pipeline/medidas.py) e imágenes libres de Wikimedia Commons (pipeline/imagenes.py)
 """
 
 import difflib
@@ -24,6 +25,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from books import BOOKS
+from imagenes import chapter_objects, resolve as resolve_images
+from medidas import chapter_measures
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / ".cache"
@@ -37,8 +40,11 @@ SOURCES = {
        for i, part in enumerate(["Gen-Deu", "Jos-Est", "Job-Sng", "Isa-Mal"], 1)},
     "ancient.jsonl": "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/"
                      "7eb18a5ee62f27b9b93bd6689ea272d76dd23b8f/data/ancient.jsonl",
+    "image.jsonl": "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/"
+                   "7eb18a5ee62f27b9b93bd6689ea272d76dd23b8f/data/image.jsonl",
 }
 MAX_XREFS = 12
+MAX_PLACE_PHOTOS = 8
 
 # Las glosas españolas de TAGNT usan términos propios de la Traducción del Nuevo Mundo (Testigos de Jehová).
 # Se sustituyen por los de la tradición cristiana histórica, que son también los de la RV1909.
@@ -336,9 +342,43 @@ def spanish_name(place, refs, text):
     return re.sub(r" \d+$", "", place["friendly_id"])  # sin equivalente claro: el nombre de OpenBible
 
 
+# Licencias libres de las fotos de Wikimedia Commons que cataloga OpenBible ("copyright" y "sentinel" no lo son)
+FREE_PHOTO = re.compile(r"^(PD|CC-Zero|CC-PD|CC-BY)")
+
+
+def place_photos():
+    """Foto libre de cada lugar antiguo, la que OpenBible elige como miniatura: {id del lugar: foto}."""
+    images = {}
+    with fetch("image.jsonl").open(encoding="utf-8") as f:
+        for line in f:
+            img = json.loads(line)
+            if FREE_PHOTO.match(img.get("license", "")) and img.get("thumbnail_url_pattern"):
+                images[img["id"]] = img
+    return images
+
+
+def photo_for(place, images):
+    thumb = (place.get("media") or {}).get("thumbnail") or {}
+    img = images.get(thumb.get("image_id"))
+    if not img:
+        return None
+    w, h = img["width"], img["height"]
+    width = min(800, w)
+    return {
+        "img": img["thumbnail_url_pattern"].replace("####", str(width)) if w > 800 else img["file_url"],
+        "w": width, "h": round(h * width / w), "page": img["url"],
+        "author": re.sub(r"<[^>]+>", "", img.get("credit") or img.get("author") or "")[:120] or None,
+        "license": img["license"].replace("CC-Zero", "CC0").replace("-", " ").replace("CC BY SA", "CC BY-SA"),
+    }
+
+
 def build_places(out, text):
-    """Lugares de cada capítulo con su ubicación más probable y las alternativas que proponen los especialistas."""
+    """Lugares de cada capítulo con su ubicación más probable y las alternativas que proponen los especialistas.
+
+    Devuelve también, por capítulo, los lugares que tienen foto libre, para el estudio del capítulo."""
     by_chapter = defaultdict(dict)
+    images = place_photos()
+    photos = {}
     with fetch("ancient.jsonl").open(encoding="utf-8") as f:
         for line in f:
             place = json.loads(line)
@@ -359,6 +399,9 @@ def build_places(out, text):
             if not refs or not options:
                 continue
             name = spanish_name(place, refs, text)
+            photo = photo_for(place, images)
+            if photo:
+                photos[place["id"]] = photo
             for bid, ch, n in refs:
                 entry = by_chapter[(bid, ch)].setdefault(place["id"], {
                     "id": place["id"], "name": name, "en": place["friendly_id"], "type": place["types"][0],
@@ -369,6 +412,40 @@ def build_places(out, text):
     for (bid, ch), places in by_chapter.items():
         write(out, f"places/{bid}/{ch}.json", sorted(places.values(), key=lambda p: (min(p["verses"]), p["name"])))
     shutil.copy(ROOT / "geo" / "basemap.json", out / "basemap.json")
+    with_photo = {}
+    for key, places in by_chapter.items():
+        found = sorted((p for p in places.values() if p["id"] in photos), key=lambda p: (min(p["verses"]), p["name"]))
+        with_photo[key] = [{
+            "id": p["id"], "kind": "lugar", "title": p["name"], "verses": p["verses"],
+            "caption": f"Foto actual de la zona donde se ubica {p['name']}, según la identificación más probable "
+                       "de OpenBible.info.",
+            **photos[p["id"]],
+        } for p in found[:MAX_PLACE_PHOTOS]]
+    return with_photo
+
+
+def build_context(out, place_pictures):
+    """Para el estudio de cada capítulo: medidas antiguas con su equivalencia y objetos, lugares o mapas con imagen."""
+    images = resolve_images(CACHE / "imagenes.json")
+    src = json.loads(fetch("rv1909.json").read_text(encoding="utf-8"))
+    count = 0
+    for meta, book in zip(BOOKS, src["books"]):
+        bid = meta[0]
+        for ch in book["chapters"]:
+            verses = [(v["verse"], v["text"]) for v in ch["verses"]]
+            measures = chapter_measures(bid, ch["chapter"], verses)
+            pictures = [
+                {"id": o["id"], "kind": o.get("kind", "objeto"), "title": o["title"], "caption": o["caption"],
+                 "verses": hits, **images[o["id"]]}
+                for o, hits in chapter_objects(bid, ch["chapter"], verses) if o["id"] in images
+            ]
+            # Primero objetos, luego lugares y al final los mapas
+            maps = [p for p in pictures if p["kind"] == "mapa"]
+            pictures = [p for p in pictures if p["kind"] != "mapa"] + place_pictures.get((bid, ch["chapter"]), []) + maps
+            if measures or pictures:
+                write(out, f"contexto/{bid}/{ch['chapter']}.json", {"medidas": measures, "imagenes": pictures})
+                count += 1
+    print(f"Capítulos con medidas o imágenes: {count}")
 
 
 def main():
@@ -378,7 +455,8 @@ def main():
     build_interlinear(out)
     build_hebrew(out)
     build_versions(out)
-    build_places(out, text)
+    place_pictures = build_places(out, text)
+    build_context(out, place_pictures)
     books = [
         {"id": b[0], "name": b[1], "abbr": b[2], "chapters": chapters[b[0]],
          "testament": "AT" if b[0] in OT else "NT", "interlinear": True, "ewSlug": b[5]}

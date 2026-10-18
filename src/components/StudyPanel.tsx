@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 
 import Appear from '@/components/Appear';
+import StudyContext from '@/components/StudyContext';
 import { Book, original, parseRef } from '@/lib/data';
 import { Source, Turn, askStudy } from '@/lib/estudio';
 import { Colors, serif, useColors } from '@/lib/theme';
-import { verseHref } from '@/lib/routes';
+import { BOOK_SLUGS, verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
 type Props = {
@@ -89,6 +90,14 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
     navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward');
   };
 
+  const openMap = () => {
+    onClose();
+    navigate(() => router.push(`/mapa/${BOOK_SLUGS[book.id] ?? book.id}/${chapter}` as never), 'forward');
+  };
+
+  const context = (
+    <StudyContext book={book.id} chapter={chapter} verse={verse} onOpen={open} onOpenMap={openMap} />
+  );
   const first = turns[0];
   const waiting = busy && !turns[turns.length - 1]?.text;
 
@@ -132,6 +141,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                         <Sources sources={turn.sources} colors={colors} onOpen={open} />
                       </Appear>
                     )}
+                    {i === 0 && turn.text && (busy ? turns.length > 1 : true) && context}
                   </View>
                 ),
               )}
@@ -166,6 +176,8 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                   </Pressable>
                 </View>
               )}
+
+              {error && !first?.text && context}
 
               {first?.text && !busy && turns.length === 1 && (
                 <View style={styles.suggestions}>
