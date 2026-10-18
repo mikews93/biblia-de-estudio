@@ -28,6 +28,30 @@ SOURCES = {
 }
 MAX_XREFS = 12
 
+# Las glosas españolas de TAGNT usan términos propios de la Traducción del Nuevo Mundo (Testigos de Jehová).
+# Se sustituyen por los de la tradición cristiana histórica, que son también los de la RV1909.
+CRUCIFICAR = {"ado": "ado", "ados": "ados", "ando": "ando", "ar": "ar", "a": "a", "aron": "aron",
+              "arán": "arán", "aré": "aré", "en": "quen"}
+GLOSS_FIXES = [
+    (re.compile(r"fij(\w+) e[nm] maderos? de ejecución"),
+     lambda m: "crucific" + CRUCIFICAR.get(m.group(1), m.group(1)) if m.group(1) != "en" else "crucifiquen"),
+    (re.compile(r"maderos de ejecución"), "cruces"),
+    (re.compile(r"madero de ejecución"), "cruz"),
+    (re.compile(r" (?:por|en|como) bondad inmerecida"), ""),
+    (re.compile(r"bondad inmerecida"), "gracia"),
+]
+STRONG_GLOSS = {"G3952": ("presencia", "venida")}  # παρουσία: la RV1909 traduce «venida»
+
+
+def fix_gloss(gloss, strong):
+    capital = gloss[:1].isupper()
+    gloss = gloss[:1].lower() + gloss[1:]
+    for pattern, repl in GLOSS_FIXES:
+        gloss = pattern.sub(repl, gloss)
+    if strong in STRONG_GLOSS:
+        gloss = gloss.replace(*STRONG_GLOSS[strong])
+    return gloss[:1].upper() + gloss[1:] if capital else gloss
+
 XREF_TO_ID = {b[3]: b[0] for b in BOOKS}
 STEP_TO_ID = {b[4]: b[0] for b in BOOKS if b[4]}
 # "Mat.1.1#01=NKO" o "1Jn.2.14[2.13]#03=NKO"; los corchetes dan la versificación de la KJV, que sigue la RV1909
@@ -116,7 +140,7 @@ def build_interlinear(out):
                 by_chapter[(STEP_TO_ID[book], ch)][v].append([
                     greek.strip(),
                     translit.rstrip(")").strip(),
-                    cols[8].strip(),
+                    fix_gloss(cols[8].strip(), strong.strip()),
                     cols[2].strip(),
                     lemma.strip(),
                     lemma_gloss.strip(),

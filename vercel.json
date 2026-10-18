@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run data && npx expo export --platform web",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/estudiar.ts": { "includeFiles": "dist/data/**", "maxDuration": 120 }
+  },
+  "rewrites": [{ "source": "/((?!api/|data/|_expo/|assets/).*)", "destination": "/index.html" }]
+}

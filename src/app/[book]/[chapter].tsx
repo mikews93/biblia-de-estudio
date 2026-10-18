@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import ChapterEnd from '@/components/ChapterEnd';
 import ReaderSettings from '@/components/ReaderSettings';
+import StudyPanel from '@/components/StudyPanel';
 import StudyVerse from '@/components/StudyVerse';
 import VersePanel, { Tab } from '@/components/VersePanel';
 import WordCard from '@/components/WordCard';
@@ -34,6 +35,7 @@ export default function Reader() {
   const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [study, setStudy] = useState<{ verse?: number } | null>(null);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const paragraphHeight = useRef(0);
 
@@ -156,6 +158,13 @@ export default function Reader() {
           <View style={styles.chapterHead}>
             <Text style={[styles.bookName, { color: colors.accent }]}>{book.name}</Text>
             <Text style={[styles.chapterNumber, { color: colors.text, fontFamily: serif }]}>{chapter}</Text>
+            <Pressable
+              onPress={() => setStudy({})}
+              style={[styles.studyChapter, { backgroundColor: colors.accentSoft }]}
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>✦ Estudiar este capítulo</Text>
+            </Pressable>
             {settings.study && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
                 {book.interlinear
@@ -264,6 +273,7 @@ export default function Reader() {
             </Pressable>
           </View>
           <View style={styles.actions}>
+            <Action label="Estudiar" icon="✦" colors={colors} onPress={() => setStudy({ verse: selected })} />
             {book.interlinear && (
               <Action label="Original" icon="α" colors={colors} onPress={() => setPanelTab('interlineal')} />
             )}
@@ -312,6 +322,9 @@ export default function Reader() {
           onClose={() => setWord(null)}
         />
       )}
+      {study && book && (
+        <StudyPanel book={book} chapter={chapter} verse={study.verse} onClose={() => setStudy(null)} />
+      )}
       {showSettings && <ReaderSettings onClose={() => setShowSettings(false)} />}
     </View>
   );
@@ -330,7 +343,7 @@ function Action({ label, icon, badge, colors, onPress }: ActionProps) {
           </View>
         )}
       </View>
-      <Text style={{ color: colors.text, fontSize: 12, marginTop: 4 }} numberOfLines={1}>
+      <Text style={{ color: colors.text, fontSize: 11, marginTop: 4 }} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -348,6 +361,7 @@ const styles = StyleSheet.create({
   chapterHead: { alignItems: 'center', marginTop: 16, marginBottom: 20 },
   bookName: { fontSize: 13, fontWeight: '700', letterSpacing: 2.5, textTransform: 'uppercase' },
   chapterNumber: { fontSize: 64, lineHeight: 72, marginTop: 4 },
+  studyChapter: { marginTop: 12, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 7 },
   studyHint: { fontSize: 13, textAlign: 'center', marginTop: 8, maxWidth: 360 },
   verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
   credit: { fontSize: 12, textAlign: 'center', marginTop: 24 },

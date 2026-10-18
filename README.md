@@ -32,11 +32,24 @@ En el teléfono (Expo Go o una build de desarrollo) los datos se leen de una URL
 | Griego del NT, morfología, glosas inglesas y españolas | [STEPBible TAGNT](https://github.com/STEPBible/STEPBible-Data), Tyndale House | CC BY 4.0 |
 | Referencias cruzadas | [OpenBible.info](https://www.openbible.info/labs/cross-references/) | CC BY |
 
-El interlineal muestra las palabras del texto tradicional (Textus Receptus), que es el que traduce la RV1909, con la versificación de la KJV. Las glosas españolas de STEPBible vienen del proyecto Marvel Bible y necesitan revisión antes del lanzamiento.
+El interlineal muestra las palabras del texto tradicional (Textus Receptus), que es el que traduce la RV1909, con la versificación de la KJV. Las glosas españolas de STEPBible vienen del proyecto Marvel Bible y usan términos de la Traducción del Nuevo Mundo («madero de ejecución», «bondad inmerecida»). El pipeline los sustituye por los de la tradición cristiana histórica (`fix_gloss` en `pipeline/build_data.py`), pero las glosas necesitan una revisión completa antes del lanzamiento.
+
+## Estudiar con IA
+
+El botón «Estudiar» (en la cabecera del capítulo y en la barra de cada versículo) llama a `api/estudiar.ts`, una función de Vercel. Pasa a Claude el capítulo en RV1909, el griego y las referencias cruzadas como documentos con citas, y devuelve el estudio por partes con notas numeradas que llevan al pasaje citado. Después se pueden hacer preguntas sobre el mismo pasaje.
+
+Variables en Vercel:
+
+- `ANTHROPIC_API_KEY` (obligatoria).
+- `ESTUDIO_MODEL` (opcional, por defecto `claude-opus-5-5`).
+
+En el teléfono, `EXPO_PUBLIC_API_URL` apunta a la web publicada.
 
 ## Estructura
 
 - `src/app/`: pantallas (Expo Router).
 - `src/components/VersePanel.tsx`: panel del versículo.
-- `src/lib/data.ts`: carga de datos y formato de referencias.
+- `src/lib/data.ts`: carga de datos; `src/lib/refs.ts`: formato de referencias.
+- `src/components/StudyPanel.tsx` y `src/lib/estudio.ts`: estudio con IA.
+- `api/estudiar.ts`: función de Vercel que genera el estudio.
 - `pipeline/`: generación de datos.

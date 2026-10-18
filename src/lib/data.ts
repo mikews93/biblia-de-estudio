@@ -45,32 +45,8 @@ export const getInterlinear = (book: string, chapter: number) =>
 export const getCrossRefs = (book: string, chapter: number) =>
   load<Record<string, CrossRef[]>>(`xrefs/${book}/${chapter}.json`, true);
 
-export type RefTarget = { book: string; chapter: number; verse: number };
-
-/** 'rom.5.8' o '1jn.4.9-1jn.4.10' */
-export function parseRef(ref: string): { start: RefTarget; end: RefTarget } {
-  const [a, b = a] = ref.split('-');
-  const part = (s: string) => {
-    const [book, chapter, verse] = s.split('.');
-    return { book, chapter: Number(chapter), verse: Number(verse) };
-  };
-  return { start: part(a), end: part(b) };
-}
-
-export function formatRef(ref: string, books: Book[]): string {
-  const { start, end } = parseRef(ref);
-  const name = books.find((b) => b.id === start.book)?.name ?? start.book;
-  let label = `${name} ${start.chapter}:${start.verse}`;
-  if (end.book !== start.book) {
-    const endName = books.find((b) => b.id === end.book)?.name ?? end.book;
-    label += ` – ${endName} ${end.chapter}:${end.verse}`;
-  } else if (end.chapter !== start.chapter) {
-    label += `–${end.chapter}:${end.verse}`;
-  } else if (end.verse !== start.verse) {
-    label += `-${end.verse}`;
-  }
-  return label;
-}
+export { formatRef, parseRef } from './refs';
+export type { RefTarget } from './refs';
 
 export function enduringWordUrl(book: Book, chapter: number) {
   return `https://enduringword.com/bible-commentary/es/${book.ewSlug}-${chapter}/`;
