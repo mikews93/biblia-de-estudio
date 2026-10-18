@@ -86,7 +86,7 @@ export default function StudyContext({ book, chapter, verse, onOpen, onOpenMap }
         <View style={[styles.section, { borderColor: colors.border }]}>
           <Text style={[styles.h2, { color: colors.text }]}>Imágenes</Text>
           <Text style={[styles.lead, { color: colors.muted }]}>
-            Objetos, lugares y mapas {verse ? 'del versículo' : 'del capítulo'} en fotos y mapas de Wikimedia Commons.
+            Objetos, lugares y mapas {verse ? 'del versículo' : 'del capítulo'}, con imágenes de licencia libre.
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {pictures.map((p) => (
@@ -129,7 +129,8 @@ export default function StudyContext({ book, chapter, verse, onOpen, onOpenMap }
 }
 
 function Viewer({ picture: p, colors, onClose }: { picture: Picture; colors: Colors; onClose: () => void }) {
-  const credit = [p.author, p.license, 'Wikimedia Commons'].filter(Boolean).join(' · ');
+  const source = p.page.includes('commons.wikimedia.org') ? 'Wikimedia Commons' : 'Wikipedia';
+  const credit = [p.author, p.license, source].filter(Boolean).join(' · ');
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onClose}>
       <Pressable style={styles.viewerBackdrop} onPress={onClose} accessibilityLabel="Cerrar imagen">
