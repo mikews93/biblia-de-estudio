@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#3A271C"/><stop offset="1" stop-color="#151311"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#F6C98A" stop-opacity=".55"/><stop offset=".5" stop-color="#E0A07A" stop-opacity=".18"/><stop offset="1" stop-color="#E0A07A" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E9B08A"/><stop offset=".55" stop-color="#B66A3E"/><stop offset="1" stop-color="#7A3F22"/>
+    </linearGradient>
+    <linearGradient id="fl" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#F3A35C"/><stop offset=".6" stop-color="#FBD9A0"/><stop offset="1" stop-color="#FFF4DE"/>
+    </linearGradient>
+  </defs>
+  <!-- llama sobre el pico -->
+  <g transform="translate(164 30)">
+  <path d="M512 232 C 548 300, 590 350, 584 420 C 579 470, 548 500, 512 500 C 476 500, 445 470, 440 420 C 434 350, 476 300, 512 232 Z" fill="url(#fl)"/>
+  <path d="M512 360 C 530 395, 546 418, 543 448 C 540 472, 527 484, 512 484 C 497 484, 484 472, 481 448 C 478 418, 494 395, 512 360 Z" fill="#FFFBF2"/>
+  </g>
+  <!-- asa -->
+  <path d="M300 640 C 230 640, 210 560, 262 548" stroke="url(#cu)" stroke-width="30" fill="none" stroke-linecap="round"/>
+  <!-- cuerpo + pico -->
+  <path d="M290 650 C 290 570, 380 540, 470 540 C 540 540, 590 556, 630 570 C 680 560, 730 540, 760 548 C 790 556, 790 600, 766 614 C 730 632, 690 640, 660 660 C 630 720, 560 752, 470 752 C 370 752, 290 720, 290 650 Z" fill="url(#cu)"/>
+  <ellipse cx="460" cy="566" rx="70" ry="14" fill="#5A2E18"/>
+  <path d="M330 640 C 350 600, 400 588, 440 590" stroke="#F4D2B6" stroke-opacity=".5" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <ellipse cx="690" cy="540" rx="26" ry="8" fill="#5A2E18"/>
+  <path d="M380 744 L 560 744 L 546 784 L 394 784 Z" fill="#7A3F22"/>
+</svg>
