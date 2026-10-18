@@ -1,0 +1,35 @@
+name: Limpieza de ramas de Neon
+
+# Cada vista previa de Vercel crea una rama de la base de datos en Neon («preview/<rama de git>») y el plan
+# gratuito tiene un límite de ramas. Al cerrar o unir un PR se borra la suya.
+# Necesita en GitHub (Settings → Secrets and variables → Actions):
+#   secreto NEON_API_KEY      clave de API de Neon (Account settings → API keys)
+#   variable NEON_PROJECT_ID  id del proyecto de Neon (Settings del proyecto)
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  borrar-rama:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Borrar la rama de Neon de la vista previa
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCH: preview/${{ github.head_ref }}
+        run: |
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "::warning::Faltan NEON_API_KEY o NEON_PROJECT_ID; no se borra la rama $BRANCH."
+            exit 0
+          fi
+          api="https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches"
+          id=$(curl -sSf -H "Authorization: Bearer $NEON_API_KEY" "$api" \
+            | jq -r --arg name "$BRANCH" '.branches[] | select(.name == $name) | .id')
+          if [ -z "$id" ]; then
+            echo "No hay rama $BRANCH en Neon."
+            exit 0
+          fi
+          curl -sSf -X DELETE -H "Authorization: Bearer $NEON_API_KEY" "$api/$id" > /dev/null
+          echo "Rama $BRANCH ($id) borrada."
