@@ -8,7 +8,9 @@
  * (#pliegue-brillo). Hacia atrás es la misma animación al revés, con la página anterior cayendo encima.
  *
  * Las capturas de la View Transition solo se pueden mover con transformaciones y recortes, así que cada
- * fotograma se calcula aquí y se reproduce con la Web Animations API.
+ * fotograma se calcula aquí y se reproduce con la Web Animations API. Con el dedo (interactive) las
+ * animaciones quedan en pausa y siguen el gesto con seek(); una animación de espera sobre
+ * ::view-transition mantiene viva la transición hasta done().
  */
 
 const DURATION = 680;
@@ -17,7 +19,18 @@ const POINTS = 6;
 
 type Pt = [number, number];
 
-export function animatePageTurn(direction: 'turn-forward' | 'turn-back') {
+export type PageTurn = {
+  /** Lleva la hoja a una posición entre 0 (sin pasar) y 1 (pasada). */
+  seek: (progress: number) => void;
+  /** Termina de pasar la hoja desde donde esté. */
+  play: () => Promise<unknown>;
+  /** Devuelve la hoja a su sitio. */
+  rewind: () => Promise<unknown>;
+  /** Deja terminar la transición (solo hace falta con interactive). */
+  done: () => void;
+};
+
+export function animatePageTurn(direction: 'turn-forward' | 'turn-back', interactive = false): PageTurn {
   const root = document.documentElement;
   const W = window.innerWidth;
   const H = window.innerHeight;
@@ -56,16 +69,38 @@ export function animatePageTurn(direction: 'turn-forward' | 'turn-back') {
 
   const options: KeyframeAnimationOptions = {
     duration: DURATION,
-    easing: 'cubic-bezier(0.42, 0, 0.3, 1)',
+    // Con el dedo la hoja va donde está el dedo, sin curva de aceleración.
+    easing: interactive ? 'linear' : 'cubic-bezier(0.42, 0, 0.3, 1)',
     fill: 'both',
     direction: direction === 'turn-forward' ? 'normal' : 'reverse',
   };
   const page_ = direction === 'turn-forward' ? '::view-transition-old(root)' : '::view-transition-new(root)';
-  root.animate(kept, { ...options, pseudoElement: page_ });
-  root.animate(flap, { ...options, pseudoElement: '::view-transition-new(pliegue)' });
-  root.animate(shadow, { ...options, pseudoElement: '::view-transition-new(pliegue-sombra)' });
-  root.animate(crease, { ...options, pseudoElement: '::view-transition-new(pliegue-brillo)' });
-  return DURATION;
+  const animations = [
+    root.animate(kept, { ...options, pseudoElement: page_ }),
+    root.animate(flap, { ...options, pseudoElement: '::view-transition-new(pliegue)' }),
+    root.animate(shadow, { ...options, pseudoElement: '::view-transition-new(pliegue-sombra)' }),
+    root.animate(crease, { ...options, pseudoElement: '::view-transition-new(pliegue-brillo)' }),
+  ];
+  const hold = interactive
+    ? root.animate([{ opacity: 1 }, { opacity: 1 }], { duration: 10 * 60 * 1000, pseudoElement: '::view-transition' })
+    : null;
+  if (interactive) for (const a of animations) a.pause();
+
+  const run = (rate: number) => {
+    for (const a of animations) {
+      a.playbackRate = rate;
+      a.play();
+    }
+    return Promise.all(animations.map((a) => a.finished));
+  };
+  return {
+    seek: (progress) => {
+      for (const a of animations) a.currentTime = Math.min(1, Math.max(0, progress)) * DURATION;
+    },
+    play: () => run(1),
+    rewind: () => run(-1.4),
+    done: () => hold?.cancel(),
+  };
 }
 
 /** Parte del polígono a un lado de la recta p·n = d (keepLess: el lado p·n < d). */

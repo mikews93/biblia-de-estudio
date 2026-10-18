@@ -1,6 +1,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
@@ -32,6 +32,7 @@ import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } 
 import { useChapterNotes } from '@/lib/notas';
 import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
+import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import SearchIcon from '@/components/SearchIcon';
 
@@ -95,21 +96,29 @@ export default function Reader() {
     if (settings.study && book?.interlinear) getInterlinear(bookId, chapter).then(setInterlinear).catch(() => {});
   }, [settings.study, book, bookId, chapter]);
 
-  const go = (delta: number) => {
-    if (!book) return;
+  /** Capítulo siguiente (1) o anterior (-1), saltando de libro; null en el principio o el final de la Biblia. */
+  const neighbor = (delta: 1 | -1) => {
+    if (!book) return null;
     let i = index;
     let ch = chapter + delta;
     if (ch < 1) {
-      if (i === 0) return;
+      if (i === 0) return null;
       i -= 1;
       ch = books[i].chapters;
     } else if (ch > book.chapters) {
-      if (i === books.length - 1) return;
+      if (i === books.length - 1) return null;
       i += 1;
       ch = 1;
     }
-    navigate(() => router.replace(chapterHref(books[i].id, ch)), delta > 0 ? 'turn-forward' : 'turn-back');
+    return chapterHref(books[i].id, ch);
   };
+
+  const go = (delta: 1 | -1) => {
+    const href = neighbor(delta);
+    if (href) navigate(() => router.replace(href), delta > 0 ? 'turn-forward' : 'turn-back');
+  };
+
+  usePageSwipe(neighbor);
 
   const select = (n: number) => setSelected(selected === n ? null : n);
   const scrollToY = (y: number) => scroll.current?.scrollTo({ y: Math.max(0, y - 80), animated: false });
@@ -210,6 +219,8 @@ export default function Reader() {
 
       <ScrollView
         ref={scroll}
+        // En la web el gesto horizontal es para pasar la hoja (usePageSwipe): el navegador solo desplaza en vertical.
+        style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : undefined}
         contentContainerStyle={styles.content}
         scrollEventThrottle={32}
         onScroll={(e) => {

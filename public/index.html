@@ -81,6 +81,8 @@
          src/lib/pageTurn.ts; aquí solo se apagan las de por defecto y se colocan las capas. El dorso de la
          hoja (#pliegue) y sus sombras solo existen en el estado nuevo de la transición. */
       #pliegue, #pliegue-sombra, #pliegue-brillo { display: none; }
+      /* Mientras se arrastra la hoja (src/lib/pageSwipe.ts) no se selecciona texto. */
+      html[data-swipe] * { user-select: none; -webkit-user-select: none; }
       html[data-fold] #pliegue,
       html[data-fold] #pliegue-sombra,
       html[data-fold] #pliegue-brillo {
