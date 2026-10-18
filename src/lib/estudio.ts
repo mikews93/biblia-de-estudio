@@ -12,7 +12,17 @@ type Event =
   | { type: 'done' }
   | { type: 'error'; message: string };
 
-type Request = { book: string; chapter: number; verse?: number; messages: Turn[] };
+export type TallerRequest = {
+  modo: 'preguntar' | 'sugerir' | 'revisar';
+  tipo: 'reflexion' | 'encuentro' | 'sermon';
+  paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
+  plantilla?: string;
+  desde?: number;
+  hasta?: number;
+  borrador?: string;
+};
+
+type Request = { book: string; chapter: number; verse?: number; word?: number; messages: Turn[]; taller?: TallerRequest };
 
 /** Llama a onUpdate con el texto y las fuentes acumulados cada vez que llega algo nuevo. */
 export async function askStudy(

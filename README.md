@@ -53,9 +53,20 @@ Además de la RV1909 hay dos versiones modernas libres: La Biblia en Español Se
 
 Las rutas son en español: `/juan/3` y `/juan/3/16` (`src/lib/routes.ts`); los códigos antiguos como `/jhn/3?v=16` siguen funcionando. Después de exportar la web, `pipeline/seo_pages.py` escribe una página por capítulo con el texto de la RV1909, título, descripción y enlaces, además de `sitemap.xml` y `robots.txt`. La app reemplaza ese contenido al cargar. Las demás rutas sirven `app.html`.
 
-## Comunidades
+## Comunidad
 
-En `/comunidades` cada persona crea su cuenta solo con un nombre (y, si quiere, correo y contraseña para entrar desde otro dispositivo) y puede crear grupos privados para su iglesia, célula, familia o amigos. Se entra únicamente con el enlace `/unirse/CODIGO`.
+La pestaña Comunidad (`/comunidades`) es el muro de la gente con la que lees. Cada persona crea su cuenta solo con un nombre (y, si quiere, correo y contraseña en `/cuenta` para entrar desde otro dispositivo).
+
+- **Amigos:** cada cuenta tiene un código de amistad y un enlace `/amigo/CODIGO`. También se sugiere agregar a la gente de tus grupos. La amistad se pide y se acepta.
+- **Lo que leen tus amigos:** al marcar un capítulo como leído aparece en el muro de tus amigos («leyó hoy Juan 3 y 4»). Se puede apagar en Amigos > Privacidad.
+- **Versículos resaltados e imágenes:** desde «Compartir» en un versículo, «Publicar en Comunidad» publica la imagen elegida o el versículo como resaltado, con un comentario opcional. El texto del versículo lo pone el servidor desde los datos de la app.
+- **Preguntas y lo que aprendí:** se escriben desde «Pregúntale algo a la comunidad…».
+- **Me gusta y comentarios** en todo. Quien publica puede borrar los comentarios de su publicación.
+- **Para quién:** cada publicación es para tus amigos o para toda la comunidad (filtro «Todos»). Las lecturas son solo para amigos. Quien reporta una publicación deja de verla, y con 3 reportes se oculta para los que no son amigos de quien la escribió.
+
+## Planes en grupo
+
+En `/grupos` (pestaña Planes) se crean grupos privados para la iglesia, la célula, la familia o los amigos. Se entra únicamente con el enlace `/unirse/CODIGO`.
 
 - **Plan de lectura en común:** un libro, un ritmo (1 a 3 capítulos al día) y una fecha de inicio. El grupo ve quién ya leyó la lectura de hoy, sin «me gusta» ni rankings, y una meta de la semana compartida (hasta 5 días por persona).
 - **Notas compartidas en un versículo:** pestaña «Grupo» del panel del versículo y pestaña «Notas» del grupo.

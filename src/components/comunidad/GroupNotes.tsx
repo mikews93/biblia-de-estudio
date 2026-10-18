@@ -17,7 +17,7 @@ export default function GroupNotes({ book, books, chapter, verse, onNavigate }: 
   const { ready, usuario, grupos } = useAccount();
   const go = () => {
     onNavigate();
-    navigate(() => router.push('/comunidades'), 'forward');
+    navigate(() => router.push('/grupos'), 'forward');
   };
 
   if (!ready || (usuario && grupos === null)) return <ActivityIndicator color={colors.accent} />;

@@ -53,7 +53,7 @@ export default function AccountScreen() {
   const remove = async () => {
     const ok = await confirm(
       '¿Borrar tu cuenta?',
-      'Se borran tu nombre, tus notas, tus peticiones y tus lecturas compartidas, y sales de todos tus grupos. No se puede deshacer.',
+      'Se borran tu nombre, tus notas, tus peticiones, tus publicaciones, tus comentarios y tus amistades, y sales de todos tus grupos. No se puede deshacer.',
       'Borrar cuenta',
     );
     if (!ok) return;
@@ -64,7 +64,7 @@ export default function AccountScreen() {
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
       <Stack.Screen options={{ title: 'Tu cuenta' }} />
 
-      <Field label="Tu nombre en los grupos" value={name} onChangeText={setName} maxLength={40} />
+      <Field label="Tu nombre" value={name} onChangeText={setName} maxLength={40} />
       <Button
         label="Guardar nombre"
         kind="outline"

@@ -29,7 +29,7 @@ export default function Join() {
     run(async () => {
       const { id } = await api<{ id: string }>('unirse', { codigo });
       await refreshGroups();
-      navigate(() => router.replace(`/comunidades/${id}`), 'forward');
+      navigate(() => router.replace(`/grupos/${id}`), 'forward');
     });
 
   return (
@@ -39,7 +39,7 @@ export default function Join() {
         <>
           <Text style={[text.body, { color: colors.text }]}>{notFound}</Text>
           <Text style={[text.body, { color: colors.muted, marginTop: 8 }]}>Pide a quien te invitó el enlace nuevo.</Text>
-          <Button label="Ir a comunidades" kind="outline" onPress={() => router.replace('/comunidades')} style={{ marginTop: 20 }} />
+          <Button label="Ir a mis grupos" kind="outline" onPress={() => router.replace('/grupos')} style={{ marginTop: 20 }} />
         </>
       ) : !invitation || !ready ? (
         <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />

@@ -1,4 +1,5 @@
 // Función de Vercel: genera un estudio de un capítulo o versículo y responde preguntas sobre él.
+// Con «word» (posición de una palabra griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
 // Solo usa las fuentes de la app (RV1909, griego de STEPBible y referencias de OpenBible.info),
 // que se pasan a Claude como documentos con citas activadas. La respuesta se envía como NDJSON:
 //   {"type":"text","text":"…"}  fragmento de texto en markdown; las citas llegan como ⟦n⟧
@@ -9,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { formatRef, parseRef } from '../src/lib/refs';
 
@@ -16,12 +18,26 @@ const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
 const MAX_TURNS = 12;
 const MAX_QUESTION = 600;
+const MAX_USES = 24;
 
 type Book = { id: string; name: string; chapters: number; interlinear: boolean };
 type Verse = [number, string];
 type Word = [string, string, string, string, string, string, string, string];
 type Turn = { role: 'user' | 'assistant'; text: string };
-type Body = { book?: string; chapter?: number; verse?: number; messages?: Turn[] };
+type Body = { book?: string; chapter?: number; verse?: number; word?: number; messages?: Turn[]; taller?: Taller };
+// Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
+// pero nunca escribe el mensaje por la persona.
+type Taller = {
+  modo: 'preguntar' | 'sugerir' | 'revisar';
+  tipo: 'reflexion' | 'encuentro' | 'sermon';
+  paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
+  plantilla?: string;
+  desde?: number;
+  hasta?: number;
+  borrador?: string;
+};
+// [referencia, forma griega, glosa]: concordancia por número de Strong generada por el pipeline
+type Use = [string, string, string];
 // Cada bloque de un documento lleva su etiqueta y, si se puede abrir en la app, su referencia.
 type BlockMeta = { label: string; ref?: string };
 
@@ -37,6 +53,75 @@ Reglas:
 - No uses ni presentes como interpretación cristiana las enseñanzas de grupos que niegan doctrinas centrales del cristianismo histórico, como la Trinidad o la divinidad de Cristo (por ejemplo, Testigos de Jehová o mormones).
 - Escribe en español claro y cálido para alguien sin formación teológica: párrafos cortos, títulos con "## ", listas con "- " y **negritas** solo para palabras clave. Sin tablas.
 - En las preguntas de seguimiento responde a lo que se pregunta, con la misma regla de fuentes. Si la pregunta no tiene que ver con la Biblia o con el estudio, redirígela con amabilidad.`;
+
+const TALLER_SYSTEM = `
+
+Ahora acompañas a alguien en el Taller de la app, donde prepara una reflexión, un encuentro de grupo o un sermón. Eres un acompañante que pregunta y sugiere, no un escritor fantasma: el valor está en que la persona estudie, ore y prepare.
+
+Reglas del Taller:
+- Nunca escribas un sermón, una reflexión o una guía completa, ni redactes secciones enteras listas para leer o predicar. Si te lo piden, explica con amabilidad que la preparación es suya y ofrece preguntas, opciones o un esquema de ideas para que la persona lo escriba.
+- Lo que digas sobre el texto, el griego o los pasajes relacionados lleva su cita, con la misma regla de fuentes.
+- No inventes anécdotas como si fueran reales. Si sugieres una ilustración, márcala como «Ejemplo, no hecho real», en una o dos frases.
+- Ayuda a que el mensaje tenga una sola idea central que salga del texto, nombre la necesidad humana que el pasaje toca y ponga la gracia de Dios en el centro, no solo consejos.
+- Sé breve: lo justo para dar el siguiente paso.`;
+
+const PASOS = {
+  pasaje: 'observar el pasaje (quién, qué, dónde, cuándo, por qué; palabras repetidas; conectores como «pero», «por tanto», «para que»)',
+  idea: 'formular la idea central (tema: ¿de qué habla?; complemento: ¿qué dice de eso?), la necesidad humana que toca el pasaje y la respuesta de la gracia',
+  bosquejo: 'armar el bosquejo por secciones',
+  revisar: 'revisar el borrador antes de presentarlo',
+};
+
+const TIPOS = { reflexion: 'una reflexión breve (5 a 10 minutos)', encuentro: 'un encuentro de grupo pequeño (60 a 90 minutos)', sermon: 'un sermón (20 a 45 minutos)' };
+
+function tallerTask(book: Book, chapter: number, verse: number | undefined, t: Taller) {
+  const target = verse
+    ? `${book.name} ${chapter}:${verse}`
+    : t.desde
+      ? `${book.name} ${chapter}:${t.desde}${t.hasta ? `-${t.hasta}` : ''}`
+      : `${book.name} ${chapter}`;
+  const head = `Estoy preparando ${TIPOS[t.tipo]} sobre ${target}${t.plantilla ? `, con la estructura «${t.plantilla}»` : ''}. Ahora estoy en el paso de ${PASOS[t.paso]}.`;
+  const draft = t.borrador?.trim() ? `\n\nLo que llevo:\n${t.borrador.trim()}` : '\n\nTodavía no he escrito nada.';
+  let ask: string;
+  if (t.modo === 'preguntar') {
+    ask =
+      'Hazme de 3 a 5 preguntas para pensar este paso por mí mismo, ancladas en el texto y con sus citas. No me des las respuestas. Formato: una lista con "- ", y antes una frase corta de introducción.';
+  } else if (t.modo === 'revisar') {
+    ask = `Revisa lo que llevo con esta lista: idea central en una frase; que salga del texto y respete su contexto; que nombre la necesidad humana; que Dios y su gracia estén en el centro; ${
+      t.tipo === 'sermon' ? 'que cada punto tenga explicación, ilustración y aplicación; ' : ''
+    }${t.tipo === 'encuentro' ? 'que las preguntas lleven al texto y no sean de sí o no; ' : ''}que la aplicación sea concreta; que quepa en el tiempo. Señala con cita cualquier afirmación que no salga del pasaje. Formato: "## Lo que funciona" y "## Para mejorar", con listas cortas. No reescribas mis secciones: dime qué revisar y por qué.`;
+  } else if (t.paso === 'idea' || t.paso === 'pasaje') {
+    ask =
+      'Propón tres formulaciones posibles de la idea central (tema y complemento, una frase cada una), cada una con el versículo que la sostiene, y dos maneras de nombrar la necesidad humana que toca el pasaje. Yo elegiré y la escribiré con mis palabras. Formato: "## Idea central" y "## Necesidad humana", con listas.';
+  } else if (t.tipo === 'encuentro') {
+    const catalog = DINAMICAS.map((d) => `${d.nombre} (${d.minutos} min, apertura ${d.apertura}): ${d.objetivo}`).join('\n');
+    ask = `Sugiere para este encuentro: preguntas de conversación en tres niveles (sobre el texto, sobre Dios y las personas, para la vida), y de 2 a 3 dinámicas del catálogo de la app que encajen con el pasaje, diciendo en qué parte usarlas y por qué. Usa solo dinámicas de este catálogo, todas sin materiales:\n${catalog}\n\nFormato: "## Preguntas" y "## Dinámicas", con listas.`;
+  } else {
+    ask =
+      'Sugiere ideas para el bosquejo, no texto para leer: para cada sección, uno o dos apuntes de lo que el texto permite decir ahí (con cita), una idea de ilustración marcada como «Ejemplo, no hecho real» y una aplicación concreta. Formato: un título "## " por sección y listas cortas.';
+  }
+  return `${head}${draft}\n\n${ask}`;
+}
+
+const MODOS = ['preguntar', 'sugerir', 'revisar'];
+const TALLER_TIPOS = ['reflexion', 'encuentro', 'sermon'];
+const TALLER_PASOS = ['pasaje', 'idea', 'bosquejo', 'revisar'];
+const MAX_DRAFT = 12000;
+
+function validTaller(t: unknown): t is Taller {
+  if (!t || typeof t !== 'object') return false;
+  const x = t as Record<string, unknown>;
+  const optInt = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 200);
+  return (
+    MODOS.includes(x.modo as string) &&
+    TALLER_TIPOS.includes(x.tipo as string) &&
+    TALLER_PASOS.includes(x.paso as string) &&
+    (x.plantilla === undefined || (typeof x.plantilla === 'string' && x.plantilla.length <= 80)) &&
+    (x.borrador === undefined || (typeof x.borrador === 'string' && x.borrador.length <= MAX_DRAFT)) &&
+    optInt(x.desde) &&
+    optInt(x.hasta)
+  );
+}
 
 const client = new Anthropic();
 
@@ -70,7 +155,21 @@ async function refText(ref: string): Promise<string> {
     .join(' ');
 }
 
-async function buildSources(book: Book, chapter: number, verse: number | undefined, books: Book[]) {
+/** Otras apariciones de la palabra en el NT, repartidas por todo el texto para que no salgan solo del mismo libro. */
+async function wordUses(word: Word, here: string, books: Book[]) {
+  const uses = (await load<Use[]>(`concordance/${word[6]}.json`, [])).filter(([ref]) => ref !== here);
+  const step = Math.max(1, uses.length / MAX_USES);
+  const picked = Array.from({ length: Math.min(MAX_USES, uses.length) }, (_, i) => uses[Math.floor(i * step)]);
+  const blocks = await Promise.all(
+    picked.map(async ([ref, form, gloss]) => {
+      const label = formatRef(ref, books);
+      return { text: `${label}: ${form} «${gloss}». RV1909: ${await refText(ref)}`, meta: { label, ref } };
+    }),
+  );
+  return { total: uses.length + 1, blocks };
+}
+
+async function buildSources(book: Book, chapter: number, verse: number | undefined, books: Book[], word?: number) {
   const [verses, interlinear, xrefs] = await Promise.all([
     load<Verse[]>(`text/rv1909/${book.id}/${chapter}.json`),
     load<Record<string, Word[]>>(`interlinear/${book.id}/${chapter}.json`, {}),
@@ -122,7 +221,31 @@ async function buildSources(book: Book, chapter: number, verse: number | undefin
       : `Referencias cruzadas de ${book.name} ${chapter} (OpenBible.info)`;
     docs.push(doc(title, refBlocks));
   }
-  return docs;
+
+  let focus: { word: Word; total: number } | undefined;
+  if (verse && word !== undefined) {
+    const w = interlinear[verse]?.[word];
+    if (!w) throw new Error('Esa palabra no existe en el versículo');
+    const uses = await wordUses(w, `${book.id}.${chapter}.${verse}`, books);
+    if (uses.blocks.length) {
+      docs.push(doc(`Otros pasajes del Nuevo Testamento con ${w[4]} (${w[6]}), con su glosa y la RV1909`, uses.blocks));
+    }
+    focus = { word: w, total: uses.total };
+  }
+  return { docs, focus };
+}
+
+function wordTask(book: Book, chapter: number, verse: number, focus: { word: Word; total: number }) {
+  const [greek, translit, es, , lemma, lemmaGloss, strong] = focus.word;
+  return `La persona tocó la palabra griega ${greek} (${translit}, glosa «${es}») en ${book.name} ${chapter}:${verse}. Su forma de diccionario es ${lemma} «${lemmaGloss}» (${strong}) y aparece ${focus.total} ${
+    focus.total === 1 ? 'vez' : 'veces'
+  } en el Nuevo Testamento. Explica «¿Por qué esta palabra?» con estas secciones:
+## Qué dice el griego: el significado de la palabra y lo que aporta su forma gramatical aquí.
+## Cómo la traduce la RV1909: qué palabra española usa en este versículo y qué matiz se gana o se pierde frente al griego.
+## Dónde más aparece: 3 o 4 pasajes de la lista de otros pasajes que muestren cómo se usa, y qué enseña cada uno.
+## Para pensar: una pregunta breve para la persona.
+
+Si los especialistas o las tradiciones cristianas entienden la palabra de maneras distintas en este pasaje, menciónalo sin tomar partido. Extensión: 250 a 400 palabras. Empieza directamente por la primera sección.`;
 }
 
 function studyTask(book: Book, chapter: number, verse: number | undefined, hasGreek: boolean) {
@@ -165,6 +288,10 @@ export async function POST(request: Request) {
     return badRequest('Libro o capítulo no válido');
   }
   if (verse !== undefined && (!Number.isInteger(verse) || verse < 1)) return badRequest('Versículo no válido');
+  const word = body.word === undefined ? undefined : Number(body.word);
+  if (word !== undefined && (verse === undefined || !book.interlinear || !Number.isInteger(word) || word < 0)) {
+    return badRequest('Palabra no válida');
+  }
 
   const turns = body.messages ?? [];
   if (
@@ -176,10 +303,13 @@ export async function POST(request: Request) {
   ) {
     return badRequest('Conversación no válida');
   }
+  if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
+  const taller = body.taller;
 
   let docs;
+  let focus;
   try {
-    docs = await buildSources(book, chapter, verse, books);
+    ({ docs, focus } = await buildSources(book, chapter, verse, books, word));
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
@@ -191,7 +321,14 @@ export async function POST(request: Request) {
       role: 'user',
       content: [
         ...docs.map((d) => d.param),
-        { type: 'text', text: studyTask(book, chapter, verse, docs.length > 1 && book.interlinear) },
+        {
+          type: 'text',
+          text: taller
+            ? tallerTask(book, chapter, verse, taller)
+            : focus && verse
+              ? wordTask(book, chapter, verse, focus)
+              : studyTask(book, chapter, verse, docs.length > 1 && book.interlinear),
+        },
       ],
     },
     ...turns.map((t) => ({ role: t.role, content: t.text })),
@@ -208,7 +345,7 @@ export async function POST(request: Request) {
           {
             model: MODEL,
             max_tokens: 16000,
-            system: SYSTEM,
+            system: taller ? SYSTEM + TALLER_SYSTEM : SYSTEM,
             messages,
             cache_control: { type: 'ephemeral' },
             output_config: { effort: 'medium' },

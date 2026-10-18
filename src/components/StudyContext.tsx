@@ -11,10 +11,12 @@ type Props = {
   verse?: number;
   /** Abre un versículo del capítulo (referencia «jhn.2.6»). */
   onOpen: (ref: string) => void;
+  /** Abre el mapa con los lugares del capítulo. */
+  onOpenMap: () => void;
 };
 
 /** Medidas antiguas con su equivalencia moderna e imágenes de objetos, lugares y mapas del pasaje. */
-export default function StudyContext({ book, chapter, verse, onOpen }: Props) {
+export default function StudyContext({ book, chapter, verse, onOpen, onOpenMap }: Props) {
   const colors = useColors();
   const key = `${book}.${chapter}`;
   const [loaded, setLoaded] = useState<{ key: string; medidas: Measure[]; imagenes: Picture[] } | null>(null);
@@ -113,6 +115,11 @@ export default function StudyContext({ book, chapter, verse, onOpen }: Props) {
               </Pressable>
             ))}
           </ScrollView>
+          {pictures.some((p) => p.kind === 'lugar') && (
+            <Pressable onPress={onOpenMap} hitSlop={8} accessibilityRole="link">
+              <Text style={[styles.mapLink, { color: colors.accent }]}>Ver los lugares en el mapa ›</Text>
+            </Pressable>
+          )}
         </View>
       )}
 
@@ -171,6 +178,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     overflow: 'hidden',
   },
+  mapLink: { fontSize: 14, fontWeight: '700', marginTop: 10 },
   credit: { fontSize: 12, lineHeight: 17, marginTop: 10, textAlign: 'center' },
   row: { gap: 12, paddingVertical: 4, paddingRight: 8 },
   card: { width: 200, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },

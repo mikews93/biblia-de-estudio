@@ -6,31 +6,39 @@ import { chapterHref } from '@/lib/routes';
 import { getLastRead, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-type Tab = { key: 'hoy' | 'leer' | 'comunidad'; label: string; icon: string };
+type Tab = { key: 'hoy' | 'leer' | 'planes' | 'taller' | 'comunidad'; label: string; icon: string };
 
 const TABS: Tab[] = [
   { key: 'hoy', label: 'Hoy', icon: '⌂' },
   { key: 'leer', label: 'Leer', icon: '¶' },
+  { key: 'planes', label: 'Planes', icon: '☷' },
+  { key: 'taller', label: 'Taller', icon: '✎' },
   { key: 'comunidad', label: 'Comunidad', icon: '◎' },
 ];
 
 function current(path: string): Tab['key'] {
-  if (path === '/') return 'hoy';
-  if (path.startsWith('/comunidades')) return 'comunidad';
+  if (path === '/' || path === '/notas') return 'hoy';
+  if (/^\/(planes|grupos|unirse)(\/|$)/.test(path)) return 'planes';
+  if (/^\/(comunidades|amigo|cuenta)(\/|$)/.test(path)) return 'comunidad';
+  if (path.startsWith('/taller')) return 'taller';
   return 'leer';
 }
 
-/** Barra de abajo para saltar entre Hoy, la lectura y la comunidad. */
+/** Barra de abajo para saltar entre Hoy, la lectura, los planes, el Taller y la comunidad. */
 export default function TabBar() {
   const colors = useColors();
   const path = usePathname();
   const insets = useSafeAreaInsets();
   const active = current(path);
+  // Al presentar un mensaje la pantalla es toda para el texto.
+  if (path.endsWith('/presentar')) return null;
 
   const go = async (key: Tab['key']) => {
-    if (key === active && key !== 'leer') return;
+    if (key === active && key !== 'leer' && (key !== 'hoy' || path === '/')) return;
     if (key === 'hoy') navigate(() => router.dismissTo('/'), 'back');
+    if (key === 'planes') navigate(() => router.push('/planes'), 'fade');
     if (key === 'comunidad') navigate(() => router.push('/comunidades' as never), 'fade');
+    if (key === 'taller') navigate(() => router.push('/taller'), 'fade');
     if (key === 'leer') {
       if (active === 'leer') return;
       const last = await getLastRead();
