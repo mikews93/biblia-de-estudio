@@ -6,6 +6,7 @@ import Appear from '@/components/Appear';
 import MicIcon from '@/components/MicIcon';
 import SearchIcon from '@/components/SearchIcon';
 import PlanCard from '@/components/PlanCard';
+import StudyPanel from '@/components/StudyPanel';
 import VerseImage from '@/components/VerseImage';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
@@ -30,6 +31,7 @@ export default function Today() {
   const [verseText, setVerseText] = useState<string | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [sharing, setSharing] = useState(false);
+  const [devotional, setDevotional] = useState(false);
   const daily = verseOfTheDay();
 
   useEffect(() => {
@@ -117,6 +119,16 @@ export default function Today() {
             {verseText ? `«${verseText}»` : ' '}
           </Text>
           <Text style={[styles.ref, { color: colors.muted }]}>{dailyRef}</Text>
+          {books.length > 0 && (
+            <Pressable
+              onPress={() => setDevotional(true)}
+              style={({ pressed }) => [styles.devotional, { backgroundColor: colors.accent }, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>♡ Haz el devocional de hoy</Text>
+              <Text style={{ color: colors.accentSoft, fontSize: 13 }}>10 min</Text>
+            </Pressable>
+          )}
           <View style={styles.row}>
             <SmallButton
               label="Leer el capítulo"
@@ -207,6 +219,7 @@ export default function Today() {
           onPress={() => navigate(() => router.push('/planes'), 'forward')}
         />
         <Tile icon="✎" label="Mis notas" colors={colors} onPress={() => navigate(() => router.push('/notas'), 'forward')} />
+        <Tile icon="♡" label="Mi diario" colors={colors} onPress={() => navigate(() => router.push('/diario' as never), 'forward')} />
         <Tile
           icon="✦"
           label="Estudiar con IA"
@@ -220,6 +233,15 @@ export default function Today() {
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
       </Appear>
+      {devotional && books.find((b) => b.id === daily.book) && (
+        <StudyPanel
+          book={books.find((b) => b.id === daily.book)!}
+          chapter={daily.chapter}
+          verse={daily.verse}
+          enfoque="devocional"
+          onClose={() => setDevotional(false)}
+        />
+      )}
       {sharing && verseText && (
         <VerseImage
           verse={{
@@ -288,6 +310,15 @@ const styles = StyleSheet.create({
   question: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 16, paddingTop: 14 },
   week: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
   dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
+  devotional: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 14,
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: { flexGrow: 1, flexBasis: '28%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 16, alignItems: 'center' },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },

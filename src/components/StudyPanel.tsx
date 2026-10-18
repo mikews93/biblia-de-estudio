@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ComponentRef, ReactNode, useEffect, useRef, useState } from 'react';
+import { ComponentRef, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,15 +14,19 @@ import {
 } from 'react-native';
 
 import Appear from '@/components/Appear';
+import Devotional from '@/components/Devotional';
 import StudyContext from '@/components/StudyContext';
 import { Book, original, parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
-import { Source, Turn, askStudy } from '@/lib/estudio';
-import { Colors, serif, useColors } from '@/lib/theme';
+import { Enfoque, Turn, askStudy } from '@/lib/estudio';
+import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { BOOK_SLUGS, verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 import StudyBackground from '@/components/StudyBackground';
+import { Markdown, Sources } from '@/components/StudyText';
+
+export { Markdown, Sources };
 
 type Props = {
   book: Book;
@@ -31,15 +35,23 @@ type Props = {
   /** «¿Por qué esta palabra?»: posición de la palabra griega en el versículo y cómo se muestra. */
   word?: { index: number; greek: string };
   onClose: () => void;
+  /** Modo con el que se abre; si no, el último que eligió la persona. */
+  enfoque?: Enfoque;
 };
 
 const SUGGESTIONS = ['Explícamelo más sencillo', '¿Cómo lo aplico hoy?', '¿Qué aportan los pasajes relacionados?'];
 const WORD_SUGGESTIONS = ['Explícamelo más sencillo', '¿Por qué no se tradujo de otra forma?', '¿Cómo lo aplico hoy?'];
 
 /** Estudio generado con IA a partir de las fuentes de la app, con citas y preguntas de seguimiento. */
-export default function StudyPanel({ book, chapter, verse, word, onClose }: Props) {
+export default function StudyPanel({ book, chapter, verse, word, onClose, enfoque: initial }: Props) {
   const colors = useColors();
+  const { settings, update } = useSettings();
+  // «¿Por qué esta palabra?» siempre es estudio profundo.
+  const [chosen, setChosen] = useState<Enfoque>(initial ?? settings.enfoque);
+  const mode: Enfoque = word ? 'profundo' : chosen;
   const [turns, setTurns] = useState<Turn[]>([]);
+  // Lo ya generado en cada modo, para cambiar de uno a otro sin volver a pedirlo.
+  const saved = useRef<Partial<Record<Enfoque, Turn[]>>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
@@ -49,7 +61,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
   const passage = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
   const title = word ? `${word.greek} en ${passage}` : passage;
 
-  const run = async (history: Turn[]) => {
+  const run = async (history: Turn[], enfoque: Enfoque = mode) => {
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
@@ -59,11 +71,13 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
     setTurns([...history, { role: 'assistant', text: '', sources: [] }]);
     try {
       const answer = await askStudy(
-        { book: book.id, chapter, verse, word: word?.index, messages: history },
+        { book: book.id, chapter, verse, word: word?.index, messages: history, enfoque },
         (text, sources) => setTurns([...history, { role: 'assistant', text, sources }]),
         controller.signal,
       );
-      setTurns([...history, { role: 'assistant', ...answer }]);
+      const done: Turn[] = [...history, { role: 'assistant', ...answer }];
+      saved.current[enfoque] = done;
+      setTurns(done);
     } catch (e) {
       if (controller.signal.aborted) return;
       setError(e instanceof Error ? e.message : 'No se pudo generar el estudio.');
@@ -75,10 +89,24 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
   };
 
   useEffect(() => {
+    saved.current = {};
     run([]);
     return () => abort.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [book.id, chapter, verse, word?.index]);
+
+  const switchMode = (next: Enfoque) => {
+    if (next === mode) return;
+    setChosen(next);
+    update({ enfoque: next });
+    setError(null);
+    const cached = saved.current[next];
+    if (cached) {
+      abort.current?.abort();
+      setBusy(false);
+      setTurns(cached);
+    } else run([], next);
+  };
 
   const ask = (q: string) => {
     const text = q.trim();
@@ -102,6 +130,31 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
     <StudyContext book={book.id} chapter={chapter} verse={verse} onOpen={open} onOpenMap={openMap} />
   );
   const first = turns[0];
+  const problem =
+    error === NEEDS_ACCOUNT ? (
+                <View style={styles.waiting}>
+                  <Welcome
+                    kind="ia"
+                    title={mode === 'devocional' ? 'Devocional guiado' : 'Estudia con IA'}
+                    intro={
+                      mode === 'devocional'
+                        ? 'Te ayuda a meditar el pasaje con preguntas, pistas para orar y un paso para hoy, sacados del texto. Solo necesitas una cuenta gratuita.'
+                        : 'Te explica el pasaje con el texto original y las referencias, y responde tus preguntas. Solo necesitas una cuenta gratuita.'
+                    }
+                    onReady={() => run(lastHistory.current)}
+                  />
+                </View>
+              ) : error && (
+                <View style={styles.waiting}>
+                  <Text style={{ color: colors.text, textAlign: 'center' }}>{error}</Text>
+                  <Pressable
+                    onPress={() => run(lastHistory.current)}
+                    style={[styles.retry, { borderColor: colors.accent }]}
+                  >
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>Reintentar</Text>
+                  </Pressable>
+                </View>
+              );
   const waiting = busy && !turns[turns.length - 1]?.text;
 
   return (
@@ -113,10 +166,10 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1, minHeight: 0 }}
           >
-            <View style={[styles.header, { borderColor: colors.border }]}>
+            <View style={[styles.header, { borderColor: colors.border }, !word && { borderBottomWidth: 0, paddingBottom: 8 }]}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.kicker, { color: colors.accent }]}>
-                  {word ? '✦ ¿POR QUÉ ESTA PALABRA?' : '✦ ESTUDIO'}
+                  {word ? '✦ ¿POR QUÉ ESTA PALABRA?' : mode === 'devocional' ? '♡ DEVOCIONAL' : '✦ ESTUDIO PROFUNDO'}
                 </Text>
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
               </View>
@@ -124,13 +177,30 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                 <Text style={{ color: colors.muted, fontSize: 20 }}>✕</Text>
               </Pressable>
             </View>
+            {!word && <ModeSwitch mode={mode} onChange={switchMode} colors={colors} />}
 
             <ScrollView
               ref={scroll}
               style={{ flex: 1, minHeight: 0 }}
               contentContainerStyle={styles.body}
-              onContentSizeChange={() => turns.length > 1 && scroll.current?.scrollToEnd({ animated: true })}
+              onContentSizeChange={() => mode === 'profundo' && turns.length > 1 && scroll.current?.scrollToEnd({ animated: true })}
             >
+              {mode === 'devocional' ? (
+                <Devotional
+                  key={`${book.id}.${chapter}.${verse}`}
+                  book={book}
+                  chapter={chapter}
+                  verse={verse}
+                  text={first?.text ?? ''}
+                  sources={first?.sources ?? []}
+                  busy={busy}
+                  problem={problem}
+                  onOpen={open}
+                  onClose={onClose}
+                  onStep={() => scroll.current?.scrollTo({ y: 0, animated: true })}
+                />
+              ) : (
+              <>
               {!word && (
                 <StudyBackground book={book.id} bookName={book.name} chapter={chapter} verse={verse} onClose={onClose} />
               )}
@@ -171,21 +241,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                 </View>
               )}
 
-              {error === NEEDS_ACCOUNT ? (
-                <View style={styles.waiting}>
-                  <Welcome kind="ia" title="Estudia con IA" intro="Te explica el pasaje con el texto original y las referencias, y responde tus preguntas. Solo necesitas una cuenta gratuita." onReady={() => run(lastHistory.current)} />
-                </View>
-              ) : error && (
-                <View style={styles.waiting}>
-                  <Text style={{ color: colors.text, textAlign: 'center' }}>{error}</Text>
-                  <Pressable
-                    onPress={() => run(lastHistory.current)}
-                    style={[styles.retry, { borderColor: colors.accent }]}
-                  >
-                    <Text style={{ color: colors.accent, fontWeight: '700' }}>Reintentar</Text>
-                  </Pressable>
-                </View>
-              )}
+              {problem}
 
               {error && !first?.text && context}
 
@@ -196,7 +252,17 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                       <Text style={{ color: colors.text, fontSize: 13 }}>{s}</Text>
                     </Pressable>
                   ))}
+                  {!word && (
+                    <Pressable
+                      onPress={() => switchMode('devocional')}
+                      style={[styles.chip, { borderColor: colors.accent, backgroundColor: colors.accentSoft }]}
+                    >
+                      <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>♡ Hacer el devocional de este pasaje</Text>
+                    </Pressable>
+                  )}
                 </View>
+              )}
+              </>
               )}
 
               <Text style={[styles.disclaimer, { color: colors.muted }]}>
@@ -205,6 +271,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
               </Text>
             </ScrollView>
 
+            {mode === 'profundo' && (
             <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <TextInput
                 value={question}
@@ -239,6 +306,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                 </Text>
               </Pressable>
             </View>
+            )}
           </KeyboardAvoidingView>
         </View>
       </View>
@@ -246,79 +314,43 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
   );
 }
 
-export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors: Colors; onOpen: (ref: string) => void }) {
+const MODES: { value: Enfoque; icon: string; label: string; hint: string }[] = [
+  { value: 'devocional', icon: '♡', label: 'Devocional', hint: 'Lee, medita y ora' },
+  { value: 'profundo', icon: '✦', label: 'Profundo', hint: 'Original y contexto' },
+];
+
+/** Selector entre el devocional guiado y el estudio profundo. */
+function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: Enfoque) => void; colors: Colors }) {
   return (
-    <View style={[styles.sources, { borderColor: colors.border }]}>
-      <Text style={[styles.sourcesTitle, { color: colors.muted }]}>FUENTES</Text>
-      {sources.map((s) => (
-        <Pressable key={s.n} onPress={() => s.ref && onOpen(s.ref)} style={styles.sourceRow} disabled={!s.ref}>
-          <Text style={[styles.sourceNumber, { color: colors.accent }]}>{s.n}</Text>
-          <Text style={{ color: colors.text, flex: 1 }}>{s.label}</Text>
-          {s.ref && <Text style={{ color: colors.muted }}>›</Text>}
-        </Pressable>
-      ))}
+    <View style={[styles.modeWrap, { borderColor: colors.border }]}>
+      <View style={[styles.modes, { backgroundColor: colors.surface, borderColor: colors.border }]} accessibilityRole="tablist">
+        {MODES.map((m) => {
+          const on = m.value === mode;
+          return (
+            <Pressable
+              key={m.value}
+              onPress={() => onChange(m.value)}
+              style={({ pressed }) => [
+                styles.mode,
+                on && { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+                pressed && !on && { opacity: 0.6 },
+              ]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${m.label}: ${m.hint}`}
+            >
+              <Text style={[styles.modeLabel, { color: on ? colors.accent : colors.text }]}>
+                <Text style={{ fontFamily: serif }}>{m.icon}</Text> {m.label}
+              </Text>
+              <Text style={[styles.modeHint, { color: colors.muted }]} numberOfLines={1}>
+                {m.hint}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
-}
-
-/** Markdown mínimo: títulos ##, listas con -, **negritas** y marcas de cita ⟦n⟧. */
-export function Markdown({ text, colors }: { text: string; colors: Colors }) {
-  const blocks = text.split(/\n{2,}/);
-  return (
-    <View>
-      {blocks.map((block, i) => {
-        const lines = block.split('\n').filter((l) => l.trim());
-        if (!lines.length) return null;
-        if (lines.length === 1 && /^#{1,3} /.test(lines[0])) {
-          return (
-            <Text key={i} style={[styles.h2, { color: colors.text }]}>
-              {inline(lines[0].replace(/^#{1,3} /, ''), colors)}
-            </Text>
-          );
-        }
-        return lines.map((line, j) => {
-          if (/^#{1,3} /.test(line)) {
-            return (
-              <Text key={`${i}-${j}`} style={[styles.h2, { color: colors.text }]}>
-                {inline(line.replace(/^#{1,3} /, ''), colors)}
-              </Text>
-            );
-          }
-          const bullet = /^\s*[-*] /.test(line);
-          return (
-            <View key={`${i}-${j}`} style={bullet ? styles.bulletRow : undefined}>
-              {bullet && <Text style={[styles.p, { color: colors.accent, width: 16 }]}>•</Text>}
-              <Text style={[styles.p, { color: colors.text, flex: bullet ? 1 : undefined }]}>
-                {inline(line.replace(/^\s*[-*] /, ''), colors)}
-              </Text>
-            </View>
-          );
-        });
-      })}
-    </View>
-  );
-}
-
-function inline(text: string, colors: Colors): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|⟦\d+⟧)/).map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <Text key={i} style={{ fontWeight: '700' }}>
-          {part.slice(2, -2)}
-        </Text>
-      );
-    }
-    const cite = part.match(/^⟦(\d+)⟧$/);
-    if (cite) {
-      return (
-        <Text key={i} style={[styles.cite, { color: colors.accent }]}>
-          {' '}
-          {cite[1]}
-        </Text>
-      );
-    }
-    return part;
-  });
 }
 
 const styles = StyleSheet.create({
@@ -343,19 +375,21 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  modeWrap: { paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  modes: { flexDirection: 'row', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 4, gap: 4 },
+  mode: {
+    flex: 1,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  modeLabel: { fontSize: 15, fontWeight: '700' },
+  modeHint: { fontSize: 12, marginTop: 2 },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   title: { fontSize: 22, fontFamily: serif, marginTop: 2 },
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 },
-  h2: {
-    fontSize: 19,
-    fontFamily: serif,
-    fontWeight: '600',
-    marginTop: 18,
-    marginBottom: 6,
-  },
-  p: { fontSize: 16, lineHeight: 25, marginBottom: 8 },
-  bulletRow: { flexDirection: 'row' },
-  cite: { fontSize: 11, fontWeight: '700', lineHeight: 16 },
   question: {
     alignSelf: 'flex-end',
     borderRadius: 16,
@@ -372,24 +406,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 8,
   },
-  sources: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    marginTop: 12,
-    paddingTop: 10,
-  },
-  sourcesTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    marginBottom: 4,
-  },
-  sourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 6,
-  },
-  sourceNumber: { fontWeight: '700', width: 20, textAlign: 'right' },
   suggestions: {
     flexDirection: 'row',
     flexWrap: 'wrap',

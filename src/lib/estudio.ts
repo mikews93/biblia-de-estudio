@@ -35,7 +35,11 @@ type Request = {
   messages: Turn[];
   taller?: TallerRequest;
   herramienta?: Herramienta;
+  enfoque?: Enfoque;
 };
+
+/** Los dos modos de la pestaña de estudio: un devocional guiado o el estudio profundo del texto. */
+export type Enfoque = 'devocional' | 'profundo';
 
 /** Llama a onUpdate con el texto y las fuentes acumulados cada vez que llega algo nuevo. */
 export async function askStudy(
