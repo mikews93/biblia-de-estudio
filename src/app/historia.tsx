@@ -24,8 +24,10 @@ import {
   FUENTE_HISTORIA,
   PERIODOS,
   Periodo,
+  RAMAS,
   REGION_COLORS,
   REINOS,
+  TRONCO,
   Region,
   esCorriente,
   eventosDe,
@@ -33,7 +35,10 @@ import {
   fechaPeriodo,
   periodoDe,
 } from '@/lib/historia';
-import { INICIO, anchoTexto, apilar, crearEscala, etiquetaMarca, filasEn } from '@/lib/lineaTiempo';
+import IconoHistoria from '@/components/IconoHistoria';
+import { Ligadura, Rama } from '@/components/Rama';
+import { iconoEvento, iconoPeriodo } from '@/lib/iconos';
+import { FIN, INICIO, anchoTexto, apilar, crearEscala, etiquetaMarca, filasEn } from '@/lib/lineaTiempo';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -61,11 +66,14 @@ const EJE = 30;
 const ROTULO = 4;
 const CORRIENTE = 22;
 const FILA = 28;
+const TRONCO_ALTO = 44;
+/** Centro de cada rama del tronco bíblico, medido desde arriba de su fila. */
+const Y_TRONCO = { medio: 29, arriba: 22, abajo: 37 };
 const FILA_BIBLIA = 32;
 const PIE = 10;
 
-/** «Cuando se escribió Romanos» → «✎ Romanos»: en la línea de tiempo hace falta que quepa. */
-const corto = (t: string) => t.replace(/^Cuando se escribi(?:ó|eron) (?:las )?/, '✎ ');
+/** «Cuando se escribió Romanos» → «Romanos» (con el icono de la pluma): en la línea de tiempo hace falta que quepa. */
+const corto = (t: string) => t.replace(/^Cuando se escribi(?:ó|eron) (?:las )?(.)/, (_, c: string) => c.toUpperCase());
 
 type Sel = { kind: 'periodo'; p: Periodo } | { kind: 'evento'; e: Evento };
 const fin = (e: Evento) => e.hasta ?? e.desde;
@@ -118,7 +126,7 @@ export default function Historia() {
       periodos,
       (p) => ({
         x: escala.x(p.desde),
-        w: Math.max(span(p.desde, p.hasta), anchoTexto(corto(p.titulo), 13) + 22 + (p.id === actual?.id ? 78 : 0)),
+        w: Math.max(span(p.desde, p.hasta), anchoTexto(corto(p.titulo), 13) + 40 + (p.id === actual?.id ? 78 : 0)),
       }),
       6,
       ancho2 ? 7 : 5,
@@ -133,7 +141,7 @@ export default function Historia() {
       );
       const hechos = apilar(
         EVENTOS.filter((e) => e.region === region && !esCorriente(e)),
-        (e) => ({ x: escala.x(e.desde) - 5, w: Math.max(span(e.desde, fin(e)) + 10, anchoTexto(e.titulo, 12) + 22) }),
+        (e) => ({ x: escala.x(e.desde) - 10, w: Math.max(span(e.desde, fin(e)) + 20, anchoTexto(e.titulo, 12) + 34) }),
         8,
         3,
         60,
@@ -151,7 +159,7 @@ export default function Historia() {
     const a = ventana[0] - vista.w - MARGEN_IZQ;
     const b = ventana[1] + vista.w - MARGEN_IZQ;
     const origenes = plano.escala.x(ORIGENES.hasta) > a ? 2 : 1;
-    const altoBiblia = ROTULO + CORRIENTE + filasEn(plano.biblia.colocados, a, b, origenes) * FILA_BIBLIA + PIE;
+    const altoBiblia = ROTULO + TRONCO_ALTO + filasEn(plano.biblia.colocados, a, b, origenes) * FILA_BIBLIA + PIE;
     const tops: Record<string, number> = {};
     let y = altoBiblia;
     const corrientes: Record<string, number> = {};
@@ -253,6 +261,9 @@ export default function Historia() {
     const on = !!e && sel?.kind === 'evento' && sel.e === e;
     const body = (
       <>
+        {e && (
+          <Rama w={w} h={CORRIENTE - 4} grosor={CORRIENTE - 7} color={on ? colors.accent : color} opacidad={0.5} punta={fin(e) < FIN} />
+        )}
         <Animated.Text
           numberOfLines={1}
           style={[styles.corrienteTxt, { color: colors.text }, deslizante(x, w, anchoTexto(titulo, 12), fila === 0 ? margen : 6)]}
@@ -267,10 +278,7 @@ export default function Historia() {
         left: MARGEN_IZQ + x,
         width: w,
         top: top + fila * CORRIENTE,
-        backgroundColor: `${color}${era ? '2E' : '38'}`,
-        borderLeftColor: color,
       },
-      on && { borderColor: colors.accent, borderWidth: 1.5, borderLeftWidth: 3 },
     ];
     if (!e) return <View key={titulo} style={style}>{body}</View>;
     return (
@@ -279,6 +287,13 @@ export default function Historia() {
       </Pressable>
     );
   };
+
+  // Dónde queda cada reino (para unirlo con el que le sigue)
+  const ramaPos: Record<string, { x: number; w: number; y: number; region: Region }> = {};
+  for (const { region, corrientes } of plano.carriles)
+    for (const { item, x, w, fila } of corrientes.colocados)
+      if (fila < alturas.corrientes[region])
+        ramaPos[item.titulo] = { x, w, y: alturas.tops[region] + ROTULO + fila * CORRIENTE + (CORRIENTE - 4) / 2, region };
 
   const titulo = (s: Sel) => (s.kind === 'periodo' ? s.p.titulo : s.e.titulo);
 
@@ -397,9 +412,54 @@ export default function Historia() {
                 <View style={[styles.rotuloPunto, { backgroundColor: colors.accent }]} />
                 <Text style={[styles.rotuloTxt, { color: colors.accent }]}>HISTORIA BÍBLICA</Text>
               </Animated.View>
-              {ERAS.map((era) => (
-                corriente({ era, x: escala.x(era.desde), w: escala.x(era.hasta) - escala.x(era.desde), fila: 0, top: ROTULO, color: era.color, margen: margenRotulo('Historia bíblica') })
-              ))}
+              {ERAS.map((era) => {
+                const x0 = escala.x(era.desde);
+                const w = escala.x(era.hasta) - x0;
+                return (
+                  <View key={era.titulo} pointerEvents="none" style={{ position: 'absolute', left: MARGEN_IZQ + x0, top: ROTULO, width: w, height: 16, overflow: 'hidden' }}>
+                    <View style={{ position: 'absolute', left: 0, top: 3, width: 2, height: 11, borderRadius: 1, backgroundColor: era.color }} />
+                    <Animated.Text numberOfLines={1} style={[styles.eraTxt, { color: colors.muted }, deslizante(x0, w, anchoTexto(era.titulo, 11) + 8, margenRotulo('Historia bíblica'))]}>
+                      {era.titulo}
+                    </Animated.Text>
+                  </View>
+                );
+              })}
+              {/* El tronco: raíz sin fechas, el reino que se divide en dos ramas, el destierro y el regreso */}
+              {TRONCO.map((t) => {
+                const x0 = escala.x(t.desde);
+                const w = escala.x(t.hasta) - x0;
+                const ultimo = t.hasta >= FIN;
+                return (
+                  <View key={`${t.desde}-${t.pos}`} pointerEvents="none" style={{ position: 'absolute', left: MARGEN_IZQ + x0, top: ROTULO, width: w, height: TRONCO_ALTO }}>
+                    <Rama
+                      w={w}
+                      h={TRONCO_ALTO}
+                      y0={Y_TRONCO[t.brotaDe ?? t.pos]}
+                      y1={Y_TRONCO[t.pos]}
+                      grosor={t.pos === 'medio' ? 15 : 11}
+                      color={colors.accent}
+                      opacidad={0.85}
+                      brote={!t.brotaDe}
+                      punta={!!t.punta}
+                      punteado={t.punteado}
+                    />
+                    {!!t.titulo && !ultimo && (
+                      <Animated.Text
+                        numberOfLines={1}
+                        style={[
+                          styles.ramaTxt,
+                          t.punteado
+                            ? { top: Y_TRONCO[t.pos] + 3, color: colors.muted, fontWeight: '600', fontStyle: 'italic' }
+                            : { top: Y_TRONCO[t.pos] - 6.5, color: colors.background },
+                          deslizante(x0, w, anchoTexto(t.titulo, 9.5) + 30, 6),
+                        ]}
+                      >
+                        {t.punteado ? t.titulo : t.titulo.toUpperCase()}
+                      </Animated.Text>
+                    )}
+                  </View>
+                );
+              })}
               <Pressable
                 onPress={() => elegir({ kind: 'periodo', p: ORIGENES })}
                 style={[
@@ -407,7 +467,7 @@ export default function Historia() {
                   {
                     left: X(ORIGENES.desde),
                     width: X(ORIGENES.hasta) - X(ORIGENES.desde) - 8,
-                    top: ROTULO + CORRIENTE + 4,
+                    top: ROTULO + TRONCO_ALTO + 4,
                     borderColor: sel?.kind === 'periodo' && sel.p === ORIGENES ? colors.accent : colors.muted,
                   },
                 ]}
@@ -422,7 +482,14 @@ export default function Historia() {
                 const spanW = Math.max(4, escala.x(p.hasta) - escala.x(p.desde));
                 const here = p.id === actual?.id;
                 const on = sel?.kind === 'periodo' && sel.p === p;
-                return (
+                const icono = iconoPeriodo(p);
+                const chipTop = ROTULO + TRONCO_ALTO + fila * FILA_BIBLIA + 4;
+                return [
+                  <View
+                    key={`t-${p.id}`}
+                    pointerEvents="none"
+                    style={[styles.tallo, { left: MARGEN_IZQ + x + 10, top: ROTULO + Y_TRONCO.abajo, height: chipTop - ROTULO - Y_TRONCO.abajo, backgroundColor: `${colors.accent}38` }]}
+                  />,
                   <Pressable
                     key={p.id}
                     accessibilityRole="button"
@@ -432,7 +499,7 @@ export default function Historia() {
                       {
                         left: MARGEN_IZQ + x,
                         width: w,
-                        top: ROTULO + CORRIENTE + fila * FILA_BIBLIA + 4,
+                        top: ROTULO + TRONCO_ALTO + fila * FILA_BIBLIA + 4,
                         backgroundColor: here ? colors.accentSoft : colors.surface,
                         borderColor: on || here ? colors.accent : `${era.color}80`,
                         borderWidth: on ? 2 : 1,
@@ -441,11 +508,33 @@ export default function Historia() {
                     ]}
                   >
                     <View style={[styles.chipSpan, { width: Math.min(spanW, w), backgroundColor: `${era.color}40`, borderLeftColor: era.color }]} />
+                    {icono !== 'punto' && (
+                      <View style={{ marginRight: 6 }}>
+                        <IconoHistoria icono={icono} color={here || on ? colors.accent : colors.text} size={15} />
+                      </View>
+                    )}
                     {here && <Text style={[styles.aqui, { color: colors.accent }]}>AQUÍ ESTÁS</Text>}
                     <Text numberOfLines={1} style={[styles.chipTxt, { color: colors.text }]}>
                       {corto(p.titulo)}
                     </Text>
-                  </Pressable>
+                  </Pressable>,
+                ];
+              })}
+
+              {/* Ligaduras: el reino que brota de otro (o lo conquista), aunque esté en otro carril */}
+              {RAMAS.map(([a, b]) => {
+                const pa = ramaPos[a];
+                const pb = ramaPos[b];
+                if (!pa || !pb || (pa.region === pb.region && Math.abs(pa.y - pb.y) < 2)) return null;
+                const xb = pb.x + 8;
+                const xa = Math.min(Math.max(pa.x + 8, pb.x - 46), pa.x + pa.w - 8);
+                if (xb - xa < 12) return null;
+                const top = Math.min(pa.y, pb.y) - 3;
+                const h = Math.abs(pa.y - pb.y) + 6;
+                return (
+                  <View key={`${a}>${b}`} pointerEvents="none" style={{ position: 'absolute', left: MARGEN_IZQ + xa, top }}>
+                    <Ligadura w={xb - xa} h={h} desdeArriba={pa.y < pb.y} color={REGION_COLORS[pa.region]} />
+                  </View>
                 );
               })}
 
@@ -472,7 +561,22 @@ export default function Historia() {
                     {hechos.colocados.map(({ item: e, x, w, fila }) => {
                       const on = sel?.kind === 'evento' && sel.e === e;
                       const spanW = escala.x(fin(e)) - escala.x(e.desde);
-                      return (
+                      const ex = escala.x(e.desde);
+                      const markerTop = topHechos + fila * FILA;
+                      // Cuelga de la rama del reino que había en ese momento, si había alguno
+                      const rama = corrientes.colocados
+                        .filter((c) => c.fila < alturas.corrientes[region] && c.x <= ex && c.x + c.w >= ex)
+                        .sort((m, n) => n.fila - m.fila)[0];
+                      const desdeY = rama ? top + ROTULO + rama.fila * CORRIENTE + CORRIENTE - 6 : undefined;
+                      const icono = iconoEvento(e);
+                      return [
+                        desdeY != null && (
+                          <View
+                            key={`t-${e.titulo}`}
+                            pointerEvents="none"
+                            style={[styles.tallo, { left: MARGEN_IZQ + ex - 0.75, top: desdeY, height: markerTop + 2 - desdeY, backgroundColor: `${color}70` }]}
+                          />
+                        ),
                         <Pressable
                           key={e.titulo}
                           accessibilityRole="button"
@@ -484,13 +588,15 @@ export default function Historia() {
                             pressed && { opacity: 0.7 },
                           ]}
                         >
-                          {spanW > 6 && <View style={[styles.hechoSpan, { left: 5, width: spanW, backgroundColor: `${color}70` }]} />}
-                          <View style={[styles.hechoPunto, { borderColor: color, backgroundColor: e.ref ? color : colors.background }]} />
+                          {spanW > 6 && <View style={[styles.hechoSpan, { left: 10, width: spanW, backgroundColor: `${color}70` }]} />}
+                          <View style={[styles.icono, { borderColor: color, backgroundColor: e.ref ? color : colors.background }]}>
+                            <IconoHistoria icono={icono} color={e.ref ? '#fff' : color} size={12} grosor={2} />
+                          </View>
                           <Text numberOfLines={1} style={[styles.hechoTxt, { color: colors.text }, on && { fontWeight: '700' }]}>
                             {e.titulo}
                           </Text>
-                        </Pressable>
-                      );
+                        </Pressable>,
+                      ];
                     })}
                   </View>
                 );
@@ -498,8 +604,8 @@ export default function Historia() {
 
               <Animated.View style={[styles.pie, { top: alturas.alto + 14, width: Math.min(vista.w - 32, 640) }, pegado]}>
                 <Text style={[styles.pieTxt, { color: colors.muted }]}>
-                  <Text style={{ fontWeight: '700' }}>● </Text>
-                  Los puntos llenos llevan a su pasaje; ✎ marca cuándo se escribió un libro. La escala se estira en los siglos con más acontecimientos. {FUENTE_HISTORIA}
+                  Cada reino es una rama que brota del que le precede, y los hechos cuelgan de la rama de su tiempo. Los
+                  iconos rellenos llevan a su pasaje. La escala se estira en los siglos con más acontecimientos. {FUENTE_HISTORIA}
                 </Text>
               </Animated.View>
             </ScrollView>
@@ -678,12 +784,15 @@ const styles = StyleSheet.create({
   corriente: {
     position: 'absolute',
     height: CORRIENTE - 4,
-    borderLeftWidth: 3,
-    borderRadius: 4,
+    borderRadius: 9,
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  corrienteTxt: { fontSize: 12, fontFamily: serif, fontStyle: 'italic', fontWeight: '600', paddingHorizontal: 6 },
+  corrienteTxt: { fontSize: 12, fontFamily: serif, fontStyle: 'italic', fontWeight: '600', paddingLeft: 18, paddingRight: 6 },
+  eraTxt: { position: 'absolute', fontSize: 11, fontFamily: serif, fontStyle: 'italic', paddingLeft: 8 },
+  ramaTxt: { position: 'absolute', fontSize: 9.5, fontWeight: '800', letterSpacing: 0.6, paddingLeft: 26 },
+  tallo: { position: 'absolute', width: 1.5, borderRadius: 1 },
+  icono: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
   origenes: {
     position: 'absolute',
     height: FILA_BIBLIA * 2 - 8,
@@ -717,7 +826,6 @@ const styles = StyleSheet.create({
     paddingRight: 6,
   },
   hechoSpan: { position: 'absolute', bottom: 1, height: 3, borderRadius: 2 },
-  hechoPunto: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginLeft: 0, marginRight: 6 },
   hechoTxt: { fontSize: 12, fontWeight: '500', flexShrink: 1 },
   pie: { position: 'absolute', left: 16 },
   pieTxt: { fontSize: 12, lineHeight: 17 },

@@ -485,6 +485,62 @@ export const REINOS: Evento[] = [
   { desde: -800, hasta: -50, c: true, region: 'Europa', titulo: 'Los celtas', texto: 'Pueblos celtas se extienden por Europa central y occidental, hasta que Julio César conquista la Galia.' },
 ];
 
+/** Quién sucedió a quién (o lo conquistó): en la línea de tiempo, una rama que brota de otra. [antes, después] */
+export const RAMAS: [string, string][] = [
+  ['Reino Antiguo', 'Reino Medio de Egipto'],
+  ['Reino Medio de Egipto', 'Reino Nuevo de Egipto'],
+  ['Reino Nuevo de Egipto', 'Egipto dividido'],
+  ['Egipto dividido', 'Egipto persa'],
+  ['Los Tolomeos', 'Provincia romana'],
+  ['Ciudades de Sumer', 'Imperio acadio'],
+  ['Antigua Babilonia', 'Babilonia casita'],
+  ['Imperio asirio', 'Imperio babilónico'],
+  ['Imperio babilónico', 'Imperio persa'],
+  ['Los medos', 'Imperio persa'],
+  ['Lidia', 'Imperio persa'],
+  ['Imperio persa', 'Egipto persa'],
+  ['Imperio persa', 'Reinos helenísticos'],
+  ['Ciudades griegas', 'Reinos helenísticos'],
+  ['Reinos helenísticos', 'Los Tolomeos'],
+  ['Reinos helenísticos', 'Los seléucidas'],
+  ['Los seléucidas', 'Los asmoneos'],
+  ['Los seléucidas', 'Los partos'],
+  ['Los asmoneos', 'Imperio romano'],
+  ['Creta minoica', 'Grecia micénica'],
+  ['Grecia micénica', 'Edad oscura griega'],
+  ['Edad oscura griega', 'Ciudades griegas'],
+  ['Reyes de Roma', 'República romana'],
+  ['República romana', 'Imperio romano'],
+  ['Ciudades de Canaán', 'Fenicia'],
+  ['Los Vedas', 'Reinos del Ganges'],
+  ['Reinos del Ganges', 'Imperio maurya'],
+  ['Dinastía Shang', 'Dinastía Zhou'],
+  ['Dinastía Zhou', 'Dinastía Han'],
+];
+
+/** El tronco de la historia bíblica: raíz sin fechas, el reino que se divide, el destierro y el regreso. */
+export type Tramo = {
+  desde: number;
+  hasta: number;
+  /** Dónde va la rama: en el centro del tronco o, cuando se divide, arriba (norte) o abajo (sur). */
+  pos: 'medio' | 'arriba' | 'abajo';
+  /** De dónde brota (si cambia de altura al empezar). */
+  brotaDe?: 'medio' | 'arriba' | 'abajo';
+  titulo?: string;
+  punteado?: boolean;
+  /** Termina en punta: el reino desaparece. */
+  punta?: boolean;
+};
+
+export const TRONCO: Tramo[] = [
+  { desde: -3200, hasta: -2091, pos: 'medio', punteado: true },
+  { desde: -2091, hasta: -931, pos: 'medio' },
+  { desde: -931, hasta: -722, pos: 'arriba', brotaDe: 'medio', titulo: 'Israel, reino del norte', punta: true },
+  { desde: -931, hasta: -586, pos: 'abajo', brotaDe: 'medio', titulo: 'Judá, reino del sur', punta: true },
+  { desde: -586, hasta: -538, pos: 'medio', brotaDe: 'abajo', titulo: 'Destierro', punteado: true },
+  { desde: -538, hasta: 120, pos: 'medio' },
+];
+
 /** Los eventos de 150 años o más se dibujan como corriente, igual que los reinos. */
 export const esCorriente = (e: Evento) => (e.hasta ?? e.desde) - e.desde >= 150;
 
