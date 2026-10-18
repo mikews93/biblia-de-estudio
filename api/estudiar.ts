@@ -41,6 +41,8 @@ type Body = {
   messages?: Turn[];
   taller?: Taller;
   herramienta?: Herramienta;
+  /** «devocional»: el pasaje guiado para orar y vivirlo. Sin él, el estudio profundo. */
+  enfoque?: 'devocional' | 'profundo';
   nueva?: boolean;
 };
 // Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
@@ -82,6 +84,17 @@ Reglas del Taller:
 - No inventes anécdotas como si fueran reales. Si sugieres una ilustración, márcala como «Ejemplo, no hecho real», en una o dos frases.
 - Ayuda a que el mensaje tenga una sola idea central que salga del texto, nombre la necesidad humana que el pasaje toca y ponga la gracia de Dios en el centro, no solo consejos.
 - Sé breve: lo justo para dar el siguiente paso.`;
+
+const DEVOCIONAL_SYSTEM = `
+
+Ahora acompañas un devocional: un rato breve (10 a 15 minutos) en el que la persona lee el pasaje despacio, lo medita, ora y decide cómo vivirlo. Tu papel es abrir el texto y hacer buenas preguntas, no hablar por Dios ni por la persona.
+
+Reglas del devocional:
+- Empieza por lo que dice el texto en su contexto, no por emociones ni consejos. Muestra qué revela el pasaje de Dios (y, cuando el texto lo permite con honestidad, de Cristo) antes de hablar de la persona.
+- Una sola idea por devocional. Nada de moralejas genéricas, autoayuda ni alegorías: si el versículo suelto dice otra cosa leído en su capítulo, respeta el capítulo.
+- Nunca escribas una oración para que la persona la rece, ni un sermón, ni frases como «Dios te dice hoy…». Ofrece pistas para que ella ore con sus palabras, ancladas en versículos concretos.
+- Las preguntas son abiertas, personales y vuelven al texto; ninguna se responde con sí o no.
+- Tono cálido y sobrio, en segunda persona («tú»). Sé breve.`;
 
 const PASOS = {
   pasaje: 'observar el pasaje (quién, qué, dónde, cuándo, por qué; palabras repetidas; conectores como «pero», «por tanto», «para que»)',
@@ -380,23 +393,54 @@ Si los especialistas o las tradiciones cristianas entienden la palabra de manera
 function studyTask(book: Book, chapter: number, verse: number | undefined, hasGreek: boolean) {
   const lang = original(book).name;
   const target = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+  // Estudio inductivo: observar, interpretar, relacionar y aplicar.
   const sections = verse
     ? [
-        '## Qué dice: el versículo explicado dentro de su contexto en el capítulo.',
-        hasGreek && `## Palabras clave: 2 a 4 palabras del ${lang} que ayudan a entenderlo.`,
+        '## Panorama: dónde está el versículo dentro del capítulo y qué ocurre alrededor.',
+        '## Observa: quién habla y a quién, qué se afirma, palabras repetidas y conectores («pero», «por tanto», «para que»).',
+        hasGreek && `## Palabras del ${lang}: 2 a 4 palabras clave, con su significado y lo que aporta su gramática.`,
+        '## Interpreta: qué significaba para sus primeros lectores y, si las tradiciones cristianas lo leen distinto, cómo.',
         '## Pasajes relacionados: 3 o 4 referencias y lo que cada una aporta.',
-        '## Para reflexionar: 2 o 3 preguntas personales o para un grupo.',
+        '## Hacia Cristo: cómo se relaciona con el evangelio, solo si el texto o sus referencias lo sostienen, sin forzarlo.',
+        '## Para aplicar: 2 o 3 preguntas personales o para un grupo.',
       ]
     : [
-        '## Resumen: de qué trata el capítulo en pocas frases.',
+        '## Panorama: de qué trata el capítulo y dónde encaja en el libro.',
         '## Cómo avanza: las partes del capítulo por grupos de versículos.',
-        hasGreek && `## Palabras clave: 3 a 5 palabras del ${lang} importantes en el capítulo.`,
+        '## Observa: palabras y temas que se repiten, contrastes y conectores importantes.',
+        hasGreek && `## Palabras del ${lang}: 3 a 5 palabras importantes en el capítulo.`,
+        '## Interpreta: la idea central del capítulo para sus primeros lectores y, si las tradiciones cristianas lo leen distinto, cómo.',
         '## Pasajes relacionados: 3 o 4 referencias y lo que aportan.',
-        '## Para reflexionar: 2 o 3 preguntas personales o para un grupo.',
+        '## Hacia Cristo: cómo se relaciona con el evangelio, solo si el texto o sus referencias lo sostienen, sin forzarlo.',
+        '## Para aplicar: 2 o 3 preguntas personales o para un grupo.',
       ];
   return `Prepara un estudio de ${target} con estas secciones:\n${sections.filter(Boolean).join('\n')}\n\nExtensión: ${
-    verse ? '350 a 500' : '500 a 700'
+    verse ? '450 a 650' : '600 a 850'
   } palabras. Empieza directamente por la primera sección.`;
+}
+
+function devotionalTask(book: Book, chapter: number, verse: number | undefined) {
+  const target = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+  return `Prepara el devocional de ${target}${verse ? ', leído dentro de su capítulo' : ''}. La app muestra cada sección como un paso; respeta el formato exacto, sin texto antes ni después:
+
+## Observa
+De 80 a 140 palabras en uno o dos párrafos: qué dice el pasaje en su contexto y qué revela de Dios, con citas.
+
+## Medita
+- Tres preguntas abiertas, una por línea: una sobre lo que el texto muestra de Dios, una sobre la persona a la luz del texto y una que la invite a quedarse con una palabra o frase. Cada pregunta con su cita.
+
+## Vive
+- Dos o tres pasos pequeños y concretos que se puedan hacer en las próximas 24 horas y salgan del texto (una frase cada uno, con cita).
+
+## Ora
+- Adora: qué del carácter de Dios en este pasaje invita a alabarle (una frase, con cita).
+- Confiesa: qué invita a reconocer o soltar (una frase, con cita).
+- Agradece: qué regalo de Dios aparece aquí (una frase, con cita).
+- Pide: qué tiene sentido pedir a la luz del texto (una frase, con cita).
+Son pistas breves para que la persona ore con sus palabras, no oraciones redactadas.
+
+## Llévalo contigo
+El número del versículo del pasaje que conviene memorizar o repetir durante el día, solo el número${verse ? ` (normalmente ${verse})` : ''}.`;
 }
 
 function badRequest(message: string, status = 400) {
@@ -438,6 +482,8 @@ export async function POST(request: Request) {
   if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
   const taller = body.taller;
   const herramienta = body.herramienta;
+  if (body.enfoque !== undefined && !['devocional', 'profundo'].includes(body.enfoque)) return badRequest('Enfoque no válido');
+  const devocional = body.enfoque === 'devocional' && !taller && !herramienta && word === undefined;
   if (
     herramienta !== undefined &&
     (!Object.hasOwn(HERRAMIENTAS, herramienta) || verse !== undefined || taller || turns.length > 0)
@@ -480,6 +526,8 @@ export async function POST(request: Request) {
               ? HERRAMIENTAS[herramienta](book, chapter, docs.length > 1 && book.interlinear)
               : focus && verse
               ? wordTask(book, chapter, verse, focus)
+              : devocional
+              ? devotionalTask(book, chapter, verse)
               : studyTask(book, chapter, verse, docs.length > 1 && book.interlinear),
         },
       ],
@@ -501,7 +549,7 @@ export async function POST(request: Request) {
           {
             model: MODEL,
             max_tokens: 16000,
-            system: taller ? SYSTEM + TALLER_SYSTEM : SYSTEM,
+            system: taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM,
             messages,
             cache_control: { type: 'ephemeral' },
             output_config: { effort: 'medium' },
