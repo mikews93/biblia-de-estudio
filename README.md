@@ -31,6 +31,9 @@ En el teléfono (Expo Go o una build de desarrollo) los datos se leen de una URL
 | Reina-Valera 1909 | [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases) | Dominio público |
 | Griego del NT, morfología, glosas inglesas y españolas | [STEPBible TAGNT](https://github.com/STEPBible/STEPBible-Data), Tyndale House | CC BY 4.0 |
 | Referencias cruzadas | [OpenBible.info](https://www.openbible.info/labs/cross-references/) | CC BY |
+| Fotos de lugares | [OpenBible.info Bible Geocoding Data](https://github.com/openbibleinfo/Bible-Geocoding-Data), fotos de Wikimedia Commons | Solo las de licencia libre (dominio público, CC0, CC BY, CC BY-SA), con autor y licencia |
+| Fotos de objetos y mapas históricos | Imagen principal de artículos de Wikipedia, alojada en Wikimedia Commons (`pipeline/imagenes.py`) | Solo libres; se comprueba la licencia en cada build |
+| Medidas antiguas | Tabla propia (`pipeline/medidas.py`) con los valores aproximados habituales | — |
 
 El interlineal muestra las palabras del texto tradicional (Textus Receptus), que es el que traduce la RV1909, con la versificación de la KJV. Las glosas españolas de STEPBible vienen del proyecto Marvel Bible y usan términos de la Traducción del Nuevo Mundo («madero de ejecución», «bondad inmerecida»). El pipeline los sustituye por los de la tradición cristiana histórica (`fix_gloss` en `pipeline/build_data.py`), pero las glosas necesitan una revisión completa antes del lanzamiento.
 
