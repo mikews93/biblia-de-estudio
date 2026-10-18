@@ -1,0 +1,259 @@
+{
+  "libro": "mrk",
+  "capitulo": 1,
+  "titulo": "Marcos 1",
+  "texto": "bes",
+  "correcciones": {
+    "17": "Se quita la palabra suelta «Niños» del principio.",
+    "41": "«Si quiero; se limpio» → «Sí quiero; sé limpio»."
+  },
+  "credito": "Audio dramatizado: Marcos 1, Biblia en Español Sencillo (CC BY 4.0, ℗ AudioBiblia.org), con correcciones menores. Voces, efectos y música generados con ElevenLabs. Guion basado en Matthew Henry, Jamieson-Fausset-Brown y Josefo.",
+  "modelo": "eleven_v4",
+  "idioma": "es",
+  "voces": {
+    "NARRADOR": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": null },
+    "JUAN": { "ficha": "personajes.md#juan-el-bautista", "buscar": { "gender": "male", "age": "young", "use_cases": "characters_animation" }, "voice_id": null },
+    "PADRE": { "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "old", "use_cases": "narrative_story" }, "voice_id": null },
+    "JESUS": { "ficha": "personajes.md#jesús", "buscar": { "gender": "male", "age": "young", "use_cases": "narrative_story" }, "voice_id": null },
+    "ESPIRITU": { "ficha": "personajes.md#espíritu-inmundo", "buscar": { "gender": "male", "age": "old", "use_cases": "characters_animation" }, "voice_id": null },
+    "GENTE_1": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": null },
+    "GENTE_2": { "buscar": { "gender": "female", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": null },
+    "GENTE_3": { "buscar": { "gender": "male", "age": "old", "use_cases": "conversational" }, "voice_id": null },
+    "SIMON": { "ficha": "personajes.md#simón-pedro", "acento_distinto": true, "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": null },
+    "LEPROSO": { "ficha": "personajes.md#leproso", "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "characters_animation" }, "voice_id": null }
+  },
+  "registros": {
+    "aprobacion": {
+      "tag": "[warm, majestic, slow]",
+      "filtro": "aecho=0.8:0.6:90|180:0.35|0.2",
+      "capa": { "prompt": "very distant low rolling thunder, soft and deep, no rain", "db": -24 },
+      "fuente": "voz-de-dios.md: 2 P 1:17; Jn 12:29; Mt 17:5-6"
+    },
+    "llamado": {
+      "tag": "[gentle, calm]",
+      "filtro": null,
+      "capa": { "prompt": "soft gentle breeze, quiet", "db": -28 },
+      "fuente": "voz-de-dios.md: 1 R 19:12; Gn 3:8"
+    },
+    "poder": {
+      "tag": "[powerful, solemn]",
+      "filtro": "aecho=0.8:0.7:120|240:0.4|0.25",
+      "capa": { "prompt": "deep thunder rolling over mountains", "db": -20 },
+      "fuente": "voz-de-dios.md: Sal 29:3-4; Job 37:4; Éx 19:16-19"
+    },
+    "gloria": {
+      "tag": "[majestic, awe]",
+      "filtro": "aecho=0.8:0.6:90|180:0.35|0.2",
+      "capa": { "prompt": "great rushing waters, powerful river current", "db": -22 },
+      "fuente": "voz-de-dios.md: Ez 43:2; Ez 1:24"
+    }
+  },
+  "escenas": [
+    {
+      "titulo": "El desierto y el Jordán",
+      "pasos": [
+        { "musica": "solemn short orchestral opening, ancient Middle Eastern feel, oud and low strings, reverent", "ms": 12000, "db": -14, "fuente": "Entrada del capítulo" },
+        { "pausa": 2.5 },
+        { "v": 1, "lineas": [{ "voz": "NARRADOR", "tag": "[slow, solemn]", "texto": "Las primeras palabras de las buenas nuevas de Jesucristo, el Hijo de Dios." }] },
+        { "v": 2, "lineas": [{ "voz": "NARRADOR", "texto": "Como está dicho en el libro del profeta Isaías, Mira, yo envío a mi siervo delante de ti, el cual preparará tu camino;" }] },
+        { "ambiente": "dry desert wind, open wilderness, no birds", "fuente": "Texto v.3-4: «en el desierto»" },
+        {
+          "v": 3,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Voz del que clama en el desierto:" },
+            { "voz": "JUAN", "tag": "[proclaiming, loud]", "filtro": "aecho=0.8:0.5:70:0.25", "texto": "“Preparen el camino del Señor, enderecen sus caminos.”" }
+          ]
+        },
+        { "v": 4, "lineas": [{ "voz": "NARRADOR", "texto": "Juan vino y dio el bautismo en el desierto, predicando el bautismo como una señal de perdón de pecados para aquellos cuyos corazones habían cambiado." }] },
+        { "ambiente": "flowing river, gentle current, large crowd murmuring in the distance on the riverbank", "fuente": "Texto v.5: «todos los pueblos de Judea… en el río Jordán»; Josefo, Ant. 18.5.2" },
+        { "v": 5, "lineas": [{ "voz": "NARRADOR", "texto": "Y salieron a él todos los pueblos de Judea y todos los de Jerusalén, confesaban sus pecados y se les dio el bautismo en el río Jordán." }] },
+        { "efecto": "a person being immersed in a river and coming up out of the water, splashing", "dur": 3, "fuente": "Texto v.5: «se les dio el bautismo en el río Jordán»" },
+        { "v": 6, "lineas": [{ "voz": "NARRADOR", "texto": "Y Juan estaba vestido de pelo de camello, con una correa de cuero alrededor en la cintura; y su comida era chapulines y miel." }] },
+        {
+          "v": 7,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y les dijo a todos:" },
+            { "voz": "JUAN", "tag": "[firm, then humble]", "texto": "“Hay uno que viene después de mí, que es más poderoso que yo, y no soy digno de agacharme y desatarle la correa de sus sandalias”." }
+          ],
+          "fuente": "MH: Juan se pone muy por debajo de Cristo"
+        },
+        { "v": 8, "lineas": [{ "voz": "JUAN", "tag": "[firm]", "texto": "Te he dado el bautismo con agua, pero él te dará el bautismo con el Espíritu Santo." }] }
+      ]
+    },
+    {
+      "titulo": "El bautismo y el desierto",
+      "pasos": [
+        { "ambiente": "flowing river, gentle current, no crowd", "fuente": "Texto v.9: no menciona a la multitud" },
+        { "v": 9, "lineas": [{ "voz": "NARRADOR", "texto": "Y aconteció en aquellos días, que Jesús vino de Nazaret de Galilea, y Juan le dio el bautismo en el Jordán." }] },
+        { "efecto": "a man rising up out of river water, water dripping", "dur": 2.5, "fuente": "Texto v.10: «saliendo del agua»" },
+        { "musica": "luminous sustained string chord slowly swelling, heavenly, peaceful, no percussion", "ms": 22000, "db": -16, "fuente": "Texto v.10: «vio los cielos abiertos»" },
+        { "v": 10, "lineas": [{ "voz": "NARRADOR", "texto": "Y luego, saliendo del agua, vio los cielos abiertos y el Espíritu descendía sobre él como una paloma." }] },
+        {
+          "v": 11,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y una voz salió del cielo," },
+            { "voz": "PADRE", "registro": "aprobacion", "texto": "tú eres mi Hijo amado, a quien he elegido en quien descansa mi favor." }
+          ]
+        },
+        { "pausa": 1.5 },
+        { "ambiente": "dry desert wind, open wilderness, no birds", "fuente": "Texto v.12: «lo envió al desierto»" },
+        { "v": 12, "lineas": [{ "voz": "NARRADOR", "tag": "[faster]", "texto": "Y enseguida el Espíritu lo envió al desierto." }] },
+        { "musica": "tense low drone, dark and uneasy, then resolving into calm gentle strings", "ms": 16000, "db": -17, "fuente": "Texto v.13: «probado por Satanás… los ángeles lo cuidaron»" },
+        { "v": 13, "lineas": [{ "voz": "NARRADOR", "texto": "Y estuvo en el desierto por cuarenta días, siendo probado por Satanás; y él estaba con las bestias; y los ángeles lo cuidaron." }] },
+        { "efecto": "a single distant jackal howl in the desert at night", "dur": 3, "encima": true, "db": -14, "fuente": "Texto v.13: «con las bestias»; MH" }
+      ]
+    },
+    {
+      "titulo": "Galilea, junto al mar",
+      "pasos": [
+        { "ambiente": null },
+        { "efecto": "heavy iron prison door slamming shut, single short hit, stone room", "dur": 1.5, "db": -8, "fuente": "Texto v.14: «encarcelado»; Josefo, Ant. 18.5.2 (Maqueronte)" },
+        { "v": 14, "lineas": [{ "voz": "NARRADOR", "texto": "Después de que Juan había sido encarcelado, Jesús vino a Galilea predicando las buenas nuevas de Dios," }] },
+        {
+          "v": 15,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y diciendo:" },
+            { "voz": "JESUS", "tag": "[calm, warm, clear]", "texto": "Ha llegado el tiempo, y el reino de Dios está cerca; vuestros corazones sean apartados del pecado y tengan fe en las buenas noticias." }
+          ]
+        },
+        { "ambiente": "small waves lapping on a lake shore, a few seagulls, light breeze", "fuente": "Texto v.16: «junto al mar de Galilea»" },
+        { "v": 16, "lineas": [{ "voz": "NARRADOR", "texto": "Y pasando junto al mar de Galilea, vió a Simón, y a Andrés, hermano de Simón, que echaban la red en el mar, porque eran pescadores." }] },
+        { "efecto": "a fishing net thrown and landing on lake water", "dur": 2, "fuente": "Texto v.16: «echaban la red»" },
+        {
+          "v": 17,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y Jesús les dijo:" },
+            { "voz": "JESUS", "tag": "[warm, inviting]", "texto": "Vengan en pos de mí, y los haré pescadores de hombres." }
+          ]
+        },
+        { "v": 18, "lineas": [{ "voz": "NARRADOR", "texto": "Y partidos de sus redes, vinieron en pos de él." }] },
+        { "efecto": "footsteps of several men walking away on wet sand", "dur": 2.5, "fuente": "Texto v.18: «vinieron en pos de él»" },
+        { "v": 19, "lineas": [{ "voz": "NARRADOR", "texto": "Y yendo un poco más lejos, vio a Jacobo, el hijo de Zebedeo, y Juan su hermano, que estaban en su barco cosiendo sus redes." }] },
+        { "efecto": "wooden fishing boat creaking on water, ropes, men working quietly", "dur": 4, "encima": true, "db": -14, "fuente": "Texto v.19-20: «en su barco… con los siervos»; MH" },
+        {
+          "v": 20,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y él dijo:" },
+            { "voz": "JESUS", "tag": "[warm]", "texto": "Síganme;" },
+            { "voz": "NARRADOR", "texto": "y ellos se fueron de su padre Zebedeo, que estaba en la barca con los siervos, y vinieron en pos de él." }
+          ]
+        }
+      ]
+    },
+    {
+      "titulo": "La sinagoga de Capernaum",
+      "pasos": [
+        { "ambiente": "quiet stone synagogue interior, small seated crowd, soft room echo", "fuente": "Texto v.21: «sinagoga»; JFB v.21" },
+        { "v": 21, "lineas": [{ "voz": "NARRADOR", "texto": "Y vinieron a Capernaum; y en el día de reposo entró a la sinagoga y empezó a enseñar." }] },
+        { "v": 22, "lineas": [{ "voz": "NARRADOR", "texto": "Y estaban maravillados de su enseñanza, porque la dio como uno que tiene autoridad, y no como los escribas." }] },
+        { "efecto": "small crowd in a stone room murmuring in amazement, short", "dur": 2.5, "encima": true, "db": -12, "fuente": "Texto v.22: «estaban maravillados»" },
+        { "v": 23, "lineas": [{ "voz": "NARRADOR", "texto": "Y había en su sinagoga un hombre con espíritu inmundo; y él dio un grito," }] },
+        { "efecto": "a man's sudden anguished scream echoing in a stone hall", "dur": 2, "db": -10, "fuente": "Texto v.23: «dio un grito»; JFB" },
+        {
+          "v": 24,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Diciendo:" },
+            { "voz": "ESPIRITU", "tag": "[harsh, terrified, agitated]", "texto": "¿Qué tenemos que ver contigo, Jesús de Nazaret? has venido a poner fin a nosotros? Veo bien quién eres, el Santo de Dios." }
+          ],
+          "fuente": "JFB v.24: asombro y terror mezclados"
+        },
+        {
+          "v": 25,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y Jesús le dijo bruscamente:" },
+            { "voz": "JESUS", "tag": "[firm, commanding, not shouting]", "texto": "Cállate, y sal de él." }
+          ],
+          "fuente": "Texto v.25: «bruscamente»; JFB v.25"
+        },
+        { "v": 26, "lineas": [{ "voz": "NARRADOR", "texto": "Y el espíritu inmundo, sacudiéndolo violentamente, y clamando a gran voz, salió de él." }] },
+        { "efecto": "a man convulsing and falling to a stone floor, then a long despairing cry fading away into silence", "dur": 4, "db": -10, "fuente": "Texto v.26; JFB v.26" },
+        { "ambiente": null },
+        { "pausa": 1.5, "fuente": "Silencio antes del asombro del v.27 (deducido)" },
+        { "ambiente": "quiet stone synagogue interior, small seated crowd, soft room echo" },
+        {
+          "v": 27,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y todos se sorprendieron grandemente, y se hicieron preguntas unos a otros, diciendo:" },
+            { "voz": "GENTE_1", "tag": "[astonished]", "texto": "¿Qué es esto?" },
+            { "voz": "GENTE_2", "tag": "[amazed]", "texto": "una nueva enseñanza!" },
+            { "voz": "GENTE_3", "tag": "[excited, amazed]", "texto": "con autoridad da órdenes incluso a los espíritus inmundos, y hacen lo que dice." }
+          ],
+          "fuente": "Texto v.27: «se hicieron preguntas unos a otros»"
+        },
+        { "musica": "brisk short transition, hand drum and oud, travelling feel", "ms": 7000, "db": -15, "fuente": "Texto v.28: «rápidamente»" },
+        { "v": 28, "lineas": [{ "voz": "NARRADOR", "texto": "Y noticias de él salieron rápidamente en todas partes de Galilea y sus alrededores." }] }
+      ]
+    },
+    {
+      "titulo": "La casa de Simón",
+      "pasos": [
+        { "ambiente": "quiet interior of a small stone house, a wooden door, faint outdoor sounds", "fuente": "Texto v.29: «la casa de Simón»" },
+        { "v": 29, "lineas": [{ "voz": "NARRADOR", "texto": "Y cuando salieron de la sinagoga, entraron en la casa de Simón y Andrés, con Jacobo y Juan." }] },
+        { "v": 30, "lineas": [{ "voz": "NARRADOR", "texto": "Ahora la madre de la esposa de Simón estaba enferma, con fiebre; y le dieron aviso de ella:" }] },
+        { "v": 31, "lineas": [{ "voz": "NARRADOR", "texto": "Y él vino y la tomó de la mano, y la levantó; e inmediatamente la fiebre la dejó, ella se puso bien, y se hizo cargo de atenderlos." }] },
+        { "efecto": "clay dishes and bread being set on a wooden table, gentle", "dur": 3, "fuente": "Texto v.31: «se hizo cargo de atenderlos»; JFB v.31" },
+        { "ambiente": "evening outdoors, many people approaching on foot, distant voices, sick people groaning softly", "fuente": "Texto v.32-33; JFB v.32-33" },
+        { "v": 32, "lineas": [{ "voz": "NARRADOR", "texto": "Y en la tarde, al ponerse el sol, le llevaron a todos los que estaban enfermos, y a los que tenían espíritus malignos." }] },
+        { "v": 33, "lineas": [{ "voz": "NARRADOR", "texto": "Y toda la ciudad se había juntado en la puerta." }] },
+        { "v": 34, "lineas": [{ "voz": "NARRADOR", "texto": "Y sanó a muchos, que estaban enfermos con diferentes enfermedades, fueron sanados, y echo fuera espíritus malignos; pero no dejó que los espíritus malignos dijeran nada, porque sabían quién era él." }] }
+      ]
+    },
+    {
+      "titulo": "Antes del amanecer",
+      "pasos": [
+        { "ambiente": "pre-dawn stillness outdoors, a few crickets slowly fading, very quiet", "fuente": "Texto v.35; JFB v.35: «la quietud de esas horas grises de la mañana»" },
+        { "v": 35, "lineas": [{ "voz": "NARRADOR", "tag": "[quiet, slow]", "texto": "Y por la mañana, mucho tiempo antes del amanecer, se levantó y salió a un lugar tranquilo, y allí se entregó a la oración." }] },
+        { "pausa": 1.5 },
+        { "efecto": "several men hurrying on foot along a dirt path, approaching", "dur": 2.5, "fuente": "JFB v.36: «se apresuraron tras él»" },
+        { "v": 36, "lineas": [{ "voz": "NARRADOR", "texto": "Y Simón y los que estaban con él vinieron en pos de él." }] },
+        {
+          "v": 37,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y cuando subieron con él, le dijeron:" },
+            { "voz": "SIMON", "tag": "[out of breath, urgent]", "texto": "Todos te están buscando." }
+          ]
+        },
+        {
+          "v": 38,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y él les dijo:" },
+            { "voz": "JESUS", "tag": "[calm, serene]", "texto": "Vamos a otras partes en las ciudades más cercanas, para que pueda enseñar allí, porque para esto vine." }
+          ],
+          "fuente": "JFB v.38"
+        },
+        { "ambiente": null },
+        { "musica": "gentle travelling music, hand drum and oud, journey across villages", "ms": 9000, "db": -15, "fuente": "Texto v.39: «en cada parte de Galilea»" },
+        { "v": 39, "lineas": [{ "voz": "NARRADOR", "texto": "Y entró en sus sinagogas en cada parte de Galilea, predicando y expulsando a los espíritus malignos." }] }
+      ]
+    },
+    {
+      "titulo": "El leproso",
+      "pasos": [
+        { "ambiente": "quiet countryside road, light wind, distant birds", "fuente": "Escena al aire libre (deducido de v.40-45)" },
+        { "efecto": "a man kneeling down on dusty ground, cloth rustling", "dur": 2, "fuente": "Texto v.40: «arrodillándose»" },
+        {
+          "v": 40,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y vino un leproso a él y, arrodillándose delante de él, le rogó diciendo:" },
+            { "voz": "LEPROSO", "tag": "[weak, hoarse, pleading]", "texto": "Si quieres, puedes limpiarme de mi enfermedad." }
+          ]
+        },
+        {
+          "v": 41,
+          "lineas": [
+            { "voz": "NARRADOR", "texto": "Y movido por la piedad, extendió su mano, y tocándole, le dijo:" },
+            { "voz": "JESUS", "tag": "[compassionate, gentle]", "texto": "Sí quiero; sé limpio." }
+          ]
+        },
+        { "musica": "brief luminous bright string chord, hopeful", "ms": 6000, "db": -15, "fuente": "Texto v.42: «de inmediato»" },
+        { "v": 42, "lineas": [{ "voz": "NARRADOR", "texto": "Y de inmediato la enfermedad se fue de él, y él fue hecho limpio." }] },
+        { "v": 43, "lineas": [{ "voz": "NARRADOR", "texto": "Y él lo despidió, diciéndole con firmeza:" }] },
+        { "v": 44, "lineas": [{ "voz": "JESUS", "tag": "[firm, serious]", "texto": "Mira que no le digas nada a nadie, sino ve y deja que el sacerdote te vea, y hazte limpio mediante una ofrenda de las cosas ordenadas por Moisés, como evidencia para ellos." }] },
+        { "ambiente": "dry desert wind, open wilderness, distant footsteps of people arriving", "fuente": "Texto v.45: «en el desierto; y vinieron a él de todas partes»" },
+        { "v": 45, "lineas": [{ "voz": "NARRADOR", "texto": "Pero él salió, y lo hizo público, dando cuenta de ello en todas partes, de modo que Jesús ya no podía ir abiertamente a una ciudad, sino que estaba afuera en el desierto; y vinieron a él de todas partes." }] },
+        { "musica": "reverent closing music, oud and soft strings, ancient Middle Eastern feel, gentle ending", "ms": 14000, "db": -14, "fuente": "Cierre del capítulo" },
+        { "pausa": 6 }
+      ]
+    }
+  ]
+}

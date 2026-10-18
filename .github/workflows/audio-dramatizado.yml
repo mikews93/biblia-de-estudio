@@ -1,0 +1,69 @@
+name: Audio dramatizado
+
+# Graba con ElevenLabs los capítulos dramatizados de pipeline/audio_dramatizado/ (un JSON de guion por capítulo) y
+# sube el MP3, los tiempos por versículo y el informe a la versión de GitHub «audio-dramatizado-borrador». Cada pieza
+# (versículo, efecto, música) queda en caché por su contenido, así que solo se paga lo que cambió en el guion.
+# Necesita el secreto ELEVENLABS_API_KEY. Se lanza al cambiar un guion o el script, o a mano desde la pestaña Actions.
+
+on:
+  push:
+    paths:
+      - pipeline/audio_dramatizado/*.json
+      - pipeline/audio_dramatizado/grabar.py
+      - .github/workflows/audio-dramatizado.yml
+  workflow_dispatch:
+    inputs:
+      guiones:
+        description: Guiones a grabar (separados por espacios, sin .json)
+        default: mrk-1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audio-dramatizado
+  cancel-in-progress: false
+
+jobs:
+  grabar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      TAG: audio-dramatizado-borrador
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Recuperar las piezas ya grabadas
+        uses: actions/cache/restore@v4
+        with:
+          path: pipeline/.cache/eleven
+          key: eleven-${{ github.run_id }}
+          restore-keys: eleven-
+      - name: Grabar
+        run: |
+          guiones="${{ github.event.inputs.guiones }}"
+          if [ -z "$guiones" ]; then
+            guiones=$(ls pipeline/audio_dramatizado/*.json | xargs -n1 basename | sed 's/\.json$//')
+          fi
+          for g in $guiones; do python3 pipeline/audio_dramatizado/grabar.py "$g"; done
+      - name: Guardar las piezas grabadas
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: pipeline/.cache/eleven
+          key: eleven-${{ github.run_id }}
+      - name: Subir a la versión de GitHub
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
+            --title "Audio dramatizado (borrador)" \
+            --notes "Grabaciones de prueba del audio dramatizado. Se reemplazan en cada grabación."
+          cd pipeline/audio_dramatizado/salida
+          for f in *.mp3; do gh release upload "$TAG" "$f" "${f%.mp3}.json" --clobber; done
+          cp informe.json "informe-$(date +%Y%m%d-%H%M).json"
+          gh release upload "$TAG" informe-*.json --clobber
