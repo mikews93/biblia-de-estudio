@@ -133,7 +133,9 @@ def parse_usfm(source):
 
 
 def from_usfm(ebible_id):
-    with urllib.request.urlopen(USFM.format(id=ebible_id), timeout=300) as res:
+    # eBible.org rechaza el agente por defecto de Python
+    request = urllib.request.Request(USFM.format(id=ebible_id), headers={"User-Agent": "Mozilla/5.0 (biblia-de-estudio)"})
+    with urllib.request.urlopen(request, timeout=300) as res:
         archive = zipfile.ZipFile(io.BytesIO(res.read()))
     ids = dict(zip(USFM_CODES, (b[0] for b in BOOKS)))
     bible = {}
@@ -170,6 +172,8 @@ def compare(vid, bible):
             if ours != theirs:
                 diffs.append(f"{meta[0]} {ch['chapter']} (faltan {sorted(theirs - ours)[:5]}, sobran {sorted(ours - theirs)[:5]})")
     print(f"{vid}: {len(diffs)} capítulos con otra numeración que la RV1909" + "".join(f"\n  {d}" for d in diffs[:20]))
+    if diffs:
+        print(f"::notice::{vid}: {len(diffs)} capítulos con otra numeración: " + "; ".join(diffs[:12]))
 
 
 def save(vid, bible):
@@ -201,7 +205,12 @@ def main(only):
     (ROOT / "versions").mkdir(exist_ok=True)
     for vid, ebible_id in USFM_VERSIONS.items():
         if not only or vid in only:
-            bible = from_usfm(ebible_id)
+            try:
+                bible = from_usfm(ebible_id)
+            except Exception as e:  # noqa: BLE001
+                # «::error::» queda como anotación visible en la acción de GitHub
+                print(f"::error::{vid}: no se pudo descargar {USFM.format(id=ebible_id)}: {e!r}")
+                raise
             compare(vid, bible)
             save(vid, bible)
     for vid, name in SCROLLMAPPER_VERSIONS.items():
