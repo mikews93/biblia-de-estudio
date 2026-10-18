@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 
+import AudioBar from '@/components/AudioBar';
 import TabBar from '@/components/TabBar';
 import { SettingsProvider, isDark, useColors } from '@/lib/theme';
 
@@ -29,6 +30,7 @@ function AppStack() {
         <Stack.Screen name="comunidades/cuenta" options={{ title: 'Tu cuenta' }} />
         <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
       </Stack>
+      <AudioBar />
       <TabBar />
     </View>
   );

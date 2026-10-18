@@ -24,6 +24,7 @@ import {
   getParagraphEnds,
   getVersions,
 } from '@/lib/data';
+import { playChapter } from '@/lib/audio';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
 import { bookIdFromParam, chapterHref } from '@/lib/routes';
@@ -201,6 +202,14 @@ export default function Reader() {
                 accessibilityRole="button"
               >
                 <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>✦ Estudiar este capítulo</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => playChapter(bookId, chapter, title)}
+                style={({ pressed }) => [styles.pill, { borderColor: colors.border }, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Escuchar el capítulo dramatizado"
+              >
+                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>▶ Escuchar</Text>
               </Pressable>
             </View>
             {settings.study && (

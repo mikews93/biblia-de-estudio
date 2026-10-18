@@ -25,7 +25,11 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-audio",
+        { "microphonePermission": false, "recordAudioAndroid": false }
+      ]
     ],
     "scheme": "bibliadeestudio"
   }
