@@ -6,17 +6,19 @@ import { chapterHref } from '@/lib/routes';
 import { getLastRead, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-type Tab = { key: 'hoy' | 'leer' | 'comunidad'; label: string; icon: string };
+type Tab = { key: 'hoy' | 'leer' | 'taller' | 'comunidad'; label: string; icon: string };
 
 const TABS: Tab[] = [
   { key: 'hoy', label: 'Hoy', icon: '⌂' },
   { key: 'leer', label: 'Leer', icon: '¶' },
+  { key: 'taller', label: 'Taller', icon: '✎' },
   { key: 'comunidad', label: 'Comunidad', icon: '◎' },
 ];
 
 function current(path: string): Tab['key'] {
   if (path === '/') return 'hoy';
   if (path.startsWith('/comunidades')) return 'comunidad';
+  if (path.startsWith('/taller')) return 'taller';
   return 'leer';
 }
 
@@ -26,11 +28,14 @@ export default function TabBar() {
   const path = usePathname();
   const insets = useSafeAreaInsets();
   const active = current(path);
+  // Al presentar un mensaje la pantalla es toda para el texto.
+  if (path.endsWith('/presentar')) return null;
 
   const go = async (key: Tab['key']) => {
     if (key === active && key !== 'leer') return;
     if (key === 'hoy') navigate(() => router.dismissTo('/'), 'back');
     if (key === 'comunidad') navigate(() => router.push('/comunidades' as never), 'fade');
+    if (key === 'taller') navigate(() => router.push('/taller'), 'fade');
     if (key === 'leer') {
       if (active === 'leer') return;
       const last = await getLastRead();

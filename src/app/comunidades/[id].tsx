@@ -2,6 +2,7 @@ import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import Guides from '@/components/comunidad/Guides';
 import Invite from '@/components/comunidad/Invite';
 import Meeting from '@/components/comunidad/Meeting';
 import Notes from '@/components/comunidad/Notes';
@@ -208,6 +209,7 @@ export default function GroupScreen() {
           />
         )}
         {tab === 'oracion' && <Prayer group={group.id} />}
+        {tab === 'reunion' && <Guides group={group.id} admin={group.soyAdmin} />}
         {tab === 'reunion' && (
           <Meeting
             group={group.id}

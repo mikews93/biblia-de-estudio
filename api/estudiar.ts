@@ -9,6 +9,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { formatRef, parseRef } from '../src/lib/refs';
 
@@ -21,7 +22,18 @@ type Book = { id: string; name: string; chapters: number; interlinear: boolean }
 type Verse = [number, string];
 type Word = [string, string, string, string, string, string, string, string];
 type Turn = { role: 'user' | 'assistant'; text: string };
-type Body = { book?: string; chapter?: number; verse?: number; messages?: Turn[] };
+type Body = { book?: string; chapter?: number; verse?: number; messages?: Turn[]; taller?: Taller };
+// Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
+// pero nunca escribe el mensaje por la persona.
+type Taller = {
+  modo: 'preguntar' | 'sugerir' | 'revisar';
+  tipo: 'reflexion' | 'encuentro' | 'sermon';
+  paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
+  plantilla?: string;
+  desde?: number;
+  hasta?: number;
+  borrador?: string;
+};
 // Cada bloque de un documento lleva su etiqueta y, si se puede abrir en la app, su referencia.
 type BlockMeta = { label: string; ref?: string };
 
@@ -37,6 +49,75 @@ Reglas:
 - No uses ni presentes como interpretación cristiana las enseñanzas de grupos que niegan doctrinas centrales del cristianismo histórico, como la Trinidad o la divinidad de Cristo (por ejemplo, Testigos de Jehová o mormones).
 - Escribe en español claro y cálido para alguien sin formación teológica: párrafos cortos, títulos con "## ", listas con "- " y **negritas** solo para palabras clave. Sin tablas.
 - En las preguntas de seguimiento responde a lo que se pregunta, con la misma regla de fuentes. Si la pregunta no tiene que ver con la Biblia o con el estudio, redirígela con amabilidad.`;
+
+const TALLER_SYSTEM = `
+
+Ahora acompañas a alguien en el Taller de la app, donde prepara una reflexión, un encuentro de grupo o un sermón. Eres un acompañante que pregunta y sugiere, no un escritor fantasma: el valor está en que la persona estudie, ore y prepare.
+
+Reglas del Taller:
+- Nunca escribas un sermón, una reflexión o una guía completa, ni redactes secciones enteras listas para leer o predicar. Si te lo piden, explica con amabilidad que la preparación es suya y ofrece preguntas, opciones o un esquema de ideas para que la persona lo escriba.
+- Lo que digas sobre el texto, el griego o los pasajes relacionados lleva su cita, con la misma regla de fuentes.
+- No inventes anécdotas como si fueran reales. Si sugieres una ilustración, márcala como «Ejemplo, no hecho real», en una o dos frases.
+- Ayuda a que el mensaje tenga una sola idea central que salga del texto, nombre la necesidad humana que el pasaje toca y ponga la gracia de Dios en el centro, no solo consejos.
+- Sé breve: lo justo para dar el siguiente paso.`;
+
+const PASOS = {
+  pasaje: 'observar el pasaje (quién, qué, dónde, cuándo, por qué; palabras repetidas; conectores como «pero», «por tanto», «para que»)',
+  idea: 'formular la idea central (tema: ¿de qué habla?; complemento: ¿qué dice de eso?), la necesidad humana que toca el pasaje y la respuesta de la gracia',
+  bosquejo: 'armar el bosquejo por secciones',
+  revisar: 'revisar el borrador antes de presentarlo',
+};
+
+const TIPOS = { reflexion: 'una reflexión breve (5 a 10 minutos)', encuentro: 'un encuentro de grupo pequeño (60 a 90 minutos)', sermon: 'un sermón (20 a 45 minutos)' };
+
+function tallerTask(book: Book, chapter: number, verse: number | undefined, t: Taller) {
+  const target = verse
+    ? `${book.name} ${chapter}:${verse}`
+    : t.desde
+      ? `${book.name} ${chapter}:${t.desde}${t.hasta ? `-${t.hasta}` : ''}`
+      : `${book.name} ${chapter}`;
+  const head = `Estoy preparando ${TIPOS[t.tipo]} sobre ${target}${t.plantilla ? `, con la estructura «${t.plantilla}»` : ''}. Ahora estoy en el paso de ${PASOS[t.paso]}.`;
+  const draft = t.borrador?.trim() ? `\n\nLo que llevo:\n${t.borrador.trim()}` : '\n\nTodavía no he escrito nada.';
+  let ask: string;
+  if (t.modo === 'preguntar') {
+    ask =
+      'Hazme de 3 a 5 preguntas para pensar este paso por mí mismo, ancladas en el texto y con sus citas. No me des las respuestas. Formato: una lista con "- ", y antes una frase corta de introducción.';
+  } else if (t.modo === 'revisar') {
+    ask = `Revisa lo que llevo con esta lista: idea central en una frase; que salga del texto y respete su contexto; que nombre la necesidad humana; que Dios y su gracia estén en el centro; ${
+      t.tipo === 'sermon' ? 'que cada punto tenga explicación, ilustración y aplicación; ' : ''
+    }${t.tipo === 'encuentro' ? 'que las preguntas lleven al texto y no sean de sí o no; ' : ''}que la aplicación sea concreta; que quepa en el tiempo. Señala con cita cualquier afirmación que no salga del pasaje. Formato: "## Lo que funciona" y "## Para mejorar", con listas cortas. No reescribas mis secciones: dime qué revisar y por qué.`;
+  } else if (t.paso === 'idea' || t.paso === 'pasaje') {
+    ask =
+      'Propón tres formulaciones posibles de la idea central (tema y complemento, una frase cada una), cada una con el versículo que la sostiene, y dos maneras de nombrar la necesidad humana que toca el pasaje. Yo elegiré y la escribiré con mis palabras. Formato: "## Idea central" y "## Necesidad humana", con listas.';
+  } else if (t.tipo === 'encuentro') {
+    const catalog = DINAMICAS.map((d) => `${d.nombre} (${d.minutos} min, apertura ${d.apertura}): ${d.objetivo}`).join('\n');
+    ask = `Sugiere para este encuentro: preguntas de conversación en tres niveles (sobre el texto, sobre Dios y las personas, para la vida), y de 2 a 3 dinámicas del catálogo de la app que encajen con el pasaje, diciendo en qué parte usarlas y por qué. Usa solo dinámicas de este catálogo, todas sin materiales:\n${catalog}\n\nFormato: "## Preguntas" y "## Dinámicas", con listas.`;
+  } else {
+    ask =
+      'Sugiere ideas para el bosquejo, no texto para leer: para cada sección, uno o dos apuntes de lo que el texto permite decir ahí (con cita), una idea de ilustración marcada como «Ejemplo, no hecho real» y una aplicación concreta. Formato: un título "## " por sección y listas cortas.';
+  }
+  return `${head}${draft}\n\n${ask}`;
+}
+
+const MODOS = ['preguntar', 'sugerir', 'revisar'];
+const TALLER_TIPOS = ['reflexion', 'encuentro', 'sermon'];
+const TALLER_PASOS = ['pasaje', 'idea', 'bosquejo', 'revisar'];
+const MAX_DRAFT = 12000;
+
+function validTaller(t: unknown): t is Taller {
+  if (!t || typeof t !== 'object') return false;
+  const x = t as Record<string, unknown>;
+  const optInt = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 200);
+  return (
+    MODOS.includes(x.modo as string) &&
+    TALLER_TIPOS.includes(x.tipo as string) &&
+    TALLER_PASOS.includes(x.paso as string) &&
+    (x.plantilla === undefined || (typeof x.plantilla === 'string' && x.plantilla.length <= 80)) &&
+    (x.borrador === undefined || (typeof x.borrador === 'string' && x.borrador.length <= MAX_DRAFT)) &&
+    optInt(x.desde) &&
+    optInt(x.hasta)
+  );
+}
 
 const client = new Anthropic();
 
@@ -176,6 +257,8 @@ export async function POST(request: Request) {
   ) {
     return badRequest('Conversación no válida');
   }
+  if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
+  const taller = body.taller;
 
   let docs;
   try {
@@ -191,7 +274,12 @@ export async function POST(request: Request) {
       role: 'user',
       content: [
         ...docs.map((d) => d.param),
-        { type: 'text', text: studyTask(book, chapter, verse, docs.length > 1 && book.interlinear) },
+        {
+          type: 'text',
+          text: taller
+            ? tallerTask(book, chapter, verse, taller)
+            : studyTask(book, chapter, verse, docs.length > 1 && book.interlinear),
+        },
       ],
     },
     ...turns.map((t) => ({ role: t.role, content: t.text })),
@@ -208,7 +296,7 @@ export async function POST(request: Request) {
           {
             model: MODEL,
             max_tokens: 16000,
-            system: SYSTEM,
+            system: taller ? SYSTEM + TALLER_SYSTEM : SYSTEM,
             messages,
             cache_control: { type: 'ephemeral' },
             output_config: { effort: 'medium' },

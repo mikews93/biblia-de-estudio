@@ -1,5 +1,6 @@
 // Función de Vercel para las comunidades: grupos privados por invitación con un plan de lectura en común,
-// notas compartidas en un versículo, peticiones de oración y preguntas para la reunión sugeridas por la IA.
+// notas compartidas en un versículo, peticiones de oración, preguntas para la reunión sugeridas por la IA y
+// guías de encuentro preparadas en el Taller.
 //
 // Todo va por POST con {"accion": "...", ...}. Para empezar basta un nombre: al registrarse se recibe una
 // llave de sesión que la app guarda y envía como "Authorization: Bearer <llave>" (en la base solo queda su
@@ -21,6 +22,7 @@ const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const MAX_NAME = 40;
 const MAX_NOTE = 1000;
 const MAX_PRAYER = 500;
+const MAX_GUIDE = 10000;
 const AI_PER_DAY = 20;
 const WEEKLY_GOAL = 5;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -97,6 +99,16 @@ create table if not exists preguntas (
   creado timestamptz not null default now(),
   primary key (grupo_id, libro, capitulo)
 );
+create table if not exists guias (
+  id uuid primary key default gen_random_uuid(),
+  grupo_id uuid not null references grupos on delete cascade,
+  usuario_id uuid not null references usuarios on delete cascade,
+  titulo text not null,
+  pasaje text,
+  texto text not null,
+  creado timestamptz not null default now()
+);
+create index if not exists guias_grupo on guias (grupo_id, creado desc);
 create table if not exists uso_ia (
   grupo_id uuid not null references grupos on delete cascade,
   dia date not null,
@@ -636,6 +648,40 @@ const actions: Record<string, Handler> = {
     if (p.usuario_id !== user.id && !admin) throw new Fail('Solo quien la compartió puede cambiarla', 403);
     if (body.borrar) await sql`delete from peticiones where id = ${petitionId}`;
     else await sql`update peticiones set respondida = ${Boolean(body.respondida)} where id = ${petitionId}`;
+    return {};
+  },
+
+  // Hoja del participante de un encuentro preparado en el Taller (sin las notas del líder).
+  async compartirGuia({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const { id } = await membership(sql, user, body.grupo);
+    const titulo = text(body.titulo, 120, 'el título');
+    const texto = text(body.texto, MAX_GUIDE, 'la guía');
+    const pasaje = typeof body.pasaje === 'string' ? body.pasaje.trim().slice(0, 60) || null : null;
+    const [row] = await sql<{ id: string }[]>`
+      insert into guias (grupo_id, usuario_id, titulo, pasaje, texto)
+      values (${id}, ${user.id}, ${titulo}, ${pasaje}, ${texto}) returning id`;
+    return { id: row.id };
+  },
+
+  async guias({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const { id } = await membership(sql, user, body.grupo);
+    const rows = await sql`
+      select g.id, g.titulo, g.pasaje, g.texto, g.creado, u.nombre as autor, g.usuario_id = ${user.id} as mia
+      from guias g join usuarios u on u.id = g.usuario_id
+      where g.grupo_id = ${id} order by g.creado desc limit 20`;
+    return { guias: rows };
+  },
+
+  async borrarGuia({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const guideId = uuid(body.guia);
+    const [g] = await sql<{ grupo_id: string; usuario_id: string }[]>`select grupo_id, usuario_id from guias where id = ${guideId}`;
+    if (!g) return {};
+    const { admin } = await membership(sql, user, g.grupo_id);
+    if (g.usuario_id !== user.id && !admin) throw new Fail('Solo quien la compartió puede borrarla', 403);
+    await sql`delete from guias where id = ${guideId}`;
     return {};
   },
 

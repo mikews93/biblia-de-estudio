@@ -28,6 +28,10 @@ function AppStack() {
         <Stack.Screen name="comunidades/nuevo" options={{ title: 'Nuevo grupo' }} />
         <Stack.Screen name="comunidades/cuenta" options={{ title: 'Tu cuenta' }} />
         <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
+        <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
+        <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
+        <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
+        <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
       </Stack>
       <TabBar />
     </View>
