@@ -49,9 +49,11 @@ export type Settings = {
   layout: 'parrafo' | 'versiculo';
   study: boolean;
   version: string;
+  /** Último modo elegido en el estudio con IA. */
+  enfoque: 'devocional' | 'profundo';
 };
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909' };
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional' };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };

@@ -3,7 +3,7 @@
 
 import type { Page } from '@playwright/test';
 
-import { correoUnico, cuentaNueva, expect, test } from './support/fixtures';
+import { correoUnico, cuentaNueva, expect, modoProfundo, test } from './support/fixtures';
 
 const CLAVE = 'clave-segura-1';
 
@@ -158,6 +158,7 @@ test('la Biblia se lee sin cuenta; Comunidad la pide y al crearla vuelve a Comun
 
 test('estudiar con IA sin cuenta pide entrar y, al entrar, vuelve al lector con el estudio', async ({ page, request }) => {
   const cuenta = await cuentaNueva(request, 'Apolos');
+  await modoProfundo(page);
   await page.goto('/juan/3');
   await page.getByText('Porque de tal manera amó Dios al mundo').click();
   await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
