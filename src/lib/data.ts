@@ -59,3 +59,6 @@ export function enduringWordUrl(book: Book, chapter: number) {
 /** Versículos que cierran párrafo (solo NT, a partir del griego). */
 export const getParagraphEnds = (book: string, chapter: number) =>
   load<number[]>(`paragraphs/${book}/${chapter}.json`, true).then((r) => (Array.isArray(r) ? r : []));
+
+/** Palabras por capítulo de la RV1909 (para calcular minutos de lectura). */
+export const getWords = () => load<Record<string, number[]>>('words.json', true);

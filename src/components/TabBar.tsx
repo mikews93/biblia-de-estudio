@@ -15,7 +15,7 @@ const TABS: Tab[] = [
 ];
 
 function current(path: string): Tab['key'] {
-  if (path === '/') return 'hoy';
+  if (path === '/' || path.startsWith('/planes') || path === '/notas') return 'hoy';
   if (path.startsWith('/comunidades')) return 'comunidad';
   return 'leer';
 }
@@ -28,7 +28,7 @@ export default function TabBar() {
   const active = current(path);
 
   const go = async (key: Tab['key']) => {
-    if (key === active && key !== 'leer') return;
+    if (key === active && key !== 'leer' && (key !== 'hoy' || path === '/')) return;
     if (key === 'hoy') navigate(() => router.dismissTo('/'), 'back');
     if (key === 'comunidad') navigate(() => router.push('/comunidades' as never), 'fade');
     if (key === 'leer') {

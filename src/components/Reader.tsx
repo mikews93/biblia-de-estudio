@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
+import NoteEditor from '@/components/NoteEditor';
 import ReaderSettings from '@/components/ReaderSettings';
 import StudyPanel from '@/components/StudyPanel';
 import StudyVerse from '@/components/StudyVerse';
@@ -26,6 +27,7 @@ import {
 } from '@/lib/data';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
+import { useChapterNotes } from '@/lib/notas';
 import { bookIdFromParam, chapterHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
@@ -56,6 +58,7 @@ export default function Reader() {
   const [progress, setProgress] = useState(0);
   const [sharing, setSharing] = useState(false);
   const [study, setStudy] = useState<{ verse?: number } | null>(null);
+  const [writing, setWriting] = useState(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const paragraphHeight = useRef(0);
 
@@ -122,6 +125,10 @@ export default function Reader() {
     setHighlight(bookId, chapter, selected, marks[selected] === color ? null : color);
     setSelected(null);
   };
+
+  const notes = useChapterNotes(bookId, chapter);
+  const noteMark = (n: number) =>
+    notes[n] ? <Text style={{ fontSize: size * 0.7, color: colors.accent }} accessibilityLabel="Tiene nota">{' ✎'}</Text> : null;
 
   const verseBlocks = settings.study || settings.layout === 'versiculo';
   const selectedText = verses?.find(([n]) => n === selected)?.[1] ?? '';
@@ -248,6 +255,7 @@ export default function Reader() {
                       {'\u2009'}
                     </Text>
                     {text}
+                    {noteMark(n)}
                   </Text>
                 ))}
               </Text>
@@ -292,6 +300,7 @@ export default function Reader() {
                 <Text style={{ fontFamily, fontSize: size, lineHeight: size * 1.6, color: colors.text }}>
                   <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>{label ?? n} </Text>
                   {text}
+                  {noteMark(n)}
                 </Text>
               </Pressable>
             ),
@@ -352,6 +361,7 @@ export default function Reader() {
               onPress={() => setPanelTab('referencias')}
             />
             <Action label="Comentario" icon="¶" colors={colors} onPress={() => setPanelTab('comentario')} />
+            <Action label={notes[selected] ? 'Mi nota' : 'Nota'} icon="✎" colors={colors} onPress={() => setWriting(true)} />
             <Action label="Compartir" icon="⇪" colors={colors} onPress={() => setSharing(true)} />
           </View>
         </Appear>
@@ -405,6 +415,16 @@ export default function Reader() {
           onClose={() => setSharing(false)}
         />
       )}
+      {writing && book && selected !== null && (
+        <NoteEditor
+          book={book.id}
+          chapter={chapter}
+          verse={selected}
+          reference={`${book.name} ${chapter}:${selected}`}
+          text={selectedText}
+          onClose={() => setWriting(false)}
+        />
+      )}
       {showSettings && <ReaderSettings onClose={() => setShowSettings(false)} />}
       {showVersions && <VersionPicker versions={versions} onClose={() => setShowVersions(false)} />}
     </View>
@@ -429,7 +449,7 @@ function Action({ label, icon, badge, colors, onPress }: ActionProps) {
           </View>
         )}
       </View>
-      <Text style={{ color: colors.text, fontSize: 11, marginTop: 4 }} numberOfLines={1}>
+      <Text style={{ color: colors.text, fontSize: 10.5, letterSpacing: -0.2, marginTop: 4 }} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -491,7 +511,7 @@ const styles = StyleSheet.create({
   actionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   swatches: { flexDirection: 'row', gap: 10, marginLeft: 'auto', marginRight: 8 },
   swatch: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  actions: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 12 },
+  actions: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 12, marginHorizontal: -8 },
   action: { alignItems: 'center', flex: 1 },
   badge: { position: 'absolute', top: -2, right: -6, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
   actionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

@@ -78,13 +78,17 @@ def write(out, rel, data):
 def build_text(out):
     src = json.loads(fetch("rv1909.json").read_text(encoding="utf-8"))
     assert len(src["books"]) == len(BOOKS)
-    chapters = {}
+    chapters, words = {}, {}
     for meta, book in zip(BOOKS, src["books"]):
         bid = meta[0]
         chapters[bid] = len(book["chapters"])
+        words[bid] = []
         for ch in book["chapters"]:
             verses = [[v["verse"], v["text"].strip()] for v in ch["verses"]]
             write(out, f"text/rv1909/{bid}/{ch['chapter']}.json", verses)
+            words[bid].append(sum(len(t.split()) for _, t in verses))
+    # Palabras por capítulo: los planes de lectura calculan con esto cuántos minutos lleva cada día
+    write(out, "words.json", words)
     return chapters
 
 

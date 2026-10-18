@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import PlanCard from '@/components/PlanCard';
 import VerseImage from '@/components/VerseImage';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
+import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
@@ -16,6 +18,8 @@ export default function Today() {
   const colors = useColors();
   const { settings } = useSettings();
   const progress = useProgress();
+  const plans = usePlans();
+  const words = useWords();
   const [books, setBooks] = useState<Book[]>([]);
   const [last, setLast] = useState<{ book: string; chapter: number } | null>(null);
   const [verseText, setVerseText] = useState<string | null>(null);
@@ -41,6 +45,13 @@ export default function Today() {
   const daysThisWeek = week.filter((d) => d.read).length;
   const chaptersRead = Object.values(progress.chapters).reduce((s, c) => s + c.length, 0);
   const continueTo = last ?? { book: 'jhn', chapter: 1 };
+  // Los planes que aún no empiezan (un desafío de temporada) aparecen tres semanas antes
+  const soon = dateKey(new Date(Date.now() + 21 * 86_400_000));
+  const activePlans = plans.filter((p) => !p.finished && p.started <= soon);
+  // El próximo desafío de temporada se anuncia desde tres semanas antes, si la persona aún no se unió
+  const upcoming = PLANS.filter((p) => p.season)
+    .map((def) => ({ def, season: nextSeason(def)! }))
+    .find(({ def, season }) => season.daysToStart <= 21 && !plans.some((p) => p.id === `${def.id}-${season.year}`));
 
 
   return (
@@ -90,6 +101,31 @@ export default function Today() {
         </View>
       </Appear>
 
+      {activePlans.map((p, i) => (
+        <Appear key={p.id} delay={100 + i * 20}>
+          <PlanCard plan={p} books={books} words={words} colors={colors} />
+        </Appear>
+      ))}
+
+      {upcoming && (
+        <Appear delay={110}>
+          <Pressable
+            onPress={() => navigate(() => router.push(`/planes/${upcoming.def.id}`), 'forward')}
+            style={({ pressed }) => [styles.card, { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }, pressed && styles.pressed]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.kicker, { color: colors.accent }]}>
+              {upcoming.season.running ? 'Desafío en curso' : `Empieza en ${upcoming.season.daysToStart} días`}
+            </Text>
+            <Text style={[styles.continueTitle, { color: colors.text, fontFamily: serif, fontSize: 22 }]}>
+              {upcoming.def.icon} {upcoming.def.title}
+            </Text>
+            <Text style={{ color: colors.text, marginTop: 6 }}>{upcoming.def.description}</Text>
+            <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 10 }}>Unirme →</Text>
+          </Pressable>
+        </Appear>
+      )}
+
       <Appear delay={120}>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.kicker, { color: colors.accent }]}>Tu semana</Text>
@@ -117,6 +153,13 @@ export default function Today() {
 
       <Appear delay={160} style={styles.grid}>
         <Tile icon="☰" label="Libros" colors={colors} onPress={() => navigate(() => router.push('/libros'))} />
+        <Tile
+          icon="❖"
+          label={activePlans.length ? 'Planes' : 'Elegir un plan'}
+          colors={colors}
+          onPress={() => navigate(() => router.push('/planes'), 'forward')}
+        />
+        <Tile icon="✎" label="Mis notas" colors={colors} onPress={() => navigate(() => router.push('/notas'), 'forward')} />
         <Tile
           icon="✦"
           label="Estudiar con IA"
@@ -195,7 +238,7 @@ const styles = StyleSheet.create({
   question: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 16, paddingTop: 14 },
   week: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
   dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
-  grid: { flexDirection: 'row', gap: 12 },
-  tile: { flex: 1, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 16, alignItems: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  tile: { flexGrow: 1, flexBasis: '28%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 16, alignItems: 'center' },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
 });
