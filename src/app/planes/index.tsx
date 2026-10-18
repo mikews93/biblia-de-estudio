@@ -6,10 +6,12 @@ import PlanCard, { shortDate } from '@/components/PlanCard';
 import { SectionTitle, text } from '@/components/comunidad/ui';
 import { Book, getBooks } from '@/lib/data';
 import { PLANS, PlanDef, nextSeason, usePlans, useWords } from '@/lib/planes';
+import { seasonTint } from '@/lib/retos';
+import type { SeasonRun } from '@/lib/temporadas';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-/** Planes de lectura: los tuyos, los desafíos de temporada y el catálogo. */
+/** Planes de lectura: los tuyos, los retos de temporada y el catálogo. */
 export default function Planes() {
   const colors = useColors();
   const plans = usePlans();
@@ -55,18 +57,18 @@ export default function Planes() {
         </>
       )}
 
-      <SectionTitle>Desafíos de temporada</SectionTitle>
-      <View style={{ gap: 10 }}>
+      <SectionTitle>Retos de temporada</SectionTitle>
+      <Text style={[text.small, { color: colors.muted, marginTop: -4, marginBottom: 12 }]}>
+        Siguen el año cristiano: un capítulo al día con fecha común para todos y una pregunta para pensar.
+      </Text>
+      <View style={styles.retos}>
         {seasonal.map(({ def, season }) => (
-          <PlanRow
+          <RetoTile
             key={def.id}
             def={def}
+            season={season}
+            joined={plans.some((p) => p.id === `${def.id}-${season.year}` && !p.finished)}
             colors={colors}
-            note={
-              season.running
-                ? `En curso hasta el ${shortDate(season.end)}`
-                : `Empieza el ${shortDate(season.start)}${season.daysToStart <= 60 ? ` · faltan ${season.daysToStart} días` : ''}`
-            }
             onPress={() => open(def.id)}
           />
         ))}
@@ -142,7 +144,71 @@ function PlanRow({
   );
 }
 
+/** Un reto de temporada con el color de su tiempo y cuánto falta. */
+function RetoTile({
+  def,
+  season,
+  joined,
+  colors,
+  onPress,
+}: {
+  def: PlanDef;
+  season: SeasonRun;
+  joined: boolean;
+  colors: Colors;
+  onPress: () => void;
+}) {
+  const tint = seasonTint(def.season!, colors);
+  const when = season.running
+    ? `En curso · hasta el ${shortDate(season.end)}`
+    : season.daysToStart === 1
+      ? 'Empieza mañana'
+      : season.daysToStart <= 60
+        ? `Empieza en ${season.daysToStart} días`
+        : `Desde el ${shortDate(season.start)}`;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.reto, { backgroundColor: tint.soft }, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${def.title}. ${when}${joined ? '. Te uniste' : ''}`}
+    >
+      <Text style={[styles.retoGlyph, { color: tint.accent }]}>{def.icon}</Text>
+      <View style={styles.retoHead}>
+        <Text style={[styles.retoKicker, { color: tint.accent }]}>{tint.name}</Text>
+        {joined && (
+          <View style={[styles.joined, { backgroundColor: tint.accent }]}>
+            <Text style={{ color: tint.soft, fontSize: 11, fontWeight: '700' }}>✓ Te uniste</Text>
+          </View>
+        )}
+      </View>
+      <Text style={[styles.retoTitle, { color: colors.text }]} numberOfLines={2}>
+        {subtitle(def.title)}
+      </Text>
+      <Text style={{ color: colors.text, opacity: 0.75, fontSize: 13, marginTop: 4 }}>
+        {def.spec.length} días · {range(season.start, season.end)}
+      </Text>
+      <Text style={{ color: tint.accent, fontSize: 13, fontWeight: '700', marginTop: 10 }}>{when}</Text>
+    </Pressable>
+  );
+}
+
+/** «Adviento: la promesa cumplida» → «La promesa cumplida» (el tiempo ya va arriba). */
+const subtitle = (title: string) => {
+  const rest = title.split(': ')[1];
+  return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : title;
+};
+
+const range = (a: string, b: string) => `${shortDate(a)} – ${shortDate(b)}`;
+
 const styles = StyleSheet.create({
+  retos: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  reto: { flexGrow: 1, flexBasis: '45%', minWidth: 150, borderRadius: 20, padding: 16, overflow: 'hidden', minHeight: 150 },
+  retoGlyph: { position: 'absolute', right: 8, bottom: -14, fontSize: 84, fontFamily: serif, opacity: 0.14 },
+  retoHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  retoKicker: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.9 },
+  retoTitle: { fontFamily: serif, fontSize: 18, lineHeight: 23, marginTop: 8 },
+  joined: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   page: { padding: 20, paddingBottom: 64, maxWidth: 680, width: '100%', alignSelf: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
   icon: { fontSize: 22, width: 28, textAlign: 'center', fontFamily: serif },

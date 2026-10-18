@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import { Book, getWords } from './data';
-import { PLANS, PlanDef, Season } from './planesCatalogo';
+import { PLANS, PlanDef } from './planesCatalogo';
+import { addDays, dateKey, nextSeason, parseDate, seasonDates, todayKey } from './temporadas';
 
 // Planes de lectura personales, guardados en el dispositivo. El avance se cuenta por capítulos leídos,
 // no por fechas: si un día no se puede, el plan espera. Los de temporada tienen una fecha sugerida por día.
@@ -32,6 +33,8 @@ export type MyPlan = {
   /** Índice de la lectura → fecha en que se leyó. */
   done: Record<number, string>;
   finished?: string;
+  /** Solo en los retos de temporada: índice de la lectura → lo que la persona respondió a la pregunta del día. */
+  reflections?: Record<number, string>;
 };
 
 export type PlanDay = { readings: number[]; title?: string; date?: string };
@@ -58,68 +61,9 @@ function save(plans: MyPlan[]) {
   listeners.forEach((l) => l());
 }
 
-// ——— Fechas (siempre locales, «AAAA-MM-DD») ———
+// ——— Fechas: viven en temporadas.ts para que el servidor también las use ———
 
-export const dateKey = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-export const parseDate = (s: string) => {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-
-const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-
-export const todayKey = () => dateKey(new Date());
-
-/** Domingo de Pascua (calendario gregoriano, algoritmo de Meeus). */
-function easter(year: number) {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(year, month - 1, day);
-}
-
-/** Fecha de cada lectura de una temporada. En Cuaresma se saltan los domingos y la última cae en Pascua. */
-function seasonDates(season: Season, year: number, count: number): string[] {
-  if (season === 'cuaresma') {
-    const sunday = easter(year);
-    const out: string[] = [];
-    let d = addDays(sunday, -46); // Miércoles de Ceniza
-    while (out.length < count - 1) {
-      if (d.getDay() !== 0) out.push(dateKey(d));
-      d = addDays(d, 1);
-    }
-    return [...out, dateKey(sunday)];
-  }
-  const start = season === 'adviento' ? new Date(year, 11, 1) : new Date(year, 0, 1);
-  return Array.from({ length: count }, (_, i) => dateKey(addDays(start, i)));
-}
-
-/** La próxima edición de una temporada que aún no ha terminado (la en curso, o la siguiente). */
-export function nextSeason(def: PlanDef, today = todayKey()) {
-  const year = parseDate(today).getFullYear();
-  for (const y of [year, year + 1]) {
-    const dates = seasonDates(def.season!, y, def.spec.length);
-    if (dates[dates.length - 1] >= today) {
-      const start = dates[0];
-      const daysToStart = Math.round((parseDate(start).getTime() - parseDate(today).getTime()) / 86_400_000);
-      return { year: y, dates, start, end: dates[dates.length - 1], daysToStart, running: start <= today };
-    }
-  }
-  return null;
-}
+export { dateKey, nextSeason, parseDate, todayKey } from './temporadas';
 
 // ——— Catálogo ———
 
@@ -235,6 +179,20 @@ export async function startPlan(def: PlanDef, books: Book[], opts: { minutes: nu
 export async function updatePlan(id: string, patch: Partial<Pick<MyPlan, 'minutes' | 'daysPerWeek'>>) {
   await load();
   save(state.plans.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+}
+
+/** Guarda (o borra, si queda vacía) la respuesta a la pregunta de un día del reto. */
+export async function saveReflection(id: string, index: number, value: string) {
+  await load();
+  save(
+    state.plans.map((p) => {
+      if (p.id !== id) return p;
+      const reflections = { ...p.reflections };
+      if (value.trim()) reflections[index] = value.trim();
+      else delete reflections[index];
+      return { ...p, reflections };
+    }),
+  );
 }
 
 export async function removePlan(id: string) {
