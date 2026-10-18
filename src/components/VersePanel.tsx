@@ -1,13 +1,12 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   Book,
   CrossRef,
   Place,
   Word,
-  enduringWordUrl,
   formatRef,
   getChapter,
   getCrossRefs,
@@ -15,6 +14,7 @@ import {
   getPlaces,
   parseRef,
 } from '@/lib/data';
+import Commentary from '@/components/Commentary';
 import GroupNotes from '@/components/comunidad/GroupNotes';
 import PlaceMap from '@/components/PlaceMap';
 import StudyPanel from '@/components/StudyPanel';
@@ -85,7 +85,9 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
             <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
           )}
           {tab === 'mapa' && <Places book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />}
-          {tab === 'comentario' && <Commentary book={book} chapter={chapter} colors={colors} />}
+          {tab === 'comentario' && (
+            <Commentary book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+          )}
           {tab === 'grupo' && <GroupNotes book={book} books={books} chapter={chapter} verse={verse} onNavigate={onClose} />}
         </ScrollView>
       </View>
@@ -268,28 +270,6 @@ function Places({
   );
 }
 
-function Commentary({ book, chapter, colors }: { book: Book; chapter: number; colors: Colors }) {
-  return (
-    <View>
-      <Text style={{ color: colors.text, lineHeight: 22 }}>
-        El comentario versículo a versículo de Matthew Henry y Jamieson-Fausset-Brown (dominio público) llegará traducido al
-        español en la próxima versión.
-      </Text>
-      <Pressable
-        onPress={() => Linking.openURL(enduringWordUrl(book, chapter))}
-        style={[styles.ewButton, { backgroundColor: colors.accent }]}
-      >
-        <Text style={{ color: colors.surface, fontWeight: '600' }}>
-          Leer {book.name} {chapter} en Enduring Word ↗
-        </Text>
-      </Pressable>
-      <Text style={[styles.credit, { color: colors.muted }]}>
-        Enduring Word Bible Commentary por David Guzik, en su sitio web.
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: {
@@ -323,5 +303,4 @@ const styles = StyleSheet.create({
   hint: { fontSize: 13, marginBottom: 12 },
   credit: { fontSize: 11, marginTop: 16 },
   refRow: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  ewButton: { marginTop: 16, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center' },
 });

@@ -8,7 +8,7 @@ App para estudiar la Biblia a fondo con la sencillez de La Biblia App: texto, in
 - Al tocar un versículo se abre un panel con:
   - **Interlineal** del Nuevo Testamento: griego, transliteración y glosa en español palabra por palabra; al tocar una palabra se ve su lema, significado, número Strong y morfología.
   - **Referencias cruzadas** ordenadas por relevancia, con vista previa y salto al pasaje.
-  - **Comentario:** enlace al capítulo en Enduring Word mientras llega el comentario propio.
+  - **Comentario:** Matthew Henry y Jamieson-Fausset-Brown (dominio público) traducidos al español con IA, y enlace al capítulo en Enduring Word.
 
 ## Cómo correrla
 
@@ -33,6 +33,16 @@ En el teléfono (Expo Go o una build de desarrollo) los datos se leen de una URL
 | Referencias cruzadas | [OpenBible.info](https://www.openbible.info/labs/cross-references/) | CC BY |
 
 El interlineal muestra las palabras del texto tradicional (Textus Receptus), que es el que traduce la RV1909, con la versificación de la KJV. Las glosas españolas de STEPBible vienen del proyecto Marvel Bible y usan términos de la Traducción del Nuevo Mundo («madero de ejecución», «bondad inmerecida»). El pipeline los sustituye por los de la tradición cristiana histórica (`fix_gloss` en `pipeline/build_data.py`), pero las glosas necesitan una revisión completa antes del lanzamiento.
+
+## Comentarios
+
+La pestaña «Comentario» de cada versículo muestra la sección del comentario que lo trata. Las fuentes están en `src/lib/comentarioFuentes.ts` y son intercambiables:
+
+- **Traducidas:** Matthew Henry (*Commentary on the Whole Bible*, 1706-1721) y Jamieson, Fausset y Brown (1871), de dominio público, tomados de los módulos SWORD de CrossWire. `pipeline/build_comentarios.py` los descarga en cada build y los parte en secciones y partes de unas 700 palabras en `comentarios/` (solo la lee la función; la app nunca muestra el inglés).
+- **Propias:** texto que ya está en español, con el mismo formato en `comentarios/<id>/`, se sirve sin traducir. Ahí iría Enduring Word en español si David Guzik da permiso.
+- **Enlace:** Enduring Word, mientras tanto, se abre en su sitio.
+
+`api/comentario.ts` traduce cada parte la primera vez que alguien la abre (con la RV1909 del pasaje para que las citas usen esas palabras), la guarda en la base de datos (`comentarios_es`) y después otra pasada de IA la revisa contra el original. Las personas pueden avisar de errores desde la app (`comentarios_reportes`); una traducción revisada a mano se marca con `estado = 'humano'`. Variables opcionales: `COMENTARIO_MODEL` (traducción, por defecto `claude-sonnet-5-5`), `COMENTARIO_REVISOR` (revisión, por defecto `claude-opus-5-5`) y `COMENTARIO_PARTES_DIA` (tope diario de partes nuevas, por defecto 400).
 
 ## Estudiar con IA
 
