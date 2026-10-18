@@ -39,7 +39,7 @@ test.describe('Herramientas del capítulo con IA', () => {
     await expect.poll(async () => (await peticionesIA(request, marca)).length).toBe(antes + 1);
   });
 
-  test('resumen en audio: conversación de Ana y Tomás que se guarda y no se vuelve a pedir', async ({ page, request }, info) => {
+  test('resumen en audio: conversación de Ana y Tomás que se guarda y no se vuelve a pedir', async ({ page, request, browser }, info) => {
     const cap = capitulo(info, 6);
     await conSesion(page, await cuentaNueva(request, 'Oyente'));
     const marca = `resumen en audio de Juan ${cap},`;
@@ -62,6 +62,15 @@ test.describe('Herramientas del capítulo con IA', () => {
     await page.reload();
     await expect(v(page.getByText('¿Qué pregunta te deja a ti?'))).toBeVisible();
     expect((await peticionesIA(request, marca)).length).toBe(antes + 1);
+
+    // Otra persona, en otro dispositivo, lo recibe ya hecho: el servidor lo guardó para todos
+    const otro = await browser.newContext(info.project.use);
+    const otraPagina = await otro.newPage();
+    await conSesion(otraPagina, await cuentaNueva(request, 'Oyente dos'));
+    await otraPagina.goto(`/podcast/juan/${cap}`);
+    await expect(v(otraPagina.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
+    expect((await peticionesIA(request, marca)).length).toBe(antes + 1);
+    await otro.close();
 
     // «Preparar otra versión» sí vuelve a pedirlo
     await v(page.getByRole('button', { name: '↻ Preparar otra versión' })).click();
