@@ -1,5 +1,7 @@
 // Función de Vercel: genera un estudio de un capítulo o versículo y responde preguntas sobre él.
 // Con «word» (posición de una palabra hebrea o griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
+// Con «herramienta» prepara, para un capítulo, el guion de un resumen en audio a dos voces («podcast»),
+// tarjetas de repaso («tarjetas») o un mapa mental («mapa»), con el formato que la app sabe leer.
 // Solo usa las fuentes de la app (RV1909, hebreo y griego de STEPBible y referencias de OpenBible.info),
 // que se pasan a Claude como documentos con citas activadas. La respuesta se envía como NDJSON:
 //   {"type":"text","text":"…"}  fragmento de texto en markdown; las citas llegan como ⟦n⟧
@@ -25,7 +27,16 @@ type Book = { id: string; name: string; chapters: number; testament: 'AT' | 'NT'
 type Verse = [number, string];
 type Word = [string, string, string, string, string, string, string, string];
 type Turn = { role: 'user' | 'assistant'; text: string };
-type Body = { book?: string; chapter?: number; verse?: number; word?: number; messages?: Turn[]; taller?: Taller };
+type Herramienta = 'podcast' | 'tarjetas' | 'mapa';
+type Body = {
+  book?: string;
+  chapter?: number;
+  verse?: number;
+  word?: number;
+  messages?: Turn[];
+  taller?: Taller;
+  herramienta?: Herramienta;
+};
 // Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
 // pero nunca escribe el mensaje por la persona.
 type Taller = {
@@ -103,6 +114,54 @@ function tallerTask(book: Book, chapter: number, verse: number | undefined, t: T
   }
   return `${head}${draft}\n\n${ask}`;
 }
+
+// Herramientas inspiradas en NotebookLM. Cada una pide un formato de texto simple que la app convierte
+// en audio, tarjetas o mapa; las citas ⟦n⟧ llegan igual que en el estudio.
+const HERRAMIENTAS: Record<Herramienta, (book: Book, chapter: number, hasGreek: boolean) => string> = {
+  podcast: (book, chapter, hasGreek) => `Escribe el guion de un resumen en audio de ${book.name} ${chapter}, como una conversación entre dos personas que estudian juntas la Biblia: Ana y Tomás. Se escuchará con voz sintetizada, de 5 a 7 minutos.
+
+Formato estricto: cada intervención en su propia línea, empezando por «ANA:» o «TOMÁS:», sin títulos, sin listas, sin markdown, sin acotaciones entre paréntesis ni efectos de sonido.
+
+Contenido:
+- Abran con una frase que despierte interés por el capítulo; no se presenten ni saluden a la audiencia con fórmulas de radio.
+- Recorran el capítulo en orden: qué pasa, quién habla y a quién, qué se repite, qué sorprende.${
+    hasGreek ? '\n- Detengan la conversación en 1 o 2 palabras del griego que aclaren algo, dichas de forma que se entiendan al oído.' : ''
+  }
+- Relacionen el capítulo con 2 o 3 pasajes de las referencias cruzadas.
+- Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
+- No es un sermón: expliquen el texto, no prediquen ni den consejos largos.
+- Cierren con una o dos preguntas para que quien escucha siga pensando, sin respuesta.
+- Al leer números de versículo, dilos como «el versículo dieciséis», y las citas bíblicas con palabras («Juan tres, dieciséis»).
+
+Extensión: 800 a 1000 palabras. Empieza directamente por la primera línea del diálogo.`,
+
+  tarjetas: (book, chapter, hasGreek) => `Prepara de 8 a 12 tarjetas de repaso de ${book.name} ${chapter} para estudiar con repetición espaciada.
+
+Formato estricto, sin títulos ni introducción, con una línea en blanco entre tarjetas:
+P: la pregunta (una sola, concreta)
+R: la respuesta, corta (de 1 a 25 palabras), con su cita
+
+Reglas:
+- Cada tarjeta prueba una sola idea y se puede responder de memoria después de leer el capítulo.
+- Mezcla: qué pasa y quién lo dice; ideas centrales del capítulo; ${
+    hasGreek ? 'palabras clave del griego y lo que significan; ' : ''
+  }cómo se relaciona con alguno de los pasajes de las referencias cruzadas; y 2 o 3 tarjetas de completar un versículo importante, con la pregunta «Completa: …» y la parte que falta como respuesta, copiada exacta de la RV1909.
+- Ordénalas como aparecen en el capítulo.
+- Nada de preguntas de opinión ni de sí o no.`,
+
+  mapa: (book, chapter) => `Haz el mapa mental de ${book.name} ${chapter}.
+
+Formato estricto, sin texto antes ni después:
+# la idea central del capítulo (de 3 a 9 palabras)
+- rama (de 2 a 5 palabras) (vv. 1-8)
+  - idea (de 3 a 10 palabras) (v. 3)
+
+Reglas:
+- De 3 a 6 ramas que sigan el orden del capítulo o sus grandes temas, cada una con los versículos que abarca.
+- De 2 a 4 ideas por rama, cada una con su versículo y su cita.
+- Frases cortas, no oraciones largas: es un mapa para ver de un vistazo.
+- Solo dos niveles bajo la idea central.`,
+};
 
 const MODOS = ['preguntar', 'sugerir', 'revisar'];
 const TALLER_TIPOS = ['reflexion', 'encuentro', 'sermon'];
@@ -312,6 +371,13 @@ export async function POST(request: Request) {
   }
   if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
   const taller = body.taller;
+  const herramienta = body.herramienta;
+  if (
+    herramienta !== undefined &&
+    (!Object.hasOwn(HERRAMIENTAS, herramienta) || verse !== undefined || taller || turns.length > 0)
+  ) {
+    return badRequest('Herramienta no válida');
+  }
 
   let docs;
   let focus;
@@ -332,7 +398,9 @@ export async function POST(request: Request) {
           type: 'text',
           text: taller
             ? tallerTask(book, chapter, verse, taller)
-            : focus && verse
+            : herramienta
+              ? HERRAMIENTAS[herramienta](book, chapter, docs.length > 1 && book.interlinear)
+              : focus && verse
               ? wordTask(book, chapter, verse, focus)
               : studyTask(book, chapter, verse, docs.length > 1 && book.interlinear),
         },

@@ -132,6 +132,13 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
         </Pressable>
       )}
 
+      <Pressable
+        onPress={() => navigate(() => router.push(`/tarjetas/${BOOK_SLUGS[book.id] ?? book.id}/${chapter}` as never), 'forward')}
+        accessibilityRole="link"
+      >
+        <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 15 }}>Crear tarjetas para recordar este capítulo ›</Text>
+      </Pressable>
+
       {next && (
         <Pressable onPress={onNext} style={[styles.next, { backgroundColor: colors.accentSoft }]}>
           <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '700', letterSpacing: 0.6 }}>SIGUIENTE</Text>
