@@ -18,9 +18,14 @@ export type Lectura = {
   libro: string;
   nombre: string;
   capitulos: number[];
-  estado: 'pronto' | 'activo' | 'terminado';
+  /** «descanso»: un día sin lectura dentro de un reto (los domingos de Cuaresma). */
+  estado: 'pronto' | 'activo' | 'descanso' | 'terminado';
   dia: number;
   total: number;
+  /** Si el grupo sigue un reto de temporada, su id con el año («adviento-2026»). */
+  reto?: string | null;
+  /** En un reto que aún no empieza o en un día de descanso: el capítulo que sigue. */
+  siguiente?: number;
 };
 export type ResumenGrupo = {
   id: string;
@@ -30,7 +35,7 @@ export type ResumenGrupo = {
   leyeronHoy: number;
   lectura: Lectura | null;
 };
-export type Plan = { libro: string | null; inicio: string | null; porDia: number };
+export type Plan = { libro: string | null; inicio: string | null; porDia: number; reto?: string | null };
 export type Miembro = { id: string; nombre: string; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
 export type Grupo = {
   id: string;

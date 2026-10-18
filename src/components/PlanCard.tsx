@@ -5,6 +5,7 @@ import { Meter } from '@/components/comunidad/ui';
 import { Book } from '@/lib/data';
 import { MyPlan, Words, dayMinutes, parseDate, planDays, planDef, planStatus, todayKey } from '@/lib/planes';
 import { chapterHref } from '@/lib/routes';
+import { seasonTint } from '@/lib/retos';
 import { Colors, serif } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -33,6 +34,11 @@ export default function PlanCard({ plan, books, words, colors }: { plan: MyPlan;
   const day = status.next !== null ? days[status.next] : null;
   const firstPending = day?.readings.find((i) => !plan.done[i]);
 
+  // Los retos de temporada llevan el color de su tiempo litúrgico
+  const tint = def?.season ? seasonTint(def.season, colors) : null;
+  const accent = tint?.accent ?? colors.accent;
+  const question = def?.questions && day ? def.questions[day.readings[0]] : null;
+
   const open = () => navigate(() => router.push(`/planes/${plan.def}`), 'forward');
   const read = () => {
     if (firstPending === undefined) return open();
@@ -42,9 +48,10 @@ export default function PlanCard({ plan, books, words, colors }: { plan: MyPlan;
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      {tint && <View style={[styles.stripe, { backgroundColor: accent }]} />}
       <Pressable onPress={open} style={({ pressed }) => pressed && { opacity: 0.7 }} accessibilityRole="button">
       <View style={styles.head}>
-        <Text style={[styles.kicker, { color: colors.accent }]}>{def?.season ? 'Desafío de temporada' : 'Tu plan'}</Text>
+        <Text style={[styles.kicker, { color: accent }]}>{tint ? `Reto de ${tint.name}` : 'Tu plan'}</Text>
         <Text style={{ color: colors.muted, fontSize: 12 }}>
           {status.doneDays} de {days.length} {days.length === 1 ? 'día' : 'días'}
         </Text>
@@ -64,6 +71,11 @@ export default function PlanCard({ plan, books, words, colors }: { plan: MyPlan;
             <Text style={{ color: colors.text, fontSize: 16, marginTop: 2 }}>
               {readingsLabel(plan, day.readings, books)} · {dayMinutes(plan, day, words)} min
             </Text>
+            {question && (
+              <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 8, fontFamily: serif, fontStyle: 'italic' }}>
+                {question}
+              </Text>
+            )}
           </>
         )
       )}
@@ -73,16 +85,16 @@ export default function PlanCard({ plan, books, words, colors }: { plan: MyPlan;
         </Text>
       )}
       <View style={{ marginTop: 12 }}>
-        <Meter value={status.doneDays} max={days.length} colors={colors} />
+        <Meter value={status.doneDays} max={days.length} colors={tint ? { ...colors, accent, accentSoft: tint.soft } : colors} />
       </View>
       </Pressable>
       {!plan.finished && !waiting && (
         <Pressable
           onPress={read}
-          style={({ pressed }) => [styles.read, { backgroundColor: colors.accent }, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.read, { backgroundColor: accent }, pressed && styles.pressed]}
           accessibilityRole="button"
         >
-          <Text style={{ color: colors.surface, fontWeight: '700' }}>Leer lo de hoy</Text>
+          <Text style={{ color: tint?.soft ?? colors.surface, fontWeight: '700' }}>Leer lo de hoy</Text>
         </Pressable>
       )}
     </View>
@@ -90,7 +102,8 @@ export default function PlanCard({ plan, books, words, colors }: { plan: MyPlan;
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20 },
+  card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20, overflow: 'hidden' },
+  stripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   kicker: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
   title: { fontSize: 22, marginTop: 4 },

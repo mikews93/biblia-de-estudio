@@ -13,6 +13,7 @@ import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
+import { seasonTint } from '@/lib/retos';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { dueCards, useCards } from '@/lib/tarjetas';
 import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
@@ -56,13 +57,15 @@ export default function Today() {
   const daysThisWeek = week.filter((d) => d.read).length;
   const chaptersRead = Object.values(progress.chapters).reduce((s, c) => s + c.length, 0);
   const continueTo = last ?? { book: 'jhn', chapter: 1 };
-  // Los planes que aún no empiezan (un desafío de temporada) aparecen tres semanas antes
+  // Los planes que aún no empiezan (un reto de temporada) aparecen tres semanas antes
   const soon = dateKey(new Date(Date.now() + 21 * 86_400_000));
   const activePlans = plans.filter((p) => !p.finished && p.started <= soon);
-  // El próximo desafío de temporada se anuncia desde tres semanas antes, si la persona aún no se unió
+  // El próximo reto de temporada se anuncia desde un mes antes, si la persona aún no se unió
   const upcoming = PLANS.filter((p) => p.season)
     .map((def) => ({ def, season: nextSeason(def)! }))
-    .find(({ def, season }) => season.daysToStart <= 21 && !plans.some((p) => p.id === `${def.id}-${season.year}`));
+    .sort((a, b) => a.season.start.localeCompare(b.season.start))
+    .find(({ def, season }) => season.daysToStart <= 30 && !plans.some((p) => p.id === `${def.id}-${season.year}`));
+  const upcomingTint = upcoming ? seasonTint(upcoming.def.season!, colors) : null;
 
 
   return (
@@ -175,21 +178,26 @@ export default function Today() {
         </Appear>
       )}
 
-      {upcoming && (
+      {upcoming && upcomingTint && (
         <Appear delay={110}>
           <Pressable
             onPress={() => navigate(() => router.push(`/planes/${upcoming.def.id}`), 'forward')}
-            style={({ pressed }) => [styles.card, { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.card, styles.reto, { backgroundColor: upcomingTint.soft, borderColor: upcomingTint.soft }, pressed && styles.pressed]}
             accessibilityRole="button"
           >
-            <Text style={[styles.kicker, { color: colors.accent }]}>
-              {upcoming.season.running ? 'Desafío en curso' : `Empieza en ${upcoming.season.daysToStart} días`}
+            <Text style={[styles.retoGlyph, { color: upcomingTint.accent, fontFamily: serif }]}>{upcoming.def.icon}</Text>
+            <Text style={[styles.kicker, { color: upcomingTint.accent }]}>
+              {upcoming.season.running
+                ? `Reto de ${upcomingTint.name} · en curso`
+                : upcoming.season.daysToStart === 1
+                  ? `Reto de ${upcomingTint.name} · empieza mañana`
+                  : `Reto de ${upcomingTint.name} · empieza en ${upcoming.season.daysToStart} días`}
             </Text>
-            <Text style={[styles.continueTitle, { color: colors.text, fontFamily: serif, fontSize: 22 }]}>
-              {upcoming.def.icon} {upcoming.def.title}
-            </Text>
-            <Text style={{ color: colors.text, marginTop: 6 }}>{upcoming.def.description}</Text>
-            <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 10 }}>Unirme →</Text>
+            <Text style={[styles.continueTitle, { color: colors.text, fontFamily: serif, fontSize: 22 }]}>{upcoming.def.title}</Text>
+            <Text style={{ color: colors.text, marginTop: 6, opacity: 0.85 }}>{upcoming.def.description}</Text>
+            <View style={[styles.retoButton, { backgroundColor: upcomingTint.accent }]}>
+              <Text style={{ color: upcomingTint.soft, fontWeight: '700' }}>Ver el reto →</Text>
+            </View>
           </Pressable>
         </Appear>
       )}
@@ -343,6 +351,9 @@ const styles = StyleSheet.create({
   continue: { borderRadius: 20, padding: 20 },
   continueTitle: { fontSize: 28, marginTop: 6 },
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20 },
+  reto: { overflow: 'hidden' },
+  retoGlyph: { position: 'absolute', right: 6, top: -26, fontSize: 130, opacity: 0.1 },
+  retoButton: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 9, marginTop: 14 },
   verse: { fontSize: 21, lineHeight: 31, marginTop: 10 },
   ref: { marginTop: 8, fontSize: 14, fontWeight: '600' },
   row: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },

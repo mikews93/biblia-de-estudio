@@ -67,7 +67,7 @@ export default function MindMapScreen() {
         busy={tool.busy}
         error={tool.error}
         waiting={ready ? null : 'Ordenando las ideas del capítulo…'}
-        onRetry={tool.regenerate}
+        onRetry={tool.retry}
       />
       {tool.done && !map.branches.length && !tool.error && (
         <Text style={{ color: colors.muted, textAlign: 'center', marginTop: 24 }}>

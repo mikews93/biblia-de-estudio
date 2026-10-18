@@ -8,6 +8,7 @@ import { stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import postgres from 'postgres';
 
 import { startMockAnthropic } from './mock-anthropic';
 import { handlePush } from './mock-push';
@@ -95,7 +96,14 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   createReadStream(p).pipe(res);
 }
 
-void startMockAnthropic(AI_PORT).then(() =>
+/** Las herramientas con IA se guardan por capítulo para todos: cada ejecución empieza sin ninguna guardada. */
+async function clearSavedTools() {
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
+  await sql`delete from herramientas_ia`.catch(() => {}); // la tabla aún no existe la primera vez
+  await sql.end();
+}
+
+void Promise.all([startMockAnthropic(AI_PORT), clearSavedTools()]).then(() =>
   createServer((req, res) =>
   handle(req, res).catch((err) => {
     console.error(err);

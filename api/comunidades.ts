@@ -19,6 +19,8 @@ import { promisify } from 'node:util';
 import postgres from 'postgres';
 
 import { notifyUser, PUSH_SCHEMA } from './_push';
+import { planById } from '../src/lib/planesCatalogo';
+import { parseRetoId, seasonRun } from '../src/lib/temporadas';
 
 const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
@@ -130,6 +132,7 @@ create table if not exists uso_ia (
 );
 alter table usuarios add column if not exists codigo text unique;
 alter table usuarios add column if not exists compartir_lecturas boolean not null default true;
+alter table grupos add column if not exists plan_reto text;
 create table if not exists amistades (
   de uuid not null references usuarios on delete cascade,
   para uuid not null references usuarios on delete cascade,
@@ -208,7 +211,8 @@ type Verse = [number, string];
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
 type User = { id: string; nombre: string; correo: string | null };
-type Plan = { libro: string | null; inicio: string | null; porDia: number };
+/** El plan del grupo: un libro a un ritmo fijo, o un reto de temporada («adviento-2026») con sus fechas. */
+type Plan = { libro: string | null; inicio: string | null; porDia: number; reto: string | null };
 
 class Fail extends Error {
   status: number;
@@ -322,8 +326,18 @@ function day(value: unknown) {
 
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 
+/** Un reto de temporada válido: del catálogo y de este año o los vecinos. */
+function retoOf(id: unknown) {
+  const parsed = typeof id === 'string' ? parseRetoId(id) : null;
+  const def = parsed && planById(parsed.def);
+  const year = new Date().getFullYear();
+  if (!parsed || !def?.season || Math.abs(parsed.year - year) > 1) throw new Fail('Reto no válido');
+  return { id: `${def.id}-${parsed.year}`, def, run: seasonRun(def, parsed.year) };
+}
+
 /** Los capítulos que tocan hoy según el plan del grupo. */
 async function todaysReading(plan: Plan, today: string) {
+  if (plan.reto) return retoReading(plan.reto, today);
   if (!plan.libro || !plan.inicio) return null;
   const book = await bookOf(plan.libro);
   const elapsed = daysBetween(plan.inicio, today);
@@ -335,11 +349,36 @@ async function todaysReading(plan: Plan, today: string) {
   return { libro: book.id, nombre: book.name, capitulos, estado: 'activo', dia: elapsed + 1, total };
 }
 
+/**
+ * En un reto, la lectura de hoy es la de su fecha. Antes de empezar se anuncia la primera; los días sin
+ * lectura (domingos de Cuaresma) son de descanso y cuenta cualquier capítulo que se lea.
+ */
+async function retoReading(id: string, today: string) {
+  const { def, run } = retoOf(id);
+  const total = run.dates.length;
+  const at = (i: number) => def.spec[i] as [string, number];
+  const index = run.dates.indexOf(today);
+  const passed = run.dates.filter((d) => d <= today).length;
+  const pick = today < run.start ? 0 : today > run.end ? total - 1 : index >= 0 ? index : passed;
+  const [libro, capitulo] = at(Math.min(pick, total - 1));
+  const book = await bookOf(libro);
+  const base = { libro: book.id, nombre: book.name, total, reto: id };
+  // `siguiente`: el capítulo con que empieza (o sigue tras el descanso), para anunciarlo
+  if (today < run.start) return { ...base, capitulos: [] as number[], estado: 'pronto', dia: 0, siguiente: capitulo };
+  if (today > run.end) return { ...base, capitulos: [], estado: 'terminado', dia: total };
+  if (index === -1) return { ...base, capitulos: [], estado: 'descanso', dia: passed, siguiente: capitulo };
+  return { ...base, capitulos: [capitulo], estado: 'activo', dia: index + 1 };
+}
+
 async function readPlan(body: Json): Promise<Plan> {
   const plan = (body.plan ?? null) as Json | null;
-  if (!plan || !plan.libro) return { libro: null, inicio: null, porDia: 1 };
+  if (plan?.reto) {
+    const { id, run } = retoOf(plan.reto);
+    return { libro: null, inicio: run.start, porDia: 1, reto: id };
+  }
+  if (!plan || !plan.libro) return { libro: null, inicio: null, porDia: 1, reto: null };
   const book = await bookOf(plan.libro);
-  return { libro: book.id, inicio: day(plan.inicio), porDia: int(plan.porDia ?? 1, 'Ritmo', 1, 5) };
+  return { libro: book.id, inicio: day(plan.inicio), porDia: int(plan.porDia ?? 1, 'Ritmo', 1, 5), reto: null };
 }
 
 async function auth(sql: Sql, request: Request): Promise<User> {
@@ -393,9 +432,10 @@ type GroupRow = {
   plan_libro: string | null;
   plan_inicio: string | null;
   plan_por_dia: number;
+  plan_reto: string | null;
 };
 
-const planOf = (g: GroupRow): Plan => ({ libro: g.plan_libro, inicio: g.plan_inicio, porDia: g.plan_por_dia });
+const planOf = (g: GroupRow): Plan => ({ libro: g.plan_libro, inicio: g.plan_inicio, porDia: g.plan_por_dia, reto: g.plan_reto });
 
 async function summary(sql: Sql, g: GroupRow, today: string) {
   const reading = await todaysReading(planOf(g), today);
@@ -404,7 +444,7 @@ async function summary(sql: Sql, g: GroupRow, today: string) {
   return { id: g.id, nombre: g.nombre, tipo: g.tipo, miembros: n, leyeronHoy: read.size, lectura: reading };
 }
 
-const GROUP_COLUMNS = 'g.id, g.nombre, g.tipo, g.codigo, g.plan_libro, to_char(g.plan_inicio, \'YYYY-MM-DD\') as plan_inicio, g.plan_por_dia';
+const GROUP_COLUMNS = 'g.id, g.nombre, g.tipo, g.codigo, g.plan_libro, to_char(g.plan_inicio, \'YYYY-MM-DD\') as plan_inicio, g.plan_por_dia, g.plan_reto';
 
 async function getGroup(sql: Sql, id: string) {
   const [g] = await sql.unsafe<GroupRow[]>(`select ${GROUP_COLUMNS} from grupos g where g.id = $1`, [id]);
@@ -415,8 +455,8 @@ async function getGroup(sql: Sql, id: string) {
 async function insertGroupWithCode(sql: Sql, fields: Omit<GroupRow, 'id' | 'codigo'>) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const [row] = await sql<{ id: string }[]>`
-      insert into grupos (nombre, tipo, codigo, plan_libro, plan_inicio, plan_por_dia)
-      values (${fields.nombre}, ${fields.tipo}, ${newCode()}, ${fields.plan_libro}, ${fields.plan_inicio}, ${fields.plan_por_dia})
+      insert into grupos (nombre, tipo, codigo, plan_libro, plan_inicio, plan_por_dia, plan_reto)
+      values (${fields.nombre}, ${fields.tipo}, ${newCode()}, ${fields.plan_libro}, ${fields.plan_inicio}, ${fields.plan_por_dia}, ${fields.plan_reto})
       on conflict (codigo) do nothing returning id`;
     if (row) return row.id;
   }
@@ -649,6 +689,7 @@ const actions: Record<string, Handler> = {
       plan_libro: plan.libro,
       plan_inicio: plan.inicio,
       plan_por_dia: plan.porDia,
+      plan_reto: plan.reto,
     });
     await sql`insert into miembros (grupo_id, usuario_id, rol) values (${id}, ${user.id}, 'admin')`;
     return { id };
@@ -708,7 +749,7 @@ const actions: Record<string, Handler> = {
     const plan = await readPlan(body);
     await sql`
       update grupos set nombre = ${nombre}, tipo = ${tipo}, plan_libro = ${plan.libro},
-        plan_inicio = ${plan.inicio}, plan_por_dia = ${plan.porDia}
+        plan_inicio = ${plan.inicio}, plan_por_dia = ${plan.porDia}, plan_reto = ${plan.reto}
       where id = ${id}`;
     return {};
   },

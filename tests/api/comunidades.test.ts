@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { planById } from '../../src/lib/planesCatalogo';
+import { nextSeason } from '../../src/lib/temporadas';
 import { client, DATA_DIR, DB_URL, ensureSchema, HAS_DATA, Post, prepareEnv, request, unique } from './helpers';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -362,6 +364,49 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       expect((await call('crearGrupo', { nombre: 'X', plan: { libro: 'jhn', inicio: 'mañana' } }, ana.llave)).json.error).toBe('Fecha no válida');
       expect((await call('crearGrupo', { nombre: 'X', plan: { libro: 'jhn', inicio: HOY, porDia: 9 } }, ana.llave)).json.error).toBe('Ritmo no válido');
       expect((await call('crearGrupo', { nombre: 'X', plan: { libro: 'xyz', inicio: HOY } }, ana.llave)).json.error).toBe('Libro no válido');
+    });
+
+    it('un grupo puede seguir un reto de temporada: la lectura de cada fecha, el descanso y el final', async () => {
+      const ana = await persona('Ana');
+      const beto = await persona('Beto');
+      const adviento = nextSeason(planById('adviento')!)!;
+      const y = adviento.year;
+      const g = await grupo(ana.llave, { reto: `adviento-${y}` });
+      await call('unirse', { codigo: g.codigo }, beto.llave);
+      const ver = (hoy: string, llave = ana.llave) => call('grupo', { grupo: g.id, hoy }, llave).then((r) => r.json.grupo);
+
+      expect((await ver(`${y}-11-20`)).plan).toMatchObject({ libro: null, inicio: `${y}-12-01`, reto: `adviento-${y}` });
+      expect((await ver(`${y}-11-20`)).lectura).toMatchObject({ estado: 'pronto', capitulos: [], dia: 0, total: 25, libro: 'gen', siguiente: 3, reto: `adviento-${y}` });
+
+      // Día 3: 2 Samuel 7. Beto ya lo leyó; cuenta aunque lo haya leído otro día
+      await call('leido', { libro: '2sa', capitulo: 7, hoy: `${y}-12-02` }, beto.llave);
+      const dia3 = await ver(`${y}-12-03`);
+      expect(dia3.lectura).toEqual({ libro: '2sa', nombre: '2 Samuel', capitulos: [7], estado: 'activo', dia: 3, total: 25, reto: `adviento-${y}` });
+      expect(dia3.miembros.map((m: { leyoHoy: boolean }) => m.leyoHoy)).toEqual([false, true]);
+      expect((await call('yo', { hoy: `${y}-12-03` }, beto.llave)).json.grupos[0]).toMatchObject({ leyeronHoy: 1, lectura: dia3.lectura });
+
+      expect((await ver(`${y}-12-26`)).lectura).toMatchObject({ estado: 'terminado', capitulos: [], dia: 25 });
+
+      // En Cuaresma, el primer domingo (cuatro días después del Miércoles de Ceniza) es de descanso
+      const cuaresma = nextSeason(planById('cuaresma')!)!;
+      const c = await grupo(ana.llave, { reto: `cuaresma-${cuaresma.year}` });
+      const domingo = local(new Date(new Date(`${cuaresma.start}T12:00:00`).getTime() + 4 * 86_400_000));
+      expect(new Date(`${domingo}T12:00:00`).getDay()).toBe(0);
+      expect((await call('grupo', { grupo: c.id, hoy: domingo }, ana.llave)).json.grupo.lectura).toMatchObject({
+        estado: 'descanso',
+        capitulos: [],
+        dia: 4,
+        libro: 'mat',
+        siguiente: 5,
+      });
+
+      // Cambiar el reto por un libro lo quita
+      await call('editarGrupo', { grupo: g.id, nombre: g.nombre, tipo: 'celula', plan: { libro: 'jhn', inicio: HOY } }, ana.llave);
+      expect((await call('grupo', { grupo: g.id }, ana.llave)).json.grupo.plan).toEqual({ libro: 'jhn', inicio: HOY, porDia: 1, reto: null });
+
+      expect((await call('crearGrupo', { nombre: 'X', plan: { reto: 'carnaval-2026' } }, ana.llave)).json.error).toBe('Reto no válido');
+      expect((await call('crearGrupo', { nombre: 'X', plan: { reto: 'juan-2026' } }, ana.llave)).json.error).toBe('Reto no válido');
+      expect((await call('crearGrupo', { nombre: 'X', plan: { reto: `adviento-${y + 5}` } }, ana.llave)).json.error).toBe('Reto no válido');
     });
 
     it('solo quien administra edita, cambia el código o quita a alguien', async () => {
