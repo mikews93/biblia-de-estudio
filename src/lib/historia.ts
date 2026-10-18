@@ -369,13 +369,13 @@ export const EVENTOS: Evento[] = [
   { desde: -1250, c: true, region: 'Grecia', titulo: 'La guerra de Troya', texto: 'Fecha tradicional del conflicto que siglos después cantará Homero.' },
   { desde: -1208, region: 'Egipto', titulo: 'Estela de Merneptah', texto: 'Un faraón presume de haber vencido a «Israel»: la mención más antigua de Israel fuera de la Biblia.' },
   { desde: -1200, hasta: -1150, c: true, region: 'Asia Menor', titulo: 'Colapso de la Edad del Bronce', texto: 'Caen el imperio hitita y Ugarit; los «Pueblos del Mar» atacan Egipto y los filisteos se asientan en la costa de Canaán.', ref: 'jdg.13.1' },
-  { desde: -1200, c: true, region: 'América', titulo: 'Los olmecas', texto: 'En la costa del golfo de México surge la primera gran cultura de Mesoamérica, con sus cabezas colosales.' },
+  { desde: -1200, hasta: -400, c: true, region: 'América', titulo: 'Los olmecas', texto: 'En la costa del golfo de México surge la primera gran cultura de Mesoamérica, con sus cabezas colosales.' },
   { desde: -1500, hasta: -1200, c: true, region: 'India', titulo: 'Los Vedas', texto: 'Se componen los himnos del Rig Veda, el texto más antiguo de la India.' },
   { desde: -1050, c: true, region: 'Levante', titulo: 'El alfabeto fenicio', texto: 'Los fenicios difunden un alfabeto de 22 letras, antepasado del griego y del latino.' },
   // El reino unido
-  { desde: -1046, region: 'China', titulo: 'Dinastía Zhou', texto: 'Los Zhou derrocan a los Shang y gobiernan China durante ocho siglos.' },
+  { desde: -1046, hasta: -256, region: 'China', titulo: 'Dinastía Zhou', texto: 'Los Zhou derrocan a los Shang y gobiernan China durante ocho siglos.' },
   { desde: -980, hasta: -947, c: true, region: 'Levante', titulo: 'Hiram, rey de Tiro', texto: 'Tiro domina el comercio del Mediterráneo; su rey envía cedros y artesanos a David y a Salomón.', ref: '1ki.5.1' },
-  { desde: -900, c: true, region: 'América', titulo: 'Chavín de Huántar', texto: 'En los Andes del Perú se levanta el templo de piedra de la cultura Chavín.' },
+  { desde: -900, hasta: -200, c: true, region: 'América', titulo: 'Chavín de Huántar', texto: 'En los Andes del Perú se levanta el templo de piedra de la cultura Chavín.' },
   // El reino dividido
   { desde: -925, c: true, region: 'Egipto', titulo: 'Campaña de Sisac', texto: 'El faraón Sheshonq I (Sisac) invade Judá e Israel y lo graba en el templo de Karnak.', ref: '1ki.14.25' },
   { desde: -911, hasta: -609, region: 'Mesopotamia', titulo: 'Imperio asirio', texto: 'Asiria se convierte en la gran potencia del Oriente y cobra tributo a los reinos vecinos.' },
@@ -446,6 +446,47 @@ export const EVENTOS: Evento[] = [
   { desde: 100, c: true, region: 'América', titulo: 'Teotihuacán', texto: 'En el valle de México empieza a levantarse la gran ciudad de la pirámide del Sol.' },
   { desde: 105, region: 'China', titulo: 'El papel', texto: 'Cai Lun presenta al emperador Han el papel hecho de corteza y trapos.' },
 ];
+
+/**
+ * Reinos e imperios que duran siglos: en la línea de tiempo forman la «corriente» de cada región, como en la
+ * Carta sincronológica de Adams. Junto con los eventos de 150 años o más, cubren sin huecos grandes la historia
+ * de cada región; los eventos largos no se repiten aquí.
+ */
+export const REINOS: Evento[] = [
+  { desde: -2686, hasta: -2181, c: true, region: 'Egipto', titulo: 'Reino Antiguo', texto: 'La época de las pirámides: los faraones gobiernan desde Menfis.' },
+  { desde: -1070, hasta: -525, c: true, region: 'Egipto', titulo: 'Egipto dividido', texto: 'Dinastías libias, nubias y saítas; Egipto pierde su imperio pero sigue mezclándose en la política de Israel y Judá.' },
+  { desde: -525, hasta: -332, region: 'Egipto', titulo: 'Egipto persa', texto: 'Egipto es una provincia del Imperio persa hasta la llegada de Alejandro.' },
+  { desde: -305, hasta: -30, region: 'Egipto', titulo: 'Los Tolomeos', texto: 'Los sucesores griegos de Alejandro gobiernan desde Alejandría; la última es Cleopatra.' },
+  { desde: -30, hasta: 120, region: 'Egipto', titulo: 'Provincia romana', texto: 'Tras la muerte de Cleopatra, Egipto pasa a ser el granero de Roma.' },
+  { desde: -3200, hasta: -2334, c: true, region: 'Mesopotamia', titulo: 'Ciudades de Sumer', texto: 'Uruk, Ur, Lagash y otras ciudades-estado se disputan el sur de Mesopotamia.' },
+  { desde: -1894, hasta: -1595, c: true, region: 'Mesopotamia', titulo: 'Antigua Babilonia', texto: 'Babilonia crece hasta dominar Mesopotamia con Hammurabi; los hititas la saquean en 1595 a.C.' },
+  { desde: -1595, hasta: -1155, c: true, region: 'Mesopotamia', titulo: 'Babilonia casita', texto: 'Los casitas gobiernan Babilonia durante más de cuatro siglos.' },
+  { desde: -626, hasta: -539, region: 'Mesopotamia', titulo: 'Imperio babilónico', texto: 'Nabopolasar y Nabucodonosor hacen de Babilonia la heredera de Asiria; cae ante Ciro.' },
+  { desde: -312, hasta: -141, region: 'Mesopotamia', titulo: 'Los seléucidas', texto: 'Herederos de Alejandro en Siria y Mesopotamia; uno de ellos, Antíoco IV, persigue a los judíos.' },
+  { desde: -678, hasta: -550, c: true, region: 'Persia', titulo: 'Los medos', texto: 'Reino de los medos en el oeste de Irán; con Babilonia derriban a Asiria.' },
+  { desde: -550, hasta: -330, region: 'Persia', titulo: 'Imperio persa', texto: 'De Ciro a Darío III, el mayor imperio visto hasta entonces; bajo él vuelven los judíos a Jerusalén.' },
+  { desde: -247, hasta: 120, c: true, region: 'Persia', titulo: 'Los partos', texto: 'Desde Irán disputan a Roma el Oriente; partos estaban en Jerusalén en Pentecostés.', ref: 'act.2.9' },
+  { desde: -2000, hasta: -1450, c: true, region: 'Grecia', titulo: 'Creta minoica', texto: 'Una civilización de palacios y comercio marítimo en la isla de Creta.' },
+  { desde: -1100, hasta: -800, c: true, region: 'Grecia', titulo: 'Edad oscura griega', texto: 'Tras la caída de Micenas se pierde la escritura y las ciudades se despueblan.' },
+  { desde: -800, hasta: -338, c: true, region: 'Grecia', titulo: 'Ciudades griegas', texto: 'Atenas, Esparta y cientos de polis independientes; nacen la filosofía, el teatro y la democracia.' },
+  { desde: -323, hasta: -31, region: 'Grecia', titulo: 'Reinos helenísticos', texto: 'La lengua y la cultura griegas se extienden por todo el Oriente; el Nuevo Testamento se escribe en ese griego.' },
+  { desde: -753, hasta: -509, region: 'Roma', titulo: 'Reyes de Roma', texto: 'Según la tradición, siete reyes gobiernan la pequeña ciudad del Tíber.' },
+  { desde: -509, hasta: -27, region: 'Roma', titulo: 'República romana', texto: 'Cónsules y senado; Roma pasa de ciudad a dueña del Mediterráneo.' },
+  { desde: -27, hasta: 120, region: 'Roma', titulo: 'Imperio romano', texto: 'Desde Augusto, los emperadores gobiernan el mundo en el que nace Jesús y se extiende la iglesia.', ref: 'luk.2.1' },
+  { desde: -2000, hasta: -1200, c: true, region: 'Levante', titulo: 'Ciudades de Canaán', texto: 'Ciudades amuralladas con sus reyes, como Jericó, Hazor, Meguido y Jerusalén.', ref: 'jos.12.7' },
+  { desde: -1200, hasta: -332, c: true, region: 'Levante', titulo: 'Fenicia', texto: 'Tiro y Sidón, ciudades de navegantes y comerciantes, hasta que Alejandro toma Tiro.' },
+  { desde: -1000, hasta: -732, c: true, region: 'Levante', titulo: 'Arameos de Damasco', texto: 'El reino de Siria, vecino y a menudo enemigo de Israel, hasta que Asiria lo conquista.', ref: '2ki.16.9' },
+  { desde: -140, hasta: -63, region: 'Levante', titulo: 'Los asmoneos', texto: 'Tras la revuelta de los macabeos, Judea es independiente por última vez hasta que llega Roma.' },
+  { desde: -1650, hasta: -1178, c: true, region: 'Asia Menor', titulo: 'Los hititas', texto: 'Imperio de Anatolia rival de Egipto; la Biblia menciona a hititas en Canaán, como Urías.', ref: '2sa.11.3' },
+  { desde: -680, hasta: -546, c: true, region: 'Asia Menor', titulo: 'Lidia', texto: 'El reino de Creso, donde se acuñan las primeras monedas; Ciro lo conquista.' },
+  { desde: -600, hasta: -322, c: true, region: 'India', titulo: 'Reinos del Ganges', texto: 'Grandes reinos en el norte de la India; en ellos enseñan Buda y Mahavira.' },
+  { desde: -322, hasta: -185, region: 'India', titulo: 'Imperio maurya', texto: 'Primer imperio de casi toda la India; su rey más famoso es Ashoka.' },
+  { desde: -206, hasta: 120, region: 'China', titulo: 'Dinastía Han', texto: 'Cuatro siglos de gobierno; se abre la Ruta de la Seda hacia Occidente.' },
+  { desde: -800, hasta: -50, c: true, region: 'Europa', titulo: 'Los celtas', texto: 'Pueblos celtas se extienden por Europa central y occidental, hasta que Julio César conquista la Galia.' },
+];
+
+/** Los eventos de 150 años o más se dibujan como corriente, igual que los reinos. */
+export const esCorriente = (e: Evento) => (e.hasta ?? e.desde) - e.desde >= 150;
 
 export type Era = { titulo: string; desde: number; hasta: number; color: string };
 
