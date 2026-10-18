@@ -38,6 +38,9 @@ const VERSIONS: { re: RegExp; abbr: string; name: string; id?: string }[] = [
   { re: /\bkjv\b|\bking james\b/, abbr: 'KJV', name: 'King James' },
   { re: /\bbes\b|\b(la )?biblia en espanol sencillo\b|\bespanol sencillo\b/, abbr: 'BES', name: 'La Biblia en Español Sencillo', id: 'bes' },
   { re: /\bpdt\b|\bpalabra de dios para ti\b/, abbr: 'PDT', name: 'Palabra de Dios para ti', id: 'pdt' },
+  { re: /\brv ?1865\b|\breina ?valera 1865\b|\breina ?valera mil ochocientos sesenta y cinco\b/, abbr: 'RV1865', name: 'Reina-Valera 1865', id: 'rv1865' },
+  { re: /\brvg\b|\breina ?valera gomez\b/, abbr: 'RVG', name: 'Reina Valera Gómez', id: 'rvg' },
+  { re: /\bblm\b|\b(santa )?biblia libre para el mundo\b|\blibre para el mundo\b/, abbr: 'BLM', name: 'Santa Biblia libre para el mundo', id: 'blm' },
   // «Reina Valera» a secas: la que hay en la app
   { re: /\breina ?valera\b|\brv\b/, abbr: 'RV1909', name: 'Reina-Valera 1909', id: 'rv1909' },
 ];
