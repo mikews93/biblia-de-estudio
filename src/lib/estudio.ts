@@ -36,6 +36,8 @@ type Request = {
   taller?: TallerRequest;
   herramienta?: Herramienta;
   enfoque?: Enfoque;
+  /** Pedir otra versión de la herramienta en vez de la que ya está guardada */
+  nueva?: boolean;
 };
 
 /** Los dos modos de la pestaña de estudio: un devocional guiado o el estudio profundo del texto. */

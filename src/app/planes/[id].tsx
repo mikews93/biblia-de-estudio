@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import PlanCard, { readingsLabel, shortDate } from '@/components/PlanCard';
+import Reto from '@/components/Reto';
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, Card, Chips, SectionTitle, text } from '@/components/comunidad/ui';
 import { Book, getBooks } from '@/lib/data';
@@ -15,7 +16,6 @@ import {
   PlanDay,
   dayMinutes,
   expand,
-  nextSeason,
   parseDate,
   planDays,
   planDef,
@@ -34,7 +34,7 @@ import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 export default function PlanScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, dia } = useLocalSearchParams<{ id: string; dia?: string }>();
   const colors = useColors();
   const plans = usePlans();
   const words = useWords();
@@ -50,10 +50,17 @@ export default function PlanScreen() {
   const def = planDef(id, books);
   if (!def) return <Text style={{ color: colors.muted, padding: 24 }}>No encontramos este plan.</Text>;
 
-  const season = def.season ? nextSeason(def) : null;
-  const mine =
-    plans.find((p) => p.def === id && !p.finished) ??
-    (season ? plans.find((p) => p.id === `${id}-${season.year}`) : plans.find((p) => p.def === id));
+  // Los retos de temporada tienen su propia pantalla, con el calendario del año cristiano
+  if (def.season) {
+    return (
+      <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+        <Stack.Screen options={{ title: '' }} />
+        <Reto def={def} books={books} focus={dia ? Number(dia) - 1 : undefined} />
+      </ScrollView>
+    );
+  }
+
+  const mine = plans.find((p) => p.def === id);
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
@@ -64,19 +71,6 @@ export default function PlanScreen() {
 
       {mine ? (
         <Active plan={mine} books={books} colors={colors} />
-      ) : season ? (
-        <Card style={{ marginTop: 20 }}>
-          <Text style={[text.body, { color: colors.text }]}>
-            Del {shortDate(season.start)} al {shortDate(season.end)} de {season.year}: {def.spec.length} lecturas, una por
-            día{def.season === 'cuaresma' ? ' (menos los domingos)' : ''}, con el mismo pasaje para todos los que se unan. Cada lectura es un capítulo, unos 5 minutos.
-          </Text>
-          <Text style={[text.small, { color: colors.muted, marginTop: 8 }]}>
-            {season.running
-              ? 'Ya empezó, pero puedes unirte hoy y leer a tu paso: las lecturas te esperan.'
-              : `Únete ahora y te lo recordaremos en la pantalla Hoy cuando empiece.`}
-          </Text>
-          <Button label="Unirme al desafío" onPress={() => startPlan(def, books, { minutes, daysPerWeek: 7 })} style={{ marginTop: 16 }} />
-        </Card>
       ) : (
         <Setup
           def={def}

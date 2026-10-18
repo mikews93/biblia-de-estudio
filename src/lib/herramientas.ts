@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Herramienta, Source, askStudy } from './estudio';
 
-// Resultado de las herramientas de un capítulo (pódcast, tarjetas, mapa mental). Se guarda en el
-// dispositivo para no volver a pedirlo a la IA cada vez que se abre.
+// Resultado de las herramientas de un capítulo (pódcast, tarjetas, mapa mental). El servidor guarda la de cada
+// capítulo para todos; además se guarda en el dispositivo para abrirla sin esperar ni pedirla otra vez.
 
 type Saved = { text: string; sources: Source[]; created: number };
 
@@ -18,7 +18,7 @@ export function useHerramienta(tool: Herramienta, book: string, chapter: number)
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  const generate = async () => {
+  const generate = async (nueva = false) => {
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
@@ -29,7 +29,7 @@ export function useHerramienta(tool: Herramienta, book: string, chapter: number)
     setSources([]);
     try {
       const answer = await askStudy(
-        { book, chapter, herramienta: tool, messages: [] },
+        { book, chapter, herramienta: tool, messages: [], ...(nueva && { nueva }) },
         (t, s) => {
           setText(t);
           setSources(s);
@@ -73,7 +73,7 @@ export function useHerramienta(tool: Herramienta, book: string, chapter: number)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool, book, chapter]);
 
-  return { text, sources, busy, done, error, regenerate: generate };
+  return { text, sources, busy, done, error, retry: () => generate(), regenerate: () => generate(true) };
 }
 
 const CITE = /⟦(\d+)⟧/g;

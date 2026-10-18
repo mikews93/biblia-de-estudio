@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks, getPlaces } from '@/lib/data';
-import { plansWaitingFor, todayKey, usePlans } from '@/lib/planes';
+import { planDef, plansWaitingFor, todayKey, usePlans } from '@/lib/planes';
+import { questionFor, seasonTint } from '@/lib/retos';
 import { WEEKLY_GOAL, markChapterRead, useProgress, weekDays } from '@/lib/progress';
 import { BOOK_SLUGS, chapterHref } from '@/lib/routes';
 import { Colors, serif } from '@/lib/theme';
@@ -99,6 +100,29 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
               </Pressable>
             );
           })}
+          {/* En un reto de temporada, la pregunta del día invita a quedarse un momento con lo leído */}
+          {myPlans.map((p) => {
+            const def = planDef(p.def, books);
+            const q = def && questionFor(p, def, book.id, chapter);
+            if (!def?.season || !q) return null;
+            const tint = seasonTint(def.season, colors);
+            return (
+              <View key={`q-${p.id}`} style={[styles.think, { backgroundColor: tint.soft }]}>
+                <Text style={{ color: tint.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.8 }}>
+                  PARA PENSAR · RETO DE {tint.name.toUpperCase()}
+                </Text>
+                <Text style={{ color: colors.text, fontFamily: serif, fontSize: 17, lineHeight: 25, marginTop: 6 }}>{q.question}</Text>
+                <Pressable
+                  onPress={() => navigate(() => router.push(`/planes/${p.def}?dia=${q.index + 1}` as never), 'forward')}
+                  accessibilityRole="link"
+                >
+                  <Text style={{ color: tint.accent, fontWeight: '700', marginTop: 10 }}>
+                    {q.answered ? 'Ver mi respuesta ›' : 'Escribir mi respuesta ›'}
+                  </Text>
+                </Pressable>
+              </View>
+            );
+          })}
           {grupos?.map((g) => (
             <Pressable
               key={g.id}
@@ -150,6 +174,7 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
 }
 
 const styles = StyleSheet.create({
+  think: { alignSelf: 'stretch', borderRadius: 14, padding: 14, marginTop: 12 },
   wrap: { alignItems: 'center', marginTop: 40, gap: 16 },
   ornament: { width: 48, height: 2, borderRadius: 1, marginBottom: 8 },
   markButton: { borderWidth: 1.5, borderRadius: 24, paddingHorizontal: 22, paddingVertical: 12 },
