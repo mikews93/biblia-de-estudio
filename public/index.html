@@ -40,6 +40,91 @@
       html[data-nav='forward']::view-transition-new(root) { animation-name: vt-fade-in, vt-from-right; }
       html[data-nav='back']::view-transition-old(root) { animation-name: vt-fade-out, vt-to-right; }
       html[data-nav='back']::view-transition-new(root) { animation-name: vt-fade-in, vt-from-left; }
+      /* Lo que no cambia entre pantallas (fixedInTransition): no se desliza; si cambia algo, se funde en su sitio. */
+      ::view-transition-group(pestanas),
+      ::view-transition-group(cabecera),
+      ::view-transition-group(cabecera-izq),
+      ::view-transition-group(cabecera-titulo),
+      ::view-transition-group(cabecera-der),
+      ::view-transition-group(progreso),
+      ::view-transition-group(capitulos),
+      ::view-transition-group(audio),
+      ::view-transition-old(pestanas),
+      ::view-transition-new(pestanas),
+      ::view-transition-old(cabecera),
+      ::view-transition-new(cabecera),
+      ::view-transition-old(cabecera-izq),
+      ::view-transition-new(cabecera-izq),
+      ::view-transition-old(cabecera-titulo),
+      ::view-transition-new(cabecera-titulo),
+      ::view-transition-old(cabecera-der),
+      ::view-transition-new(cabecera-der),
+      ::view-transition-old(progreso),
+      ::view-transition-new(progreso),
+      ::view-transition-old(capitulos),
+      ::view-transition-new(capitulos),
+      ::view-transition-old(audio),
+      ::view-transition-new(audio) {
+        animation-duration: 160ms;
+        animation-timing-function: ease;
+      }
+      /* Por encima del pliegue de pasar la hoja. */
+      ::view-transition-group(pestanas),
+      ::view-transition-group(cabecera),
+      ::view-transition-group(cabecera-izq),
+      ::view-transition-group(cabecera-titulo),
+      ::view-transition-group(cabecera-der),
+      ::view-transition-group(progreso),
+      ::view-transition-group(capitulos),
+      ::view-transition-group(audio) { z-index: 4; }
+      /* Capítulo siguiente o anterior: se pasa la hoja como en un libro. Las animaciones las calcula
+         src/lib/pageTurn.ts; aquí solo se apagan las de por defecto y se colocan las capas. El dorso de la
+         hoja (#pliegue) y sus sombras solo existen en el estado nuevo de la transición. */
+      #pliegue, #pliegue-sombra, #pliegue-brillo { display: none; }
+      /* Mientras se arrastra la hoja (src/lib/pageSwipe.ts) no se selecciona texto. */
+      html[data-swipe] * { user-select: none; -webkit-user-select: none; }
+      html[data-fold] #pliegue,
+      html[data-fold] #pliegue-sombra,
+      html[data-fold] #pliegue-brillo {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+      }
+      html[data-fold] #pliegue {
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg,
+          color-mix(in srgb, var(--papel) 90%, gray),
+          color-mix(in srgb, var(--papel) 96%, white) 55%,
+          color-mix(in srgb, var(--papel) 88%, gray));
+      }
+      html[data-fold] #pliegue-sombra {
+        width: 90px;
+        height: 300vh;
+        background: linear-gradient(to right, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.1) 35%, rgba(0, 0, 0, 0));
+      }
+      html[data-fold] #pliegue-brillo {
+        width: 120px;
+        height: 300vh;
+        background: linear-gradient(to right,
+          rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.04) 22%, rgba(255, 255, 255, 0.14) 48%, rgba(255, 255, 255, 0) 100%);
+      }
+      html[data-nav^='turn']::view-transition-group(pliegue-sombra) { z-index: 2; animation: none; }
+      html[data-nav^='turn']::view-transition-group(pliegue) { z-index: 3; animation: none; }
+      html[data-nav^='turn']::view-transition-group(pliegue-brillo) { z-index: 3; animation: none; }
+      html[data-nav^='turn']::view-transition-new(pliegue),
+      html[data-nav^='turn']::view-transition-new(pliegue-sombra),
+      html[data-nav^='turn']::view-transition-new(pliegue-brillo) { animation: none; transform-origin: 0 0; }
+      html[data-nav^='turn']::view-transition-old(root),
+      html[data-nav^='turn']::view-transition-new(root) { animation: none; }
+      html[data-nav='turn-forward']::view-transition-old(root) { z-index: 2; }
+      /* Hasta que arranca pageTurn.ts (un fotograma) las capas que entran no se ven. */
+      html[data-nav='turn-back']::view-transition-new(root),
+      html[data-nav^='turn']::view-transition-new(pliegue) { clip-path: polygon(0 0, 0 0, 0 0); }
+      html[data-nav^='turn']::view-transition-new(pliegue-sombra),
+      html[data-nav^='turn']::view-transition-new(pliegue-brillo) { transform: translateX(-300vw); }
       @keyframes vt-fade-in { from { opacity: 0; } }
       @keyframes vt-fade-out { to { opacity: 0; } }
       @keyframes vt-from-right { from { transform: translateX(28px); } }

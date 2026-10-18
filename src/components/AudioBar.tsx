@@ -18,6 +18,7 @@ import {
   useAudio,
 } from '@/lib/audio';
 import { serif, useColors } from '@/lib/theme';
+import { fixedInTransition } from '@/lib/transition';
 
 const RATES = [1, 1.25, 1.5, 0.75];
 
@@ -52,7 +53,7 @@ function Bar() {
     : [];
 
   return (
-    <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.border }, fixedInTransition('audio')]}>
       <View style={styles.head}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
