@@ -4,7 +4,8 @@ Uso (después de `expo export`): python3 pipeline/seo_pages.py [dist] [https://b
 
 Escribe dist/<libro>/<capítulo>/index.html con el texto de la RV1909 dentro de #root (la app lo
 reemplaza al cargar), título, descripción, URL canónica y enlaces al capítulo anterior y siguiente.
-Añade sitemap.xml y robots.txt, y guarda la app vacía en app.html para las demás rutas.
+Añade sitemap.xml y robots.txt, y guarda la app vacía en app.html para las demás rutas. También escribe
+precache.json: el código y las imágenes de la app, que src/lib/descargas.ts guarda para abrirla sin conexión.
 """
 
 import html
@@ -102,6 +103,8 @@ def main():
         encoding="utf-8",
     )
     (dist / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: {site}/sitemap.xml\n", encoding="utf-8")
+    shell_files = sorted("/" + p.relative_to(dist).as_posix() for d in ("_expo", "assets") for p in (dist / d).rglob("*") if p.is_file())
+    (dist / "precache.json").write_text(json.dumps(shell_files), encoding="utf-8")
     print(f"{len(order)} capítulos con página propia en {dist}")
 
 

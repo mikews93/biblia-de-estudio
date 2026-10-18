@@ -1,4 +1,8 @@
+import { router } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { DownloadIcon } from '@/components/comunidad/icons';
+import { navigate } from '@/lib/transition';
 
 import { Settings, sans, serif, themeSwatches, useColors, useSettings } from '@/lib/theme';
 
@@ -93,6 +97,19 @@ export default function ReaderSettings({ onClose }: { onClose: () => void }) {
           ['parrafo', 'Párrafo'],
           ['versiculo', 'Un versículo por línea'],
         ])}
+
+        <Pressable
+          onPress={() => {
+            onClose();
+            navigate(() => router.push('/descargas' as never), 'forward');
+          }}
+          style={({ pressed }) => [styles.link, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+          accessibilityRole="link"
+        >
+          <DownloadIcon color={colors.accent} size={20} />
+          <Text style={{ color: colors.text, fontWeight: '600', flex: 1 }}>Leer sin conexión</Text>
+          <Text style={{ color: colors.accent, fontWeight: '700' }}>›</Text>
+        </Pressable>
       </View>
     </Modal>
   );
@@ -123,4 +140,5 @@ const styles = StyleSheet.create({
   sizeButton: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   segment: { flexDirection: 'row', borderRadius: 10, padding: 3 },
   segmentItem: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8 },
+  link: { flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: StyleSheet.hairlineWidth, marginTop: 16, paddingTop: 14 },
 });

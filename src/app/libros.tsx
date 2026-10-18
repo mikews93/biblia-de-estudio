@@ -2,14 +2,18 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { CheckIcon } from '@/components/comunidad/icons';
 import { parseCita } from '@/lib/cita';
 import { Book, getBooks, original } from '@/lib/data';
-import { useColors } from '@/lib/theme';
+import { textPack, useDownloads } from '@/lib/descargas';
+import { useColors, useSettings } from '@/lib/theme';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
 export default function BookPicker() {
   const colors = useColors();
+  const { settings } = useSettings();
+  const saved = useDownloads().index[textPack(settings.version)] ?? [];
   const [books, setBooks] = useState<Book[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -31,7 +35,15 @@ export default function BookPicker() {
           <View key={b.id} style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
             <Pressable onPress={() => setOpen(open === b.id ? null : b.id)} style={styles.book}>
               <Text style={[styles.bookName, { color: colors.text }]}>{b.name}</Text>
-              {b.interlinear && <Text style={[styles.badge, { color: colors.accent }]}>{original(b).name}</Text>}
+              <View style={styles.badges}>
+                {saved.includes(b.id) && (
+                  <View style={styles.saved} accessibilityLabel="Descargado para leer sin conexión">
+                    <CheckIcon color={colors.muted} size={13} />
+                    <Text style={[styles.badge, { color: colors.muted }]}>Sin conexión</Text>
+                  </View>
+                )}
+                {b.interlinear && <Text style={[styles.badge, { color: colors.accent }]}>{original(b).name}</Text>}
+              </View>
             </Pressable>
             {(open === b.id || (query.length > 1 && books.filter(matches).length === 1)) && (
               <View style={styles.grid}>
@@ -104,6 +116,8 @@ const styles = StyleSheet.create({
   book: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
   bookName: { fontSize: 18 },
   badge: { fontSize: 12 },
+  badges: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  saved: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 12 },
   chapter: { width: 48, height: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 });

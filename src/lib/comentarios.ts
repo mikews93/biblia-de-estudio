@@ -22,7 +22,10 @@ async function fail(res: Response, fallback: string): Promise<never> {
 /** La sección del comentario que trata el versículo (0: introducción del capítulo), con lo ya traducido. */
 export async function getComentario(fuente: string, book: string, chapter: number, verse: number) {
   const q = new URLSearchParams({ fuente, libro: book, capitulo: String(chapter), versiculo: String(verse) });
-  const res = await fetch(`${API}/api/comentario?${q}`);
+  // Sin conexión el service worker responde con los comentarios ya abiertos; los demás no se pueden traer.
+  const res = await fetch(`${API}/api/comentario?${q}`).catch(() => {
+    throw new Error('Sin conexión. Los comentarios que ya abriste se pueden leer sin internet; este todavía no.');
+  });
   if (!res.ok) await fail(res, `No se pudo cargar el comentario (${res.status})`);
   return (await res.json()) as Comentario;
 }

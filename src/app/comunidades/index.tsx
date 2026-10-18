@@ -4,8 +4,10 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 
 import Post from '@/components/comunidad/Post';
 import Welcome from '@/components/comunidad/Welcome';
+import { NeedsConnection } from '@/components/SinConexion';
 import { Avatar, Button, Card, Chips, ErrorText, text } from '@/components/comunidad/ui';
 import { useAccount } from '@/lib/comunidad';
+import { useOnline } from '@/lib/conexion';
 import { Audiencia, Publicacion, network, wall } from '@/lib/social';
 import { useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -14,6 +16,7 @@ import { navigate } from '@/lib/transition';
 export default function Comunidad() {
   const colors = useColors();
   const { ready, usuario } = useAccount();
+  const online = useOnline();
   const [filter, setFilter] = useState<Audiencia>('amigos');
   const [posts, setPosts] = useState<Publicacion[] | null>(null);
   const [more, setMore] = useState(true);
@@ -41,12 +44,12 @@ export default function Comunidad() {
   // Al volver a la pestaña se refresca, para ver los «me gusta» y comentarios nuevos.
   useFocusEffect(
     useCallback(() => {
-      if (!usuario) return;
+      if (!usuario || !online) return;
       load(filter);
       network()
         .then((r) => setRequests(r.recibidas.length))
         .catch(() => {});
-    }, [usuario?.id, filter, load]),
+    }, [usuario?.id, filter, load, online]),
   );
 
   const change = (f: Audiencia) => {
@@ -80,7 +83,12 @@ export default function Comunidad() {
         }}
       />
 
-      {!ready ? (
+      {!online ? (
+        <NeedsConnection
+          title="La comunidad necesita internet"
+          intro="Las publicaciones, los amigos y los grupos viven en el servidor. Cuando vuelvas a tener conexión los verás aquí; mientras, puedes seguir leyendo lo que descargaste."
+        />
+      ) : !ready ? (
         <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
       ) : !usuario ? (
         <>
