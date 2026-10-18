@@ -20,11 +20,13 @@ export function navigate(update: () => void, direction: Direction = 'fade') {
   doc.documentElement.dataset.nav = direction;
   const transition = doc.startViewTransition(async () => {
     update();
-    // El router pinta en el siguiente render: se espera a que cambie la URL y a un fotograma más.
-    for (let i = 0; i < 20 && location.href === from; i++) await frame();
-    await frame();
+    // El router pinta en el siguiente render: se espera a que cambie la URL y a un instante más.
+    // No sirve requestAnimationFrame: el navegador no pinta mientras dura esta función, así que nunca
+    // llegaba y la transición se quedaba congelada hasta su límite de 4 segundos.
+    for (let i = 0; i < 25 && location.href === from; i++) await tick();
+    await tick();
   });
   transition.finished.finally(() => delete doc.documentElement.dataset.nav);
 }
 
-const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 12));
