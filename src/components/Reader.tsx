@@ -33,6 +33,7 @@ import { useChapterNotes } from '@/lib/notas';
 import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
 import { navigate } from '@/lib/transition';
+import SearchIcon from '@/components/SearchIcon';
 
 export default function Reader() {
   const params = useLocalSearchParams<{ book: string; chapter: string; verse?: string; v?: string }>();
@@ -178,6 +179,9 @@ export default function Reader() {
           ),
           headerRight: () => (
             <View style={styles.headerRight}>
+              <Pressable onPress={() => navigate(() => router.push('/buscar'), 'forward')} accessibilityRole="search" accessibilityLabel="Buscar">
+                <SearchIcon color={colors.text} size={21} />
+              </Pressable>
               <Pressable
                 onPress={() => update({ study: !settings.study })}
                 style={[

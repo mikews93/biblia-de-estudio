@@ -1,4 +1,4 @@
-// Función de Vercel: búsqueda por idea («versículos sobre la ansiedad»).
+// Función de Vercel: búsqueda por idea («versículos sobre la ansiedad») o por un fragmento recordado («todo lo puedo en Cristo»).
 // 1. Claude propone pasajes que tratan la idea.
 // 2. El servidor comprueba que cada referencia existe y carga su texto real de la RV1909.
 // 3. Claude lee esos textos y se queda solo con los que de verdad hablan de la idea, explicando por qué con el texto delante.
@@ -23,6 +23,7 @@ type Result = { ref: string; label: string; text: string; reason: string };
 
 const RULES = `Trabajas para el buscador de una app bíblica gratuita en español (Reina-Valera 1909).
 - Busca pasajes por lo que dicen, no solo por palabras sueltas: una idea puede aparecer sin la palabra exacta.
+- A veces la persona escribe o dicta un fragmento que recuerda de un versículo, quizá con palabras de otra traducción (NBLA, RVR1960, NVI…) o no del todo exactas. Entonces el versículo del que viene va primero, y después otros parecidos.
 - No inventes referencias. Prefiere pasajes conocidos y claros sobre el tema.
 - Cuando el tema toca doctrinas en las que las tradiciones cristianas históricas (católica, ortodoxa, protestante y evangélica) difieren, incluye pasajes que usan unas y otras, sin tomar partido.
 - No uses interpretaciones de grupos que niegan doctrinas centrales del cristianismo histórico (por ejemplo, Testigos de Jehová o mormones).
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     const proposal = await ask<{ candidates: string[] }>(
       `Búsqueda de la persona: «${query}»
 
-Propón hasta ${MAX_CANDIDATES} pasajes de la Biblia que traten esa idea, del más al menos claro. Escribe cada uno como libro.capítulo.versículo con estos códigos de libro: ${ids}. Para un tramo corto del mismo capítulo usa libro.c.v-libro.c.v (máximo ${MAX_VERSES} versículos). Ejemplos: php.4.6 o mat.6.33-mat.6.34.`,
+Propón hasta ${MAX_CANDIDATES} pasajes de la Biblia que traten esa idea, del más al menos claro. Si parece un fragmento recordado de un versículo, pon primero ese versículo. Escribe cada uno como libro.capítulo.versículo con estos códigos de libro: ${ids}. Para un tramo corto del mismo capítulo usa libro.c.v-libro.c.v (máximo ${MAX_VERSES} versículos). Ejemplos: php.4.6 o mat.6.33-mat.6.34.`,
       {
         type: 'object',
         properties: { candidates: { type: 'array', items: { type: 'string' } } },
@@ -115,7 +116,7 @@ Propón hasta ${MAX_CANDIDATES} pasajes de la Biblia que traten esa idea, del m�
 Estos son los textos reales de la Reina-Valera 1909:
 ${found.map((f, i) => `[${i + 1}] ${f.label}: ${f.text}`).join('\n')}
 
-Quédate solo con los que, leídos tal como están, hablan de verdad de esa idea (máximo ${MAX_RESULTS}), ordenados del más al menos claro. Para cada uno escribe en "reason" una frase breve en español que explique qué dice el texto sobre la idea, basada solo en sus palabras. En "note" escribe una frase si las tradiciones cristianas entienden el tema de maneras distintas, sin tomar partido; si no, deja "note" vacío.`,
+Quédate solo con los que, leídos tal como están, hablan de verdad de esa idea, o son el versículo del que viene el fragmento que la persona recuerda aunque la RV1909 lo diga con otras palabras (máximo ${MAX_RESULTS}), ordenados del más al menos claro, con ese versículo primero. Para cada uno escribe en "reason" una frase breve en español que explique qué dice el texto sobre la idea, basada solo en sus palabras; si es el versículo del fragmento recordado, dilo («Es el versículo que recuerdas…»). En "note" escribe una frase si las tradiciones cristianas entienden el tema de maneras distintas, sin tomar partido; si no, deja "note" vacío.`,
       {
         type: 'object',
         properties: {

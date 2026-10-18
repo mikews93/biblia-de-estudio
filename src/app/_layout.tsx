@@ -28,7 +28,7 @@ function AppStack() {
         <Stack.Screen name="mapa-mental/[book]/[chapter]" options={{ title: 'Mapa mental' }} />
         <Stack.Screen name="tarjetas/[book]/[chapter]" options={{ title: 'Tarjetas de repaso' }} />
         <Stack.Screen name="repaso" options={{ title: 'Repaso' }} />
-        <Stack.Screen name="buscar" options={{ title: 'Buscar por idea' }} />
+        <Stack.Screen name="buscar" options={{ title: '' }} />
         <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
         <Stack.Screen name="comunidades/index" options={{ title: 'Comunidad' }} />
         <Stack.Screen name="comunidades/amigos" options={{ title: 'Amigos' }} />

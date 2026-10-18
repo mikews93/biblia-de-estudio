@@ -2,9 +2,10 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { parseCita } from '@/lib/cita';
 import { Book, getBooks, original } from '@/lib/data';
 import { useColors } from '@/lib/theme';
-import { chapterHref } from '@/lib/routes';
+import { chapterHref, verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
 export default function BookPicker() {
@@ -14,6 +15,8 @@ export default function BookPicker() {
   const [query, setQuery] = useState('');
   const norm = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const matches = (b: Book) => !query || norm(b.name).includes(norm(query));
+  // «1 re 2:5» o «jn 3 16»: se abre directo. Con versión («… nbla») va al buscador, que dice si está en la app.
+  const cita = /\d/.test(query) && books.length ? parseCita(query, books) : null;
 
   useEffect(() => {
     getBooks().then(setBooks);
@@ -53,11 +56,29 @@ export default function BookPicker() {
       <TextInput
         value={query}
         onChangeText={setQuery}
-        placeholder="Buscar libro"
+        placeholder="Buscar libro o cita (Jn 3:16)"
         placeholderTextColor={colors.muted}
         autoCorrect={false}
         style={[styles.search, { backgroundColor: colors.accentSoft, color: colors.text }]}
       />
+      {cita && !cita.problem && (
+        <Pressable
+          onPress={() =>
+            cita.version
+              ? navigate(() => router.push(`/buscar?q=${encodeURIComponent(query.trim())}` as never), 'forward')
+              : navigate(() =>
+                  router.dismissTo(cita.verse === undefined ? chapterHref(cita.book, cita.chapter) : verseHref(cita.book, cita.chapter, cita.verse!)),
+                )
+          }
+          style={[styles.idea, { borderColor: colors.border }]}
+          accessibilityRole="link"
+        >
+          <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 16 }}>
+            Abrir {books.find((b) => b.id === cita.book)?.name} {cita.chapter}
+            {cita.verse !== undefined ? `:${cita.verse}` : ''} ›
+          </Text>
+        </Pressable>
+      )}
       <Pressable
         onPress={() =>
           navigate(() => router.push((query.trim() && !books.some(matches) ? `/buscar?q=${encodeURIComponent(query.trim())}` : '/buscar') as never), 'forward')
@@ -66,7 +87,7 @@ export default function BookPicker() {
         accessibilityRole="link"
       >
         <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 15 }}>
-          {query.trim() && !books.some(matches) ? `✦ Buscar «${query.trim()}» por idea ›` : '✦ Buscar versículos por idea ›'}
+          {query.trim() && !books.some(matches) && !cita ? `✦ Buscar «${query.trim()}» por palabras o idea ›` : '✦ Buscar por cita, palabras o idea ›'}
         </Text>
       </Pressable>
       {section('AT', 'Antiguo Testamento')}
