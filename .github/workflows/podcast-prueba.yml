@@ -70,11 +70,13 @@ jobs:
           root = pathlib.Path('public/audio')
           gid = sys.argv[1]
           rep = json.loads(pathlib.Path('pipeline/podcast/salida/informe.json').read_text())
-          names = ' y '.join(v.get('name', '').split(' - ')[0] for v in rep['voces'].values())
+          # Las voces ya añadidas a la cuenta no traen su nombre público: se conserva el crédito anterior.
+          names = [v.get('name', '').split(' - ')[0] for v in rep['voces'].values()]
           meta = root / 'podcast' / f'{gid}.json'
           old = json.loads(meta.read_text()) if meta.exists() else {}
           meta.write_text(json.dumps({**old, 'id': gid, 'duracion': rep['duracion_s'], 'timestamps': old.get('timestamps', []),
-                                      'credito': f'Voces de ElevenLabs ({names}). Guion de Claude con las fuentes de la app.'},
+                                      'credito': old.get('credito') if old.get('credito') and not all(names) else
+                                      f'Voces de ElevenLabs ({" y ".join(names)}). Guion de Claude con las fuentes de la app.'},
                                      ensure_ascii=False, indent=2) + '\n')
           catalog = {kind: sorted(p.stem for p in (root / kind).glob('*.mp3')) for kind in ('dramatizado', 'podcast')}
           (root / 'index.json').write_text(json.dumps(catalog, indent=2) + '\n')
