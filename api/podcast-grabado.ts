@@ -30,6 +30,10 @@ const PER_DAY = Number(process.env.PODCAST_LIMITE_DIA ?? 15);
 const STALE_MINUTES = 6;
 // Para las pruebas: guarda los MP3 en una carpeta en vez de Vercel Blob.
 const STORE_DIR = process.env.PODCAST_STORE_DIR;
+// Vercel nombra el token del almacén Blob según el prefijo que se elija al conectarlo: se acepta cualquiera.
+const BLOB_TOKEN =
+  process.env.BLOB_READ_WRITE_TOKEN ??
+  Object.entries(process.env).find(([k, v]) => /^BLOB.*READ_WRITE_TOKEN$/.test(k) && v)?.[1];
 
 type Row = { estado: 'grabando' | 'listo' | 'error'; url: string | null; duracion: number | null; credito: string | null };
 type Line = { voice: string; text: string };
@@ -157,6 +161,7 @@ async function store(name: string, audio: Uint8Array): Promise<string> {
     addRandomSuffix: false,
     allowOverwrite: true,
     cacheControlMaxAge: 31536000,
+    token: BLOB_TOKEN,
   });
   return blob.url;
 }
@@ -185,7 +190,7 @@ export async function POST(request: Request) {
     from podcast_grabado where libro = ${book} and capitulo = ${chapter}`;
   if (current?.estado === 'listo' || (current?.estado === 'grabando' && !current.viejo)) return json(answer(current));
 
-  if (!process.env.ELEVENLABS_API_KEY || (!STORE_DIR && !process.env.BLOB_READ_WRITE_TOKEN)) {
+  if (!process.env.ELEVENLABS_API_KEY || (!STORE_DIR && !BLOB_TOKEN)) {
     return json({ error: 'Las voces naturales todavía no están activadas en el servidor.' }, 503);
   }
 
