@@ -43,7 +43,7 @@ export default function VersionPicker({ versions, onClose }: Props) {
           );
         })}
         <Text style={[styles.note, { color: colors.muted }]}>
-          El griego, las referencias y el estudio con IA siguen la numeración de la Reina-Valera 1909.
+          El hebreo, el griego, las referencias y el estudio con IA siguen la numeración de la Reina-Valera 1909.
         </Text>
       </Appear>
     </Modal>

@@ -24,6 +24,7 @@ import {
   getInterlinear,
   getParagraphEnds,
   getVersions,
+  original,
 } from '@/lib/data';
 import { playChapter } from '@/lib/audio';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
@@ -221,9 +222,7 @@ export default function Reader() {
             </View>
             {settings.study && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
-                {book.interlinear
-                  ? 'Toca una palabra griega para ver su significado y gramática.'
-                  : 'El interlineal hebreo llega pronto. Toca las referencias para seguir el hilo.'}
+                {`Toca una ${original(book).word} para ver su significado y gramática.`}
               </Text>
             )}
           </View>
@@ -281,6 +280,7 @@ export default function Reader() {
                   n={n}
                   text={text}
                   words={interlinear[String(n)]}
+                  rtl={original(book).rtl}
                   refCount={xrefs[String(n)]?.length ?? 0}
                   selected={n === selected}
                   mark={mark(n)}
@@ -360,7 +360,7 @@ export default function Reader() {
           <View style={styles.actions}>
             <Action label="Estudiar" icon="✦" colors={colors} onPress={() => setStudy({ verse: selected })} />
             {book.interlinear && (
-              <Action label="Original" icon="α" colors={colors} onPress={() => setPanelTab('interlineal')} />
+              <Action label="Original" icon={original(book).icon} colors={colors} onPress={() => setPanelTab('interlineal')} />
             )}
             <Action
               label="Referencias"
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
   actionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 });
 
-/** Agrupa los versículos en párrafos según los finales de párrafo del griego (sin datos: un solo párrafo). */
+/** Agrupa los versículos en párrafos según los finales de párrafo del griego o del hebreo (sin datos: un solo párrafo). */
 function paragraphs(verses: Verse[], ends: number[]): Verse[][] {
   const groups: Verse[][] = [[]];
   for (const v of verses) {

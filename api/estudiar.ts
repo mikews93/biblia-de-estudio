@@ -1,6 +1,6 @@
 // Función de Vercel: genera un estudio de un capítulo o versículo y responde preguntas sobre él.
-// Con «word» (posición de una palabra griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
-// Solo usa las fuentes de la app (RV1909, griego de STEPBible y referencias de OpenBible.info),
+// Con «word» (posición de una palabra hebrea o griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
+// Solo usa las fuentes de la app (RV1909, hebreo y griego de STEPBible y referencias de OpenBible.info),
 // que se pasan a Claude como documentos con citas activadas. La respuesta se envía como NDJSON:
 //   {"type":"text","text":"…"}  fragmento de texto en markdown; las citas llegan como ⟦n⟧
 //   {"type":"source","n":1,"label":"Juan 3:16","ref":"jhn.3.16"}  fuente de la cita n
@@ -12,6 +12,7 @@ import path from 'node:path';
 
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
+import { original } from '../src/lib/original';
 import { formatRef, parseRef } from '../src/lib/refs';
 
 const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
@@ -20,7 +21,7 @@ const MAX_TURNS = 12;
 const MAX_QUESTION = 600;
 const MAX_USES = 24;
 
-type Book = { id: string; name: string; chapters: number; interlinear: boolean };
+type Book = { id: string; name: string; chapters: number; testament: 'AT' | 'NT'; interlinear: boolean };
 type Verse = [number, string];
 type Word = [string, string, string, string, string, string, string, string];
 type Turn = { role: 'user' | 'assistant'; text: string };
@@ -43,12 +44,12 @@ type BlockMeta = { label: string; ref?: string };
 
 const SYSTEM = `Eres el asistente de estudio de una app bíblica gratuita en español. Ayudas a entender el texto; no sustituyes la lectura de la persona ni predicas por ella.
 
-Fuentes: en cada conversación recibes documentos de la app: el capítulo en la Reina-Valera 1909, el griego del Nuevo Testamento con su análisis gramatical (STEPBible, Tyndale House) y referencias cruzadas votadas por lectores (OpenBible.info).
+Fuentes: en cada conversación recibes documentos de la app: el capítulo en la Reina-Valera 1909, el texto original palabra por palabra (hebreo y arameo del Antiguo Testamento, griego del Nuevo) con su análisis gramatical (STEPBible, Tyndale House) y referencias cruzadas votadas por lectores (OpenBible.info).
 
 Reglas:
 - Basa lo que afirmes en esos documentos y cítalos cada vez que los uses.
 - Si algo no está en los documentos (autoría, fechas, historia, costumbres, opiniones de comentaristas), dilo así: «esto no está en las fuentes de la app». Solo si de verdad ayuda, añade contexto general ampliamente aceptado, breve y marcado como «contexto general», sin inventar datos, fechas ni citas de autores.
-- Para el griego usa la glosa, el lema y la gramática del documento; no inventes significados ni etimologías.
+- Para el hebreo y el griego usa la glosa, el lema y la gramática del documento; no inventes significados ni etimologías.
 - Cuando hay interpretaciones distintas dentro del cristianismo histórico (católica, ortodoxa, protestante y evangélica), dilo con respeto y sin tomar partido.
 - No uses ni presentes como interpretación cristiana las enseñanzas de grupos que niegan doctrinas centrales del cristianismo histórico, como la Trinidad o la divinidad de Cristo (por ejemplo, Testigos de Jehová o mormones).
 - Escribe en español claro y cálido para alguien sin formación teológica: párrafos cortos, títulos con "## ", listas con "- " y **negritas** solo para palabras clave. Sin tablas.
@@ -60,7 +61,7 @@ Ahora acompañas a alguien en el Taller de la app, donde prepara una reflexión,
 
 Reglas del Taller:
 - Nunca escribas un sermón, una reflexión o una guía completa, ni redactes secciones enteras listas para leer o predicar. Si te lo piden, explica con amabilidad que la preparación es suya y ofrece preguntas, opciones o un esquema de ideas para que la persona lo escriba.
-- Lo que digas sobre el texto, el griego o los pasajes relacionados lleva su cita, con la misma regla de fuentes.
+- Lo que digas sobre el texto, el hebreo o el griego, o los pasajes relacionados lleva su cita, con la misma regla de fuentes.
 - No inventes anécdotas como si fueran reales. Si sugieres una ilustración, márcala como «Ejemplo, no hecho real», en una o dos frases.
 - Ayuda a que el mensaje tenga una sola idea central que salga del texto, nombre la necesidad humana que el pasaje toca y ponga la gracia de Dios en el centro, no solo consejos.
 - Sé breve: lo justo para dar el siguiente paso.`;
@@ -155,7 +156,7 @@ async function refText(ref: string): Promise<string> {
     .join(' ');
 }
 
-/** Otras apariciones de la palabra en el NT, repartidas por todo el texto para que no salgan solo del mismo libro. */
+/** Otras apariciones de la palabra en su testamento, repartidas por todo el texto para que no salgan solo del mismo libro. */
 async function wordUses(word: Word, here: string, books: Book[]) {
   const uses = (await load<Use[]>(`concordance/${word[6]}.json`, [])).filter(([ref]) => ref !== here);
   const step = Math.max(1, uses.length / MAX_USES);
@@ -187,7 +188,9 @@ async function buildSources(book: Book, chapter: number, verse: number | undefin
     ),
   ];
 
-  // Griego: con todo el análisis para un versículo; solo palabra y glosa para un capítulo entero.
+  // Texto original: con todo el análisis para un versículo; solo palabra y glosa para un capítulo entero.
+  const lang = original(book);
+  const Lang = lang.name[0].toUpperCase() + lang.name.slice(1);
   const greekVerses = verse ? [verse] : verses.map(([n]) => n);
   const greek = greekVerses
     .filter((n) => interlinear[n]?.length)
@@ -201,9 +204,9 @@ async function buildSources(book: Book, chapter: number, verse: number | undefin
               : `${g} «${es}»`,
           )
           .join(verse ? '; ' : ' '),
-      meta: { label: `Griego de ${book.name} ${chapter}:${n}`, ref: `${book.id}.${chapter}.${n}` },
+      meta: { label: `${Lang} de ${book.name} ${chapter}:${n}`, ref: `${book.id}.${chapter}.${n}` },
     }));
-  if (greek.length) docs.push(doc(`${book.name} ${chapter} · Griego (STEPBible TAGNT)`, greek));
+  if (greek.length) docs.push(doc(`${book.name} ${chapter} · ${Lang} (STEPBible ${lang.source})`, greek));
 
   // Referencias cruzadas: todas las del versículo, o las dos más votadas de cada versículo del capítulo.
   const refs = verse
@@ -228,20 +231,23 @@ async function buildSources(book: Book, chapter: number, verse: number | undefin
     if (!w) throw new Error('Esa palabra no existe en el versículo');
     const uses = await wordUses(w, `${book.id}.${chapter}.${verse}`, books);
     if (uses.blocks.length) {
-      docs.push(doc(`Otros pasajes del Nuevo Testamento con ${w[4]} (${w[6]}), con su glosa y la RV1909`, uses.blocks));
+      docs.push(doc(`Otros pasajes del ${testamentName(book)} con ${w[4]} (${w[6]}), con su glosa y la RV1909`, uses.blocks));
     }
     focus = { word: w, total: uses.total };
   }
   return { docs, focus };
 }
 
+const testamentName = (book: Book) => (book.testament === 'AT' ? 'Antiguo Testamento' : 'Nuevo Testamento');
+
 function wordTask(book: Book, chapter: number, verse: number, focus: { word: Word; total: number }) {
   const [greek, translit, es, , lemma, lemmaGloss, strong] = focus.word;
-  return `La persona tocó la palabra griega ${greek} (${translit}, glosa «${es}») en ${book.name} ${chapter}:${verse}. Su forma de diccionario es ${lemma} «${lemmaGloss}» (${strong}) y aparece ${focus.total} ${
+  const lang = original(book);
+  return `La persona tocó la ${lang.word} ${greek} (${translit}, glosa «${es}») en ${book.name} ${chapter}:${verse}. Su forma de diccionario es ${lemma} «${lemmaGloss}» (${strong}) y aparece ${focus.total} ${
     focus.total === 1 ? 'vez' : 'veces'
-  } en el Nuevo Testamento. Explica «¿Por qué esta palabra?» con estas secciones:
-## Qué dice el griego: el significado de la palabra y lo que aporta su forma gramatical aquí.
-## Cómo la traduce la RV1909: qué palabra española usa en este versículo y qué matiz se gana o se pierde frente al griego.
+  } en el ${testamentName(book)}. Explica «¿Por qué esta palabra?» con estas secciones:
+## Qué dice el ${lang.name}: el significado de la palabra y lo que aporta su forma gramatical aquí.
+## Cómo la traduce la RV1909: qué palabra española usa en este versículo y qué matiz se gana o se pierde frente al ${lang.name}.
 ## Dónde más aparece: 3 o 4 pasajes de la lista de otros pasajes que muestren cómo se usa, y qué enseña cada uno.
 ## Para pensar: una pregunta breve para la persona.
 
@@ -249,18 +255,19 @@ Si los especialistas o las tradiciones cristianas entienden la palabra de manera
 }
 
 function studyTask(book: Book, chapter: number, verse: number | undefined, hasGreek: boolean) {
+  const lang = original(book).name;
   const target = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
   const sections = verse
     ? [
         '## Qué dice: el versículo explicado dentro de su contexto en el capítulo.',
-        hasGreek && '## Palabras clave: 2 a 4 palabras del griego que ayudan a entenderlo.',
+        hasGreek && `## Palabras clave: 2 a 4 palabras del ${lang} que ayudan a entenderlo.`,
         '## Pasajes relacionados: 3 o 4 referencias y lo que cada una aporta.',
         '## Para reflexionar: 2 o 3 preguntas personales o para un grupo.',
       ]
     : [
         '## Resumen: de qué trata el capítulo en pocas frases.',
         '## Cómo avanza: las partes del capítulo por grupos de versículos.',
-        hasGreek && '## Palabras clave: 3 a 5 palabras del griego importantes en el capítulo.',
+        hasGreek && `## Palabras clave: 3 a 5 palabras del ${lang} importantes en el capítulo.`,
         '## Pasajes relacionados: 3 o 4 referencias y lo que aportan.',
         '## Para reflexionar: 2 o 3 preguntas personales o para un grupo.',
       ];

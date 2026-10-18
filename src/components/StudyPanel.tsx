@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 
 import Appear from '@/components/Appear';
-import { Book, parseRef } from '@/lib/data';
+import { Book, original, parseRef } from '@/lib/data';
 import { Source, Turn, askStudy } from '@/lib/estudio';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
@@ -149,8 +149,8 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                     {turns.length > 1
                       ? 'Buscando en las fuentes…'
                       : word
-                        ? 'Comparando el griego con la traducción y buscando dónde más aparece…'
-                        : 'Preparando el estudio con el texto, el griego y las referencias…'}
+                        ? `Comparando el ${original(book).name} con la traducción y buscando dónde más aparece…`
+                        : `Preparando el estudio con el texto, el ${original(book).name} y las referencias…`}
                   </Text>
                 </View>
               )}
@@ -178,7 +178,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
               )}
 
               <Text style={[styles.disclaimer, { color: colors.muted }]}>
-                Generado con IA solo a partir de la Reina-Valera 1909, el griego de STEPBible y las referencias de
+                Generado con IA solo a partir de la Reina-Valera 1909, el {original(book).name} de STEPBible y las referencias de
                 OpenBible.info. Toca los números para ver de dónde sale cada idea.
               </Text>
             </ScrollView>

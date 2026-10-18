@@ -19,8 +19,10 @@ export type Verse = [number, string, string?];
 
 export type Version = { id: string; name: string; abbr: string; credit: string };
 
-// [griego, transliteración, glosa española, glosa inglesa, lema, significado del lema, Strong, morfología]
+// [palabra original, transliteración, glosa española, glosa inglesa, lema, significado del lema, Strong, morfología]
 export type Word = [string, string, string, string, string, string, string, string];
+
+export { original } from './original';
 
 export type CrossRef = [string, number];
 
@@ -56,7 +58,7 @@ export function enduringWordUrl(book: Book, chapter: number) {
   return `https://enduringword.com/bible-commentary/es/${book.ewSlug}-${chapter}/`;
 }
 
-/** Versículos que cierran párrafo (solo NT, a partir del griego). */
+/** Versículos que cierran párrafo, según el griego (NT) o las marcas פ y ס del texto masorético (AT). */
 export const getParagraphEnds = (book: string, chapter: number) =>
   load<number[]>(`paragraphs/${book}/${chapter}.json`, true).then((r) => (Array.isArray(r) ? r : []));
 
