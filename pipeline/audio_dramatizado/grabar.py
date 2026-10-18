@@ -574,6 +574,11 @@ def build(guion_id: str, review: bool, trial: tuple[str, str, str] | None = None
     if trial:
         role, voice_id, name = trial
         guion['voces'][role]['voice_id'] = ensure_voice(voice_id, name, f'Biblia prueba {role} {name}')
+    if ENGINE != 'cloudflare':
+        # Una voz fijada que se eligió en una audición lleva «biblioteca»: su nombre en la biblioteca de ElevenLabs.
+        for role, cfg in guion['voces'].items():
+            if cfg.get('voice_id') and cfg.get('biblioteca') and not (trial and trial[0] == role):
+                cfg['voice_id'] = ensure_voice(cfg['voice_id'], cfg['biblioteca'], f'Biblia {role} {cfg["biblioteca"]}')
     voices = pick_voices(guion, guion_id, informe)
     OUT.mkdir(parents=True, exist_ok=True)
     tmp = OUT / 'piezas'
