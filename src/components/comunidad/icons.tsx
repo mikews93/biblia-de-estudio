@@ -44,3 +44,26 @@ export const DevicesIcon = (p: Props) => (
     <Rect x={16} y={8.5} width={5.5} height={10.5} rx={1.3} />
   </Line>
 );
+
+/** Nube con flecha hacia abajo: descargar para leer sin conexión. */
+export const DownloadIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7 17.5H6a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 16 8a4.5 4.5 0 0 1 2 8.6" />
+    <Path d="M12 11v9M8.8 17l3.2 3.2 3.2-3.2" />
+  </Line>
+);
+
+/** Nube tachada: sin conexión. */
+export const OfflineIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M8.5 7.4A5.5 5.5 0 0 1 16 9a4.5 4.5 0 0 1 3.4 7.4M16 18H6a4 4 0 0 1-.6-7.95c.1-.5.3-1 .5-1.5" />
+    <Path d="M3.5 3.5l17 17" />
+  </Line>
+);
+
+/** Marca de listo. */
+export const CheckIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M5 12.5l4.2 4.2L19 7" />
+  </Line>
+);

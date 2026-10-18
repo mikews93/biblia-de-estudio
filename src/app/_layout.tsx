@@ -1,13 +1,40 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { useEffect } from 'react';
+import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
+import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
+import { init as initDownloads } from '@/lib/descargas';
+import { fixedInTransition } from '@/lib/transition';
 import { SettingsProvider, isDark, useColors } from '@/lib/theme';
+
+// La cabecera queda quieta en las transiciones (src/lib/transition.ts). headerStyle descarta los estilos
+// que no conoce, así que se fija cada parte por separado; el Stack de la web pasa estas opciones a Header
+// aunque los tipos de NativeStack no las declaren.
+const fixedHeader = {
+  headerBackgroundContainerStyle: fixedInTransition('cabecera'),
+  headerLeftContainerStyle: fixedInTransition('cabecera-izq'),
+  headerTitleContainerStyle: fixedInTransition('cabecera-titulo'),
+  headerRightContainerStyle: fixedInTransition('cabecera-der'),
+};
 
 function AppStack() {
   const colors = useColors();
+
+  // Fondo de la página con el color del tema: lo que se ve debajo durante las transiciones. Si quedaba
+  // blanco, el fundido entre pantallas destellaba (sobre todo en modo oscuro y sepia).
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    document.documentElement.style.backgroundColor = colors.background;
+    document.documentElement.style.setProperty('--papel', colors.background);
+  }, [colors.background]);
+
+  // Con algo descargado, mantiene al día la copia de la app para abrirla sin conexión.
+  useEffect(() => {
+    if (Platform.OS === 'web') initDownloads().catch(() => {});
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -15,6 +42,7 @@ function AppStack() {
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
+          ...fixedHeader,
           headerTintColor: colors.text,
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
@@ -50,13 +78,22 @@ function AppStack() {
         <Stack.Screen name="planes/[id]" options={{ title: '' }} />
         <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
         <Stack.Screen name="diario" options={{ title: 'Mi diario devocional' }} />
+        <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
         <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
         <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
         <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
         <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
       </Stack>
       <AudioBar />
+      <OfflineBanner />
       <TabBar />
+      {Platform.OS === 'web' && (
+        <>
+          <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />
+          <View nativeID="pliegue" pointerEvents="none" style={fixedInTransition('pliegue')} />
+          <View nativeID="pliegue-brillo" pointerEvents="none" style={fixedInTransition('pliegue-brillo')} />
+        </>
+      )}
     </View>
   );
 }

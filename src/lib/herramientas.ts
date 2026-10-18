@@ -84,9 +84,9 @@ export function splitCites(text: string): { text: string; cites: number[] } {
   return { text: text.replace(CITE, '').replace(/\s+([,.;:!?»])/g, '$1').replace(/\s{2,}/g, ' ').trim(), cites: [...new Set(cites)] };
 }
 
-/** Versículo de una referencia «(v. 3)», «(vv. 1-8)» o «(vv. 4, 6)»: el primero que nombra. */
+/** Versículo de una referencia «(v. 3)», «(vv. 1-8)» o «(vv. 4, 6)» al final, aunque lleve punto: el primero que nombra. */
 export function verseRange(text: string): { text: string; from?: number; to?: number } {
-  const m = text.match(/\s*\((?:vv?\.|versículos?)\s*(\d+)(?:\s*[-–]\s*(\d+))?[^)]*\)\s*$/i);
+  const m = text.match(/\s*\((?:vv?\.|versículos?)\s*(\d+)(?:\s*[-–]\s*(\d+))?[^)]*\)[.;:]?\s*$/i);
   if (!m) return { text };
   return { text: text.slice(0, m.index).trim(), from: Number(m[1]), to: m[2] ? Number(m[2]) : undefined };
 }

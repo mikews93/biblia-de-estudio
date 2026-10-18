@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,7 +18,9 @@ import Devotional from '@/components/Devotional';
 import StudyContext from '@/components/StudyContext';
 import { Book, original, parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
+import { NeedsConnection } from '@/components/SinConexion';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { Enfoque, Turn, askStudy } from '@/lib/estudio';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { BOOK_SLUGS, verseHref } from '@/lib/routes';
@@ -49,6 +51,8 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   // «¿Por qué esta palabra?» siempre es estudio profundo.
   const [chosen, setChosen] = useState<Enfoque>(initial ?? settings.enfoque);
   const mode: Enfoque = word ? 'profundo' : chosen;
+  // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
+  const focused = useIsFocused();
   const [turns, setTurns] = useState<Turn[]>([]);
   // Lo ya generado en cada modo, para cambiar de uno a otro sin volver a pedirlo.
   const saved = useRef<Partial<Record<Enfoque, Turn[]>>>({});
@@ -131,7 +135,11 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   );
   const first = turns[0];
   const problem =
-    error === NEEDS_ACCOUNT ? (
+    error === NEEDS_CONNECTION ? (
+                <View style={styles.waiting}>
+                  <NeedsConnection title="Estudiar con IA necesita internet" intro="La IA prepara el estudio en el servidor. Sin conexión puedes seguir leyendo, ver el texto original y las referencias que descargaste." />
+                </View>
+              ) : error === NEEDS_ACCOUNT ? (
                 <View style={styles.waiting}>
                   <Welcome
                     kind="ia"
@@ -158,7 +166,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   const waiting = busy && !turns[turns.length - 1]?.text;
 
   return (
-    <Modal transparent animationType="slide" visible onRequestClose={onClose}>
+    <Modal transparent animationType="slide" visible={focused} onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTop} onPress={onClose} accessibilityLabel="Cerrar estudio" />
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>

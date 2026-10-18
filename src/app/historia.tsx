@@ -1,235 +1,758 @@
-// /historia?libro=2ki&cap=18: línea de tiempo de la historia bíblica junto a lo que pasaba en el mundo
+// /historia?libro=2ki&cap=18: la historia bíblica y la del mundo en carriles paralelos, de izquierda a derecha,
+// como en la Carta sincronológica de Adams. Tocar algo marca sus años en todos los carriles.
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  LayoutAnimation,
+  LayoutChangeEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { Book, formatRef, getBooks } from '@/lib/data';
 import {
   ERAS,
   EVENTOS,
+  Era,
   Evento,
   FUENTE_HISTORIA,
   PERIODOS,
   Periodo,
   REGION_COLORS,
+  REINOS,
+  Region,
+  esCorriente,
+  eventosDe,
   fechaEvento,
   fechaPeriodo,
   periodoDe,
 } from '@/lib/historia';
+import { INICIO, anchoTexto, apilar, crearEscala, etiquetaMarca, filasEn } from '@/lib/lineaTiempo';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-type Item = { kind: 'biblia'; desde: number; p: Periodo } | { kind: 'mundo'; desde: number; e: Evento };
+// Del vecino más cercano de Israel hacia los confines del mundo conocido
+const CARRILES: Region[] = [
+  'Levante',
+  'Egipto',
+  'Mesopotamia',
+  'Asia Menor',
+  'Persia',
+  'Grecia',
+  'Roma',
+  'Europa',
+  'India',
+  'China',
+  'América',
+];
+const NOMBRE_CARRIL: Partial<Record<Region, string>> = { Levante: 'Fenicia, Siria y Canaán' };
+
+const ZOOMS = [0.5, 0.75, 1, 1.5, 2.2];
+const MARGEN_IZQ = 20;
+const MARGEN_DER = 60;
+const EJE = 30;
+const ROTULO = 4;
+const CORRIENTE = 22;
+const FILA = 28;
+const FILA_BIBLIA = 32;
+const PIE = 10;
+
+/** «Cuando se escribió Romanos» → «✎ Romanos»: en la línea de tiempo hace falta que quepa. */
+const corto = (t: string) => t.replace(/^Cuando se escribi(?:ó|eron) (?:las )?/, '✎ ');
+
+type Sel = { kind: 'periodo'; p: Periodo } | { kind: 'evento'; e: Evento };
+const fin = (e: Evento) => e.hasta ?? e.desde;
+const ORIGENES = PERIODOS.origenes;
+/** Ancho del nombre de un carril (mayúsculas espaciadas) más su punto y su margen. */
+const margenRotulo = (nombre: string) => anchoTexto(nombre, 10.5) * 1.3 + 44;
 
 export default function Historia() {
   const params = useLocalSearchParams<{ libro?: string; cap?: string }>();
   const colors = useColors();
+  const { width: pantalla } = useWindowDimensions();
   const [books, setBooks] = useState<Book[]>([]);
-  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const offsets = useRef<Record<string, number>>({});
-  const scrolled = useRef(false);
+  const ancho2 = pantalla >= 700;
   const actual = params.libro ? periodoDe(params.libro, Number(params.cap) || 1) : undefined;
+  const [sel, setSel] = useState<Sel | undefined>(actual ? { kind: 'periodo', p: actual } : undefined);
+  const [zoom, setZoom] = useState(pantalla < 600 ? 1 : 2);
+  const [vista, setVista] = useState({ w: 0, h: 0 });
+  const [eraActiva, setEraActiva] = useState<Era | undefined>();
+  const [detalleH, setDetalleH] = useState(0);
+
+  const horizontal = useRef<ComponentRef<typeof ScrollView>>(null);
+  const vertical = useRef<ComponentRef<typeof ScrollView>>(null);
+  const eraBar = useRef<ComponentRef<typeof ScrollView>>(null);
+  const chipX = useRef<Record<string, number>>({});
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const posX = useRef(0);
+  const centro = useRef<number | undefined>(undefined);
+  const inicial = useRef(false);
+  const espera = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     getBooks().then(setBooks, () => {});
   }, []);
-
-  const eras = useMemo(
-    () =>
-      ERAS.map((era, i) => {
-        const last = i === ERAS.length - 1;
-        const inEra = (y: number) => y >= era.desde && (last ? y <= era.hasta + 200 : y < era.hasta);
-        const items: Item[] = [
-          ...Object.values(PERIODOS)
-            .filter((p) => !p.sinFecha && inEra(p.desde))
-            .map((p) => ({ kind: 'biblia' as const, desde: p.desde, p })),
-          ...EVENTOS.filter((e) => inEra(e.desde)).map((e) => ({ kind: 'mundo' as const, desde: e.desde, e })),
-        ].sort((a, b) => a.desde - b.desde || Number(a.kind === 'mundo') - Number(b.kind === 'mundo'));
-        return { era, items };
-      }),
-    [],
-  );
-
-  const eraActual = actual
-    ? (ERAS.find((e) => !actual.sinFecha && actual.desde >= e.desde && actual.desde < e.hasta) ?? ERAS[0])
-    : undefined;
 
   const go = (href: string) => navigate(() => router.push(href as never), 'forward');
   const openRef = (ref: string) => {
     const [b, c, v] = ref.split('.');
     go(v ? verseHref(b, Number(c), Number(v)) : chapterHref(b, Number(c)));
   };
-  // Posición de cada era en la lista y de cada fila dentro de su era
-  const eraKey = (titulo: string) => `era-${titulo}`;
-  const owner = useRef<Record<string, string>>({});
-  const jump = (key: string) => {
-    const parent = owner.current[key];
-    const y = offsets.current[key];
-    if (y == null || (parent && offsets.current[parent] == null)) return false;
-    scroll.current?.scrollTo({ y: Math.max(0, y + (parent ? offsets.current[parent] : 0) - 8), animated: true });
-    return true;
+  const refLabel = (ref: string) =>
+    books.length ? (ref.split('.').length === 2 ? formatRef(`${ref}.1`, books).replace(/:1$/, '') : formatRef(ref, books)) : ref;
+
+  // Escala y reparto en filas de cada carril
+  const plano = useMemo(() => {
+    const periodos = Object.values(PERIODOS).filter((p) => !p.sinFecha);
+    const escala = crearEscala([...periodos.map((p) => p.desde), ...EVENTOS.filter((e) => !esCorriente(e)).map((e) => e.desde)], ZOOMS[zoom]);
+    const span = (desde: number, hasta: number) => Math.max(4, escala.x(hasta) - escala.x(desde));
+
+    const biblia = apilar(
+      periodos,
+      (p) => ({
+        x: escala.x(p.desde),
+        w: Math.max(span(p.desde, p.hasta), anchoTexto(corto(p.titulo), 13) + 22 + (p.id === actual?.id ? 78 : 0)),
+      }),
+      6,
+      ancho2 ? 7 : 5,
+      72,
+      (p) => p.id === actual?.id,
+    );
+    const carriles = CARRILES.map((region) => {
+      const corrientes = apilar(
+        [...REINOS, ...EVENTOS.filter(esCorriente)].filter((e) => e.region === region),
+        (e) => ({ x: escala.x(e.desde), w: span(e.desde, fin(e)) }),
+        2,
+      );
+      const hechos = apilar(
+        EVENTOS.filter((e) => e.region === region && !esCorriente(e)),
+        (e) => ({ x: escala.x(e.desde) - 5, w: Math.max(span(e.desde, fin(e)) + 10, anchoTexto(e.titulo, 12) + 22) }),
+        8,
+        3,
+        60,
+      );
+      return { region, corrientes, hechos };
+    });
+
+    return { escala, biblia, carriles };
+  }, [zoom, actual?.id, ancho2]);
+
+  // Cada carril mide lo que necesita lo que hay en pantalla (y una pantalla a cada lado): los siglos con poca
+  // historia no dejan huecos enormes, como las corrientes de Adams que se ensanchan y se estrechan.
+  const [ventana, setVentana] = useState<[number, number]>([0, 0]);
+  const alturas = useMemo(() => {
+    const a = ventana[0] - vista.w - MARGEN_IZQ;
+    const b = ventana[1] + vista.w - MARGEN_IZQ;
+    const origenes = plano.escala.x(ORIGENES.hasta) > a ? 2 : 1;
+    const altoBiblia = ROTULO + CORRIENTE + filasEn(plano.biblia.colocados, a, b, origenes) * FILA_BIBLIA + PIE;
+    const tops: Record<string, number> = {};
+    let y = altoBiblia;
+    const corrientes: Record<string, number> = {};
+    const altos = plano.carriles.map((c) => {
+      tops[c.region] = y;
+      corrientes[c.region] = filasEn(c.corrientes.colocados, a, b);
+      const h = ROTULO + corrientes[c.region] * CORRIENTE + filasEn(c.hechos.colocados, a, b, 0) * FILA + PIE;
+      y += h;
+      return h;
+    });
+    return { altoBiblia, altos, tops, corrientes, alto: y };
+  }, [plano, ventana, vista.w]);
+
+  const { escala } = plano;
+  const ancho = MARGEN_IZQ + escala.ancho + MARGEN_DER;
+  const X = (año: number) => MARGEN_IZQ + escala.x(año);
+
+  const irA = (año: number, animated = true, donde = 0.35) =>
+    horizontal.current?.scrollTo({ x: Math.max(0, X(año) - vista.w * donde), animated });
+
+  // Al abrir: el periodo del capítulo que se lee; al cambiar el zoom: el mismo año en el centro
+  useEffect(() => {
+    if (!vista.w) return;
+    if (centro.current != null) {
+      irA(centro.current, false, 0.5);
+      centro.current = undefined;
+    } else if (!inicial.current) {
+      inicial.current = true;
+      if (actual && !actual.sinFecha) setTimeout(() => irA(actual.desde, false), 0);
+    }
+    actualizarEra(posX.current);
+    setTimeout(medirVentana, 30);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escala, vista.w]);
+
+  const medirVentana = () => {
+    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setVentana([posX.current, posX.current + vista.w]);
   };
-  const onMeasured = (key: string, y: number, parent?: string) => {
-    offsets.current[key] = y;
-    if (parent) owner.current[key] = parent;
-    const target = actual && !actual.sinFecha ? `p-${actual.id}` : undefined;
-    if (!scrolled.current && target) setTimeout(() => !scrolled.current && jump(target) && (scrolled.current = true), 80);
+
+  const cambiarZoom = (d: number) => {
+    const z = Math.min(ZOOMS.length - 1, Math.max(0, zoom + d));
+    if (z === zoom) return;
+    centro.current = escala.año(posX.current + vista.w / 2 - MARGEN_IZQ);
+    setZoom(z);
   };
+
+  const actualizarEra = (x: number) => {
+    const año = escala.año(x + vista.w / 2 - MARGEN_IZQ);
+    const era = ERAS.find((e) => año >= e.desde && año < e.hasta) ?? (año < INICIO + 1 ? ERAS[0] : ERAS[ERAS.length - 1]);
+    if (era !== eraActiva) {
+      setEraActiva(era);
+      const cx = chipX.current[era.titulo];
+      if (cx != null) eraBar.current?.scrollTo({ x: Math.max(0, cx - 40), animated: true });
+    }
+  };
+
+  const onScroll = Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
+    useNativeDriver: Platform.OS !== 'web',
+    listener: (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      posX.current = e.nativeEvent.contentOffset.x;
+      if (espera.current) clearTimeout(espera.current);
+      espera.current = setTimeout(medirVentana, 90);
+      actualizarEra(posX.current);
+    },
+  });
+
+  const elegir = (s: Sel) => {
+    setSel(s);
+    const desde = s.kind === 'periodo' ? s.p.desde : s.e.desde;
+    const visibleX = X(desde) - posX.current;
+    if (visibleX < 24 || visibleX > vista.w - 80) irA(desde);
+    if (s.kind === 'evento') {
+      const top = alturas.tops[s.e.region];
+      if (top != null) vertical.current?.scrollTo({ y: Math.max(0, top - alturas.altoBiblia / 2), animated: true });
+    } else vertical.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const selDesde = sel ? (sel.kind === 'periodo' ? sel.p.desde : sel.e.desde) : 0;
+  const selHasta = sel ? (sel.kind === 'periodo' ? sel.p.hasta : fin(sel.e)) : 0;
+
+  // Nombre que acompaña al usuario mientras se desplaza: se queda pegado al borde izquierdo
+  const pegado = { transform: [{ translateX: scrollX }] };
+  // Rótulo de una corriente: avanza con la vista sin salirse de su banda
+  // (`margen`: lo que ocupa a la izquierda el nombre del carril, que va encima)
+  const deslizante = (x0: number, w: number, rotulo: number, margen = 6) => {
+    const libre = w - rotulo - 12;
+    if (libre < 2) return undefined;
+    const start = MARGEN_IZQ + x0 - margen;
+    return {
+      transform: [
+        { translateX: scrollX.interpolate({ inputRange: [start, start + libre], outputRange: [0, libre], extrapolate: 'clamp' }) },
+      ],
+    };
+  };
+
+  const corriente = ({ e, x, w, fila, top, color, era, margen }: { e?: Evento; x: number; w: number; fila: number; top: number; color: string; era?: Era; margen: number }) => {
+    const titulo = e?.titulo ?? era!.titulo;
+    const on = !!e && sel?.kind === 'evento' && sel.e === e;
+    const body = (
+      <>
+        <Animated.Text
+          numberOfLines={1}
+          style={[styles.corrienteTxt, { color: colors.text }, deslizante(x, w, anchoTexto(titulo, 12), fila === 0 ? margen : 6)]}
+        >
+          {titulo}
+        </Animated.Text>
+      </>
+    );
+    const style = [
+      styles.corriente,
+      {
+        left: MARGEN_IZQ + x,
+        width: w,
+        top: top + fila * CORRIENTE,
+        backgroundColor: `${color}${era ? '2E' : '38'}`,
+        borderLeftColor: color,
+      },
+      on && { borderColor: colors.accent, borderWidth: 1.5, borderLeftWidth: 3 },
+    ];
+    if (!e) return <View key={titulo} style={style}>{body}</View>;
+    return (
+      <Pressable key={titulo} accessibilityRole="button" onPress={() => elegir({ kind: 'evento', e })} style={style}>
+        {body}
+      </Pressable>
+    );
+  };
+
+  const titulo = (s: Sel) => (s.kind === 'periodo' ? s.p.titulo : s.e.titulo);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title: 'Línea de tiempo' }} />
-      <View style={[styles.eraBar, { borderColor: colors.border }]}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.eraBarContent}
-        >
+
+      <View style={[styles.cabecera, { borderColor: colors.border }]}>
+        <View style={styles.tituloFila}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.intro, { color: colors.text }, !ancho2 && { fontSize: 18 }]} numberOfLines={1}>
+              La Biblia y el mundo, siglo a siglo
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }} numberOfLines={ancho2 ? 1 : 2}>
+              {ancho2
+                ? 'Recorre el tiempo de izquierda a derecha y toca un hecho para ver qué pasaba a la vez en el mundo.'
+                : 'Desliza a los lados y toca un hecho para ver qué pasaba a la vez.'}
+            </Text>
+          </View>
+          <View style={[styles.zoom, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Pressable accessibilityLabel="Alejar" onPress={() => cambiarZoom(-1)} style={styles.zoomBtn} hitSlop={4}>
+              <Text style={[styles.zoomTxt, { color: zoom === 0 ? colors.border : colors.text }]}>−</Text>
+            </Pressable>
+            <View style={{ width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: colors.border }} />
+            <Pressable accessibilityLabel="Acercar" onPress={() => cambiarZoom(1)} style={styles.zoomBtn} hitSlop={4}>
+              <Text style={[styles.zoomTxt, { color: zoom === ZOOMS.length - 1 ? colors.border : colors.text }]}>+</Text>
+            </Pressable>
+          </View>
+        </View>
+        <ScrollView ref={eraBar} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.eraBarContent}>
           {ERAS.map((era) => {
-            const on = era === eraActual;
+            const on = era === eraActiva;
             return (
               <Pressable
                 key={era.titulo}
-                onPress={() => jump(eraKey(era.titulo))}
+                onLayout={(e) => (chipX.current[era.titulo] = e.nativeEvent.layout.x)}
+                onPress={() => irA(era.desde, true, 0.04)}
                 style={[styles.eraChip, { borderColor: era.color, backgroundColor: on ? era.color : 'transparent' }]}
               >
-                <Text style={{ color: on ? '#fff' : colors.text, fontSize: 13 }}>{era.titulo}</Text>
+                <Text style={{ color: on ? '#fff' : colors.text, fontSize: 13, fontWeight: on ? '600' : '400' }}>{era.titulo}</Text>
               </Pressable>
             );
           })}
         </ScrollView>
       </View>
 
-      <ScrollView ref={scroll} contentContainerStyle={styles.content}>
-        <Text style={[styles.intro, { color: colors.text }]}>La Biblia y el mundo, siglo a siglo</Text>
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.dotBig, { marginTop: 0, backgroundColor: colors.accent, borderColor: colors.accent }]} />
-            <Text style={{ color: colors.muted, fontSize: 13 }}>Historia bíblica: toca para leer</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.dot, { marginTop: 0, borderColor: colors.muted }]} />
-            <Text style={{ color: colors.muted, fontSize: 13 }}>Lo que pasaba en el mundo</Text>
-          </View>
-        </View>
-        {eras.map(({ era, items }) => (
-          <View key={era.titulo} onLayout={(e) => onMeasured(eraKey(era.titulo), e.nativeEvent.layout.y)}>
-            <View style={[styles.eraHeader, { backgroundColor: `${era.color}1F`, borderColor: era.color }]}>
-              <Text style={[styles.eraKicker, { color: era.color }]}>
-                {fechaPeriodo({ id: '', titulo: '', ref: '', desde: era.desde, hasta: Math.min(era.hasta, 100) })}
-              </Text>
-              <Text style={[styles.eraTitle, { color: colors.text }]}>{era.titulo}</Text>
+      <View style={{ flex: 1 }} onLayout={(e: LayoutChangeEvent) => setVista({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+        {vista.h > 0 && (
+          <Animated.ScrollView
+            ref={horizontal}
+            horizontal
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            showsHorizontalScrollIndicator={ancho2}
+            contentContainerStyle={{ width: ancho, height: vista.h, flexDirection: 'column' }}
+          >
+            {/* Eje de los años */}
+            <View style={[styles.eje, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              {sel && (
+                <View
+                  style={[styles.banda, { left: X(selDesde), width: Math.max(2, X(selHasta) - X(selDesde)), backgroundColor: `${colors.accent}30` }]}
+                />
+              )}
+              {escala.marcas.map((y) => (
+                <View key={y} style={[styles.marca, { left: X(y) }]}>
+                  <View style={{ width: 1, height: 6, backgroundColor: colors.muted }} />
+                  <Text style={[styles.marcaTxt, { color: y === 0 ? colors.accent : colors.muted }, y === 0 && { fontWeight: '700' }]}>
+                    {etiquetaMarca(y)}
+                  </Text>
+                </View>
+              ))}
             </View>
-            {era.titulo === ERAS[0].titulo && (
-              <Pressable onPress={() => openRef(PERIODOS.origenes.ref)} style={[styles.note, { backgroundColor: colors.accentSoft }]}>
-                <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{PERIODOS.origenes.nota}</Text>
-                <Text style={{ color: colors.accent, fontWeight: '600', marginTop: 4 }}>Génesis 1–11 ›</Text>
+
+            <ScrollView
+              ref={vertical}
+              showsVerticalScrollIndicator={false}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ height: alturas.alto + 90 + (sel ? detalleH : 0) }}
+            >
+              {/* Fondo: columnas de cada era y líneas de los siglos */}
+              {ERAS.map((era, i) => (
+                <View
+                  key={era.titulo}
+                  style={[
+                    styles.columna,
+                    { left: X(era.desde), width: X(era.hasta) - X(era.desde), backgroundColor: `${era.color}${i % 2 ? '0C' : '16'}` },
+                  ]}
+                />
+              ))}
+              {escala.marcas.map((y) => (
+                <View
+                  key={y}
+                  style={[styles.columna, { left: X(y), width: y === 0 ? 1.5 : StyleSheet.hairlineWidth, backgroundColor: y === 0 ? colors.accent : colors.border }]}
+                />
+              ))}
+              {sel && (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.columna,
+                    {
+                      left: X(selDesde),
+                      width: Math.max(2, X(selHasta) - X(selDesde)),
+                      backgroundColor: `${colors.accent}1C`,
+                      borderLeftWidth: 1.5,
+                      borderColor: colors.accent,
+                      zIndex: 0,
+                    },
+                  ]}
+                />
+              )}
+
+              {/* Carril de la historia bíblica */}
+              <View style={[styles.carril, { top: 0, height: alturas.altoBiblia, borderColor: colors.border, backgroundColor: `${colors.surface}B0` }]} />
+              <Animated.View style={[styles.rotulo, { top: ROTULO + 1, backgroundColor: colors.background }, pegado]}>
+                <View style={[styles.rotuloPunto, { backgroundColor: colors.accent }]} />
+                <Text style={[styles.rotuloTxt, { color: colors.accent }]}>HISTORIA BÍBLICA</Text>
+              </Animated.View>
+              {ERAS.map((era) => (
+                corriente({ era, x: escala.x(era.desde), w: escala.x(era.hasta) - escala.x(era.desde), fila: 0, top: ROTULO, color: era.color, margen: margenRotulo('Historia bíblica') })
+              ))}
+              <Pressable
+                onPress={() => elegir({ kind: 'periodo', p: ORIGENES })}
+                style={[
+                  styles.origenes,
+                  {
+                    left: X(ORIGENES.desde),
+                    width: X(ORIGENES.hasta) - X(ORIGENES.desde) - 8,
+                    top: ROTULO + CORRIENTE + 4,
+                    borderColor: sel?.kind === 'periodo' && sel.p === ORIGENES ? colors.accent : colors.muted,
+                  },
+                ]}
+              >
+                <Animated.Text numberOfLines={2} style={[styles.origenesTxt, { color: colors.text }, deslizante(escala.x(ORIGENES.desde), X(ORIGENES.hasta) - X(ORIGENES.desde) - 8, 130)]}>
+                  Génesis 1–11{'\n'}
+                  <Text style={{ color: colors.muted, fontStyle: 'italic', fontSize: 12 }}>sin fechas en la historia</Text>
+                </Animated.Text>
               </Pressable>
-            )}
-            {items.map((item, i) => {
-              const isLast = i === items.length - 1;
-              if (item.kind === 'biblia') {
-                const p = item.p;
+              {plano.biblia.colocados.map(({ item: p, x, w, fila }) => {
+                const era = ERAS.find((e) => p.desde >= e.desde && p.desde < e.hasta) ?? ERAS[ERAS.length - 1];
+                const spanW = Math.max(4, escala.x(p.hasta) - escala.x(p.desde));
                 const here = p.id === actual?.id;
+                const on = sel?.kind === 'periodo' && sel.p === p;
                 return (
                   <Pressable
-                    key={`p-${p.id}`}
-                    onLayout={(e) => onMeasured(`p-${p.id}`, e.nativeEvent.layout.y, eraKey(era.titulo))}
-                    onPress={() => openRef(p.ref)}
-                    style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+                    key={p.id}
+                    accessibilityRole="button"
+                    onPress={() => elegir({ kind: 'periodo', p })}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      {
+                        left: MARGEN_IZQ + x,
+                        width: w,
+                        top: ROTULO + CORRIENTE + fila * FILA_BIBLIA + 4,
+                        backgroundColor: here ? colors.accentSoft : colors.surface,
+                        borderColor: on || here ? colors.accent : `${era.color}80`,
+                        borderWidth: on ? 2 : 1,
+                      },
+                      pressed && { opacity: 0.75 },
+                    ]}
                   >
-                    <Text style={[styles.year, { color: colors.text, fontWeight: '600' }]}>{fechaPeriodo(p)}</Text>
-                    <Rail color={era.color} filled last={isLast} line={`${era.color}55`} />
-                    <View
-                      style={[
-                        styles.bibleCard,
-                        {
-                          backgroundColor: here ? colors.accentSoft : colors.surface,
-                          borderColor: here ? colors.accent : colors.border,
-                          borderLeftColor: era.color,
-                        },
-                      ]}
-                    >
-                      {here && <Text style={[styles.here, { color: colors.accent }]}>AQUÍ ESTÁS</Text>}
-                      <Text style={[styles.bibleTitle, { color: colors.text }]}>{p.titulo}</Text>
-                      <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600', marginTop: 2 }}>
-                        {books.length ? formatRef(`${p.ref}.1`, books).replace(/:1$/, '') : p.ref} ›
-                      </Text>
-                    </View>
+                    <View style={[styles.chipSpan, { width: Math.min(spanW, w), backgroundColor: `${era.color}40`, borderLeftColor: era.color }]} />
+                    {here && <Text style={[styles.aqui, { color: colors.accent }]}>AQUÍ ESTÁS</Text>}
+                    <Text numberOfLines={1} style={[styles.chipTxt, { color: colors.text }]}>
+                      {corto(p.titulo)}
+                    </Text>
                   </Pressable>
                 );
-              }
-              const e = item.e;
-              const color = REGION_COLORS[e.region];
-              return (
-                <View key={`e-${e.titulo}`} style={styles.row}>
-                  <Text style={[styles.year, { color: colors.muted }]}>{fechaEvento(e)}</Text>
-                  <Rail color={color} last={isLast} line={`${era.color}55`} />
-                  <View style={{ flex: 1, paddingBottom: 18, paddingTop: 2 }}>
-                    <Text style={{ color, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>
-                      {e.region.toUpperCase()}
-                    </Text>
-                    <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>{e.titulo}</Text>
-                    <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>{e.texto}</Text>
-                    {e.ref && (
-                      <Pressable
-                        onPress={() => openRef(e.ref!)}
-                        hitSlop={6}
-                        style={[styles.refPill, { backgroundColor: colors.accentSoft }]}
-                      >
-                        <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '700' }}>
-                          {books.length ? formatRef(e.ref, books) : e.ref} ›
-                        </Text>
-                      </Pressable>
-                    )}
+              })}
+
+              {/* Carriles del mundo */}
+              {plano.carriles.map(({ region, corrientes, hechos }, i) => {
+                const top = alturas.tops[region];
+                const color = REGION_COLORS[region];
+                const topHechos = top + ROTULO + alturas.corrientes[region] * CORRIENTE;
+                return (
+                  <View key={region} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+                    <View
+                      style={[
+                        styles.carril,
+                        { top, height: alturas.altos[i], borderColor: colors.border, backgroundColor: i % 2 ? 'transparent' : `${colors.surface}60` },
+                      ]}
+                    />
+                    <Animated.View style={[styles.rotulo, { top: top + ROTULO + 1, backgroundColor: colors.background }, pegado]}>
+                      <View style={[styles.rotuloPunto, { backgroundColor: color }]} />
+                      <Text style={[styles.rotuloTxt, { color }]}>{(NOMBRE_CARRIL[region] ?? region).toUpperCase()}</Text>
+                    </Animated.View>
+                    {corrientes.colocados.map(({ item: e, x, w, fila }) => (
+                      corriente({ e, x, w, fila, top: top + ROTULO, color, margen: margenRotulo(NOMBRE_CARRIL[region] ?? region) })
+                    ))}
+                    {hechos.colocados.map(({ item: e, x, w, fila }) => {
+                      const on = sel?.kind === 'evento' && sel.e === e;
+                      const spanW = escala.x(fin(e)) - escala.x(e.desde);
+                      return (
+                        <Pressable
+                          key={e.titulo}
+                          accessibilityRole="button"
+                          onPress={() => elegir({ kind: 'evento', e })}
+                          style={({ pressed }) => [
+                            styles.hecho,
+                            { left: MARGEN_IZQ + x, width: w, top: topHechos + fila * FILA },
+                            on && { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+                            pressed && { opacity: 0.7 },
+                          ]}
+                        >
+                          {spanW > 6 && <View style={[styles.hechoSpan, { left: 5, width: spanW, backgroundColor: `${color}70` }]} />}
+                          <View style={[styles.hechoPunto, { borderColor: color, backgroundColor: e.ref ? color : colors.background }]} />
+                          <Text numberOfLines={1} style={[styles.hechoTxt, { color: colors.text }, on && { fontWeight: '700' }]}>
+                            {e.titulo}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
                   </View>
-                </View>
+                );
+              })}
+
+              <Animated.View style={[styles.pie, { top: alturas.alto + 14, width: Math.min(vista.w - 32, 640) }, pegado]}>
+                <Text style={[styles.pieTxt, { color: colors.muted }]}>
+                  <Text style={{ fontWeight: '700' }}>● </Text>
+                  Los puntos llenos llevan a su pasaje; ✎ marca cuándo se escribió un libro. La escala se estira en los siglos con más acontecimientos. {FUENTE_HISTORIA}
+                </Text>
+              </Animated.View>
+            </ScrollView>
+          </Animated.ScrollView>
+        )}
+
+        {ancho2 && vista.w > 0 && (
+          <>
+            <Flecha lado="izq" onPress={() => horizontal.current?.scrollTo({ x: Math.max(0, posX.current - vista.w * 0.7), animated: true })} />
+            <Flecha lado="der" onPress={() => horizontal.current?.scrollTo({ x: posX.current + vista.w * 0.7, animated: true })} />
+          </>
+        )}
+
+        {sel && (
+          <View
+            onLayout={(e) => setDetalleH(e.nativeEvent.layout.height)}
+            style={[styles.detalle, { backgroundColor: colors.surface, borderColor: colors.border }, ancho2 && styles.detalleAncho]}
+          >
+            <Detalle
+              sel={sel}
+              actual={actual}
+              refLabel={refLabel}
+              onRef={openRef}
+              onElegir={elegir}
+              onCerrar={() => setSel(undefined)}
+              titulo={titulo(sel)}
+            />
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function Flecha({ lado, onPress }: { lado: 'izq' | 'der'; onPress: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      accessibilityLabel={lado === 'izq' ? 'Antes' : 'Después'}
+      onPress={onPress}
+      style={({ hovered, pressed }: { hovered?: boolean; pressed: boolean }) => [
+        styles.flecha,
+        lado === 'izq' ? { left: 10 } : { right: 10 },
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        (hovered || pressed) && { borderColor: colors.accent },
+      ]}
+    >
+      <Text style={{ color: colors.text, fontSize: 22, lineHeight: 24 }}>{lado === 'izq' ? '‹' : '›'}</Text>
+    </Pressable>
+  );
+}
+
+function Detalle({
+  sel,
+  actual,
+  titulo,
+  refLabel,
+  onRef,
+  onElegir,
+  onCerrar,
+}: {
+  sel: Sel;
+  actual?: Periodo;
+  titulo: string;
+  refLabel: (ref: string) => string;
+  onRef: (ref: string) => void;
+  onElegir: (s: Sel) => void;
+  onCerrar: () => void;
+}) {
+  const colors = useColors();
+  let kicker: string;
+  let color: string;
+  let fecha: string;
+  let texto: string | undefined;
+  let ref: string | undefined;
+  let relacion: string;
+  let relacionados: Sel[];
+  if (sel.kind === 'periodo') {
+    const p = sel.p;
+    const era = ERAS.find((e) => p.desde >= e.desde && p.desde < e.hasta) ?? ERAS[0];
+    kicker = p.id === actual?.id ? 'Estás leyendo esta época' : era.titulo;
+    color = p.id === actual?.id ? colors.accent : era.color;
+    fecha = fechaPeriodo(p);
+    texto = p.nota;
+    ref = p.ref;
+    relacion = 'Mientras tanto en el mundo';
+    relacionados = (p.sinFecha ? EVENTOS.filter((e) => e.desde < p.hasta).slice(0, 6) : eventosDe(p, 6)).map((e) => ({ kind: 'evento', e }));
+  } else {
+    const e = sel.e;
+    kicker = e.region;
+    color = REGION_COLORS[e.region];
+    fecha = fechaEvento(e);
+    texto = e.texto;
+    ref = e.ref;
+    relacion = 'En la Biblia, por esos años';
+    const periodos = Object.values(PERIODOS).filter((p) => !p.sinFecha);
+    const cruzan = periodos.filter((p) => p.desde <= fin(e) && p.hasta >= e.desde);
+    const cerca = [...periodos].sort((a, b) => dist(a, e) - dist(b, e));
+    relacionados = (cruzan.length ? cruzan.slice(0, 5) : cerca.slice(0, 2)).map((p) => ({ kind: 'periodo', p }));
+  }
+  return (
+    <ScrollView style={{ maxHeight: 320 }} contentContainerStyle={{ padding: 16, paddingTop: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={[styles.rotuloPunto, { backgroundColor: color }]} />
+        <Text style={[styles.kicker, { color, flex: 1 }]}>{kicker.toUpperCase()}</Text>
+        <Pressable accessibilityLabel="Cerrar" onPress={onCerrar} hitSlop={10} style={styles.cerrar}>
+          <Text style={{ color: colors.muted, fontSize: 18 }}>✕</Text>
+        </Pressable>
+      </View>
+      <Text style={[styles.detalleTitulo, { color: colors.text }]}>{titulo}</Text>
+      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>{fecha}</Text>
+      {!!texto && <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, marginTop: 8 }}>{texto}</Text>}
+      {!!ref && (
+        <Pressable onPress={() => onRef(ref)} style={[styles.leer, { backgroundColor: colors.accent }]}>
+          <Text style={{ color: colors.background, fontWeight: '700', fontSize: 14 }}>
+            {sel.kind === 'periodo' ? `Leer ${refLabel(ref)} ›` : `${refLabel(ref)} ›`}
+          </Text>
+        </Pressable>
+      )}
+      {relacionados.length > 0 && (
+        <>
+          <Text style={[styles.relacion, { color: colors.muted }]}>{relacion.toUpperCase()}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
+            {relacionados.map((r) => {
+              const c = r.kind === 'evento' ? REGION_COLORS[r.e.region] : colors.accent;
+              return (
+                <Pressable
+                  key={r.kind === 'evento' ? r.e.titulo : r.p.id}
+                  onPress={() => onElegir(r)}
+                  style={({ pressed }) => [styles.rel, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.7 }]}
+                >
+                  <View style={[styles.rotuloPunto, { backgroundColor: c }]} />
+                  <View>
+                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{r.kind === 'evento' ? r.e.titulo : r.p.titulo}</Text>
+                    <Text style={{ color: colors.muted, fontSize: 11 }}>{r.kind === 'evento' ? `${r.e.region} · ${fechaEvento(r.e)}` : fechaPeriodo(r.p)}</Text>
+                  </View>
+                </Pressable>
               );
             })}
-          </View>
-        ))}
-        <Text style={[styles.source, { color: colors.muted }]}>{FUENTE_HISTORIA}</Text>
-      </ScrollView>
-    </View>
+          </ScrollView>
+        </>
+      )}
+    </ScrollView>
   );
 }
 
-function Rail({ color, filled, last, line }: { color: string; filled?: boolean; last?: boolean; line: string }) {
-  return (
-    <View style={styles.rail}>
-      <View style={[styles.railLine, { backgroundColor: line }, last && { bottom: '60%' }]} />
-      <View
-        style={[
-          filled ? styles.dotBig : styles.dot,
-          { borderColor: color, backgroundColor: filled ? color : 'transparent' },
-        ]}
-      />
-    </View>
-  );
-}
+const dist = (p: Periodo, e: Evento) => (p.hasta < e.desde ? e.desde - p.hasta : p.desde > fin(e) ? p.desde - fin(e) : 0);
 
 const styles = StyleSheet.create({
-  eraBar: { minHeight: 52, borderBottomWidth: StyleSheet.hairlineWidth },
-  eraBarContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  cabecera: { borderBottomWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
+  tituloFila: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 12 },
+  intro: { fontSize: 21, fontFamily: serif, fontWeight: '600' },
+  zoom: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 18, overflow: 'hidden' },
+  zoomBtn: { width: 36, height: 32, alignItems: 'center', justifyContent: 'center' },
+  zoomTxt: { fontSize: 20, lineHeight: 22, fontWeight: '500' },
+  eraBarContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
   eraChip: { borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
-  content: { padding: 16, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
-  intro: { fontSize: 24, fontFamily: serif, fontWeight: '600', marginTop: 4 },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 8, marginBottom: 4 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  eraHeader: { borderLeftWidth: 4, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginTop: 28, marginBottom: 14 },
-  eraKicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  eraTitle: { fontSize: 22, fontFamily: serif, fontWeight: '600', marginTop: 1 },
-  bibleCard: { flex: 1, borderWidth: 1, borderLeftWidth: 4, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 14 },
-  here: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, marginBottom: 2 },
-  refPill: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, marginTop: 6 },
-  note: { borderRadius: 12, padding: 12, marginBottom: 12 },
-  row: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 4 },
-  year: { width: 92, fontSize: 12, paddingTop: 3, textAlign: 'right' },
-  rail: { width: 28, alignItems: 'center' },
-  railLine: { position: 'absolute', top: 0, bottom: 0, width: 2 },
-  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginTop: 6 },
-  dotBig: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, marginTop: 14 },
-  bibleTitle: { fontSize: 17, fontFamily: serif, fontWeight: '600' },
-  source: { fontSize: 12, lineHeight: 17, marginTop: 32, textAlign: 'center' },
+  eje: { height: EJE, borderBottomWidth: StyleSheet.hairlineWidth },
+  marca: { position: 'absolute', top: 0, alignItems: 'flex-start' },
+  marcaTxt: { fontSize: 11, marginTop: 3, marginLeft: -2, fontVariant: ['tabular-nums'] },
+  banda: { position: 'absolute', top: 0, bottom: 0 },
+  columna: { position: 'absolute', top: 0, bottom: 0 },
+  carril: { position: 'absolute', left: 0, right: 0, borderBottomWidth: StyleSheet.hairlineWidth },
+  rotulo: {
+    position: 'absolute',
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    height: 16,
+    borderRadius: 8,
+    zIndex: 3,
+  },
+  rotuloPunto: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  rotuloTxt: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.3 },
+  corriente: {
+    position: 'absolute',
+    height: CORRIENTE - 4,
+    borderLeftWidth: 3,
+    borderRadius: 4,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  corrienteTxt: { fontSize: 12, fontFamily: serif, fontStyle: 'italic', fontWeight: '600', paddingHorizontal: 6 },
+  origenes: {
+    position: 'absolute',
+    height: FILA_BIBLIA * 2 - 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  origenesTxt: { fontSize: 14, fontFamily: serif, fontWeight: '600', paddingHorizontal: 10 },
+  chip: {
+    position: 'absolute',
+    height: FILA_BIBLIA - 8,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    overflow: 'hidden',
+  },
+  chipSpan: { position: 'absolute', left: 0, top: 0, bottom: 0, borderLeftWidth: 3 },
+  chipTxt: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  aqui: { fontSize: 9.5, fontWeight: '800', letterSpacing: 1.1, marginRight: 6 },
+  hecho: {
+    position: 'absolute',
+    height: FILA - 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    paddingRight: 6,
+  },
+  hechoSpan: { position: 'absolute', bottom: 1, height: 3, borderRadius: 2 },
+  hechoPunto: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginLeft: 0, marginRight: 6 },
+  hechoTxt: { fontSize: 12, fontWeight: '500', flexShrink: 1 },
+  pie: { position: 'absolute', left: 16 },
+  pieTxt: { fontSize: 12, lineHeight: 17 },
+  flecha: {
+    position: 'absolute',
+    top: '45%',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  detalle: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    bottom: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  detalleAncho: { left: undefined, right: 24, bottom: 24, width: 420 },
+  kicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  cerrar: { paddingLeft: 12 },
+  detalleTitulo: { fontSize: 20, fontFamily: serif, fontWeight: '600', marginTop: 4 },
+  leer: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, marginTop: 12 },
+  relacion: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.2, marginTop: 16, marginBottom: 8 },
+  rel: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7, maxWidth: 260 },
 });

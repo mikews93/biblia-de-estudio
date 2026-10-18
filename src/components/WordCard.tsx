@@ -1,3 +1,4 @@
+import { useIsFocused } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -18,11 +19,13 @@ type Props = {
 
 export default function WordCard({ word, reference, study, onClose }: Props) {
   const colors = useColors();
+  // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
+  const focused = useIsFocused();
   const [why, setWhy] = useState(false);
   const [greek, translit, es, en, lemma, meaning, strong, morph] = word;
 
   return (
-    <Modal transparent animationType="fade" visible onRequestClose={onClose}>
+    <Modal transparent animationType="fade" visible={focused} onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar">
         <Pressable style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.ref, { color: colors.muted }]}>{reference}</Text>

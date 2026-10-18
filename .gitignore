@@ -45,3 +45,7 @@ public/data/
 pipeline/.cache/
 __pycache__/
 public/comentarios/
+
+# Pruebas
+test-results/
+playwright-report/

@@ -26,8 +26,11 @@
     "react-native-web": "~0.21.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/react": "~19.3.0",
-    "typescript": "~6.0.3"
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
   },
   "scripts": {
     "data": "python3 pipeline/build_data.py",
@@ -37,7 +40,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web && python3 pipeline/seo_pages.py dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "private": true
 }
