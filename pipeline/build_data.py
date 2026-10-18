@@ -272,10 +272,14 @@ def build_hebrew(out):
 VERSIONS = [
     {"id": "rv1909", "name": "Reina-Valera 1909", "abbr": "RV1909", "credit": "Reina-Valera 1909 · dominio público"},
     {"id": "rv1865", "name": "Reina-Valera 1865", "abbr": "RV1865", "credit": "Reina-Valera 1865 · dominio público"},
+    {"id": "rvg", "name": "Reina Valera Gómez", "abbr": "RVG",
+     "credit": "Reina Valera Gómez · © 2004, 2010 Dr. Humberto Gómez Caballero · distribución libre (eBible.org)"},
     {"id": "bes", "name": "La Biblia en Español Sencillo", "abbr": "BES",
      "credit": "La Biblia en Español Sencillo · AudioBiblia.org, Irma Flores · dominio público"},
     {"id": "pdt", "name": "Palabra de Dios para ti", "abbr": "PDT",
      "credit": "Palabra de Dios para ti · © 2020 Asociación Bíblica Latinoamericana · CC BY 4.0"},
+    {"id": "blm", "name": "Santa Biblia libre para el mundo", "abbr": "BLM",
+     "credit": "Santa Biblia libre para el mundo · dominio público"},
 ]
 
 
