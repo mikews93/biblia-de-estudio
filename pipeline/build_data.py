@@ -7,11 +7,15 @@ Fuentes (se descargan, no se guardan en el repositorio):
 - Referencias cruzadas de OpenBible.info (CC BY), vía scrollmapper/bible_databases
 - TAGNT de STEPBible / Tyndale House (CC BY 4.0): griego del NT con morfología y glosas
 - Español Sencillo y Palabra de Dios para ti, ya descargadas en pipeline/versions/ (ver fetch_versions.py)
+- Lugares bíblicos de OpenBible.info Bible Geocoding Data (CC BY 4.0), con el mapa de fondo de pipeline/geo/basemap.json
 """
 
+import difflib
 import gzip
 import json
 import re
+import shutil
+import unicodedata
 import sys
 import urllib.request
 from collections import defaultdict
@@ -27,6 +31,8 @@ SOURCES = {
     "xref.txt": "https://raw.githubusercontent.com/scrollmapper/bible_databases/master/sources/extras/cross_references.txt",
     "tagnt1.txt": STEP + "TAGNT%20Mat-Jhn%20-%20Translators%20Amalgamated%20Greek%20NT%20-%20STEPBible.org%20CC-BY.txt",
     "tagnt2.txt": STEP + "TAGNT%20Act-Rev%20-%20Translators%20Amalgamated%20Greek%20NT%20-%20STEPBible.org%20CC-BY.txt",
+    "ancient.jsonl": "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/"
+                     "7eb18a5ee62f27b9b93bd6689ea272d76dd23b8f/data/ancient.jsonl",
 }
 MAX_XREFS = 12
 
@@ -79,6 +85,7 @@ def build_text(out):
     src = json.loads(fetch("rv1909.json").read_text(encoding="utf-8"))
     assert len(src["books"]) == len(BOOKS)
     chapters, words = {}, {}
+    text = {}
     for meta, book in zip(BOOKS, src["books"]):
         bid = meta[0]
         chapters[bid] = len(book["chapters"])
@@ -87,9 +94,11 @@ def build_text(out):
             verses = [[v["verse"], v["text"].strip()] for v in ch["verses"]]
             write(out, f"text/rv1909/{bid}/{ch['chapter']}.json", verses)
             words[bid].append(sum(len(t.split()) for _, t in verses))
+            for n, t in verses:
+                text[(bid, ch["chapter"], n)] = t
     # Palabras por capítulo: los planes de lectura calculan con esto cuántos minutos lleva cada día
     write(out, "words.json", words)
-    return chapters
+    return chapters, text
 
 
 def convert_ref(ref):
@@ -123,6 +132,7 @@ def build_xrefs(out):
 def build_interlinear(out):
     by_chapter = defaultdict(lambda: defaultdict(list))
     paragraph_ends = defaultdict(set)
+    concordance = defaultdict(list)
     for name in ("tagnt1.txt", "tagnt2.txt"):
         with fetch(name).open(encoding="utf-8-sig") as f:
             for line in f:
@@ -143,10 +153,12 @@ def build_interlinear(out):
                     greek = greek.replace("¶", "")
                 strong, _, morph = cols[3].partition("=")
                 lemma, _, lemma_gloss = cols[4].partition("=")
+                gloss = fix_gloss(cols[8].strip(), strong.strip())
+                concordance[strong.strip()].append([f"{STEP_TO_ID[book]}.{ch}.{v}", greek.strip(), gloss])
                 by_chapter[(STEP_TO_ID[book], ch)][v].append([
                     greek.strip(),
                     translit.rstrip(")").strip(),
-                    fix_gloss(cols[8].strip(), strong.strip()),
+                    gloss,
                     cols[2].strip(),
                     lemma.strip(),
                     lemma_gloss.strip(),
@@ -157,6 +169,10 @@ def build_interlinear(out):
         write(out, f"interlinear/{bid}/{ch}.json", verses)
     for (bid, ch), ends in paragraph_ends.items():
         write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
+    # Concordancia por número de Strong: [referencia, forma griega, glosa]. La usa «¿Por qué esta palabra?».
+    for strong, uses in concordance.items():
+        if re.fullmatch(r"G\d+[A-Za-z]?", strong):
+            write(out, f"concordance/{strong}.json", uses)
 
 
 VERSIONS = [
@@ -179,12 +195,101 @@ def build_versions(out):
     write(out, "versions.json", VERSIONS)
 
 
+# Lugares que no se dibujan en el mapa: partes del templo, puertas de Jerusalén, salas…
+SKIP_TYPES = {"special", "gate", "structure", "room", "hall", "altar", "district in settlement", "people group"}
+# Puntos cardinales y descripciones que OpenBible cataloga como regiones
+SKIP_PLACES = {"East", "North", "South 1", "South 2", "South 3", "West", "Angle", "Second Quarter"}
+# Nombres en español para lugares que la RV1909 nombra con una descripción y no con un nombre propio
+PLACE_NAMES = {
+    "Great Sea": "Mar Grande (Mediterráneo)", "Salt Sea": "Mar Salado (mar Muerto)", "Red Sea 1": "Mar Bermejo (mar Rojo)",
+    "Red Sea 2": "Mar Bermejo", "Red Sea 3": "Mar Bermejo", "Sea of Galilee": "Mar de Galilea",
+    "Mount of Olives": "Monte de las Olivas", "Lebanon": "Líbano", "Negeb": "Neguev (el Mediodía)",
+    "Shephelah": "La Sefela", "Wilderness of Sinai": "Desierto de Sinaí", "Valley of Hinnom": "Valle de Hinnom",
+    "Valley of Rephaim": "Valle de Rephaim", "Valley of Achor": "Valle de Achôr", "Valley of Jezreel": "Valle de Jezreel",
+    "Valley of Salt": "Valle de la Sal", "Valley of Elah": "Valle de Ela", "Beyond the River": "Al otro lado del río",
+    "Ramoth-gilead": "Ramoth de Galaad", "Jordan": "Jordán", "Jordan Valley": "Llanura del Jordán",
+    "Mount Sinai": "Monte Sinaí", "Mount Zion": "Monte de Sión", "Mount Carmel": "Monte Carmelo",
+    "Mount Hermon": "Monte Hermón", "Euphrates": "Éufrates", "Tigris": "Tigris", "Nile": "Nilo",
+    "Babylon 1": "Babilonia", "Babylonia": "Babilonia", "Bethlehem 1": "Belén (Beth-lehem)",
+    "Carchemish": "Carchêmis", "Upper Pool": "Estanque de arriba", "City of David": "Ciudad de David",
+    "Chaldea": "Caldea", "Philistia": "Filistea", "Arabah": "El Arabá (la llanura)", "Alexandria": "Alejandría",
+}
+
+
+def phonetic(s):
+    """Forma aproximada de un nombre para comparar el inglés de OpenBible con la RV1909 (Ephesus ≈ Efeso)."""
+    s = "".join(c for c in unicodedata.normalize("NFD", s.lower()) if unicodedata.category(c) != "Mn")
+    for a, b in [("ph", "f"), ("th", "t"), ("ch", "c"), ("sh", "s"), ("qu", "c"), ("k", "c"), ("z", "s"),
+                 ("y", "i"), ("j", "i"), ("h", "")]:
+        s = s.replace(a, b)
+    s = re.sub(r"(.)\1", r"\1", s)
+    return re.sub(r"(us|um|ians|ian|ites|ite|ia|a|o|e)$", "", s)
+
+
+PROPER = re.compile(r"[A-ZÁÉÍÓÚÑ][a-záéíóúñüâêîôû]+(?:-[a-záéíóúñüâêîôûA-ZÁÉÍÓÚÑ]+)*")
+
+
+def spanish_name(place, refs, text):
+    """El nombre propio de la RV1909 que más se parece al inglés en los versículos donde aparece el lugar."""
+    if place["friendly_id"] in PLACE_NAMES:
+        return PLACE_NAMES[place["friendly_id"]]
+    english = [phonetic(n) for n in (place.get("translation_name_counts") or {place["friendly_id"]: 1})]
+    score = defaultdict(float)
+    for ref in refs[:40]:
+        best = {}
+        for word in PROPER.findall(text.get(ref, "")):
+            r = max(difflib.SequenceMatcher(None, phonetic(word), e).ratio() for e in english)
+            if r >= 0.7:
+                best[word] = max(best.get(word, 0), r)
+        for word, r in best.items():
+            score[word] += r
+    if score:
+        return max(score, key=score.get)
+    return re.sub(r" \d+$", "", place["friendly_id"])  # sin equivalente claro: el nombre de OpenBible
+
+
+def build_places(out, text):
+    """Lugares de cada capítulo con su ubicación más probable y las alternativas que proponen los especialistas."""
+    by_chapter = defaultdict(dict)
+    with fetch("ancient.jsonl").open(encoding="utf-8") as f:
+        for line in f:
+            place = json.loads(line)
+            if set(place["types"]) & SKIP_TYPES or place["friendly_id"] in SKIP_PLACES:
+                continue
+            refs = []
+            for v in place.get("verses", []):
+                book, ch, n = v["osis"].split(".")
+                refs.append((XREF_TO_ID[book], int(ch), int(n)))
+            # Identificaciones ordenadas por la confianza actual de los especialistas (0-1000)
+            options = []
+            for ident in place["identifications"]:
+                score = ident["score"]["time_total"]
+                res = next((r for r in ident.get("resolutions", []) if r.get("lonlat")), None)
+                if res and score >= 150 and len(options) < 3:
+                    lon, lat = map(float, res["lonlat"].split(","))
+                    options.append({"lon": round(lon, 4), "lat": round(lat, 4), "conf": score})
+            if not refs or not options:
+                continue
+            name = spanish_name(place, refs, text)
+            for bid, ch, n in refs:
+                entry = by_chapter[(bid, ch)].setdefault(place["id"], {
+                    "id": place["id"], "name": name, "en": place["friendly_id"], "type": place["types"][0],
+                    **options[0], "alt": options[1:], "verses": [],
+                })
+                if n not in entry["verses"]:
+                    entry["verses"].append(n)
+    for (bid, ch), places in by_chapter.items():
+        write(out, f"places/{bid}/{ch}.json", sorted(places.values(), key=lambda p: (min(p["verses"]), p["name"])))
+    shutil.copy(ROOT / "geo" / "basemap.json", out / "basemap.json")
+
+
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "public" / "data"
-    chapters = build_text(out)
+    chapters, text = build_text(out)
     build_xrefs(out)
     build_interlinear(out)
     build_versions(out)
+    build_places(out, text)
     books = [
         {"id": b[0], "name": b[1], "abbr": b[2], "chapters": chapters[b[0]],
          "testament": "NT" if b[4] else "AT", "interlinear": bool(b[4]), "ewSlug": b[5]}

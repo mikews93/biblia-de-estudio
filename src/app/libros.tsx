@@ -58,6 +58,17 @@ export default function BookPicker() {
         autoCorrect={false}
         style={[styles.search, { backgroundColor: colors.accentSoft, color: colors.text }]}
       />
+      <Pressable
+        onPress={() =>
+          navigate(() => router.push((query.trim() && !books.some(matches) ? `/buscar?q=${encodeURIComponent(query.trim())}` : '/buscar') as never), 'forward')
+        }
+        style={[styles.idea, { borderColor: colors.border }]}
+        accessibilityRole="link"
+      >
+        <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 15 }}>
+          {query.trim() && !books.some(matches) ? `✦ Buscar «${query.trim()}» por idea ›` : '✦ Buscar versículos por idea ›'}
+        </Text>
+      </Pressable>
       {section('AT', 'Antiguo Testamento')}
       {section('NT', 'Nuevo Testamento')}
     </ScrollView>
@@ -67,6 +78,7 @@ export default function BookPicker() {
 const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 48, maxWidth: 720, width: '100%', alignSelf: 'center' },
   search: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16 },
+  idea: { paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   section: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginTop: 16, marginBottom: 4 },
   book: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
   bookName: { fontSize: 18 },

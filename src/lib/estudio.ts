@@ -12,7 +12,7 @@ type Event =
   | { type: 'done' }
   | { type: 'error'; message: string };
 
-type Request = { book: string; chapter: number; verse?: number; messages: Turn[] };
+type Request = { book: string; chapter: number; verse?: number; word?: number; messages: Turn[] };
 
 /** Llama a onUpdate con el texto y las fuentes acumulados cada vez que llega algo nuevo. */
 export async function askStudy(

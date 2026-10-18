@@ -62,3 +62,19 @@ export const getParagraphEnds = (book: string, chapter: number) =>
 
 /** Palabras por capítulo de la RV1909 (para calcular minutos de lectura). */
 export const getWords = () => load<Record<string, number[]>>('words.json', true);
+
+// Lugares de un capítulo (OpenBible.info Bible Geocoding Data, CC BY 4.0). conf: confianza de 0 a 1000.
+export type PlaceSpot = { lon: number; lat: number; conf: number };
+export type Place = PlaceSpot & { id: string; name: string; en: string; type: string; alt: PlaceSpot[]; verses: number[] };
+
+/** Mapa de fondo: costas, lagos y ríos como listas de [lon, lat]. */
+export type Basemap = {
+  bbox: [number, number, number, number];
+  land: [number, number][][];
+  water: { name: string; points: [number, number][] }[];
+  rivers: { name: string; points: [number, number][] }[];
+};
+
+export const getPlaces = (book: string, chapter: number) =>
+  load<Place[]>(`places/${book}/${chapter}.json`, true).then((r) => (Array.isArray(r) ? r : []));
+export const getBasemap = () => load<Basemap>('basemap.json');

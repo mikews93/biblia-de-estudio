@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAccount } from '@/lib/comunidad';
-import { Book, getBooks } from '@/lib/data';
+import { Book, getBooks, getPlaces } from '@/lib/data';
 import { plansWaitingFor, todayKey, usePlans } from '@/lib/planes';
 import { WEEKLY_GOAL, markChapterRead, useProgress, weekDays } from '@/lib/progress';
+import { BOOK_SLUGS, chapterHref } from '@/lib/routes';
 import { Colors, serif } from '@/lib/theme';
-import { chapterHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
 type Props = { book: Book; chapter: number; next: string | null; colors: Colors; onNext: () => void };
@@ -31,6 +31,11 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
   const week = weekDays(progress.days);
   const daysThisWeek = week.filter((d) => d.read).length;
   const { grupos } = useAccount();
+  const [places, setPlaces] = useState(0);
+
+  useEffect(() => {
+    getPlaces(book.id, chapter).then((p) => setPlaces(p.length));
+  }, [book, chapter]);
 
   return (
     <View style={styles.wrap}>
@@ -113,6 +118,17 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
           accessibilityRole="button"
         >
           <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 15 }}>Terminé este capítulo</Text>
+        </Pressable>
+      )}
+
+      {places > 0 && (
+        <Pressable
+          onPress={() => navigate(() => router.push(`/mapa/${BOOK_SLUGS[book.id] ?? book.id}/${chapter}` as never), 'forward')}
+          accessibilityRole="link"
+        >
+          <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 15 }}>
+            Ver en el mapa {places === 1 ? 'el lugar' : `los ${places} lugares`} de este capítulo ›
+          </Text>
         </Pressable>
       )}
 

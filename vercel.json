@@ -14,6 +14,10 @@
     },
     "api/audio.ts": {
       "maxDuration": 30
+    },
+    "api/buscar.ts": {
+      "includeFiles": "dist/data/**",
+      "maxDuration": 60
     }
   },
   "rewrites": [
