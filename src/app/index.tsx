@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import MicIcon from '@/components/MicIcon';
+import SearchIcon from '@/components/SearchIcon';
 import PlanCard from '@/components/PlanCard';
 import VerseImage from '@/components/VerseImage';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
@@ -75,7 +76,7 @@ export default function Today() {
             accessibilityRole="search"
             accessibilityLabel="Buscar una cita, unas palabras o una idea"
           >
-            <Text style={{ color: colors.muted, fontSize: 18 }}>⌕</Text>
+            <SearchIcon color={colors.muted} size={18} />
             <Text style={{ color: colors.muted, fontSize: 15 }} numberOfLines={1}>
               Buscar una cita o un versículo
             </Text>

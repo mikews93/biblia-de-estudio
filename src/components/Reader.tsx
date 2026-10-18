@@ -31,6 +31,7 @@ import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } 
 import { useChapterNotes } from '@/lib/notas';
 import { bookIdFromParam, chapterHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
+import SearchIcon from '@/components/SearchIcon';
 
 export default function Reader() {
   const params = useLocalSearchParams<{ book: string; chapter: string; verse?: string; v?: string }>();
@@ -151,7 +152,7 @@ export default function Reader() {
           headerRight: () => (
             <View style={styles.headerRight}>
               <Pressable onPress={() => navigate(() => router.push('/buscar'), 'forward')} accessibilityRole="search" accessibilityLabel="Buscar">
-                <Text style={{ color: colors.text, fontSize: 22, lineHeight: 26 }}>⌕</Text>
+                <SearchIcon color={colors.text} size={21} />
               </Pressable>
               <Pressable
                 onPress={() => update({ study: !settings.study })}
