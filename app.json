@@ -24,7 +24,12 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-sharing",
+      [
+        "expo-audio",
+        { "microphonePermission": false, "recordAudioAndroid": false }
+      ]
     ],
     "scheme": "bibliadeestudio"
   }

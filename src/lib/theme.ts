@@ -48,9 +48,10 @@ export type Settings = {
   font: 'serif' | 'sans';
   layout: 'parrafo' | 'versiculo';
   study: boolean;
+  version: string;
 };
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false };
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909' };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };

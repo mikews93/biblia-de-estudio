@@ -40,7 +40,12 @@ yarn-error.*
 /ios
 /android
 
-# datos generados por pipeline/build_data.py
+# datos generados por pipeline/build_data.py y pipeline/build_comentarios.py
 public/data/
 pipeline/.cache/
 __pycache__/
+public/comentarios/
+
+# Pruebas
+test-results/
+playwright-report/
