@@ -18,6 +18,7 @@ import base64
 import gzip
 import hashlib
 import json
+import math
 import os
 import subprocess
 import sys
@@ -47,6 +48,7 @@ SCENE_GAP = 2.0
 AMBIENT_DB = -24
 FX_DB = -10
 MUSIC_DB = -15
+PAD_DB = -27
 # Acentos de Hispanoamérica primero: la app la leen sobre todo hispanohablantes de América.
 LATIN = ('latin', 'mexic', 'colombia', 'argentin', 'venezuel', 'peru', 'chile', 'caribbean', 'central american')
 
@@ -311,6 +313,55 @@ def pick_voices(guion: dict, guion_id: str, informe: dict) -> dict[str, str]:
     return chosen
 
 
+# Las voces más usadas de la biblioteca son las que suenan en miles de videos: en las audiciones se saltan.
+TOO_COMMON = 15
+
+
+def audition(guion_id: str, role: str, count: int = 8) -> None:
+    """Candidatas para una voz, con su muestra pública de ElevenLabs. No graba nada ni gasta créditos."""
+    guion = json.loads((HERE / f'{guion_id}.json').read_text())
+    cfg = guion['voces'][role]
+    want = {k: v for k, v in cfg.get('buscar', {}).items() if k != 'use_cases'}
+    current = cfg.get('voice_id')
+    seen: dict[str, dict] = {}
+    for search in (None, 'narrador', 'documental', 'audiolibro', 'cálida', 'profunda', 'pausada'):
+        res = call('GET', 'shared-voices', query={'language': 'es', 'page_size': 100, 'sort': 'usage_character_count_1y', 'search': search, **want})
+        voices = res.get('voices', [])
+        if search is None:
+            voices = voices[TOO_COMMON:]
+        for v in voices:
+            if v['voice_id'] != current and v.get('preview_url'):
+                seen.setdefault(v['voice_id'], v)
+
+    def score(v: dict) -> tuple:
+        use = (v.get('use_case') or '').lower()
+        accent = (v.get('accent') or '').lower()
+        return (0 if use in ('narrative_story', 'informative_educational') else 1, 0 if any(a in accent for a in LATIN) else 1,
+                -(v.get('cloned_by_count') or 0))
+
+    picked, accents = [], {}
+    for v in sorted(seen.values(), key=score):
+        accent = (v.get('accent') or '').lower()
+        # Variedad: como mucho tres del mismo acento.
+        if accents.get(accent, 0) >= 3:
+            continue
+        accents[accent] = accents.get(accent, 0) + 1
+        picked.append({
+            'voice_id': v['voice_id'],
+            'nombre': v.get('name'),
+            'acento': v.get('accent'),
+            'edad': v.get('age'),
+            'uso': v.get('use_case'),
+            'descripcion': (v.get('description') or '')[:200],
+            'muestra': v.get('preview_url'),
+        })
+        if len(picked) == count:
+            break
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / f'audicion-{guion_id}-{role}.json').write_text(json.dumps(picked, ensure_ascii=False, indent=2))
+    notice('notice', f'Audición de {role}:\n' + json.dumps(picked, ensure_ascii=False, indent=1))
+
+
 # ---------------------------------------------------------------- mezcla
 
 def duration(path: Path) -> float:
@@ -333,6 +384,24 @@ def ambient_bed(src: Path, seconds: float, dst: Path) -> Path:
         'ffmpeg', '-v', 'error', '-y', '-stream_loop', '-1', '-i', str(src), '-t', f'{seconds:.3f}',
         '-af', f'afade=t=in:d={fade:.2f},afade=t=out:st={seconds - fade:.3f}:d={fade:.2f}', '-ar', '44100', '-ac', '2', str(dst),
     ], check=True)
+    return dst
+
+
+def pad_bed(src: Path, seconds: float, dst: Path) -> Path:
+    """Fondo musical continuo: la misma pieza encadenada con fundidos largos, para que no se note dónde se repite."""
+    length = duration(src)
+    cross = min(6.0, length / 4)
+    copies = max(1, math.ceil((seconds - cross) / (length - cross)))
+    args = ['ffmpeg', '-v', 'error', '-y']
+    for _ in range(copies):
+        args += ['-i', str(src)]
+    chain, last = [], '[0:a]'
+    for i in range(1, copies):
+        chain.append(f'{last}[{i}:a]acrossfade=d={cross:.2f}:c1=qsin:c2=qsin[x{i}]')
+        last = f'[x{i}]'
+    chain.append(f'{last}atrim=0:{seconds:.3f},afade=t=in:d=6,afade=t=out:st={max(0, seconds - 8):.3f}:d=8[out]')
+    args += ['-filter_complex', ';'.join(chain), '-map', '[out]', '-ar', '44100', '-ac', '2', str(dst)]
+    subprocess.run(args, check=True)
     return dst
 
 
@@ -531,6 +600,12 @@ def build(guion_id: str, review: bool) -> None:
         t += SCENE_GAP
 
     total = t
+    # Fondo de pads suaves debajo de todo el capítulo (Mike, 18-10), más bajo que los ambientes.
+    fondo = guion.get('fondo')
+    if fondo:
+        src = music(fondo['prompt'], fondo['ms'])
+        if src:
+            clips.append((0.0, pad_bed(src, total, piece('fondo')), fondo.get('db', PAD_DB)))
     final = OUT / f'{guion_id}.mp3'
     mix(clips, total, final)
     seconds = round(duration(final), 1)
@@ -552,7 +627,11 @@ def build(guion_id: str, review: bool) -> None:
 
 if __name__ == '__main__':
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    role = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--audicion=')), None)
     try:
+        if role:
+            audition(args[0] if args else 'mrk-1', role)
+            sys.exit(0)
         build(args[0] if args else 'mrk-1', '--revisar' in sys.argv)
     except RuntimeError as err:
         notice('error', f'La grabación se detuvo: {err}\nPiezas nuevas cobradas: {json.dumps(spent, ensure_ascii=False)}')

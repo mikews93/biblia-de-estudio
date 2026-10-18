@@ -19,6 +19,9 @@ on:
       motor:
         description: "auto (ElevenLabs si hay créditos, si no Cloudflare), elevenlabs o cloudflare"
         default: auto
+      audicion:
+        description: "Solo buscar candidatas para una voz (por ejemplo NARRADOR), sin grabar"
+        default: ''
 
 permissions:
   contents: write
@@ -60,7 +63,11 @@ jobs:
           if [ -z "$guiones" ]; then
             guiones=$(ls pipeline/audio_dramatizado/*.json | xargs -n1 basename | sed 's/\.json$//')
           fi
-          for g in $guiones; do python3 pipeline/audio_dramatizado/grabar.py "$g"; done
+          audicion="${{ github.event.inputs.audicion }}"
+          for g in $guiones; do
+            if [ -n "$audicion" ]; then python3 pipeline/audio_dramatizado/grabar.py "$g" "--audicion=$audicion"
+            else python3 pipeline/audio_dramatizado/grabar.py "$g"; fi
+          done
       - name: Guardar las piezas grabadas
         if: always()
         uses: actions/cache/save@v4

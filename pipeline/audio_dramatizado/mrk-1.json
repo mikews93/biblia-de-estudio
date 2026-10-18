@@ -10,6 +10,7 @@
   "credito": "Audio dramatizado: Marcos 1, Biblia en Español Sencillo (CC BY 4.0, ℗ AudioBiblia.org), con correcciones menores. Voces, efectos y música generados con ElevenLabs. Guion basado en Matthew Henry, Jamieson-Fausset-Brown y Josefo.",
   "modelo": "eleven_v4",
   "idioma": "es",
+  "fondo": { "prompt": "very soft warm ambient pads, slow evolving sustained chords, gentle and reverent, no percussion, no melody, no rhythm, seamless background bed", "ms": 150000, "db": -27, "fuente": "Mike (18-10): pads suaves de fondo en todo el capítulo" },
   "voces": {
     "NARRADOR": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": "dlGxemPxFMTY7iXagmOj" },
     "JUAN": { "ficha": "personajes.md#juan-el-bautista", "buscar": { "gender": "male", "age": "young", "use_cases": "characters_animation" }, "voice_id": "WOY6pnQ1WCg0mrOZ54lM" },
