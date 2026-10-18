@@ -19,7 +19,7 @@ const TABS: Tab[] = [
 const PLANES = '/grupos';
 
 function current(path: string): Tab['key'] {
-  if (path === '/') return 'hoy';
+  if (path === '/' || path === '/notas') return 'hoy';
   if (/^\/(planes|grupos|unirse)(\/|$)/.test(path)) return 'planes';
   if (/^\/(comunidades|amigo|cuenta)(\/|$)/.test(path)) return 'comunidad';
   return 'leer';
@@ -33,7 +33,7 @@ export default function TabBar() {
   const active = current(path);
 
   const go = async (key: Tab['key']) => {
-    if (key === active && key !== 'leer') return;
+    if (key === active && key !== 'leer' && (key !== 'hoy' || path === '/')) return;
     if (key === 'hoy') navigate(() => router.dismissTo('/'), 'back');
     if (key === 'planes') navigate(() => router.push(PLANES as never), 'fade');
     if (key === 'comunidad') navigate(() => router.push('/comunidades' as never), 'fade');

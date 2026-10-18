@@ -65,3 +65,17 @@ export function useChapterHighlights(book: string, chapter: number): Record<numb
 export function highlightOf(book: string, chapter: number, verse: number): HighlightColor | null {
   return state[key(book, chapter, verse)]?.color ?? null;
 }
+
+/** Todos los resaltados, para la lista «Mis resaltados y notas». */
+export function useAllHighlights(): Store {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const l = () => setTick((t) => t + 1);
+    listeners.add(l);
+    load();
+    return () => {
+      listeners.delete(l);
+    };
+  }, []);
+  return state;
+}
