@@ -17,7 +17,7 @@ const TABS: Tab[] = [
 ];
 
 function current(path: string): Tab['key'] {
-  if (path === '/' || path === '/notas') return 'hoy';
+  if (path === '/' || path === '/notas' || path === '/repaso') return 'hoy';
   if (/^\/(planes|grupos|unirse)(\/|$)/.test(path)) return 'planes';
   if (/^\/(comunidades|amigo|cuenta)(\/|$)/.test(path)) return 'comunidad';
   if (path.startsWith('/taller')) return 'taller';

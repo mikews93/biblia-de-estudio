@@ -29,7 +29,8 @@ import { playChapter } from '@/lib/audio';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
 import { useChapterNotes } from '@/lib/notas';
-import { bookIdFromParam, chapterHref } from '@/lib/routes';
+import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
+import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
 import { navigate } from '@/lib/transition';
 
 export default function Reader() {
@@ -128,6 +129,32 @@ export default function Reader() {
   };
 
   const notes = useChapterNotes(bookId, chapter);
+  const deck = useCards();
+  const memorizing = selected !== null && !!deck[verseCardId(bookId, chapter, selected)];
+  const memorize = () => {
+    if (selected === null || !book) return;
+    if (memorizing) {
+      navigate(() => router.push('/repaso'), 'forward');
+      return;
+    }
+    const reference = `${book.name} ${chapter}:${selected}`;
+    const words = selectedText.split(/\s+/);
+    addCards([
+      {
+        id: verseCardId(bookId, chapter, selected),
+        kind: 'versiculo',
+        book: bookId,
+        chapter,
+        verse: selected,
+        label: reference,
+        front: words.length > 7 ? `${reference}\n«${words.slice(0, 4).join(' ')}…»` : reference,
+        back: selectedText,
+      },
+    ]);
+  };
+  // Herramientas del capítulo inspiradas en NotebookLM
+  const tool = (path: 'podcast' | 'mapa-mental' | 'tarjetas') =>
+    navigate(() => router.push(`/${path}/${BOOK_SLUGS[bookId] ?? bookId}/${chapter}` as never), 'forward');
   const noteMark = (n: number) =>
     notes[n] ? <Text style={{ fontSize: size * 0.7, color: colors.accent }} accessibilityLabel="Tiene nota">{' ✎'}</Text> : null;
 
@@ -218,6 +245,25 @@ export default function Reader() {
               >
                 <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>▶ Escuchar</Text>
               </Pressable>
+            </View>
+            <View style={styles.tools}>
+              {(
+                [
+                  ['podcast', '🎧 Pódcast', 'Resumen del capítulo en audio, como una conversación'],
+                  ['mapa-mental', '◉ Mapa mental', 'Mapa mental del capítulo'],
+                  ['tarjetas', '▤ Tarjetas', 'Tarjetas de repaso del capítulo'],
+                ] as const
+              ).map(([path, label, hint]) => (
+                <Pressable
+                  key={path}
+                  onPress={() => tool(path)}
+                  style={({ pressed }) => [styles.toolPill, { borderColor: colors.border }, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel={hint}
+                >
+                  <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 12.5 }}>{label}</Text>
+                </Pressable>
+              ))}
             </View>
             {settings.study && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
@@ -357,7 +403,8 @@ export default function Reader() {
               <Text style={{ color: colors.muted, fontSize: 18 }}>✕</Text>
             </Pressable>
           </View>
-          <View style={styles.actions}>
+          {/* Con ocho acciones no caben los nombres en un teléfono: la fila se desliza */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.actionsScroll} contentContainerStyle={styles.actions}>
             <Action label="Estudiar" icon="✦" colors={colors} onPress={() => setStudy({ verse: selected })} />
             {book.interlinear && (
               <Action label="Original" icon="α" colors={colors} onPress={() => setPanelTab('interlineal')} />
@@ -372,6 +419,7 @@ export default function Reader() {
             <Action label="Comentario" icon="¶" colors={colors} onPress={() => setPanelTab('comentario')} />
             <Action label={notes[selected] ? 'Mi nota' : 'Nota'} icon="✎" colors={colors} onPress={() => setWriting(true)} />
             <Action label="Compartir" icon="⇪" colors={colors} onPress={() => setSharing(true)} />
+            <Action label={memorizing ? 'En repaso' : 'Memorizar'} icon={memorizing ? '✓' : '▤'} colors={colors} onPress={memorize} />
             <Action
               label="Preparar"
               icon="✎"
@@ -380,7 +428,7 @@ export default function Reader() {
                 navigate(() => router.push(`/taller?libro=${book.id}&capitulo=${chapter}&versiculo=${selected}`), 'forward')
               }
             />
-          </View>
+          </ScrollView>
         </Appear>
       ) : (
         verses && (
@@ -488,6 +536,8 @@ const styles = StyleSheet.create({
   chapterNumber: { fontSize: 64, lineHeight: 72, marginTop: 4 },
   headPills: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
   pill: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 6 },
+  tools: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 8 },
+  toolPill: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 10, paddingVertical: 4 },
   studyHint: { fontSize: 13, textAlign: 'center', marginTop: 8, maxWidth: 360 },
   verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
   credit: { fontSize: 12, textAlign: 'center', marginTop: 24 },
@@ -529,8 +579,9 @@ const styles = StyleSheet.create({
   actionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   swatches: { flexDirection: 'row', gap: 10, marginLeft: 'auto', marginRight: 8 },
   swatch: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  actions: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 12, marginHorizontal: -8 },
-  action: { alignItems: 'center', flex: 1 },
+  actionsScroll: { marginTop: 12, marginHorizontal: -14 },
+  actions: { flexDirection: 'row', flexGrow: 1, justifyContent: 'space-around', paddingHorizontal: 6 },
+  action: { alignItems: 'center', width: 64 },
   badge: { position: 'absolute', top: -2, right: -6, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
   actionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 });

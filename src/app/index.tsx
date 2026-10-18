@@ -10,6 +10,7 @@ import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { chapterHref, verseHref } from '@/lib/routes';
+import { dueCards, useCards } from '@/lib/tarjetas';
 import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -20,6 +21,7 @@ export default function Today() {
   const progress = useProgress();
   const plans = usePlans();
   const words = useWords();
+  const due = dueCards(useCards()).length;
   const [books, setBooks] = useState<Book[]>([]);
   const [last, setLast] = useState<{ book: string; chapter: number } | null>(null);
   const [verseText, setVerseText] = useState<string | null>(null);
@@ -106,6 +108,22 @@ export default function Today() {
           <PlanCard plan={p} books={books} words={words} colors={colors} />
         </Appear>
       ))}
+
+      {due > 0 && (
+        <Appear delay={105}>
+          <Pressable
+            onPress={() => navigate(() => router.push('/repaso' as never), 'forward')}
+            style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.kicker, { color: colors.accent }]}>Repaso de hoy</Text>
+            <Text style={{ color: colors.text, fontSize: 17, marginTop: 6 }}>
+              {due} {due === 1 ? 'tarjeta te espera' : 'tarjetas te esperan'} para no olvidar lo que estudiaste.
+            </Text>
+            <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 10 }}>Repasar →</Text>
+          </Pressable>
+        </Appear>
+      )}
 
       {upcoming && (
         <Appear delay={110}>

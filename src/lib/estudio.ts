@@ -22,7 +22,18 @@ export type TallerRequest = {
   borrador?: string;
 };
 
-type Request = { book: string; chapter: number; verse?: number; word?: number; messages: Turn[]; taller?: TallerRequest };
+/** Herramientas de un capítulo inspiradas en NotebookLM: resumen en audio, tarjetas de repaso y mapa mental. */
+export type Herramienta = 'podcast' | 'tarjetas' | 'mapa';
+
+type Request = {
+  book: string;
+  chapter: number;
+  verse?: number;
+  word?: number;
+  messages: Turn[];
+  taller?: TallerRequest;
+  herramienta?: Herramienta;
+};
 
 /** Llama a onUpdate con el texto y las fuentes acumulados cada vez que llega algo nuevo. */
 export async function askStudy(

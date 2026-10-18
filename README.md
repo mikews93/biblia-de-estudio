@@ -45,6 +45,14 @@ Variables en Vercel:
 
 En el teléfono, `EXPO_PUBLIC_API_URL` apunta a la web publicada.
 
+### Herramientas del capítulo (ideas de NotebookLM)
+
+Debajo de los botones de la cabecera del capítulo, con las mismas fuentes y citas que el estudio (`herramienta` en `api/estudiar.ts`). Lo que prepara la IA se guarda en el dispositivo, con la opción de pedir otra versión.
+
+- **Pódcast** (`/podcast/juan/3`): Ana y Tomás conversan sobre el capítulo durante 5 a 7 minutos. Lo lee la voz del dispositivo (`expo-speech`), así que no hay servidor de voz ni coste por minuto; la transcripción sigue la voz y cada intervención lleva sus citas.
+- **Mapa mental** (`/mapa-mental/juan/3`): idea central, partes del capítulo e ideas con su versículo. Se dibuja en SVG (a los dos lados en pantallas anchas, en columna en el teléfono) y también se puede ver como lista.
+- **Tarjetas** (`/tarjetas/juan/3`): la IA propone preguntas de repaso y la persona elige cuáles guardar. «Memorizar» en la barra del versículo crea una tarjeta del versículo. `/repaso` las muestra con repetición espaciada (una versión de SM-2) y Hoy avisa cuando hay tarjetas pendientes. Todo queda en el dispositivo.
+
 ## Versiones
 
 Además de la RV1909 hay dos versiones modernas libres: La Biblia en Español Sencillo (dominio público) y Palabra de Dios para ti (© 2020 Asociación Bíblica Latinoamericana, CC BY 4.0). `pipeline/fetch_versions.py` las descarga una vez y las guarda en `pipeline/versions/`, así la compilación no depende de miles de descargas. El griego, las referencias y el estudio con IA siguen la numeración de la RV1909.

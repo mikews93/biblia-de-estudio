@@ -146,6 +146,11 @@ export async function playChapter(book: string, chapter: number, title: string, 
   }
 }
 
+/** Pausa la lectura dramatizada (por ejemplo, al empezar el resumen en audio). */
+export function pauseAudio() {
+  if (player?.playing) player.pause();
+}
+
 export function toggle() {
   const p = getPlayer();
   if (!state.audio) return;
