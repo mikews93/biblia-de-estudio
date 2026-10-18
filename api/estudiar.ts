@@ -1,4 +1,5 @@
 // Función de Vercel: genera un estudio de un capítulo o versículo y responde preguntas sobre él.
+// Con «word» (posición de una palabra griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
 // Solo usa las fuentes de la app (RV1909, griego de STEPBible y referencias de OpenBible.info),
 // que se pasan a Claude como documentos con citas activadas. La respuesta se envía como NDJSON:
 //   {"type":"text","text":"…"}  fragmento de texto en markdown; las citas llegan como ⟦n⟧
@@ -16,12 +17,15 @@ const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
 const MAX_TURNS = 12;
 const MAX_QUESTION = 600;
+const MAX_USES = 24;
 
 type Book = { id: string; name: string; chapters: number; interlinear: boolean };
 type Verse = [number, string];
 type Word = [string, string, string, string, string, string, string, string];
 type Turn = { role: 'user' | 'assistant'; text: string };
-type Body = { book?: string; chapter?: number; verse?: number; messages?: Turn[] };
+type Body = { book?: string; chapter?: number; verse?: number; word?: number; messages?: Turn[] };
+// [referencia, forma griega, glosa]: concordancia por número de Strong generada por el pipeline
+type Use = [string, string, string];
 // Cada bloque de un documento lleva su etiqueta y, si se puede abrir en la app, su referencia.
 type BlockMeta = { label: string; ref?: string };
 
@@ -70,7 +74,21 @@ async function refText(ref: string): Promise<string> {
     .join(' ');
 }
 
-async function buildSources(book: Book, chapter: number, verse: number | undefined, books: Book[]) {
+/** Otras apariciones de la palabra en el NT, repartidas por todo el texto para que no salgan solo del mismo libro. */
+async function wordUses(word: Word, here: string, books: Book[]) {
+  const uses = (await load<Use[]>(`concordance/${word[6]}.json`, [])).filter(([ref]) => ref !== here);
+  const step = Math.max(1, uses.length / MAX_USES);
+  const picked = Array.from({ length: Math.min(MAX_USES, uses.length) }, (_, i) => uses[Math.floor(i * step)]);
+  const blocks = await Promise.all(
+    picked.map(async ([ref, form, gloss]) => {
+      const label = formatRef(ref, books);
+      return { text: `${label}: ${form} «${gloss}». RV1909: ${await refText(ref)}`, meta: { label, ref } };
+    }),
+  );
+  return { total: uses.length + 1, blocks };
+}
+
+async function buildSources(book: Book, chapter: number, verse: number | undefined, books: Book[], word?: number) {
   const [verses, interlinear, xrefs] = await Promise.all([
     load<Verse[]>(`text/rv1909/${book.id}/${chapter}.json`),
     load<Record<string, Word[]>>(`interlinear/${book.id}/${chapter}.json`, {}),
@@ -122,7 +140,31 @@ async function buildSources(book: Book, chapter: number, verse: number | undefin
       : `Referencias cruzadas de ${book.name} ${chapter} (OpenBible.info)`;
     docs.push(doc(title, refBlocks));
   }
-  return docs;
+
+  let focus: { word: Word; total: number } | undefined;
+  if (verse && word !== undefined) {
+    const w = interlinear[verse]?.[word];
+    if (!w) throw new Error('Esa palabra no existe en el versículo');
+    const uses = await wordUses(w, `${book.id}.${chapter}.${verse}`, books);
+    if (uses.blocks.length) {
+      docs.push(doc(`Otros pasajes del Nuevo Testamento con ${w[4]} (${w[6]}), con su glosa y la RV1909`, uses.blocks));
+    }
+    focus = { word: w, total: uses.total };
+  }
+  return { docs, focus };
+}
+
+function wordTask(book: Book, chapter: number, verse: number, focus: { word: Word; total: number }) {
+  const [greek, translit, es, , lemma, lemmaGloss, strong] = focus.word;
+  return `La persona tocó la palabra griega ${greek} (${translit}, glosa «${es}») en ${book.name} ${chapter}:${verse}. Su forma de diccionario es ${lemma} «${lemmaGloss}» (${strong}) y aparece ${focus.total} ${
+    focus.total === 1 ? 'vez' : 'veces'
+  } en el Nuevo Testamento. Explica «¿Por qué esta palabra?» con estas secciones:
+## Qué dice el griego: el significado de la palabra y lo que aporta su forma gramatical aquí.
+## Cómo la traduce la RV1909: qué palabra española usa en este versículo y qué matiz se gana o se pierde frente al griego.
+## Dónde más aparece: 3 o 4 pasajes de la lista de otros pasajes que muestren cómo se usa, y qué enseña cada uno.
+## Para pensar: una pregunta breve para la persona.
+
+Si los especialistas o las tradiciones cristianas entienden la palabra de maneras distintas en este pasaje, menciónalo sin tomar partido. Extensión: 250 a 400 palabras. Empieza directamente por la primera sección.`;
 }
 
 function studyTask(book: Book, chapter: number, verse: number | undefined, hasGreek: boolean) {
@@ -165,6 +207,10 @@ export async function POST(request: Request) {
     return badRequest('Libro o capítulo no válido');
   }
   if (verse !== undefined && (!Number.isInteger(verse) || verse < 1)) return badRequest('Versículo no válido');
+  const word = body.word === undefined ? undefined : Number(body.word);
+  if (word !== undefined && (verse === undefined || !book.interlinear || !Number.isInteger(word) || word < 0)) {
+    return badRequest('Palabra no válida');
+  }
 
   const turns = body.messages ?? [];
   if (
@@ -178,8 +224,9 @@ export async function POST(request: Request) {
   }
 
   let docs;
+  let focus;
   try {
-    docs = await buildSources(book, chapter, verse, books);
+    ({ docs, focus } = await buildSources(book, chapter, verse, books, word));
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
@@ -191,7 +238,13 @@ export async function POST(request: Request) {
       role: 'user',
       content: [
         ...docs.map((d) => d.param),
-        { type: 'text', text: studyTask(book, chapter, verse, docs.length > 1 && book.interlinear) },
+        {
+          type: 'text',
+          text:
+            focus && verse
+              ? wordTask(book, chapter, verse, focus)
+              : studyTask(book, chapter, verse, docs.length > 1 && book.interlinear),
+        },
       ],
     },
     ...turns.map((t) => ({ role: t.role, content: t.text })),

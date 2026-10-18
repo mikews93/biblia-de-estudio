@@ -17,6 +17,8 @@ import {
 } from '@/lib/data';
 import GroupNotes from '@/components/comunidad/GroupNotes';
 import PlaceMap from '@/components/PlaceMap';
+import StudyPanel from '@/components/StudyPanel';
+import { WhyButton } from '@/components/WordCard';
 import { describeMorph } from '@/lib/morph';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
@@ -94,6 +96,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
 function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: number; verse: number; colors: Colors }) {
   const [words, setWords] = useState<Word[] | null>(null);
   const [active, setActive] = useState<number | null>(null);
+  const [why, setWhy] = useState(false);
 
   useEffect(() => {
     if (!book.interlinear) return;
@@ -124,6 +127,7 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
           <Text style={{ color: colors.muted, marginTop: 4, fontSize: 13 }}>
             {describeMorph(w[7])} · Strong {w[6]}
           </Text>
+          <WhyButton onPress={() => setWhy(true)} />
         </View>
       ) : (
         <Text style={[styles.hint, { color: colors.muted }]}>Toca una palabra para ver su lema, significado y gramática.</Text>
@@ -144,6 +148,15 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
       <Text style={[styles.credit, { color: colors.muted }]}>
         Griego, glosas y morfología: STEPBible.org, Tyndale House (CC BY 4.0)
       </Text>
+      {why && w && active !== null && (
+        <StudyPanel
+          book={book}
+          chapter={chapter}
+          verse={verse}
+          word={{ index: active, greek: w[0] }}
+          onClose={() => setWhy(false)}
+        />
+      )}
     </View>
   );
 }
@@ -298,7 +311,7 @@ const styles = StyleSheet.create({
   handle: { width: 40, height: 4, borderRadius: 2 },
   ref: { fontSize: 15, fontWeight: '700' },
   verseText: { fontFamily: serif, fontSize: 16, lineHeight: 24, marginTop: 4 },
-  tabs: { flexGrow: 0, borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 12 },
+  tabs: { flexGrow: 0, flexShrink: 0, borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 12 },
   tab: { paddingVertical: 10, marginRight: 18, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   body: { paddingVertical: 16, paddingBottom: 40 },
   words: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

@@ -24,13 +24,16 @@ type Props = {
   book: Book;
   chapter: number;
   verse?: number;
+  /** «¿Por qué esta palabra?»: posición de la palabra griega en el versículo y cómo se muestra. */
+  word?: { index: number; greek: string };
   onClose: () => void;
 };
 
 const SUGGESTIONS = ['Explícamelo más sencillo', '¿Cómo lo aplico hoy?', '¿Qué aportan los pasajes relacionados?'];
+const WORD_SUGGESTIONS = ['Explícamelo más sencillo', '¿Por qué no se tradujo de otra forma?', '¿Cómo lo aplico hoy?'];
 
 /** Estudio generado con IA a partir de las fuentes de la app, con citas y preguntas de seguimiento. */
-export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
+export default function StudyPanel({ book, chapter, verse, word, onClose }: Props) {
   const colors = useColors();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
@@ -39,7 +42,8 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
   const abort = useRef<AbortController | null>(null);
   const lastHistory = useRef<Turn[]>([]);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const title = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+  const passage = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+  const title = word ? `${word.greek} en ${passage}` : passage;
 
   const run = async (history: Turn[]) => {
     abort.current?.abort();
@@ -51,7 +55,7 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
     setTurns([...history, { role: 'assistant', text: '', sources: [] }]);
     try {
       const answer = await askStudy(
-        { book: book.id, chapter, verse, messages: history },
+        { book: book.id, chapter, verse, word: word?.index, messages: history },
         (text, sources) => setTurns([...history, { role: 'assistant', text, sources }]),
         controller.signal,
       );
@@ -70,7 +74,7 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
     run([]);
     return () => abort.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [book.id, chapter, verse]);
+  }, [book.id, chapter, verse, word?.index]);
 
   const ask = (q: string) => {
     const text = q.trim();
@@ -99,7 +103,9 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
           >
             <View style={[styles.header, { borderColor: colors.border }]}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.kicker, { color: colors.accent }]}>✦ ESTUDIO</Text>
+                <Text style={[styles.kicker, { color: colors.accent }]}>
+                  {word ? '✦ ¿POR QUÉ ESTA PALABRA?' : '✦ ESTUDIO'}
+                </Text>
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
               </View>
               <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar estudio">
@@ -142,7 +148,9 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
                   >
                     {turns.length > 1
                       ? 'Buscando en las fuentes…'
-                      : 'Preparando el estudio con el texto, el griego y las referencias…'}
+                      : word
+                        ? 'Comparando el griego con la traducción y buscando dónde más aparece…'
+                        : 'Preparando el estudio con el texto, el griego y las referencias…'}
                   </Text>
                 </View>
               )}
@@ -161,7 +169,7 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
 
               {first?.text && !busy && turns.length === 1 && (
                 <View style={styles.suggestions}>
-                  {SUGGESTIONS.map((s) => (
+                  {(word ? WORD_SUGGESTIONS : SUGGESTIONS).map((s) => (
                     <Pressable key={s} onPress={() => ask(s)} style={[styles.chip, { borderColor: colors.border }]}>
                       <Text style={{ color: colors.text, fontSize: 13 }}>{s}</Text>
                     </Pressable>
@@ -180,7 +188,7 @@ export default function StudyPanel({ book, chapter, verse, onClose }: Props) {
                 value={question}
                 onChangeText={setQuestion}
                 onSubmitEditing={() => ask(question)}
-                placeholder={`Pregunta sobre ${title}`}
+                placeholder={word ? `Pregunta sobre ${word.greek}` : `Pregunta sobre ${title}`}
                 placeholderTextColor={colors.muted}
                 maxLength={600}
                 editable={!busy && !!first?.text}

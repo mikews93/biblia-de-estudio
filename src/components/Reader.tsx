@@ -386,6 +386,7 @@ export default function Reader() {
         <WordCard
           word={interlinear[String(word.verse)][word.index]}
           reference={`${book.name} ${chapter}:${word.verse}`}
+          study={{ book, chapter, verse: word.verse, index: word.index }}
           onClose={() => setWord(null)}
         />
       )}
