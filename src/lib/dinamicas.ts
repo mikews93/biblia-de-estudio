@@ -296,7 +296,7 @@ export const DINAMICAS: Dinamica[] = [
       'La presenta: cómo se escribe, qué significa y dónde más aparece.',
       'El grupo conversa: «¿Cómo cambia esto lo que entendemos del versículo?».',
     ],
-    encaja: 'Pasajes del Nuevo Testamento (el interlineal griego ya está en la app).',
+    encaja: 'Cualquier pasaje: la app tiene el interlineal hebreo del AT y el griego del NT.',
   },
   {
     id: 'historia-en-cadena',

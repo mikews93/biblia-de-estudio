@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Book, getBooks } from '@/lib/data';
+import { Book, getBooks, original } from '@/lib/data';
 import { useColors } from '@/lib/theme';
 import { chapterHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
@@ -28,7 +28,7 @@ export default function BookPicker() {
           <View key={b.id} style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
             <Pressable onPress={() => setOpen(open === b.id ? null : b.id)} style={styles.book}>
               <Text style={[styles.bookName, { color: colors.text }]}>{b.name}</Text>
-              {b.interlinear && <Text style={[styles.badge, { color: colors.accent }]}>griego</Text>}
+              {b.interlinear && <Text style={[styles.badge, { color: colors.accent }]}>{original(b).name}</Text>}
             </Pressable>
             {(open === b.id || (query.length > 1 && books.filter(matches).length === 1)) && (
               <View style={styles.grid}>

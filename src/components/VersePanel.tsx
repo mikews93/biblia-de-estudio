@@ -13,6 +13,7 @@ import {
   getCrossRefs,
   getInterlinear,
   getPlaces,
+  original,
   parseRef,
 } from '@/lib/data';
 import GroupNotes from '@/components/comunidad/GroupNotes';
@@ -98,21 +99,14 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
   const [active, setActive] = useState<number | null>(null);
   const [why, setWhy] = useState(false);
 
+  const lang = original(book);
+
   useEffect(() => {
-    if (!book.interlinear) return;
     getInterlinear(book.id, chapter).then((c) => setWords(c[String(verse)] ?? []));
   }, [book, chapter, verse]);
 
-  if (!book.interlinear) {
-    return (
-      <Text style={{ color: colors.muted }}>
-        El interlineal hebreo del Antiguo Testamento llega en la siguiente fase. Por ahora está disponible en todo el Nuevo
-        Testamento.
-      </Text>
-    );
-  }
   if (!words) return <ActivityIndicator color={colors.accent} />;
-  if (!words.length) return <Text style={{ color: colors.muted }}>No hay datos del griego para este versículo.</Text>;
+  if (!words.length) return <Text style={{ color: colors.muted }}>No hay datos del {lang.name} para este versículo.</Text>;
 
   const w = active !== null ? words[active] : null;
 
@@ -120,7 +114,7 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
     <View>
       {w ? (
         <View style={[styles.detail, { backgroundColor: colors.accentSoft }]}>
-          <Text style={[styles.greek, { color: colors.text }]}>{w[4]}</Text>
+          <Text style={[styles.greek, lang.rtl && styles.hebrew, { color: colors.text }]}>{w[4]}</Text>
           <Text style={{ color: colors.text, marginTop: 4 }}>
             Significado: {w[5]} · Traducción aquí: {w[2] || w[3]}
           </Text>
@@ -132,21 +126,21 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
       ) : (
         <Text style={[styles.hint, { color: colors.muted }]}>Toca una palabra para ver su lema, significado y gramática.</Text>
       )}
-      <View style={styles.words}>
+      <View style={[styles.words, lang.rtl && styles.rtl]}>
         {words.map(([greek, translit, es], i) => (
           <Pressable
             key={i}
             onPress={() => setActive(active === i ? null : i)}
             style={[styles.word, { borderColor: active === i ? colors.accent : colors.border }]}
           >
-            <Text style={[styles.greek, { color: colors.greek }]}>{greek}</Text>
+            <Text style={[styles.greek, lang.rtl && styles.hebrew, { color: colors.greek }]}>{greek}</Text>
             <Text style={[styles.translit, { color: colors.muted }]}>{translit}</Text>
             <Text style={[styles.gloss, { color: colors.accent }]}>{es || '—'}</Text>
           </Pressable>
         ))}
       </View>
       <Text style={[styles.credit, { color: colors.muted }]}>
-        Griego, glosas y morfología: STEPBible.org, Tyndale House (CC BY 4.0)
+        {lang.credit}
       </Text>
       {why && w && active !== null && (
         <StudyPanel
@@ -317,6 +311,8 @@ const styles = StyleSheet.create({
   words: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   word: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minWidth: 64 },
   greek: { fontSize: 20, fontFamily: serif },
+  hebrew: { fontSize: 24, writingDirection: 'rtl' },
+  rtl: { flexDirection: 'row-reverse' },
   translit: { fontSize: 12, fontStyle: 'italic', marginTop: 2 },
   gloss: { fontSize: 14, fontWeight: '600', marginTop: 2 },
   detail: { borderRadius: 8, padding: 12, marginBottom: 12 },

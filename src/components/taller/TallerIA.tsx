@@ -176,7 +176,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                 </View>
               )}
               <Text style={[styles.disclaimer, { color: colors.muted }]}>
-                La IA pregunta y sugiere a partir de la Reina-Valera 1909, el griego de STEPBible y las referencias de
+                La IA pregunta y sugiere a partir de la Reina-Valera 1909, el hebreo y el griego de STEPBible y las referencias de
                 OpenBible.info, pero no escribe tu mensaje: la preparación y la oración son tuyas.
               </Text>
             </ScrollView>

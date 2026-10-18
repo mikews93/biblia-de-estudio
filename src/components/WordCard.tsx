@@ -6,6 +6,8 @@ import { Book, Word } from '@/lib/data';
 import { describeMorph } from '@/lib/morph';
 import { serif, useColors } from '@/lib/theme';
 
+const HEBREW = /[\u0590-\u05FF]/;
+
 type Props = {
   word: Word;
   reference: string;
@@ -24,7 +26,7 @@ export default function WordCard({ word, reference, study, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar">
         <Pressable style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.ref, { color: colors.muted }]}>{reference}</Text>
-          <Text style={[styles.greek, { color: colors.greek }]}>{greek}</Text>
+          <Text style={[styles.greek, { color: colors.greek, writingDirection: HEBREW.test(greek) ? 'rtl' : 'ltr' }]}>{greek}</Text>
           <Text style={[styles.translit, { color: colors.muted }]}>{translit}</Text>
           <Text style={[styles.gloss, { color: colors.accent }]}>«{es || en}»</Text>
 

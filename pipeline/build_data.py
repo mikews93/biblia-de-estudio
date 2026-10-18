@@ -6,6 +6,8 @@ Fuentes (se descargan, no se guardan en el repositorio):
 - Reina-Valera 1909 (dominio público), vía scrollmapper/bible_databases
 - Referencias cruzadas de OpenBible.info (CC BY), vía scrollmapper/bible_databases
 - TAGNT de STEPBible / Tyndale House (CC BY 4.0): griego del NT con morfología y glosas
+- TAHOT de STEPBible / Tyndale House (CC BY 4.0): hebreo y arameo del AT con morfología y glosas inglesas;
+  las glosas españolas son propias y están en pipeline/hebreo/glosas.tsv.gz
 - Español Sencillo y Palabra de Dios para ti, ya descargadas en pipeline/versions/ (ver fetch_versions.py)
 - Lugares bíblicos de OpenBible.info Bible Geocoding Data (CC BY 4.0), con el mapa de fondo de pipeline/geo/basemap.json
 """
@@ -31,6 +33,8 @@ SOURCES = {
     "xref.txt": "https://raw.githubusercontent.com/scrollmapper/bible_databases/master/sources/extras/cross_references.txt",
     "tagnt1.txt": STEP + "TAGNT%20Mat-Jhn%20-%20Translators%20Amalgamated%20Greek%20NT%20-%20STEPBible.org%20CC-BY.txt",
     "tagnt2.txt": STEP + "TAGNT%20Act-Rev%20-%20Translators%20Amalgamated%20Greek%20NT%20-%20STEPBible.org%20CC-BY.txt",
+    **{f"tahot{i}.txt": STEP + f"TAHOT%20{part}%20-%20Translators%20Amalgamated%20Hebrew%20OT%20-%20STEPBible.org%20CC%20BY.txt"
+       for i, part in enumerate(["Gen-Deu", "Jos-Est", "Job-Sng", "Isa-Mal"], 1)},
     "ancient.jsonl": "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/"
                      "7eb18a5ee62f27b9b93bd6689ea272d76dd23b8f/data/ancient.jsonl",
 }
@@ -61,7 +65,8 @@ def fix_gloss(gloss, strong):
     return gloss[:1].upper() + gloss[1:] if capital else gloss
 
 XREF_TO_ID = {b[3]: b[0] for b in BOOKS}
-STEP_TO_ID = {b[4]: b[0] for b in BOOKS if b[4]}
+STEP_TO_ID = {b[4]: b[0] for b in BOOKS}
+OT = {b[0] for b in BOOKS[:39]}
 # "Mat.1.1#01=NKO" o "1Jn.2.14[2.13]#03=NKO"; los corchetes dan la versificación de la KJV, que sigue la RV1909
 TAGNT_REF = re.compile(r"^(\w+)\.(\d+)\.(\d+)(?:\[(\d+)\.(\d+)\])?\S*#\d+=(\S+)$")
 
@@ -172,6 +177,89 @@ def build_interlinear(out):
     # Concordancia por número de Strong: [referencia, forma griega, glosa]. La usa «¿Por qué esta palabra?».
     for strong, uses in concordance.items():
         if re.fullmatch(r"G\d+[A-Za-z]?", strong):
+            write(out, f"concordance/{strong}.json", uses)
+
+
+# "Gen.1.1#01=L" o "Psa.3.1(3.2)#01=Q(K)": referencia de las Biblias españolas e inglesas (la de la RV1909),
+# con la hebrea entre paréntesis cuando es distinta. Los títulos de los salmos son el versículo 0.
+TAHOT_REF = re.compile(r"^(\w+)\.(\d+)\.(\d+)(?:\(\d+\.\d+\))?#\d+=(\S+)$")
+# Acentos de cantilación y signos de lectura: se quitan para que el hebreo se lea limpio (quedan consonantes y vocales)
+CANTILLATION = re.compile("[\u0591-\u05AF\u05BD\u05C0\u05C3\u05C6]")
+ROOT_TAG = re.compile(r"\{(H\d+[A-Za-z]?)=([^=]*)=([^}]*)\}")
+
+
+def hebrew_word(s):
+    return CANTILLATION.sub("", s.replace("/", "").replace("\\", "")).replace(" ", "").strip()
+
+
+def lemma_meaning(gloss):
+    """'=: country;_planet»land:2_country;_planet' -> 'country; planet'; 'God»LORD@Gen.1.1-Heb' -> 'God'."""
+    gloss = gloss.split("»")[0].split("@")[0].lstrip(": ").replace("_", " ")
+    return gloss.strip()
+
+
+def spanish_glosses():
+    with gzip.open(ROOT / "hebreo" / "glosas.tsv.gz", "rt", encoding="utf-8") as f:
+        return dict(line.rstrip("\n").split("\t", 1) for line in f if "\t" in line)
+
+
+def hebrew_gloss(english, glosses):
+    """La glosa española de la palabra; cada «and/» inicial (la conjunción וְ) se vuelve «y»."""
+    english = english.strip()
+    ands = 0
+    while english.startswith("and/ "):
+        english, ands = english[5:], ands + 1
+    return ("y " * ands + glosses.get(english, "")).strip()
+
+
+def build_hebrew(out):
+    """Interlineal del AT a partir del TAHOT: texto masorético (Leningrado, con el qeré), como la RV1909."""
+    glosses = spanish_glosses()
+    by_chapter = defaultdict(lambda: defaultdict(list))
+    paragraph_ends = defaultdict(set)
+    concordance = defaultdict(list)
+    missing = set()
+    for i in range(1, 5):
+        with fetch(f"tahot{i}.txt").open(encoding="utf-8-sig") as f:
+            for line in f:
+                cols = line.rstrip("\n").split("\t")
+                m = TAHOT_REF.match(cols[0])
+                if not m:
+                    continue
+                book, ch, v, kind = m.groups()
+                # L: Leningrado; Q: el qeré, que siguen la RV1909 y la KJV; R: texto restaurado (Jos 21:36-37).
+                # Se omiten K (el ketiv, ya sustituido por el qeré) y X (palabras de la Septuaginta).
+                if kind[0] not in "LQR":
+                    continue
+                bid = STEP_TO_ID[book]
+                v = int(v) or 1  # La RV1909 incluye el título del salmo en el versículo 1
+                if re.search(r"H901[78]", cols[4]):
+                    paragraph_ends[(bid, ch)].add(v)  # פ y ס (H9017, H9018): fin de párrafo abierto o cerrado
+                hebrew = hebrew_word(cols[1].split("\\ ")[0])
+                if not hebrew:
+                    continue
+                root = ROOT_TAG.search(cols[11]) if len(cols) > 11 else None
+                strong = root.group(1) if root else re.sub(r"[{}]", "", cols[4].split("/")[0]).split("\\")[0]
+                lemma = CANTILLATION.sub("", root.group(2)) if root else ""
+                meaning = lemma_meaning(root.group(3)) if root else ""
+                english = cols[3].strip()
+                gloss = hebrew_gloss(english, glosses)
+                if not gloss:
+                    missing.add(english)
+                translit = cols[2].replace("/", "").replace(".", "").replace("\\", "").lower()
+                concordance[strong].append([f"{bid}.{ch}.{v}", hebrew, gloss])
+                by_chapter[(bid, ch)][str(v)].append([
+                    hebrew, translit, gloss, english.replace("/ ", " ").replace("/", ""),
+                    lemma, meaning, strong, cols[5].strip(),
+                ])
+    if missing:
+        print(f"Aviso: {len(missing)} glosas hebreas sin traducir, p. ej. {sorted(missing)[:5]}")
+    for (bid, ch), verses in by_chapter.items():
+        write(out, f"interlinear/{bid}/{ch}.json", verses)
+    for (bid, ch), ends in paragraph_ends.items():
+        write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
+    for strong, uses in concordance.items():
+        if re.fullmatch(r"H\d+[A-Za-z]?", strong):
             write(out, f"concordance/{strong}.json", uses)
 
 
@@ -288,11 +376,12 @@ def main():
     chapters, text = build_text(out)
     build_xrefs(out)
     build_interlinear(out)
+    build_hebrew(out)
     build_versions(out)
     build_places(out, text)
     books = [
         {"id": b[0], "name": b[1], "abbr": b[2], "chapters": chapters[b[0]],
-         "testament": "NT" if b[4] else "AT", "interlinear": bool(b[4]), "ewSlug": b[5]}
+         "testament": "AT" if b[0] in OT else "NT", "interlinear": True, "ewSlug": b[5]}
         for b in BOOKS
     ]
     write(out, "books.json", books)
