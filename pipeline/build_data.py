@@ -271,10 +271,15 @@ def build_hebrew(out):
 
 VERSIONS = [
     {"id": "rv1909", "name": "Reina-Valera 1909", "abbr": "RV1909", "credit": "Reina-Valera 1909 · dominio público"},
+    {"id": "rv1865", "name": "Reina-Valera 1865", "abbr": "RV1865", "credit": "Reina-Valera 1865 · dominio público"},
+    {"id": "rvg", "name": "Reina Valera Gómez", "abbr": "RVG",
+     "credit": "Reina Valera Gómez · © 2004, 2010 Dr. Humberto Gómez Caballero · distribución libre (eBible.org)"},
     {"id": "bes", "name": "La Biblia en Español Sencillo", "abbr": "BES",
      "credit": "La Biblia en Español Sencillo · AudioBiblia.org, Irma Flores · dominio público"},
     {"id": "pdt", "name": "Palabra de Dios para ti", "abbr": "PDT",
      "credit": "Palabra de Dios para ti · © 2020 Asociación Bíblica Latinoamericana · CC BY 4.0"},
+    {"id": "blm", "name": "Santa Biblia libre para el mundo", "abbr": "BLM",
+     "credit": "Santa Biblia libre para el mundo · dominio público"},
 ]
 
 
@@ -463,7 +468,30 @@ def main():
         for b in BOOKS
     ]
     write(out, "books.json", books)
+    build_downloads(out, books)
     print(f"Listo: {out}")
+
+
+def build_downloads(out, books):
+    """Tamaño de cada libro por recurso, para la pantalla de descargas sin conexión (src/lib/descargas.ts).
+
+    {"text/rv1909": {"gen": [bytes]}, "paragraphs": {"gen": [bytes, [1, 3, …]]}}: la lista de capítulos
+    solo aparece cuando al libro le faltan archivos, para no pedirlos y recibir 404.
+    """
+    resources = [f"text/{v['id']}" for v in VERSIONS] + ["interlinear", "paragraphs", "xrefs"]
+    sizes = {}
+    for res in resources:
+        sizes[res] = {}
+        for b in books:
+            folder = out / res / b["id"]
+            files = {int(f.stem): f.stat().st_size for f in folder.glob("*.json")} if folder.is_dir() else {}
+            if not files:
+                continue
+            entry = [sum(files.values())]
+            if len(files) < b["chapters"]:
+                entry.append(sorted(files))
+            sizes[res][b["id"]] = entry
+    write(out, "descargas.json", sizes)
 
 
 if __name__ == "__main__":

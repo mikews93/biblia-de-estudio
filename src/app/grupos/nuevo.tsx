@@ -91,7 +91,7 @@ export default function NewGroup() {
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
       <Stack.Screen options={{ title: editar ? 'Editar grupo' : 'Nuevo grupo' }} />
       {ready && !usuario ? (
-        <Welcome intro="Para crear un grupo primero dinos cómo te llamas." />
+        <Welcome intro="Para crear un grupo, entra con tu cuenta o crea una gratis." />
       ) : (
         <>
           <Field label="Nombre del grupo" value={name} onChangeText={setName} placeholder="Célula de los jueves" maxLength={60} />

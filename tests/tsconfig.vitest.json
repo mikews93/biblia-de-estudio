@@ -1,0 +1,4 @@
+{
+  "//": "Para vitest (oxc): el tsconfig de la raíz extiende expo/tsconfig.base, que oxc no sabe resolver. tsc sigue usando el de la raíz.",
+  "compilerOptions": { "strict": true, "target": "esnext", "module": "esnext", "jsx": "react-jsx" }
+}

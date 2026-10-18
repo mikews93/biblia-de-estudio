@@ -12,6 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { needsAccount } from './_cuenta';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { original } from '../src/lib/original';
@@ -340,6 +341,8 @@ function badRequest(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
+  const denied = await needsAccount(request);
+  if (denied) return denied;
   let body: Body;
   try {
     body = (await request.json()) as Body;

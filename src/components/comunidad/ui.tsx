@@ -1,6 +1,6 @@
 // Piezas comunes de las pantallas de comunidades, con los colores del tema.
 import { ReactNode, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 
 import { initials } from '@/lib/comunidad';
 import { Colors, sans, serif, useColors } from '@/lib/theme';
@@ -47,21 +47,40 @@ export function Button({
   );
 }
 
-export function Field({ label, ...props }: TextInputProps & { label?: string }) {
+export function Field({
+  label,
+  trailing,
+  ...props
+}: TextInputProps & { label?: string; /** Algo a la derecha dentro del campo, como «Mostrar». */ trailing?: ReactNode }) {
   const colors = useColors();
+  const [focused, setFocused] = useState(false);
   return (
     <View style={{ alignSelf: 'stretch' }}>
-      {label && <Text style={[styles.label, { color: colors.muted }]}>{label}</Text>}
-      <TextInput
-        placeholderTextColor={colors.muted}
-        {...props}
-        style={[
-          styles.input,
-          { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface },
-          props.multiline && { minHeight: 80, textAlignVertical: 'top' },
-          props.style,
-        ]}
-      />
+      {label && <Text style={[styles.label, { color: focused ? colors.accent : colors.muted }]}>{label}</Text>}
+      <View>
+        <TextInput
+          placeholderTextColor={colors.muted}
+          {...props}
+          onFocus={(e) => {
+            setFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            props.onBlur?.(e);
+          }}
+          style={[
+            styles.input,
+            { color: colors.text, borderColor: focused ? colors.accent : colors.border, backgroundColor: colors.surface },
+            Platform.OS === 'web' && ({ outlineStyle: 'none' } as object),
+            focused && { boxShadow: `0 0 0 3px ${colors.accentSoft}` },
+            props.multiline && { minHeight: 80, textAlignVertical: 'top' },
+            trailing ? { paddingRight: 84 } : null,
+            props.style,
+          ]}
+        />
+        {trailing && <View style={styles.trailing}>{trailing}</View>}
+      </View>
     </View>
   );
 }
@@ -167,6 +186,7 @@ const styles = StyleSheet.create({
   quiet: { paddingVertical: 8, paddingHorizontal: 8, minHeight: 0 },
   label: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, marginBottom: 6, textTransform: 'uppercase' },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
+  trailing: { position: 'absolute', right: 6, top: 0, bottom: 0, justifyContent: 'center' },
   card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16 },
   avatar: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

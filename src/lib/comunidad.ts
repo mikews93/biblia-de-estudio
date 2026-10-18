@@ -1,9 +1,11 @@
 // Cliente de /api/comunidades: la cuenta de la persona, sus grupos y lo que comparte en ellos.
-// La llave de sesión se guarda en el dispositivo; sin ella la app funciona igual, solo que sin grupos.
+// La llave de sesión se guarda en el dispositivo. La app se lee sin cuenta; la cuenta solo hace falta
+// para la comunidad y para las funciones con IA (que mandan la misma llave, ver aiHeaders).
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { requireConnection } from './conexion';
 import { chapterHref as routeToChapter, verseHref } from './routes';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
@@ -172,7 +174,8 @@ async function startSession(r: { usuario: Usuario; llave: string }) {
   await refreshGroups();
 }
 
-export const signUp = async (nombre: string) => startSession(await api('registrarse', { nombre }));
+export const signUp = async (nombre: string, correo?: string, clave?: string) =>
+  startSession(await api('registrarse', { nombre, correo: correo?.trim() || undefined, clave }));
 export const signIn = async (correo: string, clave: string) => startSession(await api('entrar', { correo, clave }));
 
 export async function signOut() {
@@ -205,6 +208,27 @@ export async function refreshGroups() {
   const r = await api<{ usuario: Usuario; grupos: ResumenGrupo[] }>('yo');
   set({ usuario: r.usuario, grupos: r.grupos });
   save();
+}
+
+/** Error que muestran las funciones con IA cuando hace falta entrar; las pantallas lo cambian por <Welcome>. */
+export const NEEDS_ACCOUNT = 'Para usar la IA necesitas una cuenta gratuita.';
+
+/**
+ * Cabeceras para /api/estudiar y /api/buscar. Sin conexión lanza NEEDS_CONNECTION y sin cuenta NEEDS_ACCOUNT,
+ * sin llamar al servidor.
+ */
+export async function aiHeaders(): Promise<Record<string, string>> {
+  requireConnection();
+  await load();
+  if (!account.llave) throw new Error(NEEDS_ACCOUNT);
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${account.llave}` };
+}
+
+/** Respuesta 401 de una función con IA: la sesión ya no vale y se olvida en este dispositivo. */
+export function aiDenied(): never {
+  set({ llave: null, usuario: null, grupos: null });
+  save();
+  throw new Error(NEEDS_ACCOUNT);
 }
 
 /** Avisa a los grupos que se leyó un capítulo. Sin cuenta o sin red no hace nada. */

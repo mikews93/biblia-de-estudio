@@ -1,5 +1,9 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import Welcome from '@/components/comunidad/Welcome';
+import { NeedsConnection } from '@/components/SinConexion';
+import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { Colors } from '@/lib/theme';
 
 type Props = {
@@ -13,6 +17,20 @@ type Props = {
 
 /** Espera, error y reintento comunes a las herramientas de estudio del capítulo. */
 export function ToolState({ colors, busy, error, waiting, onRetry }: Props) {
+  if (error === NEEDS_CONNECTION) {
+    return (
+      <View style={styles.box}>
+        <NeedsConnection title="Se prepara con IA, en internet" intro="El resumen en audio, las tarjetas y el mapa mental se hacen con IA. Los que ya preparaste siguen aquí; para uno nuevo hace falta conexión." />
+      </View>
+    );
+  }
+  if (error === NEEDS_ACCOUNT) {
+    return (
+      <View style={styles.box}>
+        <Welcome kind="ia" title="Se prepara con IA" intro="El resumen en audio, las tarjetas y el mapa mental se hacen con IA a partir del capítulo. Solo necesitas una cuenta gratuita." onReady={onRetry} />
+      </View>
+    );
+  }
   if (error) {
     return (
       <View style={styles.box}>

@@ -48,3 +48,7 @@ public/comentarios/
 
 # Audio dramatizado: piezas y mezcla generadas por la acción
 pipeline/audio_dramatizado/salida/
+
+# Pruebas
+test-results/
+playwright-report/

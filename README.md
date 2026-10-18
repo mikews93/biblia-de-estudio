@@ -68,7 +68,13 @@ Debajo de los botones de la cabecera del capítulo, con las mismas fuentes y cit
 
 ## Versiones
 
-Además de la RV1909 hay dos versiones modernas libres: La Biblia en Español Sencillo (dominio público) y Palabra de Dios para ti (© 2020 Asociación Bíblica Latinoamericana, CC BY 4.0). `pipeline/fetch_versions.py` las descarga una vez y las guarda en `pipeline/versions/`, así la compilación no depende de miles de descargas. El griego, las referencias y el estudio con IA siguen la numeración de la RV1909.
+Además de la RV1909 hay cinco versiones libres. `pipeline/fetch_versions.py` las descarga una vez y las guarda en `pipeline/versions/`, así la compilación no depende de miles de descargas. El griego, el hebreo, las referencias y el estudio con IA siguen la numeración de la RV1909.
+
+- Reina-Valera 1865 (dominio público), de scrollmapper/bible_databases.
+- Reina Valera Gómez (© 2004, 2010 Dr. Humberto Gómez Caballero; eBible.org la publica como redistribuible) y Santa Biblia libre para el mundo (dominio público): USFM de eBible.org. Como eBible.org no se abre desde todos los entornos, la acción «Versiones de la Biblia» (`.github/workflows/versiones.yml`) corre el script y sube los archivos.
+- La Biblia en Español Sencillo (dominio público) y Palabra de Dios para ti (© 2020 Asociación Bíblica Latinoamericana, CC BY 4.0), de wldeh/bible-api.
+
+No se incluye la Versión Biblia Libre (Jonathan Gallagher, adventista): la app evita fuentes de grupos sectarios.
 
 ## Genealogías y contexto histórico
 
