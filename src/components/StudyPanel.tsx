@@ -16,6 +16,8 @@ import {
 import Appear from '@/components/Appear';
 import StudyContext from '@/components/StudyContext';
 import { Book, original, parseRef } from '@/lib/data';
+import Welcome from '@/components/comunidad/Welcome';
+import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { Source, Turn, askStudy } from '@/lib/estudio';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { BOOK_SLUGS, verseHref } from '@/lib/routes';
@@ -169,7 +171,11 @@ export default function StudyPanel({ book, chapter, verse, word, onClose }: Prop
                 </View>
               )}
 
-              {error && (
+              {error === NEEDS_ACCOUNT ? (
+                <View style={styles.waiting}>
+                  <Welcome intro="La IA prepara estudios, responde tus preguntas y te ayuda en el Taller. Para usarla, entra con tu cuenta o crea una gratis." onReady={() => run(lastHistory.current)} />
+                </View>
+              ) : error && (
                 <View style={styles.waiting}>
                   <Text style={{ color: colors.text, textAlign: 'center' }}>{error}</Text>
                   <Pressable

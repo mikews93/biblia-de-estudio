@@ -15,6 +15,8 @@ import {
 
 import { Markdown, Sources } from '@/components/StudyPanel';
 import { parseRef } from '@/lib/data';
+import Welcome from '@/components/comunidad/Welcome';
+import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { TallerRequest, Turn, askStudy } from '@/lib/estudio';
 import { verseHref } from '@/lib/routes';
 import { Mensaje, borradorParaIA, plantilla } from '@/lib/taller';
@@ -167,7 +169,11 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                   <Text style={{ color: colors.muted, marginTop: 10, textAlign: 'center' }}>Leyendo el pasaje y tu borrador…</Text>
                 </View>
               )}
-              {error && (
+              {error === NEEDS_ACCOUNT ? (
+                <View style={styles.waiting}>
+                  <Welcome intro="La IA prepara estudios, responde tus preguntas y te ayuda en el Taller. Para usarla, entra con tu cuenta o crea una gratis." onReady={() => run(lastHistory.current)} />
+                </View>
+              ) : error && (
                 <View style={styles.waiting}>
                   <Text style={{ color: colors.text, textAlign: 'center' }}>{error}</Text>
                   <Pressable onPress={() => run(lastHistory.current)} style={[styles.retry, { borderColor: colors.accent }]}>

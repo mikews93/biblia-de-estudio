@@ -1,5 +1,7 @@
 // Cliente de /api/estudiar: pide el estudio de un pasaje o la respuesta a una pregunta y lo va recibiendo por partes.
 
+import { aiDenied, aiHeaders } from './comunidad';
+
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
@@ -43,10 +45,11 @@ export async function askStudy(
 ): Promise<{ text: string; sources: Source[] }> {
   const res = await fetch(`${API}/api/estudiar`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await aiHeaders(),
     body: JSON.stringify({ ...req, messages: req.messages.map(({ role, text }) => ({ role, text })) }),
     signal,
   });
+  if (res.status === 401) aiDenied();
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? `No se pudo generar el estudio (${res.status})`);

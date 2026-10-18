@@ -61,7 +61,7 @@ export default function Join() {
                 <ErrorText>{error}</ErrorText>
               </>
             ) : (
-              <Welcome intro="Para unirte, dinos cómo te llamas. Solo te verán las personas del grupo." />
+              <Welcome intro="Para unirte, entra con tu cuenta o crea una gratis. Solo te verán las personas del grupo." />
             )}
           </View>
         </>

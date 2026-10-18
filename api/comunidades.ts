@@ -557,7 +557,15 @@ type Handler = (ctx: { sql: Sql; body: Json; request: Request }) => Promise<Json
 const actions: Record<string, Handler> = {
   async registrarse({ sql, body }) {
     const nombre = text(body.nombre, MAX_NAME, 'tu nombre');
-    const [usuario] = await sql<User[]>`insert into usuarios (nombre) values (${nombre}) returning id, nombre, correo`;
+    // El correo y la contraseña son opcionales: sin ellos la cuenta vive solo en este dispositivo.
+    const correo = body.correo ? email(body.correo) : null;
+    const clave = correo ? await hashPassword(password(body.clave)) : null;
+    if (correo) {
+      const [taken] = await sql`select 1 from usuarios where correo = ${correo}`;
+      if (taken) throw new Fail('Ese correo ya tiene una cuenta. Entra con él.', 409);
+    }
+    const [usuario] = await sql<User[]>`
+      insert into usuarios (nombre, correo, clave_hash) values (${nombre}, ${correo}, ${clave}) returning id, nombre, correo`;
     return { usuario, llave: await newSession(sql, usuario.id) };
   },
 

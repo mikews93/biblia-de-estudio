@@ -1,5 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import Welcome from '@/components/comunidad/Welcome';
+import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { Colors } from '@/lib/theme';
 
 type Props = {
@@ -13,6 +15,13 @@ type Props = {
 
 /** Espera, error y reintento comunes a las herramientas de estudio del capítulo. */
 export function ToolState({ colors, busy, error, waiting, onRetry }: Props) {
+  if (error === NEEDS_ACCOUNT) {
+    return (
+      <View style={styles.box}>
+        <Welcome intro="Estas herramientas se preparan con IA. Para usarlas, entra con tu cuenta o crea una gratis." onReady={onRetry} />
+      </View>
+    );
+  }
   if (error) {
     return (
       <View style={styles.box}>

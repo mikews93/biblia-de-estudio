@@ -5,9 +5,11 @@ import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import Welcome from '@/components/comunidad/Welcome';
 import MicIcon from '@/components/MicIcon';
 import SearchIcon from '@/components/SearchIcon';
 import { IdeaResult, addRecent, clearRecent, getRecent, searchByIdea } from '@/lib/buscar';
+import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { Cita, citaLabel, parseCita } from '@/lib/cita';
 import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/lib/data';
 import { chapterHref, verseHref } from '@/lib/routes';
@@ -389,8 +391,15 @@ export default function Search() {
       {!listening && error && (
         <Appear>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}>
-            <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>{error}</Text>
-            {asked ? (
+            {error === NEEDS_ACCOUNT ? (
+              <Welcome
+                intro="Buscar por idea usa IA. Para usarla, entra con tu cuenta o crea una gratis. Buscar una cita, como «Juan 3:16», no la necesita."
+                onReady={() => asked && runIdea(asked)}
+              />
+            ) : (
+              <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>{error}</Text>
+            )}
+            {asked && error !== NEEDS_ACCOUNT ? (
               <Pressable onPress={() => runIdea(asked)} style={[styles.secondary, { backgroundColor: colors.accentSoft }]}>
                 <Text style={{ color: colors.accent, fontWeight: '700' }}>Intentar otra vez</Text>
               </Pressable>
