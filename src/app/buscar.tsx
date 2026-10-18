@@ -130,7 +130,7 @@ export default function Search() {
   };
 
   /** Enter, un ejemplo o lo dictado. Con varias formas posibles (dictado), gana la primera que sea una cita. */
-  const submit = (options: string[]) => {
+  const submit = async (options: string[]) => {
     const found = options.map((o) => ({ text: o, cita: read(o) })).find((o) => o.cita && !o.cita.problem);
     const chosen = found ?? { text: options[0] ?? '', cita: read(options[0] ?? '') };
     setQuery(chosen.text);
@@ -138,8 +138,14 @@ export default function Search() {
       setAsked('');
       setResults(null);
       // Si pidió una versión que todavía no está, se queda aquí para leer el aviso antes de abrir
-      const stays = chosen.cita.problem || chosen.cita.version?.id === null || (chosen.text === query && blocked);
-      if (!stays) open(chosen.cita);
+      const c = chosen.cita;
+      if (c.problem || c.version?.id === null) return;
+      // El versículo tiene que existir: con lo dictado no hay vista previa antes de abrir («Salmo 119:200»)
+      if (c.verse !== undefined) {
+        const verses = await getChapter(c.book, c.chapter).catch(() => null);
+        if (verses && !verses.some(([n]) => n === c.verse)) return;
+      }
+      open(c);
       return;
     }
     runIdea(chosen.text);
