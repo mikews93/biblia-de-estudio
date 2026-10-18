@@ -45,6 +45,10 @@ Variables en Vercel:
 
 En el teléfono, `EXPO_PUBLIC_API_URL` apunta a la web publicada.
 
+## Publicación
+
+La web está en https://biblia.migueblanco.com (proyecto `biblia-de-estudio` en Vercel). El DNS está en Cloudflare: un CNAME `biblia` → `cname.vercel-dns.com` sin proxy (nube gris), igual que `hoyvemos`. Mientras el MVP no esté en `main`, el dominio sigue la rama `claude/estudiar`; las publicaciones de esa rama son de tipo Preview, así que `ANTHROPIC_API_KEY` tiene que estar también en Preview.
+
 ## Estructura
 
 - `src/app/`: pantallas (Expo Router).
