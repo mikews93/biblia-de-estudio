@@ -2,6 +2,8 @@
 // Con «word» (posición de una palabra hebrea o griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
 // Con «herramienta» prepara, para un capítulo, el guion de un resumen en audio a dos voces («podcast»),
 // tarjetas de repaso («tarjetas») o un mapa mental («mapa»), con el formato que la app sabe leer.
+// Lo que sale bien se guarda en la base de datos por capítulo: la siguiente persona lo recibe al instante, sin
+// volver a llamar a la IA. Con «nueva: true» («Preparar otra versión») se genera otra y sustituye a la guardada.
 // Solo usa las fuentes de la app (RV1909, hebreo y griego de STEPBible y referencias de OpenBible.info),
 // que se pasan a Claude como documentos con citas activadas. La respuesta se envía como NDJSON:
 //   {"type":"text","text":"…"}  fragmento de texto en markdown; las citas llegan como ⟦n⟧
@@ -11,6 +13,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import postgres from 'postgres';
 
 import { needsAccount } from './_cuenta';
 import { DINAMICAS } from '../src/lib/dinamicas';
@@ -23,6 +26,7 @@ const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data'
 const MAX_TURNS = 12;
 const MAX_QUESTION = 600;
 const MAX_USES = 24;
+const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 
 type Book = { id: string; name: string; chapters: number; testament: 'AT' | 'NT'; interlinear: boolean };
 type Verse = [number, string];
@@ -37,6 +41,7 @@ type Body = {
   messages?: Turn[];
   taller?: Taller;
   herramienta?: Herramienta;
+  nueva?: boolean;
 };
 // Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
 // pero nunca escribe el mensaje por la persona.
@@ -185,6 +190,64 @@ function validTaller(t: unknown): t is Taller {
 }
 
 const client = new Anthropic();
+
+// Herramientas ya generadas, compartidas por todos: una fila por herramienta y capítulo.
+type Saved = { texto: string; fuentes: { n: number; label: string; ref?: string }[] };
+let sql: ReturnType<typeof postgres> | null = null;
+let ready: Promise<unknown> | null = null;
+
+async function db() {
+  if (!DB_URL) return null;
+  sql ??= postgres(DB_URL, { max: 2, idle_timeout: 20, onnotice: () => {} });
+  ready ??= sql`
+    create table if not exists herramientas_ia (
+      herramienta text not null,
+      libro text not null,
+      capitulo int not null,
+      texto text not null,
+      fuentes jsonb not null,
+      modelo text,
+      creado timestamptz not null default now(),
+      primary key (herramienta, libro, capitulo)
+    )`.catch((err) => {
+    ready = null;
+    throw err;
+  });
+  await ready;
+  return sql;
+}
+
+// Si la base de datos falla, la herramienta se genera igual: guardar es una ayuda, no un requisito.
+async function savedTool(herramienta: Herramienta, libro: string, capitulo: number): Promise<Saved | null> {
+  try {
+    const s = await db();
+    if (!s) return null;
+    const [row] = await s<Saved[]>`select texto, fuentes from herramientas_ia
+      where herramienta = ${herramienta} and libro = ${libro} and capitulo = ${capitulo}`;
+    return row ?? null;
+  } catch (err) {
+    console.error('estudiar: leer herramienta', err);
+    return null;
+  }
+}
+
+async function saveTool(herramienta: Herramienta, libro: string, capitulo: number, saved: Saved) {
+  try {
+    const s = await db();
+    if (!s) return;
+    await s`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes, modelo)
+      values (${herramienta}, ${libro}, ${capitulo}, ${saved.texto}, ${s.json(saved.fuentes)}, ${MODEL})
+      on conflict (herramienta, libro, capitulo)
+      do update set texto = excluded.texto, fuentes = excluded.fuentes, modelo = excluded.modelo, creado = now()`;
+  } catch (err) {
+    console.error('estudiar: guardar herramienta', err);
+  }
+}
+
+const ndjson = (events: object[]) =>
+  new Response(events.map((e) => JSON.stringify(e) + '\n').join(''), {
+    headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
+  });
 
 async function load<T>(rel: string, fallback?: T): Promise<T> {
   try {
@@ -381,6 +444,18 @@ export async function POST(request: Request) {
   ) {
     return badRequest('Herramienta no válida');
   }
+  if (body.nueva !== undefined && (typeof body.nueva !== 'boolean' || !herramienta)) return badRequest('Pedido no válido');
+
+  if (herramienta && !body.nueva) {
+    const saved = await savedTool(herramienta, book.id, chapter);
+    if (saved) {
+      return ndjson([
+        ...saved.fuentes.map((f) => ({ type: 'source', ...f })),
+        { type: 'text', text: saved.texto },
+        { type: 'done' },
+      ]);
+    }
+  }
 
   let docs;
   let focus;
@@ -418,6 +493,9 @@ export async function POST(request: Request) {
       const send = (event: object) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
       const sources = new Map<string, number>();
       const pending = new Map<number, Set<number>>();
+      // Lo enviado, para guardar la herramienta tal cual la recibió la persona
+      let texto = '';
+      const fuentes: Saved['fuentes'] = [];
       try {
         const response = client.beta.messages.stream(
           {
@@ -434,6 +512,7 @@ export async function POST(request: Request) {
         );
         for await (const event of response) {
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            texto += event.delta.text;
             send({ type: 'text', text: event.delta.text });
           } else if (event.type === 'content_block_delta' && event.delta.type === 'citations_delta') {
             const c = event.delta.citation;
@@ -446,6 +525,7 @@ export async function POST(request: Request) {
               if (n === undefined) {
                 n = sources.size + 1;
                 sources.set(meta.label, n);
+                fuentes.push({ n, ...meta });
                 send({ type: 'source', n, ...meta });
               }
               if (!pending.has(event.index)) pending.set(event.index, new Set());
@@ -453,7 +533,9 @@ export async function POST(request: Request) {
             }
           } else if (event.type === 'content_block_stop' && pending.has(event.index)) {
             // Las marcas van al final del fragmento citado, como notas al pie.
-            send({ type: 'text', text: [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('') });
+            const marks = [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('');
+            texto += marks;
+            send({ type: 'text', text: marks });
             pending.delete(event.index);
           }
         }
@@ -461,6 +543,10 @@ export async function POST(request: Request) {
         if (final.stop_reason === 'refusal') {
           send({ type: 'error', message: 'No puedo ayudar con esta pregunta. Prueba a formularla de otra manera.' });
         } else {
+          // Solo se guarda una respuesta completa
+          if (herramienta && final.stop_reason === 'end_turn' && texto.trim()) {
+            await saveTool(herramienta, book.id, chapter, { texto, fuentes });
+          }
           send({ type: 'done' });
         }
       } catch (err) {

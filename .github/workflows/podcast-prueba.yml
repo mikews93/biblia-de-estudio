@@ -1,0 +1,89 @@
+name: Pódcast con ElevenLabs (prueba)
+
+# Graba con voces de ElevenLabs el guion de pódcast de pipeline/podcast/<id>.txt y sube el MP3 a la versión de
+# GitHub «podcast-prueba». Sirve para oír cómo suenan Ana y Tomás con voces naturales. Necesita ELEVENLABS_API_KEY.
+
+on:
+  push:
+    paths:
+      - pipeline/podcast/*.txt
+      - pipeline/podcast/grabar.py
+      - .github/workflows/podcast-prueba.yml
+  workflow_dispatch:
+    inputs:
+      guion:
+        description: Guion a grabar (sin .txt)
+        default: jhn-3
+
+permissions:
+  contents: write
+
+concurrency:
+  group: podcast-prueba
+  cancel-in-progress: false
+
+jobs:
+  grabar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      TAG: podcast-prueba
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Recuperar los tramos ya grabados
+        uses: actions/cache/restore@v4
+        with:
+          path: pipeline/.cache/eleven
+          key: podcast-${{ github.run_id }}
+          restore-keys: podcast-
+      - name: Grabar
+        run: python3 pipeline/podcast/grabar.py "${{ github.event.inputs.guion || 'jhn-3' }}"
+      - name: Guardar los tramos grabados
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: pipeline/.cache/eleven
+          key: podcast-${{ github.run_id }}
+      - name: Subir a la versión de GitHub
+        if: hashFiles('pipeline/podcast/salida/*.mp3') != ''
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
+            --title "Pódcast con ElevenLabs (prueba)" \
+            --notes "Grabaciones de prueba del pódcast de capítulo. Se reemplazan en cada grabación."
+          cd pipeline/podcast/salida
+          gh release upload "$TAG" *.mp3 informe.json --clobber
+      - name: Publicar en la app
+        if: hashFiles('pipeline/podcast/salida/*.mp3') != ''
+        run: |
+          mkdir -p public/audio/podcast
+          id="${{ github.event.inputs.guion || 'jhn-3' }}"
+          cp "pipeline/podcast/salida/$id.mp3" public/audio/podcast/
+          python3 - "$id" <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path('public/audio')
+          gid = sys.argv[1]
+          rep = json.loads(pathlib.Path('pipeline/podcast/salida/informe.json').read_text())
+          # Las voces ya añadidas a la cuenta no traen su nombre público: se conserva el crédito anterior.
+          names = [v.get('name', '').split(' - ')[0] for v in rep['voces'].values()]
+          meta = root / 'podcast' / f'{gid}.json'
+          old = json.loads(meta.read_text()) if meta.exists() else {}
+          meta.write_text(json.dumps({**old, 'id': gid, 'duracion': rep['duracion_s'], 'timestamps': old.get('timestamps', []),
+                                      'credito': old.get('credito') if old.get('credito') and not all(names) else
+                                      f'Voces de ElevenLabs ({" y ".join(names)}). Guion de Claude con las fuentes de la app.'},
+                                     ensure_ascii=False, indent=2) + '\n')
+          catalog = {kind: sorted(p.stem for p in (root / kind).glob('*.mp3')) for kind in ('dramatizado', 'podcast')}
+          (root / 'index.json').write_text(json.dumps(catalog, indent=2) + '\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/audio
+          git diff --cached --quiet && exit 0
+          git commit -m "Publicar en la app el pódcast grabado $id"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done

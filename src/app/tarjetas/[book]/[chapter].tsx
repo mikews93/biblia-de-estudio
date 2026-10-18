@@ -72,7 +72,7 @@ export default function ChapterCards() {
           busy={tool.busy}
           error={tool.error}
           waiting={proposed.length ? null : 'Preparando preguntas con el texto, el griego y las referencias…'}
-          onRetry={tool.regenerate}
+          onRetry={tool.retry}
         />
 
         <View style={{ marginTop: 16, gap: 10 }}>
