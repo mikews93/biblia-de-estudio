@@ -32,7 +32,7 @@ import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } 
 import { useChapterNotes } from '@/lib/notas';
 import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
-import { navigate } from '@/lib/transition';
+import { fixedInTransition, navigate } from '@/lib/transition';
 import SearchIcon from '@/components/SearchIcon';
 
 export default function Reader() {
@@ -204,7 +204,7 @@ export default function Reader() {
           ),
         }}
       />
-      <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+      <View style={[styles.progressTrack, { backgroundColor: colors.border }, fixedInTransition('progreso')]}>
         <View style={[styles.progressBar, { backgroundColor: colors.accent, width: `${progress * 100}%` }]} />
       </View>
 
@@ -436,7 +436,7 @@ export default function Reader() {
         </Appear>
       ) : (
         verses && (
-          <Appear key="nav" style={[styles.navPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Appear key="nav" style={[styles.navPill, { backgroundColor: colors.surface, borderColor: colors.border }, fixedInTransition('capitulos')]}>
             <Pressable onPress={() => go(-1)} hitSlop={8} accessibilityLabel="Capítulo anterior" style={styles.navArrow}>
               <Text style={{ color: colors.text, fontSize: 22 }}>‹</Text>
             </Pressable>

@@ -40,6 +40,34 @@
       html[data-nav='forward']::view-transition-new(root) { animation-name: vt-fade-in, vt-from-right; }
       html[data-nav='back']::view-transition-old(root) { animation-name: vt-fade-out, vt-to-right; }
       html[data-nav='back']::view-transition-new(root) { animation-name: vt-fade-in, vt-from-left; }
+      /* Lo que no cambia entre pantallas (fixedInTransition): no se desliza; si cambia algo, se funde en su sitio. */
+      ::view-transition-group(pestanas),
+      ::view-transition-group(cabecera),
+      ::view-transition-group(cabecera-izq),
+      ::view-transition-group(cabecera-titulo),
+      ::view-transition-group(cabecera-der),
+      ::view-transition-group(progreso),
+      ::view-transition-group(capitulos),
+      ::view-transition-group(audio),
+      ::view-transition-old(pestanas),
+      ::view-transition-new(pestanas),
+      ::view-transition-old(cabecera),
+      ::view-transition-new(cabecera),
+      ::view-transition-old(cabecera-izq),
+      ::view-transition-new(cabecera-izq),
+      ::view-transition-old(cabecera-titulo),
+      ::view-transition-new(cabecera-titulo),
+      ::view-transition-old(cabecera-der),
+      ::view-transition-new(cabecera-der),
+      ::view-transition-old(progreso),
+      ::view-transition-new(progreso),
+      ::view-transition-old(capitulos),
+      ::view-transition-new(capitulos),
+      ::view-transition-old(audio),
+      ::view-transition-new(audio) {
+        animation-duration: 160ms;
+        animation-timing-function: ease;
+      }
       @keyframes vt-fade-in { from { opacity: 0; } }
       @keyframes vt-fade-out { to { opacity: 0; } }
       @keyframes vt-from-right { from { transform: translateX(28px); } }

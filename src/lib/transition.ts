@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, type ViewStyle } from 'react-native';
 
 export type Direction = 'forward' | 'back' | 'fade';
 
@@ -30,3 +30,12 @@ export function navigate(update: () => void, direction: Direction = 'fade') {
 }
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 12));
+
+/**
+ * Marca lo que no cambia entre pantallas (barra de pestañas, cabecera, barra de audio…): la transición
+ * lo deja quieto en su sitio mientras el contenido se desliza. Cada nombre debe estar una sola vez en
+ * pantalla; las animaciones de estos grupos están en public/index.html.
+ */
+export function fixedInTransition(name: string): ViewStyle | undefined {
+  return Platform.OS === 'web' ? ({ viewTransitionName: name } as ViewStyle) : undefined;
+}

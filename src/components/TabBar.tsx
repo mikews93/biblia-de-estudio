@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { chapterHref } from '@/lib/routes';
 import { getLastRead, serif, useColors } from '@/lib/theme';
-import { navigate } from '@/lib/transition';
+import { fixedInTransition, navigate } from '@/lib/transition';
 
 type Tab = { key: 'hoy' | 'leer' | 'planes' | 'taller' | 'comunidad'; label: string; icon: string };
 
@@ -51,6 +51,7 @@ export default function TabBar() {
       style={[
         styles.bar,
         { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: Math.max(insets.bottom, 6) },
+        fixedInTransition('pestanas'),
       ]}
       accessibilityRole="tablist"
     >

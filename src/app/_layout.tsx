@@ -4,7 +4,18 @@ import { View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
 import TabBar from '@/components/TabBar';
+import { fixedInTransition } from '@/lib/transition';
 import { SettingsProvider, isDark, useColors } from '@/lib/theme';
+
+// La cabecera queda quieta en las transiciones (src/lib/transition.ts). headerStyle descarta los estilos
+// que no conoce, así que se fija cada parte por separado; el Stack de la web pasa estas opciones a Header
+// aunque los tipos de NativeStack no las declaren.
+const fixedHeader = {
+  headerBackgroundContainerStyle: fixedInTransition('cabecera'),
+  headerLeftContainerStyle: fixedInTransition('cabecera-izq'),
+  headerTitleContainerStyle: fixedInTransition('cabecera-titulo'),
+  headerRightContainerStyle: fixedInTransition('cabecera-der'),
+};
 
 function AppStack() {
   const colors = useColors();
@@ -15,6 +26,7 @@ function AppStack() {
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
+          ...fixedHeader,
           headerTintColor: colors.text,
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
