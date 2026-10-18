@@ -157,7 +157,7 @@ test('con la sesión caducada pide entrar de nuevo y luego estudia', async ({ pa
   await expect(panel(page).getByText(ESTUDIO)).toBeVisible();
 });
 
-test('en el devocional también se puede preguntar, y lo ya generado no se vuelve a pedir', async ({ page, request }) => {
+test('en el devocional también se puede preguntar, y al volver a abrir el estudio sigue en ese modo', async ({ page, request }) => {
   await conSesion(page, await cuentaNueva(request, 'Devota'));
   await page.goto('/juan/3/16');
   await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
@@ -179,4 +179,10 @@ test('en el devocional también se puede preguntar, y lo ya generado no se vuelv
   const [recibida] = await peticionesIA(request, pregunta);
   expect(recibida.system).toBeDefined();
   expect(JSON.stringify(recibida.system)).toContain('devocional');
+
+  // Al volver a abrir el estudio, empieza en el modo elegido
+  await page.getByLabel('Cerrar estudio').last().click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  await expect(panel(page, 'DEVOCIONAL').getByText('Estoy listo · Leer')).toBeVisible();
 });
