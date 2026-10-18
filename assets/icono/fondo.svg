@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#1D1410"/>
+<stop offset="1" stop-color="#0B0807"/>
+</linearGradient>
+<radialGradient id="g" cx="50%" cy="58%" r="48%">
+<stop offset="0" stop-color="#F08A2C" stop-opacity=".38"/>
+<stop offset="1" stop-color="#F08A2C" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="fl" gradientUnits="userSpaceOnUse" x1="0" y1="800" x2="0" y2="180">
+<stop offset="0" stop-color="#B83A12"/>
+<stop offset=".45" stop-color="#F08A2C"/>
+<stop offset=".85" stop-color="#FFD27A"/>
+<stop offset="1" stop-color="#FFF1C9"/>
+</linearGradient>
+<filter id="b" x="-50%" y="-50%" width="200%" height="200%">
+<feGaussianBlur stdDeviation="36"/>
+</filter>
+</defs>
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<rect width="1024" height="1024" fill="url(#g)"/>
+<ellipse cx="512" cy="540" rx="220" ry="270" fill="#F08A2C" opacity=".3" filter="url(#b)"/>
+</svg>
