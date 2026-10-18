@@ -163,7 +163,8 @@ type StepProps = { m: Mensaje; set: (patch: Partial<Mensaje>) => void };
 
 function PasajeStep({ m, books, set }: StepProps & { books: Book[] }) {
   const colors = useColors();
-  const [input, setInput] = useState(pasajeLabel(m.pasaje, books));
+  // Sin los libros cargados, pasajeLabel daría el código interno («jhn 3:16»): se rellena cuando llegan.
+  const [input, setInput] = useState(books.length ? pasajeLabel(m.pasaje, books) : '');
   const [error, setError] = useState<string | null>(null);
   const [verses, setVerses] = useState<Verse[] | null>(null);
   const [whole, setWhole] = useState(false);

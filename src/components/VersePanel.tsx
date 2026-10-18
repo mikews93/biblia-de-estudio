@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -39,6 +39,8 @@ type Props = {
 
 export default function VersePanel({ book, books, chapter, verse, text, initialTab, onClose }: Props) {
   const colors = useColors();
+  // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
+  const focused = useIsFocused();
   const [tab, setTab] = useState<Tab>(initialTab ?? (book.interlinear ? 'interlineal' : 'referencias'));
 
   const tabs: [Tab, string][] = [
@@ -50,7 +52,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
   ];
 
   return (
-    <Modal transparent animationType="slide" visible onRequestClose={onClose}>
+    <Modal transparent animationType="slide" visible={focused} onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar" />
       <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.handleRow}>
