@@ -7,6 +7,10 @@
     "api/estudiar.ts": {
       "includeFiles": "dist/data/**",
       "maxDuration": 120
+    },
+    "api/comunidades.ts": {
+      "includeFiles": "dist/data/**",
+      "maxDuration": 60
     }
   },
   "rewrites": [
