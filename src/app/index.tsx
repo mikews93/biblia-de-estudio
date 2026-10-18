@@ -1,9 +1,10 @@
 import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
-import { Book, getBooks, getChapter } from '@/lib/data';
+import VerseImage from '@/components/VerseImage';
+import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { chapterHref, verseHref } from '@/lib/routes';
@@ -18,11 +19,14 @@ export default function Today() {
   const [books, setBooks] = useState<Book[]>([]);
   const [last, setLast] = useState<{ book: string; chapter: number } | null>(null);
   const [verseText, setVerseText] = useState<string | null>(null);
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [sharing, setSharing] = useState(false);
   const daily = verseOfTheDay();
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
     getLastRead().then(setLast);
+    getVersions().then(setVersions).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -38,10 +42,6 @@ export default function Today() {
   const chaptersRead = Object.values(progress.chapters).reduce((s, c) => s + c.length, 0);
   const continueTo = last ?? { book: 'jhn', chapter: 1 };
 
-  const share = () =>
-    Share.share({
-      message: `«${verseText}» ${dailyRef}\n\nhttps://biblia.migueblanco.com${verseHref(daily.book, daily.chapter, daily.verse)}`,
-    }).catch(() => {});
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
@@ -81,9 +81,7 @@ export default function Today() {
               colors={colors}
               onPress={() => navigate(() => router.push(verseHref(daily.book, daily.chapter, daily.verse)), 'forward')}
             />
-            {verseText && (Platform.OS !== 'web' || typeof navigator.share === 'function') && (
-              <SmallButton label="Compartir" colors={colors} onPress={share} />
-            )}
+            {verseText && <SmallButton label="Compartir" colors={colors} onPress={() => setSharing(true)} />}
           </View>
           <View style={[styles.question, { borderColor: colors.border }]}>
             <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '700', marginBottom: 4 }}>PARA PENSAR HOY</Text>
@@ -132,6 +130,19 @@ export default function Today() {
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
       </Appear>
+      {sharing && verseText && (
+        <VerseImage
+          verse={{
+            book: daily.book,
+            chapter: daily.chapter,
+            verse: daily.verse,
+            text: verseText,
+            reference: dailyRef,
+            version: versions.find((v) => v.id === settings.version)?.abbr ?? 'RV1909',
+          }}
+          onClose={() => setSharing(false)}
+        />
+      )}
     </ScrollView>
   );
 }
