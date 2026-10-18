@@ -13,7 +13,9 @@
   "voces": {
     "NARRADOR": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": null },
     "JUAN": { "ficha": "personajes.md#juan-el-bautista", "buscar": { "gender": "male", "age": "young", "use_cases": "characters_animation" }, "voice_id": null },
-    "PADRE": { "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "old", "use_cases": "narrative_story" }, "voice_id": null },
+    "DIOS_1": { "dios": true, "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "old", "use_cases": "narrative_story" }, "voice_id": null },
+    "DIOS_2": { "dios": true, "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "narrative_story" }, "voice_id": null },
+    "DIOS_3": { "dios": true, "ficha": "voz-de-dios.md", "buscar": { "gender": "male", "age": "young", "use_cases": "narrative_story" }, "voice_id": null },
     "JESUS": { "ficha": "personajes.md#jesús", "buscar": { "gender": "male", "age": "young", "use_cases": "narrative_story" }, "voice_id": null },
     "ESPIRITU": { "ficha": "personajes.md#espíritu-inmundo", "buscar": { "gender": "male", "age": "old", "use_cases": "characters_animation" }, "voice_id": null },
     "GENTE_1": { "buscar": { "gender": "male", "age": "middle_aged", "use_cases": "conversational" }, "voice_id": null },
@@ -92,7 +94,7 @@
           "v": 11,
           "lineas": [
             { "voz": "NARRADOR", "texto": "Y una voz salió del cielo," },
-            { "voz": "PADRE", "registro": "aprobacion", "texto": "tú eres mi Hijo amado, a quien he elegido en quien descansa mi favor." }
+            { "voces": ["DIOS_1", "DIOS_2", "DIOS_3"], "registro": "aprobacion", "texto": "tú eres mi Hijo amado, a quien he elegido en quien descansa mi favor." }
           ]
         },
         { "pausa": 1.5 },

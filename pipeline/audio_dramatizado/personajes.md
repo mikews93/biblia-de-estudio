@@ -2,7 +2,7 @@
 
 Cada ficha recoge lo que la Biblia, los comentarios o la historia dicen de cómo era la persona: su edad, su forma de hablar y su carácter. Con eso se elige la voz y se decide cómo interpreta cada línea. Si un rasgo no tiene fuente, no se usa. Si sale de interpretar el texto y no lo dice directamente, se marca como *(deducido)*. Los versículos se citan en Español Sencillo.
 
-La voz de Dios Padre tiene su propia ficha: [voz-de-dios.md](voz-de-dios.md).
+La voz de Dios no es un personaje con voz fija; ver [voz-de-dios.md](voz-de-dios.md).
 
 ## Jesús
 - **Edad:** unos 30 años. Lc 3:23 dice que al comenzar su ministerio «era como de treinta años».

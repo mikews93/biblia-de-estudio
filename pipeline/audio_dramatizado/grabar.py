@@ -74,7 +74,7 @@ def check_text(guion: dict) -> None:
                 continue
             v = step['v']
             seen.add(v)
-            said = norm(' '.join(l['texto'] for l in step['lineas']))
+            said = norm(' '.join(l['texto'] for l in step['lineas']))  # una línea a coro cuenta una vez
             if said != norm(verses[v]) and str(v) not in guion.get('correcciones', {}):
                 errors.append(f'v.{v}: el guion dice «{said}» y la Biblia «{norm(verses[v])}»')
     missing = sorted(set(verses) - seen)
@@ -154,12 +154,13 @@ def premade(mine: list[dict], gender: str | None, used: set[str]) -> dict | None
     return None
 
 
-def pick_voices(guion: dict, informe: dict) -> dict[str, str]:
+def pick_voices(guion: dict, guion_id: str, informe: dict) -> dict[str, str]:
     """voice_id por personaje: el fijado en el guion o el mejor candidato de la biblioteca, añadido a la cuenta."""
     chosen: dict[str, str] = {}
     mine = account_voices()
     by_name = {v['name']: v['voice_id'] for v in mine}
     used: set[str] = set()
+    elsewhere = god_voices_elsewhere(guion_id)
     accents: dict[str, str] = {}
     informe['voces'] = {}
     for role, cfg in guion['voces'].items():
@@ -168,7 +169,8 @@ def pick_voices(guion: dict, informe: dict) -> dict[str, str]:
             used.add(cfg['voice_id'])
             informe['voces'][role] = {'voice_id': cfg['voice_id'], 'fijada': True}
             continue
-        name = f'Biblia {guion["libro"]} {role}'
+        # Las voces de Dios son de este capítulo y no se reutilizan en otros.
+        name = f'Biblia {guion_id} {role}' if cfg.get('dios') else f'Biblia {guion["libro"]} {role}'
         if name in by_name:
             chosen[role] = by_name[name]
             used.add(by_name[name])
@@ -180,7 +182,8 @@ def pick_voices(guion: dict, informe: dict) -> dict[str, str]:
         for drop in ((), ('use_cases',), ('use_cases', 'age')):
             q = {k: v for k, v in want.items() if k not in drop}
             res = call('GET', 'shared-voices', query={'language': 'es', 'page_size': 100, 'sort': 'usage_character_count_1y', **q})
-            candidates = [v for v in res.get('voices', []) if v['voice_id'] not in used]
+            banned = used | (elsewhere if cfg.get('dios') else set())
+            candidates = [v for v in res.get('voices', []) if v['voice_id'] not in banned]
             if candidates:
                 break
         if not candidates:
@@ -211,6 +214,7 @@ def pick_voices(guion: dict, informe: dict) -> dict[str, str]:
         accents[role] = (best.get('accent') or '').lower()
         informe['voces'][role] = {
             'voice_id': added['voice_id'],
+            'origen': best['voice_id'],
             'nombre': best.get('name'),
             'acento': best.get('accent'),
             'edad': best.get('age'),
@@ -264,14 +268,85 @@ def mix(clips: list[tuple[float, Path, float]], total: float, dst: Path) -> None
     subprocess.run(args, check=True)
 
 
+def overlay(paths: list[Path], dst: Path) -> Path:
+    """Varias voces diciendo lo mismo a la vez."""
+    args = ['ffmpeg', '-v', 'error', '-y']
+    for p in paths:
+        args += ['-i', str(p)]
+    n = len(paths)
+    args += ['-filter_complex', ''.join(f'[{i}:a]' for i in range(n)) + f'amix=inputs={n}:normalize=1:duration=longest', '-ar', '44100', '-ac', '2', str(dst)]
+    subprocess.run(args, check=True)
+    return dst
+
+
+def concat(paths: list[Path], dst: Path) -> Path:
+    args = ['ffmpeg', '-v', 'error', '-y']
+    for p in paths:
+        args += ['-i', str(p)]
+    n = len(paths)
+    chain = ''.join(f'[{i}:a]aresample=44100,aformat=channel_layouts=stereo[s{i}];' for i in range(n))
+    args += ['-filter_complex', chain + ''.join(f'[s{i}]' for i in range(n)) + f'concat=n={n}:v=0:a=1', str(dst)]
+    subprocess.run(args, check=True)
+    return dst
+
+
+def verse_audio(step: dict, guion: dict, voices: dict[str, str], piece) -> tuple[Path, list[dict]]:
+    """Un versículo: las líneas seguidas sin efectos van en una sola petición de diálogo (suena más natural); una
+    línea con eco o dicha a coro se graba aparte y se procesa sola."""
+    segments: list[Path] = []
+    layers: list[dict] = []
+    plain: list[dict] = []
+
+    def flush() -> None:
+        if plain:
+            segments.append(dialogue(list(plain), guion))
+            plain.clear()
+
+    for line in step['lineas']:
+        reg = guion['registros'].get(line.get('registro', ''), {})
+        tag = line.get('tag') or reg.get('tag') or ''
+        text = f'{tag} {line["texto"]}'.strip()
+        filt = line.get('filtro') or reg.get('filtro')
+        if reg.get('capa'):
+            layers.append(reg['capa'])
+        who = speakers(line)
+        if len(who) == 1 and not filt:
+            plain.append({'text': text, 'voice_id': voices[who[0]]})
+            continue
+        flush()
+        takes = [dialogue([{'text': text, 'voice_id': voices[w]}], guion) for w in who]
+        seg = overlay(takes, piece(f'v{step["v"]}-coro')) if len(takes) > 1 else takes[0]
+        segments.append(render(seg, piece(f'v{step["v"]}-eco'), filt) if filt else seg)
+    flush()
+    out = segments[0] if len(segments) == 1 else concat(segments, piece(f'v{step["v"]}'))
+    return out, layers
+
+
 # ---------------------------------------------------------------- guion → audio
 
 def chars_of(step: dict, guion: dict) -> int:
     total = 0
     for line in step['lineas']:
         tag = line.get('tag') or guion['registros'].get(line.get('registro', ''), {}).get('tag') or ''
-        total += len(f'{tag} {line["texto"]}'.strip())
+        total += len(f'{tag} {line["texto"]}'.strip()) * len(speakers(line))
     return total
+
+
+def speakers(line: dict) -> list[str]:
+    """Personajes que dicen una línea: uno, o varios a la vez («voces»), como la voz del cielo en Mc 1:11."""
+    return line.get('voces') or [line['voz']]
+
+
+def god_voices_elsewhere(guion_id: str) -> set[str]:
+    """Voces usadas para Dios en otros capítulos: no se repiten, para que no haya «una voz de Dios» (Dt 4:15-16)."""
+    ids: set[str] = set()
+    for path in HERE.glob('*.json'):
+        if path.stem == guion_id:
+            continue
+        for cfg in json.loads(path.read_text()).get('voces', {}).values():
+            if cfg.get('dios'):
+                ids.update(x for x in (cfg.get('voice_id'), cfg.get('origen')) if x)
+    return ids
 
 
 def build(guion_id: str, review: bool) -> None:
@@ -302,7 +377,7 @@ def build(guion_id: str, review: bool) -> None:
             notice('warning', f'No hay créditos suficientes en ElevenLabs: quedan {left} y hacen falta unos {need}. No se grabó nada.')
             sys.exit(0)
 
-    voices = pick_voices(guion, informe)
+    voices = pick_voices(guion, guion_id, informe)
     OUT.mkdir(parents=True, exist_ok=True)
     tmp = OUT / 'piezas'
     tmp.mkdir(exist_ok=True)
@@ -349,19 +424,7 @@ def build(guion_id: str, review: bool) -> None:
                     if not step.get('encima'):
                         t += max(0.0, length - 0.3)
             elif 'v' in step:
-                inputs, filters, layers = [], [], []
-                for line in step['lineas']:
-                    reg = guion['registros'].get(line.get('registro', ''), {})
-                    tag = line.get('tag') or reg.get('tag') or ''
-                    inputs.append({'text': f'{tag} {line["texto"]}'.strip(), 'voice_id': voices[line['voz']]})
-                    if line.get('filtro') or reg.get('filtro'):
-                        filters.append(line.get('filtro') or reg.get('filtro'))
-                    if reg.get('capa'):
-                        layers.append(reg['capa'])
-                src = dialogue(inputs, guion)
-                # Un versículo con eco (la voz del cielo, Juan en el desierto) se procesa entero: la línea del
-                # narrador que lo introduce es corta y el eco leve no la estorba.
-                out = render(src, piece(f'v{step["v"]}'), filters[0]) if filters else src
+                out, layers = verse_audio(step, guion, voices, piece)
                 length = duration(out)
                 stamps.append([step['v'], round(t, 2)])
                 clips.append((t, out, 0.0))

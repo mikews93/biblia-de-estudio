@@ -27,7 +27,7 @@ Lo que el comentario presenta como tradición se deja fuera. Por ejemplo, Matthe
 |---|---|---|
 | NARRADOR | Marcos | Hombre adulto, cálido, ritmo ágil. Marcos repite «enseguida» y «luego». |
 | JUAN | Juan el Bautista | Voz fuerte, de alguien que predica al aire libre (Texto v.3: «voz del que clama en el desierto»). |
-| PADRE | La voz del cielo | Una voz grave y cálida con eco amplio y un trueno lejano debajo; ver [voz-de-dios.md](voz-de-dios.md), registro «aprobacion». |
+| DIOS (coro) | La voz del cielo | Tres voces de distintas edades a la vez, con eco amplio y un trueno lejano debajo. No es una voz fija: cada capítulo usa voces distintas. Ver [voz-de-dios.md](voz-de-dios.md). |
 | JESÚS | Jesús | Hombre de unos 30 años, sereno y cálido, sin sonar teatral. |
 | ESPÍRITU | El espíritu inmundo | Áspero, alterado y con miedo (JFB v.24). |
 | GENTE | La multitud de la sinagoga | Varias voces superpuestas. |
@@ -73,7 +73,7 @@ JUAN [firme, humilde en la segunda mitad]: “Hay uno que viene después de mí,
 ▸ MÚSICA: entra un acorde sostenido y luminoso (Texto: «los cielos abiertos»).
 
 **11** NARRADOR: Y una voz salió del cielo,
-PADRE (aprobacion): tú eres mi Hijo amado, a quien he elegido en quien descansa mi favor.
+DIOS (coro de tres voces, modo «desde el cielo»): tú eres mi Hijo amado, a quien he elegido en quien descansa mi favor.
 ▸ MÚSICA: el acorde se mantiene bajo la voz y se apaga después.
 ▸ CAPA: trueno lejano y muy bajo bajo la voz (Jn 12:29: «dijeron que era trueno»).
 
@@ -205,7 +205,7 @@ JESÚS [con compasión]: Sí quiero; sé limpio.
 
 ## Decisiones (Mike, 18-10)
 
-1. **El Padre:** un solo timbre, con un registro distinto según el versículo y la intención, sacado de lo que la Biblia dice de su voz. Está en [voz-de-dios.md](voz-de-dios.md).
+1. **La voz de Dios:** no tiene una voz fija, para que nadie la idolatre (Dt 4:15–16). Su forma cambia según el pasaje, porque Dios habla «de diferentes maneras» (He 1:1). Está en [voz-de-dios.md](voz-de-dios.md).
 2. **Jesús:** un hombre sereno y cálido, sin sonar teatral.
 3. **El bautismo:** solo música, sin aleteo de paloma.
 4. **El texto:** se corrigen solo los errores evidentes del Español Sencillo (v.17 y v.41), y se anota en los créditos.
