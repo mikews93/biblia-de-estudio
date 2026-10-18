@@ -38,8 +38,8 @@ El interlineal muestra las palabras del texto tradicional (Textus Receptus), que
 
 La pestaña «Comentario» de cada versículo muestra la sección del comentario que lo trata. Las fuentes están en `src/lib/comentarioFuentes.ts` y son intercambiables:
 
-- **Traducidas:** Matthew Henry (*Commentary on the Whole Bible*, 1706-1721) y Jamieson, Fausset y Brown (1871), de dominio público, tomados de los módulos SWORD de CrossWire. `pipeline/build_comentarios.py` los descarga en cada build y los parte en secciones y partes de unas 700 palabras en `comentarios/` (solo la lee la función; la app nunca muestra el inglés).
-- **Propias:** texto que ya está en español, con el mismo formato en `comentarios/<id>/`, se sirve sin traducir. Ahí iría Enduring Word en español si David Guzik da permiso.
+- **Traducidas:** Matthew Henry (*Commentary on the Whole Bible*, 1706-1721) y Jamieson, Fausset y Brown (1871), de dominio público, tomados de los módulos SWORD de CrossWire. `pipeline/build_comentarios.py` los descarga en cada build y los parte en secciones y partes de unas 700 palabras en `public/comentarios/` (solo la lee la función; la app nunca muestra el inglés).
+- **Propias:** texto que ya está en español, con el mismo formato en `public/comentarios/<id>/`, se sirve sin traducir. Ahí iría Enduring Word en español si David Guzik da permiso.
 - **Enlace:** Enduring Word, mientras tanto, se abre en su sitio.
 
 `api/comentario.ts` traduce cada parte la primera vez que alguien la abre (con la RV1909 del pasaje para que las citas usen esas palabras), la guarda en la base de datos (`comentarios_es`) y después otra pasada de IA la revisa contra el original. Las personas pueden avisar de errores desde la app (`comentarios_reportes`); una traducción revisada a mano se marca con `estado = 'humano'`. Variables opcionales: `COMENTARIO_MODEL` (traducción, por defecto `claude-sonnet-5-5`), `COMENTARIO_REVISOR` (revisión, por defecto `claude-opus-5-5`) y `COMENTARIO_PARTES_DIA` (tope diario de partes nuevas, por defecto 400).

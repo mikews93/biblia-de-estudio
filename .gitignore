@@ -44,4 +44,4 @@ yarn-error.*
 public/data/
 pipeline/.cache/
 __pycache__/
-comentarios/
+public/comentarios/

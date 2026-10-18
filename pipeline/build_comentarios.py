@@ -1,10 +1,10 @@
 """Extrae los comentarios de dominio público (en inglés) por secciones, listos para traducir.
 
-Uso: python3 pipeline/build_comentarios.py [carpeta_salida]   (por defecto: comentarios/)
+Uso: python3 pipeline/build_comentarios.py [carpeta_salida]   (por defecto: public/comentarios)
 
 La app nunca muestra el inglés: la función /api/comentario traduce cada parte al español con IA la primera vez que
-alguien la abre, la revisa y la guarda. Por eso la salida no va a public/data sino a su propia carpeta, que solo
-incluye esa función.
+alguien la abre, la revisa y la guarda. La salida va a su propia carpeta, fuera de public/data, para no engordar
+las demás funciones, que incluyen dist/data.
 
 Fuentes: módulos SWORD de CrossWire, preparados a partir de Christian Classics Ethereal Library. Dominio público.
 - MHC: Matthew Henry, Commentary on the Whole Bible (1706-1721)
@@ -255,7 +255,7 @@ def build(name, out, counts, kjv):
 
 
 def main():
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "comentarios"
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "public" / "comentarios"
     counts, kjv = verse_counts()
     for name in MODULES:
         build(name, out, counts, kjv)

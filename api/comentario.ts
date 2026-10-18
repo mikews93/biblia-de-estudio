@@ -22,7 +22,7 @@ import { FUENTES, Fuente } from '../src/lib/comentarioFuentes';
 const MODEL = process.env.COMENTARIO_MODEL ?? 'claude-sonnet-5-5';
 const REVIEW_MODEL = process.env.COMENTARIO_REVISOR ?? 'claude-opus-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
-const SOURCES_DIR = process.env.COMENTARIOS_DIR ?? path.join(process.cwd(), 'comentarios');
+const SOURCES_DIR = process.env.COMENTARIOS_DIR ?? path.join(process.cwd(), 'dist', 'comentarios');
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 // Tope de partes nuevas traducidas al día entre todos (lo ya traducido no cuenta): protege la cuenta de la IA.
 const PER_DAY = Number(process.env.COMENTARIO_PARTES_DIA ?? 400);

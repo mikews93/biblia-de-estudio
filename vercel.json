@@ -20,8 +20,8 @@
       "maxDuration": 60
     },
     "api/comentario.ts": {
-      "includeFiles": "{dist/data/books.json,dist/data/text/rv1909/**,comentarios/**}",
-      "maxDuration": 300
+      "includeFiles": "dist/**",
+      "maxDuration": 120
     }
   },
   "rewrites": [

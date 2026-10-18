@@ -4,7 +4,7 @@
 // - «traducida»: texto en inglés de dominio público que /api/comentario traduce con IA la primera vez y guarda.
 //   Sus secciones salen de pipeline/build_comentarios.py.
 // - «propia»: texto que ya está en español (por ejemplo Enduring Word en español, si David Guzik da permiso).
-//   Se dejan sus secciones en comentarios/<id>/ con el mismo formato y se sirven sin traducir.
+//   Se dejan sus secciones en public/comentarios/<id>/ con el mismo formato y se sirven sin traducir.
 // - «enlace»: no tenemos el texto; la app enlaza al sitio del autor.
 
 export type Fuente = {
