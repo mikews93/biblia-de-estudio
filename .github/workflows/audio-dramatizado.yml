@@ -59,6 +59,7 @@ jobs:
           path: pipeline/.cache/eleven
           key: eleven-${{ github.run_id }}
       - name: Subir a la versión de GitHub
+        if: hashFiles('pipeline/audio_dramatizado/salida/*.mp3') != ''
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
             --title "Audio dramatizado (borrador)" \

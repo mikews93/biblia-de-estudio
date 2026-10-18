@@ -42,6 +42,7 @@ MUSIC_DB = -15
 LATIN = ('latin', 'mexic', 'colombia', 'argentin', 'venezuel', 'peru', 'chile', 'caribbean', 'central american')
 
 warnings: list[str] = []
+spent: list[dict] = []  # créditos que cobró ElevenLabs por cada pieza nueva
 
 
 def notice(kind: str, msg: str) -> None:
@@ -95,6 +96,9 @@ def call(method: str, path: str, body: dict | None = None, query: dict | None = 
     try:
         with urllib.request.urlopen(req, timeout=300) as res:
             payload = res.read()
+            cost = res.headers.get('character-cost') or res.headers.get('x-character-count')
+            if method == 'POST' and cost:
+                spent.append({'pieza': path, 'creditos': int(float(cost))})
     except urllib.error.HTTPError as err:
         detail = err.read().decode(errors='replace')[:500]
         raise RuntimeError(f'{method} {path} → {err.code}: {detail}') from None
@@ -287,6 +291,16 @@ def build(guion_id: str, review: bool) -> None:
         informe['plan'] = {k: sub.get(k) for k in ('tier', 'character_count', 'character_limit', 'voice_limit', 'next_character_count_reset_unix')}
     except RuntimeError as err:
         warnings.append(f'No se pudo leer el plan: {err}')
+    plan = informe.get('plan') or {}
+    if plan.get('character_limit') is not None:
+        left = plan['character_limit'] - (plan.get('character_count') or 0)
+        # Además del diálogo, los efectos, ambientes y música también gastan créditos: se pide margen.
+        need = int(chars * 1.2) + 3000
+        notice('notice', f'Plan {plan.get("tier")}: quedan {left} créditos; este guion necesita unos {need} (sin contar la música).')
+        if left < need:
+            # No es un fallo del código: la acción termina bien y avisa, sin gastar nada.
+            notice('warning', f'No hay créditos suficientes en ElevenLabs: quedan {left} y hacen falta unos {need}. No se grabó nada.')
+            sys.exit(0)
 
     voices = pick_voices(guion, informe)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -372,7 +386,7 @@ def build(guion_id: str, review: bool) -> None:
         'credito': guion['credito'],
     }
     (OUT / f'{guion_id}.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-    informe.update({'duracion_segundos': seconds, 'piezas': len(clips), 'avisos': warnings})
+    informe.update({'duracion_segundos': seconds, 'piezas': len(clips), 'creditos_gastados': sum(s['creditos'] for s in spent), 'avisos': warnings})
     (OUT / 'informe.json').write_text(json.dumps(informe, ensure_ascii=False, indent=2))
     notice('notice', 'Informe de grabación:\n' + json.dumps(informe, ensure_ascii=False, indent=1))
     for w in warnings:
@@ -381,4 +395,8 @@ def build(guion_id: str, review: bool) -> None:
 
 if __name__ == '__main__':
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
-    build(args[0] if args else 'mrk-1', '--revisar' in sys.argv)
+    try:
+        build(args[0] if args else 'mrk-1', '--revisar' in sys.argv)
+    except RuntimeError as err:
+        notice('error', f'La grabación se detuvo: {err}\nPiezas nuevas cobradas: {json.dumps(spent, ensure_ascii=False)}')
+        sys.exit(1)
