@@ -24,7 +24,7 @@ function AppStack() {
         <Stack.Screen name="[book]/[chapter]/index" options={{ title: '' }} />
         <Stack.Screen name="[book]/[chapter]/[verse]" options={{ title: '' }} />
         <Stack.Screen name="mapa/[book]/[chapter]" options={{ title: 'Lugares' }} />
-        <Stack.Screen name="buscar" options={{ title: 'Buscar por idea' }} />
+        <Stack.Screen name="buscar" options={{ title: 'Buscar' }} />
         <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
         <Stack.Screen name="comunidades/index" options={{ title: 'Comunidad' }} />
         <Stack.Screen name="comunidades/amigos" options={{ title: 'Amigos' }} />

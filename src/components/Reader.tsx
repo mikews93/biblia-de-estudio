@@ -150,6 +150,9 @@ export default function Reader() {
           ),
           headerRight: () => (
             <View style={styles.headerRight}>
+              <Pressable onPress={() => navigate(() => router.push('/buscar'), 'forward')} accessibilityRole="search" accessibilityLabel="Buscar">
+                <Text style={{ color: colors.text, fontSize: 22, lineHeight: 26 }}>⌕</Text>
+              </Pressable>
               <Pressable
                 onPress={() => update({ study: !settings.study })}
                 style={[

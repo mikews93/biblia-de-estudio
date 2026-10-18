@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import MicIcon from '@/components/MicIcon';
 import PlanCard from '@/components/PlanCard';
 import VerseImage from '@/components/VerseImage';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
@@ -12,6 +13,7 @@ import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { voiceSupported } from '@/lib/voz';
 
 /** Inicio («Hoy»): seguir leyendo, el versículo del día, la semana y accesos. */
 export default function Today() {
@@ -63,6 +65,32 @@ export default function Today() {
           {capitalize(new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }))}
         </Text>
         <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>{greeting()}</Text>
+      </Appear>
+
+      <Appear delay={20}>
+        <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Pressable
+            onPress={() => navigate(() => router.push('/buscar'), 'forward')}
+            style={styles.searchField}
+            accessibilityRole="search"
+            accessibilityLabel="Buscar una cita, unas palabras o una idea"
+          >
+            <Text style={{ color: colors.muted, fontSize: 18 }}>⌕</Text>
+            <Text style={{ color: colors.muted, fontSize: 15 }} numberOfLines={1}>
+              Buscar una cita o un versículo
+            </Text>
+          </Pressable>
+          {voiceSupported() && (
+            <Pressable
+              onPress={() => navigate(() => router.push('/buscar?voz=1' as never), 'forward')}
+              style={styles.searchMic}
+              accessibilityRole="button"
+              accessibilityLabel="Dictar la búsqueda"
+            >
+              <MicIcon color={colors.accent} />
+            </Pressable>
+          )}
+        </View>
       </Appear>
 
       <Appear delay={40}>
@@ -227,6 +255,9 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingTop: 48, paddingBottom: 64, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
   date: { fontSize: 14 },
   hello: { fontSize: 34, marginTop: 2 },
+  search: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, marginTop: 16, paddingRight: 6 },
+  searchField: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12 },
+  searchMic: { paddingHorizontal: 10, paddingVertical: 8 },
   kicker: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
   continue: { borderRadius: 20, padding: 20 },
   continueTitle: { fontSize: 28, marginTop: 6 },
