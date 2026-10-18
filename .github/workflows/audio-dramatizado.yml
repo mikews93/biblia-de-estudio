@@ -16,6 +16,9 @@ on:
       guiones:
         description: Guiones a grabar (separados por espacios, sin .json)
         default: mrk-1
+      motor:
+        description: "auto (ElevenLabs si hay créditos, si no Cloudflare), elevenlabs o cloudflare"
+        default: auto
 
 permissions:
   contents: write
@@ -30,6 +33,10 @@ jobs:
     timeout-minutes: 60
     env:
       ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      # Sin créditos en ElevenLabs, la prueba se graba por Cloudflare AI Gateway (como en deusrex).
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_AI_API_TOKEN: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
+      MOTOR: ${{ github.event.inputs.motor || 'auto' }}
       GH_TOKEN: ${{ github.token }}
       TAG: audio-dramatizado-borrador
     steps:

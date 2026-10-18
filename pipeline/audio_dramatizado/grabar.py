@@ -14,6 +14,7 @@ Con --revisar solo valida el guion y calcula los caracteres, sin llamar a Eleven
 
 from __future__ import annotations
 
+import base64
 import gzip
 import hashlib
 import json
@@ -31,6 +32,14 @@ CACHE = ROOT / 'pipeline' / '.cache' / 'eleven'
 OUT = HERE / 'salida'
 API = 'https://api.elevenlabs.io/v1'
 KEY = os.environ.get('ELEVENLABS_API_KEY', '')
+# Cloudflare AI Gateway revende la voz de ElevenLabs desde su propia cuenta y la cobra con los créditos de Cloudflare
+# (así lo usa deusrex). No tiene eleven_v4 ni Text to Dialogue: cada línea se dice con eleven_v3, que sí entiende
+# las etiquetas [warm], y los efectos y la música se quedan fuera. Sirve para probar sin créditos de ElevenLabs.
+CF_ACCOUNT = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
+CF_TOKEN = os.environ.get('CLOUDFLARE_AI_API_TOKEN', '')
+CF_MODEL = 'elevenlabs/eleven-v3'
+# 'elevenlabs', 'cloudflare' o 'auto' (ElevenLabs si hay créditos; si no, Cloudflare).
+ENGINE = os.environ.get('MOTOR', 'auto')
 FORMAT = 'mp3_44100_128'
 
 GAP = 0.35  # silencio entre versículos
@@ -123,17 +132,77 @@ def cached(kind: str, request: dict, make) -> Path | None:
     return path
 
 
+def cf_audio(payload: bytes, content_type: str) -> bytes:
+    """El gateway devuelve el audio tal cual o envuelto en JSON (a veces dos veces), en base64 o como URL."""
+    if 'json' not in content_type:
+        return payload
+    data = json.loads(payload)
+    if data.get('success') is False:
+        raise RuntimeError(f'Cloudflare: {data.get("errors")}')
+
+    def find(node):
+        if isinstance(node, dict):
+            for value in node.values():
+                if (found := find(value)) is not None:
+                    return found
+        elif isinstance(node, list):
+            for value in node:
+                if (found := find(value)) is not None:
+                    return found
+        elif isinstance(node, str) and node.startswith('http'):
+            with urllib.request.urlopen(node, timeout=120) as res:
+                return res.read()
+        elif isinstance(node, str) and len(node) > 200:
+            return base64.b64decode(node)
+        return None
+
+    audio = find(data)
+    if audio is None:
+        raise RuntimeError(f'Cloudflare no devolvió audio: {str(data)[:300]}')
+    return audio
+
+
+def cf_speech(text: str, voice_id: str, language: str) -> bytes:
+    body = {'model': CF_MODEL, 'input': {'text': text, 'voice_id': voice_id, 'output_format': FORMAT, 'language_code': language}}
+    req = urllib.request.Request(
+        f'https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT}/ai/run',
+        data=json.dumps(body).encode(),
+        method='POST',
+        headers={'Authorization': f'Bearer {CF_TOKEN}', 'Content-Type': 'application/json', 'cf-aig-gateway-id': 'default'},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=300) as res:
+            return cf_audio(res.read(), res.headers.get('content-type', ''))
+    except urllib.error.HTTPError as err:
+        raise RuntimeError(f'Cloudflare {CF_MODEL} → {err.code}: {err.read().decode(errors="replace")[:500]}') from None
+
+
 def dialogue(inputs: list[dict], guion: dict) -> Path:
+    if ENGINE == 'cloudflare':
+        # Sin Text to Dialogue: cada línea por separado y luego seguidas.
+        lines = [
+            cached('voz-cf', {'model': CF_MODEL, **i}, lambda i=i: cf_speech(i['text'], i['voice_id'], guion['idioma']))
+            for i in inputs
+        ]
+        if len(lines) == 1:
+            return lines[0]
+        key = hashlib.sha256('|'.join(p.name for p in lines).encode()).hexdigest()[:20]
+        dst = CACHE / f'dialogo-cf-{key}.wav'
+        return dst if dst.exists() else concat(lines, dst)
     body = {'inputs': inputs, 'model_id': guion['modelo'], 'language_code': guion['idioma'], 'seed': 7}
     return cached('dialogo', body, lambda: call('POST', 'text-to-dialogue', body, {'output_format': FORMAT}, raw=True))
 
 
 def sound(prompt: str, seconds: float | None, loop: bool = False) -> Path | None:
+    if ENGINE == 'cloudflare':
+        return None
     body = {'text': prompt, 'duration_seconds': seconds, 'prompt_influence': 0.5, 'loop': loop}
     return cached('efecto', body, lambda: call('POST', 'sound-generation', body, {'output_format': FORMAT}, raw=True))
 
 
 def music(prompt: str, ms: int) -> Path | None:
+    if ENGINE == 'cloudflare':
+        return None
     body = {'prompt': prompt, 'music_length_ms': max(3000, ms), 'force_instrumental': True}
     return cached('musica', body, lambda: call('POST', 'music', body, {'output_format': FORMAT}, raw=True))
 
@@ -171,7 +240,7 @@ def pick_voices(guion: dict, guion_id: str, informe: dict) -> dict[str, str]:
             continue
         # Las voces de Dios son de este capítulo y no se reutilizan en otros.
         name = f'Biblia {guion_id} {role}' if cfg.get('dios') else f'Biblia {guion["libro"]} {role}'
-        if name in by_name:
+        if name in by_name and ENGINE != 'cloudflare':
             chosen[role] = by_name[name]
             used.add(by_name[name])
             informe['voces'][role] = {'voice_id': by_name[name], 'ya_en_cuenta': True}
@@ -197,17 +266,21 @@ def pick_voices(guion: dict, guion_id: str, informe: dict) -> dict[str, str]:
             return (0 if other or not cfg.get('acento_distinto') else 1, 0 if latin else 1, -(v.get('usage_character_count_1y') or 0))
 
         best = sorted(candidates, key=score)[0]
-        try:
-            added = call('POST', f'voices/add/{best["public_owner_id"]}/{best["voice_id"]}', {'new_name': name})
-        except RuntimeError as err:
-            fallback = premade(mine, want.get('gender'), used)
-            if not fallback:
-                raise
-            warnings.append(f'{role}: no se pudo añadir «{best.get("name")}» ({err}); se usa la voz «{fallback["name"]}» de ElevenLabs.')
-            chosen[role] = fallback['voice_id']
-            used.add(fallback['voice_id'])
-            informe['voces'][role] = {'voice_id': fallback['voice_id'], 'nombre': fallback['name'], 'de_elevenlabs': True}
-            continue
+        if ENGINE == 'cloudflare':
+            # El gateway habla desde la cuenta de Cloudflare: usa la voz de la biblioteca tal cual, sin añadirla.
+            added = {'voice_id': best['voice_id']}
+        else:
+            try:
+                added = call('POST', f'voices/add/{best["public_owner_id"]}/{best["voice_id"]}', {'new_name': name})
+            except RuntimeError as err:
+                fallback = premade(mine, want.get('gender'), used)
+                if not fallback:
+                    raise
+                warnings.append(f'{role}: no se pudo añadir «{best.get("name")}» ({err}); se usa la voz «{fallback["name"]}» de ElevenLabs.')
+                chosen[role] = fallback['voice_id']
+                used.add(fallback['voice_id'])
+                informe['voces'][role] = {'voice_id': fallback['voice_id'], 'nombre': fallback['name'], 'de_elevenlabs': True}
+                continue
         chosen[role] = added['voice_id']
         used.add(best['voice_id'])
         used.add(added['voice_id'])
@@ -372,10 +445,19 @@ def build(guion_id: str, review: bool) -> None:
         # Además del diálogo, los efectos, ambientes y música también gastan créditos: se pide margen.
         need = int(chars * 1.2) + 3000
         notice('notice', f'Plan {plan.get("tier")}: quedan {left} créditos; este guion necesita unos {need} (sin contar la música).')
-        if left < need:
+        if left < need and ENGINE == 'auto' and CF_ACCOUNT and CF_TOKEN:
+            globals()['ENGINE'] = 'cloudflare'
+            notice('notice', f'Sin créditos en ElevenLabs (quedan {left}): se graba de prueba con Cloudflare (eleven_v3, sin efectos ni música).')
+        elif left < need and ENGINE != 'cloudflare':
             # No es un fallo del código: la acción termina bien y avisa, sin gastar nada.
             notice('warning', f'No hay créditos suficientes en ElevenLabs: quedan {left} y hacen falta unos {need}. No se grabó nada.')
             sys.exit(0)
+    if ENGINE == 'cloudflare':
+        if not (CF_ACCOUNT and CF_TOKEN):
+            notice('error', 'Faltan los secretos CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_AI_API_TOKEN.')
+            sys.exit(1)
+        warnings.append('Grabación de prueba con Cloudflare: eleven_v3 línea por línea, sin efectos, ambientes ni música.')
+    informe['motor'] = ENGINE
 
     voices = pick_voices(guion, guion_id, informe)
     OUT.mkdir(parents=True, exist_ok=True)
