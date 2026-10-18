@@ -77,7 +77,13 @@ function AppStack() {
       </Stack>
       <AudioBar />
       <TabBar />
-      {Platform.OS === 'web' && <View nativeID="pliegue" pointerEvents="none" style={fixedInTransition('pliegue')} />}
+      {Platform.OS === 'web' && (
+        <>
+          <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />
+          <View nativeID="pliegue" pointerEvents="none" style={fixedInTransition('pliegue')} />
+          <View nativeID="pliegue-brillo" pointerEvents="none" style={fixedInTransition('pliegue-brillo')} />
+        </>
+      )}
     </View>
   );
 }

@@ -77,52 +77,52 @@
       ::view-transition-group(progreso),
       ::view-transition-group(capitulos),
       ::view-transition-group(audio) { z-index: 4; }
-      /* Capítulo siguiente o anterior: se pasa la hoja como papel. Hacia adelante un pliegue barre la página
-         de derecha a izquierda: a su derecha aparece el capítulo nuevo y a su izquierda se ve el dorso de la
-         hoja que se levanta, con su sombra. Hacia atrás es la misma película al revés. El pliegue es
-         #pliegue (src/app/_layout.tsx), que solo existe en el estado nuevo de la transición. */
-      #pliegue { display: none; }
-      html[data-fold] #pliegue {
+      /* Capítulo siguiente o anterior: se pasa la hoja como en un libro. Las animaciones las calcula
+         src/lib/pageTurn.ts; aquí solo se apagan las de por defecto y se colocan las capas. El dorso de la
+         hoja (#pliegue) y sus sombras solo existen en el estado nuevo de la transición. */
+      #pliegue, #pliegue-sombra, #pliegue-brillo { display: none; }
+      html[data-fold] #pliegue,
+      html[data-fold] #pliegue-sombra,
+      html[data-fold] #pliegue-brillo {
         display: block;
         position: fixed;
         top: 0;
-        bottom: 0;
         left: 0;
-        width: 44vw;
         pointer-events: none;
-        background: linear-gradient(
-          to right,
-          rgba(0, 0, 0, 0) 0%,
-          rgba(0, 0, 0, 0.14) 6%,
-          color-mix(in srgb, var(--papel) 92%, black) 8%,
-          color-mix(in srgb, var(--papel) 80%, white) 45%,
-          color-mix(in srgb, var(--papel) 96%, white) 70%,
-          color-mix(in srgb, var(--papel) 86%, black) 79.4%,
-          rgba(0, 0, 0, 0.28) 79.5%,
-          rgba(0, 0, 0, 0.08) 88%,
-          rgba(0, 0, 0, 0) 100%
-        );
       }
-      html[data-nav^='turn']::view-transition-group(pliegue) { z-index: 3; animation: vt-fold-sweep 560ms cubic-bezier(0.45, 0, 0.35, 1) both; }
-      html[data-nav^='turn']::view-transition-new(pliegue) { animation: none; }
-      html[data-nav='turn-forward']::view-transition-old(root),
-      html[data-nav='turn-back']::view-transition-new(root) {
-        z-index: 2;
-        animation: vt-fold-clip 560ms cubic-bezier(0.45, 0, 0.35, 1) both;
+      html[data-fold] #pliegue {
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg,
+          color-mix(in srgb, var(--papel) 90%, gray),
+          color-mix(in srgb, var(--papel) 96%, white) 55%,
+          color-mix(in srgb, var(--papel) 88%, gray));
       }
-      html[data-nav='turn-back']::view-transition-group(pliegue),
-      html[data-nav='turn-back']::view-transition-new(root) { animation-direction: reverse; }
-      html[data-nav='turn-forward']::view-transition-new(root),
-      html[data-nav='turn-back']::view-transition-old(root) { animation: none; }
-      /* El borde del pliegue (79,5 % del ancho de #pliegue) coincide en todo momento con el recorte de la hoja. */
-      @keyframes vt-fold-clip {
-        from { clip-path: polygon(0 0, 135% 0, 135% 100%, 0 100%); }
-        to { clip-path: polygon(0 0, -9% 0, -9% 100%, 0 100%); }
+      html[data-fold] #pliegue-sombra {
+        width: 90px;
+        height: 300vh;
+        background: linear-gradient(to right, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.1) 35%, rgba(0, 0, 0, 0));
       }
-      @keyframes vt-fold-sweep {
-        from { transform: translateX(100vw); }
-        to { transform: translateX(-44vw); }
+      html[data-fold] #pliegue-brillo {
+        width: 120px;
+        height: 300vh;
+        background: linear-gradient(to right,
+          rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.04) 22%, rgba(255, 255, 255, 0.14) 48%, rgba(255, 255, 255, 0) 100%);
       }
+      html[data-nav^='turn']::view-transition-group(pliegue-sombra) { z-index: 2; animation: none; }
+      html[data-nav^='turn']::view-transition-group(pliegue) { z-index: 3; animation: none; }
+      html[data-nav^='turn']::view-transition-group(pliegue-brillo) { z-index: 3; animation: none; }
+      html[data-nav^='turn']::view-transition-new(pliegue),
+      html[data-nav^='turn']::view-transition-new(pliegue-sombra),
+      html[data-nav^='turn']::view-transition-new(pliegue-brillo) { animation: none; transform-origin: 0 0; }
+      html[data-nav^='turn']::view-transition-old(root),
+      html[data-nav^='turn']::view-transition-new(root) { animation: none; }
+      html[data-nav='turn-forward']::view-transition-old(root) { z-index: 2; }
+      /* Hasta que arranca pageTurn.ts (un fotograma) las capas que entran no se ven. */
+      html[data-nav='turn-back']::view-transition-new(root),
+      html[data-nav^='turn']::view-transition-new(pliegue) { clip-path: polygon(0 0, 0 0, 0 0); }
+      html[data-nav^='turn']::view-transition-new(pliegue-sombra),
+      html[data-nav^='turn']::view-transition-new(pliegue-brillo) { transform: translateX(-300vw); }
       @keyframes vt-fade-in { from { opacity: 0; } }
       @keyframes vt-fade-out { to { opacity: 0; } }
       @keyframes vt-from-right { from { transform: translateX(28px); } }

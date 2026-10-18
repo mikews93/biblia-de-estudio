@@ -1,9 +1,11 @@
 import { Platform, type ViewStyle } from 'react-native';
 
+import { animatePageTurn } from './pageTurn';
+
 export type Direction = 'forward' | 'back' | 'fade' | 'turn-forward' | 'turn-back';
 
 type ViewTransitionDocument = Document & {
-  startViewTransition?: (update: () => Promise<void>) => { finished: Promise<void> };
+  startViewTransition?: (update: () => Promise<void>) => { ready: Promise<void>; finished: Promise<void> };
 };
 
 /**
@@ -19,7 +21,7 @@ export function navigate(update: () => void, direction: Direction = 'fade') {
   const from = location.href;
   doc.documentElement.dataset.nav = direction;
   const transition = doc.startViewTransition(async () => {
-    // El pliegue de pasar la hoja solo aparece en el estado nuevo (ya tomada la foto del anterior).
+    // El dorso y las sombras de pasar la hoja solo aparecen en el estado nuevo (ya tomada la foto del anterior).
     if (direction.startsWith('turn')) doc.documentElement.dataset.fold = '';
     update();
     // El router pinta en el siguiente render: se espera a que cambie la URL y a un instante más.
@@ -28,6 +30,9 @@ export function navigate(update: () => void, direction: Direction = 'fade') {
     for (let i = 0; i < 25 && location.href === from; i++) await tick();
     await tick();
   });
+  if (direction === 'turn-forward' || direction === 'turn-back') {
+    transition.ready.then(() => animatePageTurn(direction)).catch(() => {});
+  }
   transition.finished.finally(() => {
     delete doc.documentElement.dataset.nav;
     delete doc.documentElement.dataset.fold;
