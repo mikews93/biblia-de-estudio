@@ -5,9 +5,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BackIcon, ForwardIcon, PauseIcon, PlayIcon } from '@/components/audioIcons';
 
+import { TalkIcon } from '@/components/icons';
 import { PodcastGrabado } from '@/components/PodcastGrabado';
 import { Sources } from '@/components/StudyPanel';
 import { ToolFooter, ToolState } from '@/components/ToolState';
+import { IconText } from '@/components/comunidad/ui';
 import { Book, getBooks, parseRef } from '@/lib/data';
 import { useHerramienta } from '@/lib/herramientas';
 import { closeAudio, playSpeech, recordingId, toggle, useAudio, useCatalog } from '@/lib/audio';
@@ -55,7 +57,9 @@ export default function Podcast() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title: 'Resumen en audio' }} />
       <ScrollView ref={scroll} contentContainerStyle={styles.content}>
-        <Text style={[styles.kicker, { color: colors.accent }]}>🎧 RESUMEN EN AUDIO</Text>
+        <IconText icon={TalkIcon} color={colors.accent} size={14}>
+          <Text style={[styles.kicker, { color: colors.accent }]}>RESUMEN EN AUDIO</Text>
+        </IconText>
         <Text style={[styles.title, { color: colors.text, fontFamily: serif }]}>{title}</Text>
         <Text style={{ color: colors.muted, marginTop: 4 }}>
           Ana y Tomás conversan sobre el capítulo{ready ? ` · unos ${minutes(lines)} min` : ''}

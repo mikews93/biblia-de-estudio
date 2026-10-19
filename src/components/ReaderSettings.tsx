@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { DownloadIcon } from '@/components/comunidad/icons';
+import { ChevronRightIcon, ContrastIcon, DownloadIcon } from '@/components/icons';
 import { navigate } from '@/lib/transition';
 
 import { Settings, sans, serif, themeSwatches, useColors, useSettings } from '@/lib/theme';
@@ -47,9 +47,11 @@ export default function ReaderSettings({ onClose }: { onClose: () => void }) {
                     c ? { backgroundColor: c.background } : { backgroundColor: colors.background },
                   ]}
                 >
-                  <Text style={{ fontFamily: serif, fontSize: 18, color: c ? c.text : colors.text }}>
-                    {c ? 'Aa' : '◐'}
-                  </Text>
+                  {c ? (
+                    <Text style={{ fontFamily: serif, fontSize: 18, color: c.text }}>Aa</Text>
+                  ) : (
+                    <ContrastIcon color={colors.text} size={20} />
+                  )}
                 </View>
                 <Text style={{ color: on ? colors.text : colors.muted, fontSize: 12, marginTop: 4 }}>{t.label}</Text>
               </Pressable>
@@ -108,7 +110,7 @@ export default function ReaderSettings({ onClose }: { onClose: () => void }) {
         >
           <DownloadIcon color={colors.accent} size={20} />
           <Text style={{ color: colors.text, fontWeight: '600', flex: 1 }}>Leer sin conexión</Text>
-          <Text style={{ color: colors.accent, fontWeight: '700' }}>›</Text>
+          <ChevronRightIcon color={colors.accent} size={18} />
         </Pressable>
       </View>
     </Modal>

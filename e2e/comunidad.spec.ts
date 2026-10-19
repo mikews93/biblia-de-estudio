@@ -92,7 +92,7 @@ test('dos amigos: enlace de amistad, aceptar, publicar, me gusta y comentarios',
   await pb.getByRole('button', { name: /Comentar/ }).click();
   await expect(pb).toHaveURL(/\/comunidades\/publicacion\//);
   await pb.getByPlaceholder('Escribe un comentario…').fill('¡Amén, Ana! Romanos 10:17');
-  await pb.getByRole('button', { name: 'Comentar', exact: true }).click();
+  await pb.getByRole('button', { name: 'Comentar', exact: true, disabled: false }).click();
   await expect(pb.getByText('¡Amén, Ana! Romanos 10:17')).toBeVisible();
   await expect(pb.getByRole('button', { name: /1 comentario/ })).toBeVisible();
 
@@ -133,7 +133,7 @@ test('un versículo resaltado en el lector se publica y el amigo lo ve con su ci
   await pa.getByText('Porque de tal manera amó Dios al mundo').click();
   await pa.getByRole('button', { name: 'Compartir', exact: true }).click();
   await expect(pa.getByText('Compartir Juan 3:16')).toBeVisible();
-  await pa.getByText('◎ Publicar en Comunidad').click();
+  await pa.getByText('Publicar en Comunidad').click();
   await pa.getByRole('radio', { name: 'Como resaltado' }).click();
   await pa.getByPlaceholder('¿Qué te dice este versículo? (opcional)').fill(comentario);
   await pa.getByRole('radio', { name: 'Mis amigos' }).click();
@@ -169,7 +169,7 @@ test('lo que se lee aparece en el muro de los amigos y «Mostrar lo que leo» lo
     const leido = respuesta(pa, 'leido');
     await pa.getByRole('button', { name: 'Terminé este capítulo' }).click();
     await leido;
-    await expect(pa.getByText('✓ Capítulo leído')).toBeVisible();
+    await expect(pa.getByText('Capítulo leído')).toBeVisible();
   };
   const lectura = pb.getByText(/^Juan [\d ,y]+$/);
 
@@ -225,16 +225,16 @@ test('perfil de una persona: pedir amistad, aceptarla desde el perfil, ver lo qu
   // Ana acepta desde el perfil de Beto.
   await pa.goto(`/comunidades/persona/${beto.usuario.id}`);
   await pa.getByRole('button', { name: 'Aceptar amistad' }).click();
-  await expect(pa.getByRole('button', { name: 'Amigos ✓' })).toBeVisible();
+  await expect(pa.getByRole('button', { name: 'Amigos', exact: true })).toBeVisible();
   await expect(pa.getByText('1 amigo', { exact: true })).toBeVisible();
 
   // Ahora Beto ve la publicación en el perfil de Ana.
   await pb.reload();
-  await expect(pb.getByRole('button', { name: 'Amigos ✓' })).toBeVisible();
+  await expect(pb.getByRole('button', { name: 'Amigos', exact: true })).toBeVisible();
   await expect(pb.getByText(texto)).toBeVisible();
 
   // Beto quita la amistad y la publicación deja de verse.
-  await pb.getByRole('button', { name: 'Amigos ✓' }).click();
+  await pb.getByRole('button', { name: 'Amigos', exact: true }).click();
   await expect(pb.getByRole('button', { name: 'Agregar como amigo' })).toBeVisible();
   await expect(pb.getByText(texto)).toHaveCount(0);
 

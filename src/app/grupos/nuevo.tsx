@@ -143,7 +143,7 @@ export default function NewGroup() {
           {kind === 'reto' ? (
             <>
               <Chips
-                options={options.map((o) => ({ value: `${o.def.id}-${o.run.year}`, label: `${o.def.icon} ${seasonTint(o.def.season!, colors).name} ${o.run.year}` }))}
+                options={options.map((o) => ({ value: `${o.def.id}-${o.run.year}`, label: `${seasonTint(o.def.season!, colors).name} ${o.run.year}` }))}
                 value={retoId}
                 onChange={setRetoId}
               />

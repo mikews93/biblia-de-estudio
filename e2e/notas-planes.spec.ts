@@ -48,7 +48,7 @@ test.describe('Resaltados y notas', () => {
     await expect(v(page.getByLabel('Editar nota'))).toHaveText('Dios me amó primero.');
 
     // Filtros: solo notas, solo verde
-    await v(page.getByRole('radio', { name: '✎ Notas (1)' })).click();
+    await v(page.getByRole('radio', { name: 'Notas (1)' })).click();
     await expect(item316).toBeVisible();
     await expect(item33).toBeHidden();
     await v(page.getByRole('radio', { name: '● Verde' })).click();
@@ -77,7 +77,7 @@ test.describe('Resaltados y notas', () => {
     await v(page.getByRole('button', { name: 'Borrar' })).click();
     await expect(v(page.getByLabel('Tiene nota'))).toHaveCount(0);
     await page.goto('/notas');
-    await expect(v(page.getByRole('radio', { name: '✎ Notas (0)' }))).toBeVisible();
+    await expect(v(page.getByRole('radio', { name: 'Notas (0)' }))).toBeVisible();
     await expect(v(page.getByLabel('Editar nota'))).toHaveCount(0);
     await expect(item316).toBeVisible();
 
@@ -114,7 +114,7 @@ test.describe('Planes de lectura', () => {
     await v(page.getByRole('button', { name: 'Leer lo de hoy' })).click();
     await expect(page).toHaveURL(/\/marcos\/1$/);
     await v(page.getByRole('button', { name: 'Terminé este capítulo' })).click();
-    await expect(v(page.getByText('✓ Capítulo leído'))).toBeVisible();
+    await expect(v(page.getByText('Capítulo leído'))).toBeVisible();
     await expect(v(page.getByText(/Marcos, la vida de Jesús: 1 de 16/))).toBeVisible();
 
     // Hoy muestra el día siguiente del plan, también tras recargar
@@ -160,16 +160,16 @@ test.describe('Planes de lectura', () => {
     for (const cap of [1, 2, 3, 4]) {
       await expect(page).toHaveURL(new RegExp(`/rut/${cap}$`));
       await v(page.getByRole('button', { name: 'Terminé este capítulo' })).click();
-      await expect(v(page.getByText('✓ Capítulo leído'))).toBeVisible();
+      await expect(v(page.getByText('Capítulo leído'))).toBeVisible();
       if (cap < 4) {
         await expect(v(page.getByText(`Rut: ${cap} de 4`, { exact: false }))).toBeVisible();
         await v(page.getByText(`Rut ${cap + 1} ›`)).click();
       }
     }
-    await expect(v(page.getByText('🎉 ¡Terminaste el plan «Rut»! Ver tu recorrido ›'))).toBeVisible();
-    await v(page.getByText('🎉 ¡Terminaste el plan «Rut»! Ver tu recorrido ›')).click();
+    await expect(v(page.getByText('¡Terminaste el plan «Rut»! Ver tu recorrido ›'))).toBeVisible();
+    await v(page.getByText('¡Terminaste el plan «Rut»! Ver tu recorrido ›')).click();
     await expect(page).toHaveURL(/\/planes\/libro-rut$/);
-    await expect(v(page.getByText(/🎉 Terminado el/))).toBeVisible();
+    await expect(v(page.getByText(/Terminado el/))).toBeVisible();
 
     // En la lista de planes ya no está en curso, sino terminado; y Hoy no lo ofrece
     await page.goto('/planes');

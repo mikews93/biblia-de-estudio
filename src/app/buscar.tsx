@@ -6,9 +6,8 @@ import { AccessibilityInfo, Animated, Platform, Pressable, ScrollView, StyleShee
 
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
+import { ChevronRightIcon, ClockIcon, CloseIcon, MicIcon, SearchIcon, SparkIcon, type IconProps } from '@/components/icons';
 import { NeedsConnection } from '@/components/SinConexion';
-import MicIcon from '@/components/MicIcon';
-import SearchIcon from '@/components/SearchIcon';
 import { IdeaResult, addRecent, clearRecent, getRecent, searchByIdea } from '@/lib/buscar';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
@@ -245,7 +244,7 @@ export default function Search() {
               style={[styles.clear, { backgroundColor: colors.border }]}
               accessibilityLabel="Borrar"
             >
-              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 15, fontWeight: '700' }}>✕</Text>
+              <CloseIcon color={colors.muted} size={13} strokeWidth={2.6} />
             </Pressable>
           )}
           {canTalk && (
@@ -316,7 +315,7 @@ export default function Search() {
                 accessibilityRole="link"
               >
                 <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>
-                  {cita.verse === undefined ? `Leer ${bookName} ${cita.chapter}` : `Abrir en ${bookName} ${cita.chapter}`} →
+                  {cita.verse === undefined ? `Leer ${bookName} ${cita.chapter}` : `Abrir en ${bookName} ${cita.chapter}`} ›
                 </Text>
               </Pressable>
             )}
@@ -343,7 +342,7 @@ export default function Search() {
               </View>
               <View style={styles.chips}>
                 {recent.map((r) => (
-                  <Chip key={r} label={r} icon="↺" colors={colors} onPress={() => submit([r])} />
+                  <Chip key={r} label={r} icon={ClockIcon} colors={colors} onPress={() => submit([r])} />
                 ))}
               </View>
             </Appear>
@@ -368,7 +367,7 @@ export default function Search() {
                   style={({ pressed }) => [styles.quote, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
                 >
                   <Text style={{ color: colors.text, fontFamily: serif, fontSize: 17, fontStyle: 'italic', flex: 1 }}>«{f}…»</Text>
-                  <Text style={{ color: colors.accent, fontSize: 18 }}>›</Text>
+                  <ChevronRightIcon color={colors.accent} size={18} />
                 </Pressable>
               ))}
             </View>
@@ -378,7 +377,7 @@ export default function Search() {
             <Text style={[styles.section, { color: colors.muted }]}>Por tema</Text>
             <View style={styles.chips}>
               {TOPICS.map((t) => (
-                <Chip key={t} label={t} icon="✦" colors={colors} onPress={() => submit([t])} />
+                <Chip key={t} label={t} icon={SparkIcon} colors={colors} onPress={() => submit([t])} />
               ))}
             </View>
           </Appear>
@@ -456,7 +455,7 @@ export default function Search() {
               >
                 <View style={styles.cardHead}>
                   <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>{r.label}</Text>
-                  <Text style={{ color: colors.accent, fontSize: 18 }}>›</Text>
+                  <ChevronRightIcon color={colors.accent} size={18} />
                 </View>
                 <Text style={[styles.resultText, { color: colors.text, fontFamily: serif }]}>{r.text}</Text>
                 <Text style={[styles.reason, { color: colors.muted, borderColor: colors.border }]}>{r.reason}</Text>
@@ -489,13 +488,13 @@ function useSettled(value: string, ms: number) {
 
 function Chip({
   label,
-  icon,
+  icon: Icon,
   serifLabel,
   colors,
   onPress,
 }: {
   label: string;
-  icon?: string;
+  icon?: (p: IconProps) => React.ReactNode;
   serifLabel?: boolean;
   colors: Colors;
   onPress: () => void;
@@ -505,7 +504,7 @@ function Chip({
       onPress={onPress}
       style={({ pressed }) => [styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
     >
-      {icon && <Text style={{ color: colors.accent, fontSize: 13 }}>{icon}</Text>}
+      {Icon && <Icon color={colors.accent} size={15} />}
       <Text style={{ color: colors.text, fontSize: serifLabel ? 16 : 14, fontFamily: serifLabel ? serif : undefined }}>{label}</Text>
     </Pressable>
   );

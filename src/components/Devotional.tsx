@@ -4,12 +4,15 @@ import { ActivityIndicator, Animated, Easing, Platform, Pressable, StyleSheet, T
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
+import { IconText } from '@/components/comunidad/ui';
+import { CheckIcon, HeartIcon, type IconProps, ListenIcon, LockIcon, PencilIcon, PrayIcon, RefreshIcon, ShareIcon, SunIcon } from '@/components/icons';
 import { Markdown, Sources } from '@/components/StudyText';
 import VerseImage from '@/components/VerseImage';
 import { playChapter } from '@/lib/audio';
 import { Book, Verse, getChapter } from '@/lib/data';
 import { parseDevocional, saveEntrada } from '@/lib/diario';
 import { Source } from '@/lib/estudio';
+import { studyKeep, useKept } from '@/lib/recordado';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -24,7 +27,8 @@ type Props = {
   /** Lo que se muestra si la IA no pudo responder (error, cuenta). */
   problem?: ReactNode;
   onOpen: (ref: string) => void;
-  onClose: () => void;
+  /** Al tocar un número ⟦n⟧ de una cita. */
+  onCite?: (source: Source) => void;
   /** Al cambiar de paso, para volver arriba. */
   onStep?: () => void;
 };
@@ -37,11 +41,11 @@ const STEPS = [
   { key: 'ora', label: 'Ora', title: 'Habla con Dios', hint: 'Con tus propias palabras', min: 3 },
 ] as const;
 
-const ORA: Record<string, { icon: string; hint: string }> = {
-  Adora: { icon: '☼', hint: 'Quién es Dios' },
-  Confiesa: { icon: '↺', hint: 'Lo que reconoces' },
-  Agradece: { icon: '♡', hint: 'Lo que te ha dado' },
-  Pide: { icon: '✧', hint: 'Lo que necesitas' },
+const ORA: Record<string, { icon: (p: IconProps) => ReactNode; hint: string }> = {
+  Adora: { icon: SunIcon, hint: 'Quién es Dios' },
+  Confiesa: { icon: RefreshIcon, hint: 'Lo que reconoces' },
+  Agradece: { icon: HeartIcon, hint: 'Lo que te ha dado' },
+  Pide: { icon: PrayIcon, hint: 'Lo que necesitas' },
 };
 
 /** Contexto que se lee alrededor del versículo, para no sacarlo de su capítulo. */
@@ -53,17 +57,19 @@ const native = Platform.OS !== 'web';
  * para hoy y orar con pistas del texto. La IA abre el texto y pregunta; lo que la persona escribe es suyo
  * y se guarda en su diario.
  */
-export default function Devotional({ book, chapter, verse, text, sources, busy, problem, onOpen, onClose, onStep }: Props) {
+export default function Devotional({ book, chapter, verse, text, sources, busy, problem, onOpen, onCite, onStep }: Props) {
   const colors = useColors();
-  const [step, setStepState] = useState(0);
+  // El paso y lo escrito sobreviven a seguir un enlace y volver atrás (src/lib/recordado.ts).
+  const keep = `${studyKeep(book.id, chapter, verse)}devocional.`;
+  const [step, setStepState] = useKept(`${keep}paso`, 0);
   const [verses, setVerses] = useState<Verse[]>([]);
-  const [palabra, setPalabra] = useState('');
-  const [oracion, setOracion] = useState('');
-  const [paso, setPaso] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [palabra, setPalabra] = useKept(`${keep}palabra`, '');
+  const [oracion, setOracion] = useKept(`${keep}oracion`, '');
+  const [paso, setPaso] = useKept(`${keep}hoy`, '');
+  const [saved, setSaved] = useKept(`${keep}guardado`, false);
   const [sharing, setSharing] = useState(false);
-  const [marked, setMarked] = useState<number | null>(null);
-  const id = useRef(`${Date.now()}`).current;
+  const [marked, setMarked] = useKept<number | null>(`${keep}marcado`, null);
+  const [id] = useKept(`${keep}id`, () => `${Date.now()}`);
   const d = useMemo(() => parseDevocional(text), [text]);
   const passage = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
 
@@ -117,7 +123,6 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
   };
 
   const openDiario = () => {
-    onClose();
     navigate(() => router.push('/diario' as never), 'forward');
   };
 
@@ -160,7 +165,9 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                 accessibilityRole="button"
                 accessibilityLabel={`Escuchar ${book.name} ${chapter}`}
               >
-                <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 12 }}>▶ Escuchar</Text>
+                <IconText icon={ListenIcon} color={colors.accent} size={14} gap={5}>
+                  <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 12 }}>Escuchar</Text>
+                </IconText>
               </Pressable>
             </View>
             {reading.length ? (
@@ -185,7 +192,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
           </View>
           {marked ? (
             <Appear key={marked} style={[styles.markNote, { backgroundColor: colors.accentSoft }]}>
-              <Text style={{ color: colors.accent, fontWeight: '800' }}>✓</Text>
+              <CheckIcon color={colors.accent} size={18} strokeWidth={2.4} />
               <Text style={{ color: colors.text, flex: 1, fontSize: 14, lineHeight: 20 }}>
                 El versículo {marked} te detuvo. Lo guardamos para meditarlo.
               </Text>
@@ -213,7 +220,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
             <View style={[styles.insightRule, { backgroundColor: colors.accent }]} />
             <View style={{ flex: 1 }}>
               <Label colors={colors}>LO QUE DICE EL TEXTO</Label>
-              <Markdown text={d.observa} colors={colors} />
+              <Markdown text={d.observa} colors={colors} sources={sources} onCite={onCite} />
             </View>
           </View>
           <Label colors={colors} style={{ marginTop: 22 }}>
@@ -225,7 +232,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                 <Text style={[styles.qNumText, { color: colors.accent }]}>{i + 1}</Text>
               </View>
               <View style={{ flex: 1, paddingTop: 3 }}>
-                <Markdown text={q} colors={colors} />
+                <Markdown text={q} colors={colors} sources={sources} onCite={onCite} />
               </View>
             </Appear>
           ))}
@@ -262,10 +269,10 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                   accessibilityState={{ checked: on }}
                 >
                   <View style={[styles.radio, { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accent : 'transparent' }]}>
-                    {on && <Text style={{ color: colors.surface, fontSize: 11, fontWeight: '800' }}>✓</Text>}
+                    {on && <CheckIcon color={colors.surface} size={13} strokeWidth={2.6} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Markdown text={v} colors={colors} />
+                    <Markdown text={v} colors={colors} sources={sources} onCite={onCite} />
                   </View>
                 </Pressable>
               </Appear>
@@ -298,13 +305,13 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                   {info && (
                     <View style={styles.prayHead}>
                       <View style={[styles.prayIcon, { backgroundColor: colors.accentSoft }]}>
-                        <Text style={{ color: colors.accent, fontSize: 14, fontFamily: serif }}>{info.icon}</Text>
+                        <info.icon color={colors.accent} size={15} strokeWidth={2} />
                       </View>
                       <Text style={[styles.prayLabel, { color: colors.accent }]}>{o.label.toUpperCase()}</Text>
                       <Text style={{ color: colors.muted, fontSize: 12 }}>{info.hint}</Text>
                     </View>
                   )}
-                  <Markdown text={o.text.charAt(0).toUpperCase() + o.text.slice(1)} colors={colors} />
+                  <Markdown text={o.text.charAt(0).toUpperCase() + o.text.slice(1)} colors={colors} sources={sources} onCite={onCite} />
                 </Appear>
               );
             })}
@@ -546,7 +553,7 @@ function Sanctuary({ colors }: { colors: Colors }) {
         accessibilityRole="button"
       >
         <Text style={{ color: left === null ? colors.text : colors.muted, fontWeight: '600', fontSize: 14 }}>
-          {left === null ? '◌  Un minuto de silencio' : 'Inhala… exhala · Terminar'}
+          {left === null ? 'Un minuto de silencio' : 'Inhala… exhala · Terminar'}
         </Text>
       </Pressable>
     </View>
@@ -566,7 +573,7 @@ function Halo({ colors }: { colors: Colors }) {
         <Breath colors={colors} size={140} />
       </View>
       <Animated.View style={[styles.doneMark, { backgroundColor: colors.accent, transform: [{ scale }], opacity: t }]}>
-        <Text style={{ color: colors.surface, fontSize: 26, fontWeight: '700' }}>✓</Text>
+        <CheckIcon color={colors.surface} size={28} strokeWidth={2.6} />
       </Animated.View>
     </View>
   );
@@ -596,8 +603,12 @@ function Journal({
       ]}
     >
       <View style={styles.journalHead}>
-        <Text style={[styles.journalLabel, { color: colors.accent }]}>✎  {label}</Text>
-        <Text style={{ color: colors.muted, fontSize: 11 }}>🔒 Solo tú</Text>
+        <IconText icon={PencilIcon} color={colors.accent} size={14}>
+          <Text style={[styles.journalLabel, { color: colors.accent }]}>{label}</Text>
+        </IconText>
+        <IconText icon={LockIcon} color={colors.muted} size={11} gap={4}>
+          <Text style={{ color: colors.muted, fontSize: 11 }}>Solo tú</Text>
+        </IconText>
       </View>
       <TextInput
         value={value}
@@ -641,7 +652,9 @@ function Carry({
           {book.name} {chapter}:{verse[0]}
         </Text>
         <Pressable onPress={onShare} hitSlop={8} accessibilityRole="button">
-          <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>Compartir ↗</Text>
+          <IconText icon={ShareIcon} color={colors.accent} size={14} gap={5}>
+            <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>Compartir</Text>
+          </IconText>
         </Pressable>
       </View>
     </View>

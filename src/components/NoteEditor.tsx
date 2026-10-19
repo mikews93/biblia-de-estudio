@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Button } from '@/components/comunidad/ui';
+import { Button, IconText } from '@/components/comunidad/ui';
+import { CloseIcon, LockIcon } from '@/components/icons';
 import { setNote, useNotes, noteKey } from '@/lib/notas';
 import { serif, useColors } from '@/lib/theme';
 
@@ -34,7 +35,7 @@ export default function NoteEditor({ book, chapter, verse, reference, text, onCl
           <View style={styles.head}>
             <Text style={[styles.ref, { color: colors.accent }]}>Mi nota · {reference}</Text>
             <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar">
-              <Text style={{ color: colors.muted, fontSize: 18 }}>✕</Text>
+              <CloseIcon color={colors.muted} size={20} />
             </Pressable>
           </View>
           <Text style={[styles.verse, { color: colors.text }]} numberOfLines={3}>
@@ -61,9 +62,11 @@ export default function NoteEditor({ book, chapter, verse, reference, text, onCl
               </Pressable>
             ))}
           </View>
-          <Text style={[styles.private, { color: colors.muted }]}>
-            🔒 Solo tú ves esta nota. Para compartir con tu grupo, usa la pestaña «Grupo» del versículo.
-          </Text>
+          <IconText icon={LockIcon} color={colors.muted} size={13} style={{ marginTop: 12, alignItems: 'flex-start' }}>
+            <Text style={[styles.private, { color: colors.muted }]}>
+              Solo tú ves esta nota. Para compartir con tu grupo, usa la pestaña «Grupo» del versículo.
+            </Text>
+          </IconText>
           <View style={styles.buttons}>
             {existing && <Button label="Borrar" kind="quiet" onPress={remove} />}
             <Button label="Guardar" onPress={save} disabled={!draft.trim() && !existing} style={{ flex: 1 }} />
@@ -93,6 +96,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, lineHeight: 22, minHeight: 140, marginTop: 14, textAlignVertical: 'top' },
   prompts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   prompt: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 },
-  private: { fontSize: 12, marginTop: 12 },
+  private: { fontSize: 12, flex: 1 },
   buttons: { flexDirection: 'row', gap: 12, marginTop: 14, alignItems: 'center' },
 });

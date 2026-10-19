@@ -2,7 +2,9 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { CheckIcon, ChevronRightIcon } from '@/components/icons';
 import PlanCard, { readingsLabel, shortDate } from '@/components/PlanCard';
+import PlanIcon from '@/components/PlanIcon';
 import Reto from '@/components/Reto';
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, Card, Chips, SectionTitle, text } from '@/components/comunidad/ui';
@@ -65,7 +67,9 @@ export default function PlanScreen() {
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
       <Stack.Screen options={{ title: '' }} />
-      <Text style={[styles.icon, { color: colors.accent }]}>{def.icon}</Text>
+      <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
+        <PlanIcon icono={def.icono} color={colors.accent} size={30} />
+      </View>
       <Text style={[text.title, { color: colors.text }]}>{def.title}</Text>
       <Text style={[text.body, { color: colors.muted, marginTop: 6 }]}>{def.description}</Text>
 
@@ -241,7 +245,7 @@ function DayRow({
       ]}
     >
       <View style={[styles.check, { borderColor: done ? colors.accent : colors.border }, done && { backgroundColor: colors.accent }]}>
-        {done && <Text style={{ color: colors.surface, fontSize: 12, fontWeight: '700' }}>✓</Text>}
+        {done && <CheckIcon color={colors.surface} size={14} strokeWidth={2.6} />}
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '700' }}>
@@ -253,7 +257,7 @@ function DayRow({
           {readingsLabel(plan, day.readings, books)} · {dayMinutes(plan, day, words)} min
         </Text>
       </View>
-      <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
+      <ChevronRightIcon color={colors.muted} size={18} />
     </Pressable>
   );
 }
@@ -269,7 +273,7 @@ function Stat({ value, label, colors }: { value: number; label: string; colors: 
 
 const styles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 64, maxWidth: 680, width: '100%', alignSelf: 'center' },
-  icon: { fontSize: 32, fontFamily: serif, marginBottom: 4 },
+  icon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   stats: { flexDirection: 'row', gap: 10, marginTop: 14 },
   stat: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 12, paddingHorizontal: 6, alignItems: 'center' },
   day: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 8, borderBottomWidth: StyleSheet.hairlineWidth },
