@@ -6,22 +6,26 @@
   "functions": {
     "api/estudiar.ts": {
       "includeFiles": "dist/data/{books.json,text/rv1909/**,interlinear/**,xrefs/**,concordance/**}",
-      "maxDuration": 120
+      "maxDuration": 120,
+      "excludeFiles": "dist/**"
     },
     "api/comunidades.ts": {
       "includeFiles": "dist/data/{books.json,versions.json,text/**}",
-      "maxDuration": 60
+      "maxDuration": 60,
+      "excludeFiles": "dist/**"
     },
     "api/audio.ts": {
       "maxDuration": 30
     },
     "api/buscar.ts": {
       "includeFiles": "dist/data/{books.json,text/rv1909/**}",
-      "maxDuration": 60
+      "maxDuration": 60,
+      "excludeFiles": "dist/**"
     },
     "api/comentario.ts": {
       "includeFiles": "dist/{data/books.json,data/text/rv1909/**,comentarios/**}",
-      "maxDuration": 120
+      "maxDuration": 120,
+      "excludeFiles": "dist/**"
     },
     "api/podcast-grabado.ts": {
       "maxDuration": 300
