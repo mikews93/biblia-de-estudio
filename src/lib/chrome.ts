@@ -57,8 +57,8 @@ export function useAutoHide(setHidden: (hidden: boolean) => void = setChromeHidd
   };
 
   /** Para un salto hecho por la app (abrir en un versículo): ese desplazamiento no oculta nada. */
-  const pause = () => {
-    pausedUntil.current = Date.now() + 500;
+  const pause = (ms = 500) => {
+    pausedUntil.current = Math.max(pausedUntil.current, Date.now() + ms);
   };
 
   return { onScroll, pause };

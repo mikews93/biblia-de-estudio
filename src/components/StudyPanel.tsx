@@ -48,6 +48,8 @@ type Props = {
 
 const SUGGESTIONS = ['Explícamelo más sencillo', '¿Cómo lo aplico hoy?', '¿Qué aportan los pasajes relacionados?'];
 const WORD_SUGGESTIONS = ['Explícamelo más sencillo', '¿Por qué no se tradujo de otra forma?', '¿Cómo lo aplico hoy?'];
+// Cuánto deja quieta la cabecera tras un desplazamiento que hace la app al seguir una respuesta.
+const FOLLOW_PAUSE = 1200;
 
 /**
  * Estudio generado con IA a partir de las fuentes de la app, con citas y preguntas de seguimiento.
@@ -143,11 +145,12 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   const [bar] = useState(() => new Animated.Value(0));
   const barHidden = useRef(false);
   const [barHeight, setBarHeight] = useState(0);
-  const autoHide = useAutoHide((hide) => {
+  const setBarHidden = (hide: boolean) => {
     if (hide === barHidden.current) return;
     barHidden.current = hide;
     slide(bar, hide);
-  }, false);
+  };
+  const autoHide = useAutoHide(setBarHidden, false);
 
   // Al volver de un enlace el contenido se monta de nuevo: se vuelve a la misma altura.
   const scrollY = useRef(0);
@@ -156,6 +159,16 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   useEffect(() => {
     if (focused && scrollY.current > 0) restore.current = scrollY.current;
   }, [focused]);
+
+  // Mientras llega la respuesta a una pregunta, la app va bajando hasta el final: la cabecera vuelve al
+  // preguntar (para cambiar de modo o cerrar) y ese desplazamiento, ni lo que queda de la animación al
+  // terminar, no la aparta.
+  const following = busy && turns.length > 1;
+  useEffect(() => {
+    autoHide.pause(FOLLOW_PAUSE);
+    if (following) setBarHidden(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [following]);
 
   const onContentSizeChange = (_: number, height: number) => {
     if (restore.current !== null) {
@@ -168,8 +181,8 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
     }
     // Mientras llega la respuesta a una pregunta, se sigue el final. Ese desplazamiento lo hace la app:
     // no aparta la cabecera (con ella, el botón de cerrar).
-    if (busy && turns.length > 1) {
-      autoHide.pause();
+    if (following) {
+      autoHide.pause(FOLLOW_PAUSE);
       scroll.current?.scrollToEnd({ animated: true });
     }
   };
@@ -311,6 +324,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               onLayout={(e) => (viewHeight.current = e.nativeEvent.layout.height)}
               onScroll={(e) => {
                 scrollY.current = e.nativeEvent.contentOffset.y;
+                if (following) autoHide.pause(FOLLOW_PAUSE);
                 autoHide.onScroll(e);
               }}
               onContentSizeChange={onContentSizeChange}
