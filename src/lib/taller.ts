@@ -439,3 +439,142 @@ export function borradorParaIA(m: Mensaje) {
   });
   return out.join('\n').slice(0, 12000);
 }
+
+// Sugerencias de la IA que se llevan a un campo con un toque. La IA propone ideas sueltas (una por línea de
+// lista); quien prepara elige cuáles le sirven y luego las escribe con sus palabras.
+
+/** Dónde puede ir una sugerencia: un campo de la idea central o una parte del bosquejo. */
+export type Destino = { id: string; label: string; grupo: 'Pasaje' | 'Idea central' | 'Bosquejo' };
+
+export type Sugerencia = {
+  /** El título «## » bajo el que vino la línea, sin las almohadillas. */
+  seccion: string;
+  /** La línea lista para escribir: sin negritas y con las citas como referencias entre paréntesis. */
+  texto: string;
+  /** Si la línea trae «Tema: … | Complemento: …», las dos partes por separado. */
+  idea?: { tema: string; complemento: string };
+};
+
+const CAMPOS_IDEA: { id: 'tema' | 'complemento' | 'necesidad' | 'gracia'; label: string }[] = [
+  { id: 'tema', label: 'Tema' },
+  { id: 'complemento', label: 'Complemento' },
+  { id: 'necesidad', label: 'La necesidad' },
+  { id: 'gracia', label: 'La gracia' },
+];
+
+export function destinosDe(m: Mensaje): Destino[] {
+  const out: Destino[] = [
+    { id: 'observacion', label: 'Observar', grupo: 'Pasaje' },
+    { id: 'idea', label: 'Tema y complemento', grupo: 'Idea central' },
+    ...CAMPOS_IDEA.map((c) => ({ id: c.id, label: c.label, grupo: 'Idea central' as const })),
+  ];
+  for (const s of m.secciones) {
+    const titulo = s.titulo.trim() || 'Parte sin título';
+    if (m.tipo === 'encuentro') {
+      out.push({ id: `grupo:${s.id}`, label: `${titulo} · para el grupo`, grupo: 'Bosquejo' });
+      out.push({ id: `notas:${s.id}`, label: `${titulo} · notas`, grupo: 'Bosquejo' });
+    } else {
+      out.push({ id: `notas:${s.id}`, label: titulo, grupo: 'Bosquejo' });
+    }
+  }
+  return out;
+}
+
+const citas = (s: string, sources: { n: number; label: string }[], keep: boolean) =>
+  s
+    .replace(/(?:\s*⟦\d+⟧)+/g, (run) => {
+      if (!keep) return '';
+      const labels = [...new Set([...run.matchAll(/⟦(\d+)⟧/g)].map(([, n]) => sources.find((x) => x.n === Number(n))?.label).filter(Boolean))];
+      return labels.length ? ` (${labels.join('; ')})` : '';
+    })
+    .trim();
+
+const limpiar = (s: string) => s.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+
+/** Las líneas de lista de una respuesta de la IA, cada una con el título bajo el que vino. */
+export function sugerenciasDe(markdown: string, sources: { n: number; label: string }[] = []): Sugerencia[] {
+  const out: Sugerencia[] = [];
+  let seccion = '';
+  for (const line of markdown.split('\n')) {
+    const h = line.match(/^#{1,3} (.+)/);
+    if (h) {
+      seccion = limpiar(citas(h[1], sources, false));
+      continue;
+    }
+    const item = line.match(/^\s*[-*] (.+)/);
+    if (!item) continue;
+    const raw = limpiar(item[1]);
+    if (!raw) continue;
+    const idea = raw.match(/^tema\s*:\s*(.+?)\s*(?:\||·|—|–|;)\s*complemento\s*:\s*(.+)$/i);
+    out.push({
+      seccion,
+      texto: citas(raw, sources, true),
+      idea: idea ? { tema: citas(idea[1], sources, false).replace(/[.«»"]+$/g, '').replace(/^[«"]/, ''), complemento: citas(idea[2], sources, false).replace(/[«»"]/g, '') } : undefined,
+    });
+  }
+  return out;
+}
+
+/** El campo que mejor encaja con una sugerencia, según el título bajo el que vino. */
+export function destinoSugerido(m: Mensaje, s: Sugerencia): string | undefined {
+  const t = fold(s.seccion);
+  if (s.idea) return 'idea';
+  const encuentro = m.tipo === 'encuentro';
+  // Primero las partes del bosquejo por su nombre: «Introducción: la necesidad» es una parte, no el campo.
+  const parte = t
+    ? (m.secciones.find((x) => fold(x.titulo) === t) ??
+      m.secciones.find((x) => fold(x.titulo).length >= 3 && (t.startsWith(fold(x.titulo)) || fold(x.titulo).startsWith(t))))
+    : undefined;
+  if (parte) return `${encuentro ? 'grupo' : 'notas'}:${parte.id}`;
+  if (/necesidad/.test(t)) return 'necesidad';
+  if (/gracia/.test(t)) return 'gracia';
+  if (/observ/.test(t)) return 'observacion';
+  // En un encuentro, las preguntas de conversación van a la parte en que el grupo lee el texto.
+  if (encuentro && /pregunta/.test(t)) {
+    const texto = m.secciones.find((x) => /mirar arriba|edificaci/.test(fold(x.titulo)));
+    if (texto) return `grupo:${texto.id}`;
+  }
+  return undefined;
+}
+
+const sumar = (actual: string | undefined, texto: string) => {
+  const prev = (actual ?? '').replace(/\s+$/, '');
+  return prev ? `${prev}\n${texto}` : texto;
+};
+
+type Previo = Record<string, string | undefined>;
+
+/**
+ * El cambio que lleva la sugerencia al campo y lo que había antes, para deshacerlo. El tema y el complemento son
+ * una frase y se reemplazan; en los demás campos la sugerencia se añade en una línea nueva, sin borrar lo escrito.
+ */
+export function agregarSugerencia(m: Mensaje, destino: string, s: Sugerencia): { cambio: Partial<Mensaje>; previo: Previo } | null {
+  if (destino === 'idea') {
+    return {
+      cambio: { tema: s.idea?.tema ?? '', complemento: s.idea?.complemento ?? s.texto },
+      previo: { tema: m.tema, complemento: m.complemento },
+    };
+  }
+  if (destino === 'tema' || destino === 'complemento') {
+    const texto = destino === 'tema' ? (s.idea?.tema ?? s.texto) : (s.idea?.complemento ?? s.texto);
+    return { cambio: { [destino]: texto }, previo: { [destino]: m[destino] } };
+  }
+  if (destino === 'observacion' || destino === 'necesidad' || destino === 'gracia') {
+    return { cambio: { [destino]: sumar(m[destino], s.texto) }, previo: { [destino]: m[destino] } };
+  }
+  const [campo, id] = destino.split(':');
+  const seccion = m.secciones.find((x) => x.id === id);
+  if (!seccion || (campo !== 'notas' && campo !== 'grupo')) return null;
+  const key = campo === 'notas' ? 'texto' : 'paraGrupo';
+  return {
+    cambio: { secciones: m.secciones.map((x) => (x.id === id ? { ...x, [key]: sumar(x[key], s.texto) } : x)) },
+    previo: { [key]: seccion[key] },
+  };
+}
+
+/** Devuelve a como estaba solo el campo que tocó la sugerencia; lo escrito después en otros campos se respeta. */
+export function deshacerSugerencia(m: Mensaje, destino: string, previo: Previo): Partial<Mensaje> {
+  if (!destino.includes(':')) return previo as Partial<Mensaje>;
+  const id = destino.split(':')[1];
+  return { secciones: m.secciones.map((x) => (x.id === id ? { ...x, ...previo } : x)) };
+}

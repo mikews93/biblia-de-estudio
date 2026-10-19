@@ -19,6 +19,7 @@ import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
 import { parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
+import Sugerencias from '@/components/taller/Sugerencias';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { useConversations } from '@/lib/conversaciones';
@@ -33,7 +34,7 @@ export type Paso = TallerRequest['paso'];
 
 const MODOS: { modo: Modo; label: string; hint: string }[] = [
   { modo: 'preguntar', label: 'Pregúntame', hint: 'Preguntas para que lo pienses tú' },
-  { modo: 'sugerir', label: 'Sugiéreme', hint: 'Opciones para elegir y escribir con tus palabras' },
+  { modo: 'sugerir', label: 'Sugiéreme', hint: 'Opciones para llevar a tu borrador y terminar con tus palabras' },
   { modo: 'revisar', label: 'Revisa', hint: 'Qué funciona y qué mejorar' },
 ];
 
@@ -153,7 +154,18 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                   </View>
                 ) : (
                   <View key={i}>
-                    {turn.text ? <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} /> : null}
+                    {!turn.text ? null : modo === 'sugerir' ? (
+                      <Sugerencias
+                        text={turn.text}
+                        sources={turn.sources ?? []}
+                        mensaje={mensaje}
+                        colors={colors}
+                        listo={!busy || i < turns.length - 1}
+                        onCite={setPeek}
+                      />
+                    ) : (
+                      <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} />
+                    )}
                     {!!turn.sources?.length && (!busy || i < turns.length - 1) && (
                       <Sources sources={turn.sources} colors={colors} onOpen={open} />
                     )}

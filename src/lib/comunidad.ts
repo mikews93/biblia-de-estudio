@@ -12,7 +12,19 @@ import { chapterHref as routeToChapter, verseHref } from './routes';
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const KEY = 'cuenta';
 
-export type Usuario = { id: string; nombre: string; correo: string | null };
+export type Usuario = {
+  id: string;
+  nombre: string;
+  correo: string | null;
+  foto?: string | null;
+  bio?: string | null;
+  iglesia?: string | null;
+  ciudad?: string | null;
+  /** Si tiene contraseña: una cuenta creada con Facebook puede tener correo y no contraseña. */
+  conClave?: boolean;
+  /** El nombre de la cuenta de Facebook conectada, o null. */
+  facebook?: string | null;
+};
 export type TipoGrupo = 'iglesia' | 'celula' | 'familia' | 'amigos';
 export type Lectura = {
   libro: string;
@@ -36,7 +48,7 @@ export type ResumenGrupo = {
   lectura: Lectura | null;
 };
 export type Plan = { libro: string | null; inicio: string | null; porDia: number; reto?: string | null };
-export type Miembro = { id: string; nombre: string; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
+export type Miembro = { id: string; nombre: string; foto: string | null; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
 export type Grupo = {
   id: string;
   nombre: string;
@@ -173,7 +185,13 @@ export async function api<T = Record<string, unknown>>(accion: string, body: Rec
   return json as T;
 }
 
-async function startSession(r: { usuario: Usuario; llave: string }) {
+/** Guarda en el dispositivo la cuenta que devolvió el servidor tras un cambio del perfil. */
+export function updateUser(usuario: Usuario) {
+  set({ usuario });
+  save();
+}
+
+export async function startSession(r: { usuario: Usuario; llave: string }) {
   set({ llave: r.llave, usuario: r.usuario, grupos: null });
   save();
   await refreshGroups();

@@ -1,13 +1,15 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Post from '@/components/comunidad/Post';
 import { confirm } from '@/components/comunidad/confirm';
+import { ChurchIcon, PeopleIcon, PinIcon } from '@/components/icons';
 import { Avatar, Button, ErrorText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { CheckIcon } from '@/components/icons';
 import { Persona, Publicacion, answerFriend, askFriend, getPerson, removeFriend } from '@/lib/social';
 import { serif, useColors } from '@/lib/theme';
+import { navigate } from '@/lib/transition';
 
 /** El perfil de alguien de la comunidad: su nombre, la amistad y lo que comparte contigo. */
 export default function PersonScreen() {
@@ -54,12 +56,38 @@ export default function PersonScreen() {
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
       <Stack.Screen options={{ title: person.nombre }} />
       <View style={styles.head}>
-        <Avatar name={person.nombre} size={72} filled />
+        <Avatar name={person.nombre} foto={person.foto} size={96} filled />
         <Text style={[styles.name, { color: colors.text }]}>{person.nombre}</Text>
-        <Text style={{ color: colors.muted }}>
-          {person.amigos} {person.amigos === 1 ? 'amigo' : 'amigos'}
-        </Text>
+        {person.bio ? <Text style={[styles.bio, { color: colors.text }]}>{person.bio}</Text> : null}
+        <View style={styles.facts}>
+          {person.iglesia ? (
+            <View style={styles.fact}>
+              <ChurchIcon color={colors.muted} size={15} />
+              <Text style={{ color: colors.muted }}>{person.iglesia}</Text>
+            </View>
+          ) : null}
+          {person.ciudad ? (
+            <View style={styles.fact}>
+              <PinIcon color={colors.muted} size={15} />
+              <Text style={{ color: colors.muted }}>{person.ciudad}</Text>
+            </View>
+          ) : null}
+          <View style={styles.fact}>
+            <PeopleIcon color={colors.muted} size={15} />
+            <Text style={{ color: colors.muted }}>
+              {person.amigos} {person.amigos === 1 ? 'amigo' : 'amigos'}
+            </Text>
+          </View>
+        </View>
         {action && <View style={{ alignSelf: 'stretch', marginTop: 8 }}>{action}</View>}
+        {person.relacion === 'yo' && (
+          <Button
+            label="Editar mi perfil"
+            kind="outline"
+            onPress={() => navigate(() => router.push('/cuenta'), 'forward')}
+            style={{ alignSelf: 'stretch', marginTop: 8 }}
+          />
+        )}
         <ErrorText>{error}</ErrorText>
       </View>
 
@@ -84,5 +112,8 @@ export default function PersonScreen() {
 const styles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 60, maxWidth: 640, width: '100%', alignSelf: 'center' },
   head: { alignItems: 'center', gap: 6 },
-  name: { fontFamily: serif, fontSize: 24, fontWeight: '700', marginTop: 6 },
+  name: { fontFamily: serif, fontSize: 26, fontWeight: '700', marginTop: 8, textAlign: 'center' },
+  bio: { fontFamily: serif, fontStyle: 'italic', fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 440 },
+  facts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 16, rowGap: 6, marginTop: 4 },
+  fact: { flexDirection: 'row', alignItems: 'center', gap: 5 },
 });

@@ -18,6 +18,7 @@ const post = (patch: Partial<Publicacion>): Publicacion => ({
   actualizado: '',
   autorId: 'a',
   autor: 'Ana',
+  autorFoto: null,
   mia: false,
   meGusta: 0,
   yoMeGusta: false,

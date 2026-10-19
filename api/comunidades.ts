@@ -8,6 +8,9 @@
 // llave de sesión que la app guarda y envía como "Authorization: Bearer <llave>" (en la base solo queda su
 // hash). Si la persona añade correo y contraseña, puede entrar con ellos desde otro dispositivo.
 //
+// El perfil (foto, unas líneas sobre la persona, su iglesia y su ciudad) y la conexión con Facebook usan
+// las ayudas de api/_perfil.ts; Facebook vuelve a /api/facebook, que es facebookCallback de este archivo.
+//
 // Base de datos: Postgres (Neon desde el Marketplace de Vercel), en DATABASE_URL o POSTGRES_URL.
 // Las tablas se crean solas la primera vez que se usa la función.
 
@@ -18,6 +21,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import postgres from 'postgres';
 
+import { downloadPhoto, facebookDialog, facebookPage, facebookProfile, facebookReady, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
 import { notifyUser, PUSH_SCHEMA } from './_push';
 import { planById } from '../src/lib/planesCatalogo';
 import { parseRetoId, seasonRun } from '../src/lib/temporadas';
@@ -26,6 +30,11 @@ const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const MAX_NAME = 40;
+const MAX_BIO = 160;
+const MAX_PLACE = 60;
+const PHOTOS_PER_DAY = 10;
+// Lo que dura el viaje de ida y vuelta a Facebook.
+const FACEBOOK_MINUTES = 15;
 const MAX_NOTE = 1000;
 const MAX_PRAYER = 500;
 const MAX_GUIDE = 10000;
@@ -133,6 +142,21 @@ create table if not exists uso_ia (
 alter table usuarios add column if not exists codigo text unique;
 alter table usuarios add column if not exists compartir_lecturas boolean not null default true;
 alter table grupos add column if not exists plan_reto text;
+alter table usuarios add column if not exists foto text;
+alter table usuarios add column if not exists bio text;
+alter table usuarios add column if not exists iglesia text;
+alter table usuarios add column if not exists ciudad text;
+alter table usuarios add column if not exists facebook_id text unique;
+alter table usuarios add column if not exists facebook_nombre text;
+alter table usuarios add column if not exists fotos_dia date;
+alter table usuarios add column if not exists fotos_n int not null default 0;
+create table if not exists facebook_viajes (
+  estado_hash text primary key,
+  modo text not null,
+  usuario_id uuid references usuarios on delete cascade,
+  resultado text not null default 'pendiente',
+  creado timestamptz not null default now()
+);
 create table if not exists amistades (
   de uuid not null references usuarios on delete cascade,
   para uuid not null references usuarios on delete cascade,
@@ -210,7 +234,23 @@ type Version = { id: string; abbr: string };
 type Verse = [number, string];
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
-type User = { id: string; nombre: string; correo: string | null };
+type User = {
+  id: string;
+  nombre: string;
+  correo: string | null;
+  foto: string | null;
+  bio: string | null;
+  iglesia: string | null;
+  ciudad: string | null;
+  /** Si tiene contraseña (una cuenta creada con Facebook puede tener correo y no contraseña). */
+  conClave: boolean;
+  /** El nombre de su cuenta de Facebook conectada, o null. */
+  facebook: string | null;
+};
+
+// Las columnas de User, para cada consulta que devuelve la cuenta a la app.
+const USER_COLUMNS = `u.id, u.nombre, u.correo, u.foto, u.bio, u.iglesia, u.ciudad, u.clave_hash is not null as "conClave",
+  u.facebook_nombre as facebook`;
 /** El plan del grupo: un libro a un ritmo fijo, o un reto de temporada («adviento-2026») con sus fechas. */
 type Plan = { libro: string | null; inicio: string | null; porDia: number; reto: string | null };
 
@@ -384,11 +424,55 @@ async function readPlan(body: Json): Promise<Plan> {
 async function auth(sql: Sql, request: Request): Promise<User> {
   const key = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!key) throw new Fail('Necesitas una cuenta', 401);
-  const [user] = await sql<User[]>`
-    select u.id, u.nombre, u.correo from sesiones s join usuarios u on u.id = s.usuario_id where s.llave_hash = ${hash(key)}`;
+  const [user] = await sql.unsafe<User[]>(
+    `select ${USER_COLUMNS} from sesiones s join usuarios u on u.id = s.usuario_id where s.llave_hash = $1`,
+    [hash(key)],
+  );
   if (!user) throw new Fail('Tu sesión terminó. Vuelve a entrar.', 401);
   return user;
 }
+
+async function profile(sql: Sql, id: string) {
+  const [user] = await sql.unsafe<User[]>(`select ${USER_COLUMNS} from usuarios u where u.id = $1`, [id]);
+  return user;
+}
+
+/** Un texto opcional del perfil: vacío se guarda como null. */
+function optional(value: unknown, max: number) {
+  const t = typeof value === 'string' ? value.trim().replace(/\n{3,}/g, '\n\n') : '';
+  if (t.length > max) throw new Fail(`Es demasiado largo (máximo ${max} caracteres)`);
+  return t || null;
+}
+
+/** Cambia la foto de perfil y borra la anterior. Hay un límite diario para no llenar el almacén. */
+async function setPhoto(sql: Sql, userId: string, bytes: Uint8Array, type: NonNullable<ReturnType<typeof imageType>>) {
+  const [ok] = await sql`
+    update usuarios set fotos_n = case when fotos_dia = current_date then fotos_n + 1 else 1 end, fotos_dia = current_date
+    where id = ${userId} and (fotos_dia is distinct from current_date or fotos_n < ${PHOTOS_PER_DAY}) returning id`;
+  if (!ok) throw new Fail('Ya cambiaste la foto muchas veces hoy. Inténtalo mañana.', 429);
+  let url: string;
+  try {
+    url = await storePhoto(userId, bytes, type);
+  } catch (err) {
+    console.error('perfil: foto', err);
+    throw new Fail('No se pudo guardar la foto. Inténtalo de nuevo.', 503);
+  }
+  const [old] = await sql<{ foto: string | null }[]>`
+    update usuarios u set foto = ${url} from usuarios o where u.id = ${userId} and o.id = u.id returning o.foto`;
+  await removePhoto(old?.foto ?? null);
+}
+
+/** La cookie que ata el viaje a Facebook al navegador que lo empezó (que nadie más pueda recoger la sesión). */
+const FB_COOKIE = 'facebook_viaje';
+// Una acción que devuelve esta clave pide a POST que ponga la cookie (no llega a la app).
+const SET_COOKIE = Symbol('cookie');
+const cookieOf = (request: Request, name: string) =>
+  request.headers
+    .get('cookie')
+    ?.split(/;\s*/)
+    .find((c) => c.startsWith(`${name}=`))
+    ?.slice(name.length + 1) ?? null;
+const facebookRedirect = (request: Request) => process.env.FACEBOOK_REDIRECT_URI ?? new URL('/api/facebook', request.url).toString();
 
 async function membership(sql: Sql, user: User, groupId: unknown) {
   const id = uuid(groupId);
@@ -516,7 +600,7 @@ type Fragment = postgres.PendingQuery<postgres.Row[]>;
 async function posts(sql: Sql, me: string, where: Fragment, limit = PAGE) {
   const rows = await sql<PostRow[]>`
     select p.id, p.tipo, p.audiencia, p.libro, p.capitulo, p.versiculo, p.version, p.cita, p.texto, p.datos,
-      p.creado, p.actualizado, u.id as "autorId", u.nombre as autor, p.usuario_id = ${me} as mia,
+      p.creado, p.actualizado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", p.usuario_id = ${me} as mia,
       (select count(*)::int from me_gusta g where g.publicacion_id = p.id) as "meGusta",
       exists (select 1 from me_gusta g where g.publicacion_id = p.id and g.usuario_id = ${me}) as "yoMeGusta",
       (select count(*)::int from comentarios c where c.publicacion_id = p.id) as comentarios
@@ -559,7 +643,7 @@ async function friendCode(sql: Sql, userId: string) {
 
 async function personByCode(sql: Sql, code: unknown) {
   const clean = String(code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const [p] = await sql<{ id: string; nombre: string }[]>`select id, nombre from usuarios where codigo = ${clean}`;
+  const [p] = await sql<{ id: string; nombre: string; foto: string | null }[]>`select id, nombre, foto from usuarios where codigo = ${clean}`;
   if (!p) throw new Fail('Ese código de amistad no existe', 404);
   return p;
 }
@@ -606,9 +690,9 @@ const actions: Record<string, Handler> = {
       const [taken] = await sql`select 1 from usuarios where correo = ${correo}`;
       if (taken) throw new Fail('Ese correo ya tiene una cuenta. Entra con él.', 409);
     }
-    const [usuario] = await sql<User[]>`
-      insert into usuarios (nombre, correo, clave_hash) values (${nombre}, ${correo}, ${clave}) returning id, nombre, correo`;
-    return { usuario, llave: await newSession(sql, usuario.id) };
+    const [{ id }] = await sql<{ id: string }[]>`
+      insert into usuarios (nombre, correo, clave_hash) values (${nombre}, ${correo}, ${clave}) returning id`;
+    return { usuario: await profile(sql, id), llave: await newSession(sql, id) };
   },
 
   async protegerCuenta({ sql, body, request }) {
@@ -618,19 +702,22 @@ const actions: Record<string, Handler> = {
     const [taken] = await sql`select 1 from usuarios where correo = ${correo} and id <> ${user.id}`;
     if (taken) throw new Fail('Ese correo ya tiene una cuenta. Entra con él desde «Ya tengo cuenta».', 409);
     await sql`update usuarios set correo = ${correo}, clave_hash = ${await hashPassword(clave)} where id = ${user.id}`;
-    return { usuario: { ...user, correo } };
+    return { usuario: { ...user, correo, conClave: true } };
   },
 
   async entrar({ sql, body }) {
     const correo = email(body.correo);
-    const [row] = await sql<(User & { clave_hash: string })[]>`
-      select id, nombre, correo, clave_hash from usuarios where correo = ${correo}`;
+    const [row] = await sql<{ id: string; clave_hash: string | null; facebook_id: string | null }[]>`
+      select id, clave_hash, facebook_id from usuarios where correo = ${correo}`;
     const ok = row ? await checkPassword(String(body.clave ?? ''), row.clave_hash) : false;
     if (!row || !ok) {
       await new Promise((r) => setTimeout(r, 400));
+      if (row && !row.clave_hash && row.facebook_id) {
+        throw new Fail('Esta cuenta se creó con Facebook: entra con Facebook.', 401);
+      }
       throw new Fail('El correo o la contraseña no son correctos', 401);
     }
-    return { usuario: { id: row.id, nombre: row.nombre, correo: row.correo }, llave: await newSession(sql, row.id) };
+    return { usuario: await profile(sql, row.id), llave: await newSession(sql, row.id) };
   },
 
   async salirCuenta({ sql, request }) {
@@ -657,8 +744,86 @@ const actions: Record<string, Handler> = {
     return { usuario: { ...user, nombre } };
   },
 
+  async guardarPerfil({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const nombre = text(body.nombre, MAX_NAME, 'tu nombre');
+    const bio = optional(body.bio, MAX_BIO);
+    const iglesia = optional(body.iglesia, MAX_PLACE);
+    const ciudad = optional(body.ciudad, MAX_PLACE);
+    await sql`update usuarios set nombre = ${nombre}, bio = ${bio}, iglesia = ${iglesia}, ciudad = ${ciudad} where id = ${user.id}`;
+    return { usuario: { ...user, nombre, bio, iglesia, ciudad } };
+  },
+
+  async subirFoto({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const raw = typeof body.imagen === 'string' ? body.imagen.replace(/^data:[^,]*,/, '') : '';
+    const bytes = new Uint8Array(Buffer.from(raw, 'base64'));
+    if (bytes.length > MAX_PHOTO_BYTES) throw new Fail('La foto es demasiado grande');
+    const type = bytes.length ? imageType(bytes) : null;
+    if (!type) throw new Fail('Elige una foto (JPG, PNG o WebP)');
+    await setPhoto(sql, user.id, bytes, type);
+    return { usuario: await profile(sql, user.id) };
+  },
+
+  async quitarFoto({ sql, request }) {
+    const user = await auth(sql, request);
+    await sql`update usuarios set foto = null where id = ${user.id}`;
+    await removePhoto(user.foto);
+    return { usuario: { ...user, foto: null } };
+  },
+
+  async facebookDisponible() {
+    return { disponible: facebookReady() };
+  },
+
+  /**
+   * Empieza el viaje a Facebook: modo «entrar» (sin cuenta, o para crear una) o «conectar» (desde el perfil).
+   * Devuelve la página de Facebook y el estado con el que la app pregunta después por facebookResultado.
+   */
+  async facebookInicio({ sql, body, request }) {
+    if (!facebookReady()) throw new Fail('Entrar con Facebook todavía no está disponible.', 503);
+    const modo = body.modo === 'conectar' ? 'conectar' : 'entrar';
+    const user = modo === 'conectar' ? await auth(sql, request) : null;
+    const estado = randomBytes(24).toString('base64url');
+    await sql`delete from facebook_viajes where creado < now() - make_interval(mins => ${FACEBOOK_MINUTES})`;
+    await sql`insert into facebook_viajes (estado_hash, modo, usuario_id) values (${hash(estado)}, ${modo}, ${user?.id ?? null})`;
+    return { url: facebookDialog(estado, facebookRedirect(request)), estado, [SET_COOKIE]: `${FB_COOKIE}=${estado}` };
+  },
+
+  /** Lo que pasó en Facebook: pendiente mientras la persona sigue allí; al entrar, la llave de la sesión nueva. */
+  async facebookResultado({ sql, body, request }) {
+    const estado = typeof body.estado === 'string' ? body.estado : '';
+    if (!estado || cookieOf(request, FB_COOKIE) !== estado) throw new Fail('Vuelve a intentarlo desde este dispositivo.', 403);
+    const [trip] = await sql<{ modo: string; usuario_id: string | null; resultado: string }[]>`
+      select modo, usuario_id, resultado from facebook_viajes
+      where estado_hash = ${hash(estado)} and creado > now() - make_interval(mins => ${FACEBOOK_MINUTES})`;
+    if (!trip) throw new Fail('Pasó demasiado tiempo. Vuelve a intentarlo.', 410);
+    if (trip.resultado === 'pendiente') return { pendiente: true };
+    await sql`delete from facebook_viajes where estado_hash = ${hash(estado)}`;
+    const errors: Record<string, string> = {
+      cancelado: 'No se conectó con Facebook.',
+      ocupada: 'Esa cuenta de Facebook ya está conectada a otra cuenta de la app.',
+      correo: 'Ya tienes una cuenta con el correo de tu Facebook. Entra con tu correo y tu contraseña, y conecta Facebook desde tu perfil.',
+      error: 'Facebook no respondió. Inténtalo de nuevo.',
+    };
+    if (errors[trip.resultado]) throw new Fail(errors[trip.resultado], 409);
+    const usuario = await profile(sql, trip.usuario_id!);
+    if (!usuario) throw new Fail('Esa cuenta ya no existe', 404);
+    return trip.modo === 'entrar' ? { usuario, llave: await newSession(sql, usuario.id) } : { usuario };
+  },
+
+  async desconectarFacebook({ sql, request }) {
+    const user = await auth(sql, request);
+    if (!user.conClave) {
+      throw new Fail('Antes de desconectar Facebook, añade un correo y una contraseña para poder volver a entrar.', 409);
+    }
+    await sql`update usuarios set facebook_id = null, facebook_nombre = null where id = ${user.id}`;
+    return { usuario: { ...user, facebook: null } };
+  },
+
   async borrarCuenta({ sql, request }) {
     const user = await auth(sql, request);
+    await removePhoto(user.foto);
     const groups = await sql<{ grupo_id: string }[]>`select grupo_id from miembros where usuario_id = ${user.id}`;
     for (const { grupo_id } of groups) await leave(sql, grupo_id, user.id);
     await sql`update suscripciones set usuario_id = null where usuario_id = ${user.id}`;
@@ -722,8 +887,8 @@ const actions: Record<string, Handler> = {
     const g = await getGroup(sql, id);
     const reading = await todaysReading(planOf(g), today);
     const read = await readToday(sql, id, reading, today);
-    const members = await sql<{ id: string; nombre: string; rol: string }[]>`
-      select u.id, u.nombre, m.rol from miembros m join usuarios u on u.id = m.usuario_id
+    const members = await sql<{ id: string; nombre: string; foto: string | null; rol: string }[]>`
+      select u.id, u.nombre, u.foto, m.rol from miembros m join usuarios u on u.id = m.usuario_id
       where m.grupo_id = ${id} order by m.rol = 'admin' desc, m.unido`;
     return {
       grupo: {
@@ -946,7 +1111,7 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const post = await visiblePost(sql, user.id, body.id);
     const comentarios = await sql`
-      select c.id, c.texto, c.creado, u.id as "autorId", u.nombre as autor, c.usuario_id = ${user.id} as mio
+      select c.id, c.texto, c.creado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", c.usuario_id = ${user.id} as mio
       from comentarios c join usuarios u on u.id = c.usuario_id
       where c.publicacion_id = ${post.id} order by c.creado limit 200`;
     return { publicacion: post, comentarios };
@@ -1042,20 +1207,20 @@ const actions: Record<string, Handler> = {
     const codigo = await friendCode(sql, user.id);
     const [{ compartir }] = await sql<{ compartir: boolean }[]>`
       select compartir_lecturas as compartir from usuarios where id = ${user.id}`;
-    const links = await sql<{ id: string; nombre: string; estado: string }[]>`
-      select u.id, u.nombre, case when a.aceptada then 'amigos' when a.de = ${user.id} then 'enviada' else 'recibida' end as estado
+    const links = await sql<{ id: string; nombre: string; foto: string | null; estado: string }[]>`
+      select u.id, u.nombre, u.foto, case when a.aceptada then 'amigos' when a.de = ${user.id} then 'enviada' else 'recibida' end as estado
       from amistades a join usuarios u on u.id = case when a.de = ${user.id} then a.para else a.de end
       where a.de = ${user.id} or a.para = ${user.id}
       order by u.nombre`;
     // Sugerencias: gente de tus grupos con la que aún no tienes amistad.
     const sugerencias = await sql`
-      select distinct on (u.id) u.id, u.nombre, g.nombre as grupo
+      select distinct on (u.id) u.id, u.nombre, u.foto, g.nombre as grupo
       from miembros mine join miembros other on other.grupo_id = mine.grupo_id and other.usuario_id <> ${user.id}
       join usuarios u on u.id = other.usuario_id join grupos g on g.id = mine.grupo_id
       where mine.usuario_id = ${user.id}
         and not exists (select 1 from amistades a where (a.de = ${user.id} and a.para = u.id) or (a.de = u.id and a.para = ${user.id}))
       order by u.id limit 30`;
-    const pick = (estado: string) => links.filter((l) => l.estado === estado).map(({ id, nombre }) => ({ id, nombre }));
+    const pick = (estado: string) => links.filter((l) => l.estado === estado).map(({ id, nombre, foto }) => ({ id, nombre, foto }));
     return {
       codigo,
       compartirLecturas: compartir,
@@ -1068,7 +1233,7 @@ const actions: Record<string, Handler> = {
 
   async verCodigoAmigo({ sql, body }) {
     const p = await personByCode(sql, body.codigo);
-    return { persona: { id: p.id, nombre: p.nombre } };
+    return { persona: { id: p.id, nombre: p.nombre, foto: p.foto } };
   },
 
   async pedirAmistad({ sql, body, request }) {
@@ -1121,8 +1286,8 @@ const actions: Record<string, Handler> = {
   async persona({ sql, body, request }) {
     const user = await auth(sql, request);
     const id = uuid(body.usuario);
-    const [p] = await sql<{ id: string; nombre: string; amigos: number }[]>`
-      select u.id, u.nombre,
+    const [p] = await sql<{ id: string; nombre: string; foto: string | null; amigos: number }[]>`
+      select u.id, u.nombre, u.foto, u.bio, u.iglesia, u.ciudad,
         (select count(*)::int from amistades a where a.aceptada and (a.de = u.id or a.para = u.id)) as amigos
       from usuarios u where u.id = ${id}`;
     if (!p) throw new Fail('Esa persona ya no está en la comunidad', 404);
@@ -1203,7 +1368,12 @@ export async function POST(request: Request) {
   }
   try {
     const result = await action({ sql: await db(), body, request });
-    return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
+    const headers = new Headers({ 'Cache-Control': 'no-store' });
+    const cookie = (result as { [SET_COOKIE]?: string })[SET_COOKIE];
+    if (cookie) {
+      headers.set('Set-Cookie', `${cookie}; Path=/api; Max-Age=${FACEBOOK_MINUTES * 60}; HttpOnly; Secure; SameSite=Lax`);
+    }
+    return Response.json(result, { headers });
   } catch (err) {
     if (err instanceof Fail) return Response.json({ error: err.message }, { status: err.status });
     console.error('comunidades', body.accion, err);
@@ -1212,5 +1382,94 @@ export async function POST(request: Request) {
         ? 'Hay muchas consultas ahora mismo. Inténtalo en un momento.'
         : 'Algo falló en el servidor. Inténtalo de nuevo.';
     return Response.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * La vuelta de Facebook (GET /api/facebook?code=…&state=…). Anota el resultado del viaje para que la app lo
+ * recoja con facebookResultado y muestra una página que se cierra sola o vuelve a la app.
+ */
+export async function facebookCallback(request: Request) {
+  const url = new URL(request.url);
+  const estado = url.searchParams.get('state') ?? '';
+  let modo = 'entrar';
+  const page = (ok: boolean, msg?: string) =>
+    facebookPage(
+      ok ? 'Listo' : 'No se pudo conectar',
+      msg ?? (ok ? 'Ya puedes volver a Biblia de estudio.' : 'Vuelve a la app e inténtalo de nuevo.'),
+      modo === 'conectar' ? '/cuenta' : '/entrar',
+    );
+  if (!estado || cookieOf(request, FB_COOKIE) !== estado || !facebookReady()) {
+    return page(false, 'Empieza otra vez desde la app, en este mismo dispositivo.');
+  }
+  let sql: Sql;
+  try {
+    sql = await db();
+  } catch {
+    return page(false);
+  }
+  const [trip] = await sql<{ modo: string; usuario_id: string | null }[]>`
+    select modo, usuario_id from facebook_viajes
+    where estado_hash = ${hash(estado)} and resultado = 'pendiente' and creado > now() - make_interval(mins => ${FACEBOOK_MINUTES})`;
+  if (!trip) return page(false, 'Pasó demasiado tiempo. Vuelve a la app e inténtalo de nuevo.');
+  modo = trip.modo;
+  const finish = async (resultado: string, usuario: string | null = trip.usuario_id) => {
+    await sql`update facebook_viajes set resultado = ${resultado}, usuario_id = ${usuario} where estado_hash = ${hash(estado)}`;
+  };
+
+  const code = url.searchParams.get('code');
+  if (!code) {
+    await finish('cancelado');
+    return page(false, 'No se conectó con Facebook. Puedes volver a la app.');
+  }
+  let fb;
+  try {
+    fb = await facebookProfile(code, facebookRedirect(request));
+  } catch (err) {
+    console.error('facebook', err);
+    await finish('error');
+    return page(false);
+  }
+  const copyPhoto = async (userId: string) => {
+    const pic = fb.foto ? await downloadPhoto(fb.foto) : null;
+    if (pic) await setPhoto(sql, userId, pic.bytes, pic.type).catch((err) => console.error('facebook: foto', err));
+  };
+
+  try {
+    const [owner] = await sql<{ id: string; foto: string | null }[]>`select id, foto from usuarios where facebook_id = ${fb.id}`;
+    if (trip.modo === 'conectar') {
+      if (owner && owner.id !== trip.usuario_id) {
+        await finish('ocupada');
+        return page(false, 'Esa cuenta de Facebook ya está conectada a otra cuenta de la app.');
+      }
+      const [me] = await sql<{ foto: string | null }[]>`
+        update usuarios set facebook_id = ${fb.id}, facebook_nombre = ${fb.nombre} where id = ${trip.usuario_id} returning foto`;
+      if (me && !me.foto) await copyPhoto(trip.usuario_id!);
+      await finish('conectado');
+      return page(true, 'Tu cuenta de Facebook quedó conectada. Ya puedes volver a Biblia de estudio.');
+    }
+    if (owner) {
+      await sql`update usuarios set facebook_nombre = ${fb.nombre} where id = ${owner.id}`;
+      await finish('listo', owner.id);
+      return page(true);
+    }
+    // Nunca se une a una cuenta existente solo por el correo: quien la tenga debe entrar y conectar Facebook él mismo.
+    if (fb.correo) {
+      const [taken] = await sql`select 1 from usuarios where correo = ${fb.correo}`;
+      if (taken) {
+        await finish('correo');
+        return page(false, 'Ya tienes una cuenta con ese correo. Vuelve a la app y entra con tu correo y tu contraseña.');
+      }
+    }
+    const [created] = await sql<{ id: string }[]>`
+      insert into usuarios (nombre, correo, facebook_id, facebook_nombre) values (${fb.nombre}, ${fb.correo}, ${fb.id}, ${fb.nombre})
+      returning id`;
+    await copyPhoto(created.id);
+    await finish('listo', created.id);
+    return page(true, 'Tu cuenta quedó creada. Ya puedes volver a Biblia de estudio.');
+  } catch (err) {
+    console.error('facebook', err);
+    await finish('error').catch(() => {});
+    return page(false);
   }
 }

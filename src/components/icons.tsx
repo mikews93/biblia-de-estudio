@@ -5,7 +5,19 @@ import { Circle, Path, Rect } from 'react-native-svg';
 
 import { Line, type IconProps as Props } from './iconLine';
 
-export { CheckIcon, DevicesIcon, DownloadIcon, OfflineIcon, OpenBookIcon, PeopleIcon, SparkIcon } from './comunidad/icons';
+export {
+  CameraIcon,
+  CheckIcon,
+  ChurchIcon,
+  DevicesIcon,
+  DownloadIcon,
+  FacebookLogo,
+  KeyIcon,
+  OfflineIcon,
+  OpenBookIcon,
+  PeopleIcon,
+  SparkIcon,
+} from './comunidad/icons';
 export { CloseIcon, DramaIcon, ListenIcon, PauseIcon, PlayIcon, TalkIcon } from './audioIcons';
 export type { IconProps } from './iconLine';
 

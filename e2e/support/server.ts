@@ -11,6 +11,7 @@ import { Readable } from 'node:stream';
 import postgres from 'postgres';
 
 import { startMockAnthropic } from './mock-anthropic';
+import { configureFacebook, handleFacebook } from './mock-facebook';
 import { handlePush } from './mock-push';
 
 const PORT = Number(process.env.PORT ?? 8081);
@@ -23,10 +24,14 @@ process.env.DATABASE_URL ??= 'postgres://postgres:postgres@127.0.0.1:5432/biblia
 process.env.DATA_DIR = path.join(DIST, 'data');
 // Los avisos push van al servicio simulado de este mismo servidor (mock-push.ts).
 process.env.PUSH_HOSTS = 'localhost,127.0.0.1';
+// Las fotos de perfil van a una carpeta servida como el resto de dist/, y Facebook es el simulado.
+process.env.FOTOS_STORE_DIR ??= path.join(DIST, 'fotos-prueba');
+process.env.FOTOS_URL ??= '/fotos-prueba';
+configureFacebook(`http://localhost:${PORT}`);
 
 type Handler = (request: Request) => Promise<Response>;
 const handlers = new Map<string, Promise<Record<string, Handler>>>();
-const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar', 'notificaciones', 'podcast-grabado'];
+const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar', 'facebook', 'notificaciones', 'podcast-grabado'];
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -84,6 +89,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://localhost');
   const pathname = decodeURIComponent(url.pathname);
   if (pathname.startsWith('/__push') && (await handlePush(req, res))) return;
+  if (pathname.startsWith('/__facebook/')) return handleFacebook(req, res);
   if (pathname.startsWith('/api/')) return api(pathname.slice(5).replace(/\/$/, ''), req, res);
   // Como vercel.json: los archivos que existen se sirven tal cual; el resto de rutas abren la app.
   let p = await file(path.join(DIST, path.normalize(pathname)));
