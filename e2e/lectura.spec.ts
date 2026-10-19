@@ -310,10 +310,14 @@ test('al bajar leyendo se apartan la cabecera y las barras, y vuelven al subir',
   await expect(titulo).toBeInViewport();
   await expect(pestañas).toBeInViewport();
 
-  // La rueda del ratón también llega como desplazamiento en el teléfono emulado
+  // La rueda del ratón también llega como desplazamiento en el teléfono emulado. Con la máquina cargada
+  // el primer giro puede llegar antes de que el lector escuche el desplazamiento: se vuelve a girar.
+  await expect(page.getByText('Porque de tal manera amó Dios al mundo')).toBeVisible();
   await page.mouse.move(200, 400);
-  for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 160);
-  await expect(titulo).not.toBeInViewport();
+  await expect(async () => {
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 160);
+    await expect(titulo).not.toBeInViewport({ timeout: 1000 });
+  }).toPass();
   await expect(pestañas).not.toBeInViewport();
 
   await page.mouse.wheel(0, -120);
