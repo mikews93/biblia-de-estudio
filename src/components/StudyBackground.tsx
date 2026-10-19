@@ -29,17 +29,19 @@ import {
 } from '@/lib/historia';
 import { verseHref } from '@/lib/routes';
 import { Colors, serif, useColors } from '@/lib/theme';
+import { studyKeep, useKept } from '@/lib/recordado';
 import { navigate } from '@/lib/transition';
 
-type Props = { book: string; bookName: string; chapter: number; verse?: number; onClose: () => void };
+type Props = { book: string; bookName: string; chapter: number; verse?: number };
 type Found = { persona: Persona; verses: number[] };
 
 const MAX_PEOPLE = 8;
 
 /** Trasfondo fijo del estudio (no lo genera la IA): qué pasaba en el mundo y las familias del pasaje. */
-export default function StudyBackground({ book, bookName, chapter, verse, onClose }: Props) {
+export default function StudyBackground({ book, bookName, chapter, verse }: Props) {
   const colors = useColors();
-  const [open, setOpen] = useState<'mundo' | 'familias' | null>(null);
+  // La sección abierta sigue abierta al volver de un enlace (src/lib/recordado.ts).
+  const [open, setOpen] = useKept<'mundo' | 'familias' | null>(`${studyKeep(book, chapter, verse)}trasfondo`, null);
   const [people, setPeople] = useState<Found[]>([]);
   const [all, setAll] = useState<Personas | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
@@ -67,8 +69,8 @@ export default function StudyBackground({ book, bookName, chapter, verse, onClos
     };
   }, [book, chapter, verse]);
 
+  // El estudio no se cierra: se oculta y vuelve al regresar.
   const go = (href: string) => {
-    onClose();
     navigate(() => router.push(href as never), 'forward');
   };
   const goRef = (ref: string) => {

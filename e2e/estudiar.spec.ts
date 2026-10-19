@@ -55,6 +55,66 @@ test('estudia Juan 3:16 con fuentes y salta al versículo citado', async ({ page
   await expect(page).toHaveURL(/\/juan\/3\/1$/);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('Juan 3:1', { exact: true })).toBeVisible();
+
+  // Al volver atrás, el estudio sigue abierto donde estaba, sin pedirlo otra vez
+  let otraVez = false;
+  page.on('request', (r) => esEstudio(r) && (otraVez = true));
+  await page.goBack();
+  await expect(page).toHaveURL(/\/juan\/3\/16$/);
+  await expect(panel(page).getByText(ESTUDIO)).toBeVisible();
+  expect(otraVez).toBe(false);
+});
+
+test('los números del estudio muestran su fuente y llevan a ella', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Citas'));
+  await page.goto('/juan/3/16');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  const estudio = panel(page);
+  await expect(estudio.getByText(ESTUDIO)).toBeVisible();
+
+  // El número 1 del texto abre la fuente encima de la caja de preguntas, con el versículo
+  await estudio.getByRole('link', { name: 'Fuente 1: Juan 3:1' }).click();
+  await expect(estudio.getByText(/Y HABÍA un hombre de los Fariseos/)).toBeVisible();
+  await estudio.getByText('Leer en su capítulo ›').click();
+  await expect(page).toHaveURL(/\/juan\/3\/1$/);
+
+  await page.goBack();
+  await expect(panel(page).getByText(ESTUDIO)).toBeVisible();
+  await panel(page).getByLabel('Cerrar fuente').click();
+  await expect(panel(page).getByText('Leer en su capítulo ›')).toHaveCount(0);
+});
+
+test('mis preguntas se guardan solo para mí al cerrar y volver a abrir, y se pueden borrar', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Guardadora'));
+  await page.goto('/juan/3/16');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  let estudio = panel(page);
+  await expect(estudio.getByText(ESTUDIO)).toBeVisible();
+
+  const pregunta = `¿Quién es Nicodemo? ${Date.now()}`;
+  await estudio.getByPlaceholder('Pregunta sobre Juan 3:16').fill(pregunta);
+  await estudio.getByPlaceholder('Pregunta sobre Juan 3:16').press('Enter');
+  await expect(estudio.getByText(`Respuesta simulada a «${pregunta}».`)).toBeVisible();
+  await expect(estudio.getByText('Se guardan en este dispositivo: solo tú las ves.')).toBeVisible();
+  await estudio.getByLabel('Cerrar estudio').last().click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Al abrirlo otra vez (incluso tras recargar) la conversación está ahí sin volver a la IA
+  await page.reload();
+  let pedidos = 0;
+  page.on('request', (r) => esEstudio(r) && pedidos++);
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  estudio = panel(page);
+  await expect(estudio.getByText(pregunta, { exact: true })).toBeVisible();
+  await expect(estudio.getByText(`Respuesta simulada a «${pregunta}».`)).toBeVisible();
+  await expect(estudio.getByText(ESTUDIO)).toBeVisible();
+  expect(pedidos).toBe(0);
+
+  // Borrar mis preguntas deja el estudio general
+  await estudio.getByRole('button', { name: 'Borrar mis preguntas' }).click();
+  await estudio.getByRole('button', { name: 'Sí, borrar mis preguntas' }).click();
+  await expect(estudio.getByText(pregunta, { exact: true })).toHaveCount(0);
+  await expect(estudio.getByText(ESTUDIO)).toBeVisible();
 });
 
 test('una pregunta de seguimiento lleva la conversación anterior a la IA', async ({ page, request }) => {

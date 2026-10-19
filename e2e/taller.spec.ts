@@ -51,6 +51,15 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   );
   expect(sugerir).toBeTruthy();
 
+  // Volver a Pregúntame no lo pide otra vez: cada pestaña guarda lo suyo
+  await ia.getByRole('tab', { name: 'Pregúntame' }).click();
+  await expect(ia.getByText('Preguntas del Taller simuladas:')).toBeVisible();
+  await ia.getByRole('tab', { name: 'Sugiéreme' }).click();
+  await expect(ia.getByText('Sugerencia simulada del Taller: Dios ama y da.')).toBeVisible();
+  const pedidos = await peticionesIA(request, `Observo ${m}`);
+  expect(pedidos.filter((r) => JSON.stringify(r.messages[0].content).includes('Hazme de 3 a 5 preguntas'))).toHaveLength(1);
+  expect(pedidos.filter((r) => JSON.stringify(r.messages[0].content).includes('Propón tres formulaciones'))).toHaveLength(1);
+
   // Responde al acompañante: la conversación sigue con el turno anterior
   const respuesta = `Me quedo con la segunda ${m}`;
   await ia.getByPlaceholder('Responde o pregunta algo más').fill(respuesta);

@@ -4,6 +4,7 @@ import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } 
 import Appear from '@/components/Appear';
 import { Measure, Picture, getStudyContext } from '@/lib/data';
 import { Colors, serif, useColors } from '@/lib/theme';
+import { standardThumb } from '@/lib/wikimedia';
 
 type Props = {
   book: string;
@@ -96,11 +97,7 @@ export default function StudyContext({ book, chapter, verse, onOpen, onOpenMap }
                 style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 accessibilityLabel={`Ver imagen: ${p.title}`}
               >
-                <Image
-                  source={{ uri: p.img }}
-                  style={[styles.thumb, { backgroundColor: colors.accentSoft }]}
-                  resizeMode={p.kind === 'mapa' ? 'contain' : 'cover'}
-                />
+                <Thumb picture={p} colors={colors} />
                 <View style={styles.cardBody}>
                   <Text style={[styles.cardKind, { color: colors.accent }]}>{p.kind.toUpperCase()}</Text>
                   <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
@@ -128,6 +125,28 @@ export default function StudyContext({ book, chapter, verse, onOpen, onOpenMap }
   );
 }
 
+/** Miniatura de la tarjeta; si la imagen no llega (sin conexión, error del servidor), un marco con su tipo. */
+function Thumb({ picture: p, colors }: { picture: Picture; colors: Colors }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <View style={[styles.thumb, styles.missing, { backgroundColor: colors.accentSoft }]}>
+        <Text style={{ color: colors.accent, fontFamily: serif, fontSize: 28 }}>✦</Text>
+        <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>Imagen no disponible</Text>
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri: standardThumb(p.img) }}
+      onError={() => setFailed(true)}
+      style={[styles.thumb, { backgroundColor: colors.accentSoft }]}
+      resizeMode={p.kind === 'mapa' ? 'contain' : 'cover'}
+      accessibilityLabel={p.title}
+    />
+  );
+}
+
 function Viewer({ picture: p, colors, onClose }: { picture: Picture; colors: Colors; onClose: () => void }) {
   const source = p.page.includes('commons.wikimedia.org') ? 'Wikimedia Commons' : 'Wikipedia';
   const credit = [p.author, p.license, source].filter(Boolean).join(' · ');
@@ -136,7 +155,7 @@ function Viewer({ picture: p, colors, onClose }: { picture: Picture; colors: Col
       <Pressable style={styles.viewerBackdrop} onPress={onClose} accessibilityLabel="Cerrar imagen">
         <Pressable style={[styles.viewer, { backgroundColor: colors.background }]} onPress={() => {}}>
           <Image
-            source={{ uri: p.img }}
+            source={{ uri: standardThumb(p.img) }}
             style={{ width: '100%', aspectRatio: p.w && p.h ? Math.max(p.w / p.h, 0.6) : 4 / 3 }}
             resizeMode="contain"
             accessibilityLabel={p.title}
@@ -184,6 +203,7 @@ const styles = StyleSheet.create({
   row: { gap: 12, paddingVertical: 4, paddingRight: 8 },
   card: { width: 200, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   thumb: { width: '100%', height: 130 },
+  missing: { alignItems: 'center', justifyContent: 'center' },
   cardBody: { padding: 10 },
   cardKind: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
   cardTitle: { fontSize: 14, fontWeight: '600', marginTop: 2, lineHeight: 19 },
