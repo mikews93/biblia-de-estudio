@@ -32,6 +32,10 @@ function AppStack() {
     document.documentElement.style.setProperty('--papel', colors.background);
   }, [colors.background]);
 
+  useEffect(() => {
+    if (Platform.OS === 'web') hidePortadaWhenReady();
+  }, []);
+
   // Con algo descargado, mantiene al día la copia de la app para abrirla sin conexión.
   useEffect(() => {
     if (Platform.OS === 'web') initDownloads().catch(() => {});
@@ -40,52 +44,54 @@ function AppStack() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark(colors) ? 'light' : 'dark'} />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.background },
-          ...fixedHeader,
-          headerTintColor: colors.text,
-          headerShadowVisible: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="[book]/[chapter]/index" options={{ title: '' }} />
-        <Stack.Screen name="[book]/[chapter]/[verse]" options={{ title: '' }} />
-        <Stack.Screen name="mapa/[book]/[chapter]" options={{ title: 'Lugares' }} />
-        <Stack.Screen name="podcast/[book]/[chapter]" options={{ title: 'Resumen en audio' }} />
-        <Stack.Screen name="mapa-mental/[book]/[chapter]" options={{ title: 'Mapa mental' }} />
-        <Stack.Screen name="tarjetas/[book]/[chapter]" options={{ title: 'Tarjetas de repaso' }} />
-        <Stack.Screen name="repaso" options={{ title: 'Repaso' }} />
-        <Stack.Screen name="buscar" options={{ title: '' }} />
-        <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
-        <Stack.Screen name="genealogia/index" options={{ title: 'Genealogías' }} />
-        <Stack.Screen name="genealogia/[id]" options={{ title: '' }} />
-        <Stack.Screen name="historia" options={{ title: 'Línea de tiempo' }} />
-        <Stack.Screen name="comunidades/index" options={{ title: 'Comunidad' }} />
-        <Stack.Screen name="comunidades/amigos" options={{ title: 'Amigos' }} />
-        <Stack.Screen name="comunidades/publicar" options={{ title: 'Publicar' }} />
-        <Stack.Screen name="comunidades/publicacion/[id]" options={{ title: '' }} />
-        <Stack.Screen name="comunidades/persona/[id]" options={{ title: '' }} />
-        <Stack.Screen name="amigo/[codigo]" options={{ title: 'Amistad' }} />
-        <Stack.Screen name="grupos/index" options={{ title: 'Planes en grupo' }} />
-        <Stack.Screen name="grupos/[id]" options={{ title: '' }} />
-        <Stack.Screen name="grupos/nuevo" options={{ title: 'Nuevo grupo' }} />
-        <Stack.Screen name="cuenta" options={{ title: 'Tu cuenta' }} />
-        <Stack.Screen name="notificaciones" options={{ title: 'Notificaciones' }} />
-        <Stack.Screen name="entrar" options={{ title: '' }} />
-        <Stack.Screen name="registro" options={{ title: '' }} />
-        <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
-        <Stack.Screen name="planes/index" options={{ title: 'Planes de lectura' }} />
-        <Stack.Screen name="planes/[id]" options={{ title: '' }} />
-        <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
-        <Stack.Screen name="diario" options={{ title: 'Mi diario devocional' }} />
-        <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
-        <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
-        <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
-        <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
-        <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
-      </Stack>
+      <View nativeID="pantallas" style={{ flex: 1 }}>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: colors.background },
+            ...fixedHeader,
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="[book]/[chapter]/index" options={{ title: '' }} />
+          <Stack.Screen name="[book]/[chapter]/[verse]" options={{ title: '' }} />
+          <Stack.Screen name="mapa/[book]/[chapter]" options={{ title: 'Lugares' }} />
+          <Stack.Screen name="podcast/[book]/[chapter]" options={{ title: 'Resumen en audio' }} />
+          <Stack.Screen name="mapa-mental/[book]/[chapter]" options={{ title: 'Mapa mental' }} />
+          <Stack.Screen name="tarjetas/[book]/[chapter]" options={{ title: 'Tarjetas de repaso' }} />
+          <Stack.Screen name="repaso" options={{ title: 'Repaso' }} />
+          <Stack.Screen name="buscar" options={{ title: '' }} />
+          <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
+          <Stack.Screen name="genealogia/index" options={{ title: 'Genealogías' }} />
+          <Stack.Screen name="genealogia/[id]" options={{ title: '' }} />
+          <Stack.Screen name="historia" options={{ title: 'Línea de tiempo' }} />
+          <Stack.Screen name="comunidades/index" options={{ title: 'Comunidad' }} />
+          <Stack.Screen name="comunidades/amigos" options={{ title: 'Amigos' }} />
+          <Stack.Screen name="comunidades/publicar" options={{ title: 'Publicar' }} />
+          <Stack.Screen name="comunidades/publicacion/[id]" options={{ title: '' }} />
+          <Stack.Screen name="comunidades/persona/[id]" options={{ title: '' }} />
+          <Stack.Screen name="amigo/[codigo]" options={{ title: 'Amistad' }} />
+          <Stack.Screen name="grupos/index" options={{ title: 'Planes en grupo' }} />
+          <Stack.Screen name="grupos/[id]" options={{ title: '' }} />
+          <Stack.Screen name="grupos/nuevo" options={{ title: 'Nuevo grupo' }} />
+          <Stack.Screen name="cuenta" options={{ title: 'Tu cuenta' }} />
+          <Stack.Screen name="notificaciones" options={{ title: 'Notificaciones' }} />
+          <Stack.Screen name="entrar" options={{ title: '' }} />
+          <Stack.Screen name="registro" options={{ title: '' }} />
+          <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
+          <Stack.Screen name="planes/index" options={{ title: 'Planes de lectura' }} />
+          <Stack.Screen name="planes/[id]" options={{ title: '' }} />
+          <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
+          <Stack.Screen name="diario" options={{ title: 'Mi diario devocional' }} />
+          <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
+          <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
+          <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
+          <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
+          <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
+        </Stack>
+      </View>
       <AudioBar />
       <OfflineBanner />
       <TabBar />
@@ -99,6 +105,22 @@ function AppStack() {
       )}
     </View>
   );
+}
+
+// En la web cada pantalla llega en su propio archivo de código. La portada de public/index.html sigue a la vista
+// hasta que la primera pantalla tiene algo que mostrar; si no, se veía un momento la barra de abajo sola.
+function hidePortadaWhenReady() {
+  const portada = document.getElementById('portada');
+  if (!portada) return;
+  const started = Date.now();
+  const check = () => {
+    const screens = document.getElementById('pantallas');
+    if (screens?.innerText.trim() || Date.now() - started > 8000) {
+      portada.classList.add('fuera');
+      setTimeout(() => portada.remove(), 300);
+    } else requestAnimationFrame(check);
+  };
+  requestAnimationFrame(check);
 }
 
 export default function RootLayout() {

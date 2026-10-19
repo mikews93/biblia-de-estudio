@@ -27,7 +27,7 @@ import {
 import { Colors, serif, useColors } from '@/lib/theme';
 import { fixedInTransition } from '@/lib/transition';
 
-import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, PauseIcon, PlayIcon, TalkIcon } from './audioIcons';
+import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon, TalkIcon } from './audioIcons';
 
 const RATES = [1, 1.25, 1.5, 0.75];
 
@@ -177,8 +177,7 @@ function Bar() {
               accessibilityLabel={speech ? 'Intervención anterior' : 'Atrás 10 segundos'}
               style={({ pressed }) => [styles.small, pressed && styles.pressed]}
             >
-              <BackIcon color={colors.text} size={24} />
-              {!speech && <Text style={[styles.skip, { color: colors.text }]}>10</Text>}
+              {speech ? <BackIcon color={colors.text} size={26} /> : <SkipBackIcon color={colors.text} size={28} />}
             </Pressable>
             <Pressable
               onPress={toggle}
@@ -191,9 +190,7 @@ function Bar() {
               ) : playing ? (
                 <PauseIcon color={colors.surface} size={20} />
               ) : (
-                <View style={{ marginLeft: 3 }}>
-                  <PlayIcon color={colors.surface} size={22} />
-                </View>
+                <PlayIcon color={colors.surface} size={22} />
               )}
             </Pressable>
             <Pressable
@@ -203,8 +200,7 @@ function Bar() {
               accessibilityLabel={speech ? 'Intervención siguiente' : 'Adelante 10 segundos'}
               style={({ pressed }) => [styles.small, pressed && styles.pressed]}
             >
-              <ForwardIcon color={colors.text} size={24} />
-              {!speech && <Text style={[styles.skip, { color: colors.text }]}>10</Text>}
+              {speech ? <ForwardIcon color={colors.text} size={26} /> : <SkipForwardIcon color={colors.text} size={28} />}
             </Pressable>
             <View style={styles.rateSpacer} />
             <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]}>{speech ? '' : clock(total)}</Text>
@@ -279,7 +275,6 @@ const styles = StyleSheet.create({
   rate: { minWidth: 40, borderWidth: 1, borderRadius: 10, paddingVertical: 3, alignItems: 'center' },
   rateSpacer: { minWidth: 40 },
   small: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  skip: { position: 'absolute', fontSize: 8.5, fontWeight: '800', top: 17 },
   play: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   note: { fontSize: 12, textAlign: 'center', marginTop: 4 },
   credit: { fontSize: 10, textAlign: 'center', marginTop: 6 },

@@ -72,7 +72,7 @@ test('una versión que aún no está avisa y abre en la versión actual; una que
   await expect(texto(page, reyes.slice(0, 60))).toBeVisible();
   await visible(page.getByRole('link', { name: 'Abrir en 1 Reyes 2 →' })).click();
   await expect(page).toHaveURL(/\/1-reyes\/2\/5$/);
-  await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText('RV1909 ▾');
+  await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText('RV1909');
   await expect(texto(page, reyes.slice(0, 60))).toBeVisible();
 
   // «Juan 3:16 BES»: abre en la BES y la deja como versión de lectura
@@ -81,7 +81,7 @@ test('una versión que aún no está avisa y abre en la versión actual; una que
   await expect(texto(page, await versiculo(request, 'jhn', 3, 16, 'bes'))).toBeVisible();
   await campo(page).press('Enter');
   await expect(page).toHaveURL(/\/juan\/3\/16$/);
-  await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText('BES ▾');
+  await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText('BES');
   await page.goto('/romanos/8');
   await expect(texto(page, (await versiculo(request, 'rom', 8, 1, 'bes')).slice(0, 40))).toBeVisible();
 });

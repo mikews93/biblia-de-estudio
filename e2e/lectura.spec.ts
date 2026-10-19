@@ -91,7 +91,7 @@ test('desde Hoy se lee el versículo del día, se pasa de capítulo y «Leer» v
   await page.getByRole('tab', { name: 'Leer' }).click();
   await expect(page).toHaveURL(url(last.book, last.chapter));
   await expect(visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }))).toHaveText(
-    `${nombre(last.book)} ${last.chapter} ▾`,
+    `${nombre(last.book)} ${last.chapter}`,
   );
 });
 
@@ -193,7 +193,7 @@ test('una referencia cruzada de Juan 3:16 lleva al pasaje y se puede volver', as
 
   await page.goBack();
   await expect(page).toHaveURL(url('jhn', 3, 16));
-  await expect(visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }))).toHaveText('Juan 3 ▾');
+  await expect(visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }))).toHaveText('Juan 3');
 });
 
 test('el comentario del versículo se traduce con IA y enlaza a Enduring Word', async ({ page, context }) => {
@@ -229,7 +229,7 @@ test('cambiar de versión cambia el texto, se recuerda y también se usa en Hoy'
   await visible(page.getByRole('button', { name: /La Biblia en Español Sencillo/ })).click();
   await expect(texto(page, bes)).toBeVisible();
   await expect(texto(page, rv)).toBeHidden();
-  await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText('BES ▾');
+  await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText('BES');
   await expect(texto(page, 'La Biblia en Español Sencillo · AudioBiblia.org')).toBeVisible();
 
   // Tras recargar sigue en la BES
@@ -301,4 +301,26 @@ test('marcar capítulos como leídos actualiza la semana y el total en Hoy', asy
   await page.goto('/rut/1');
   await expect(texto(page, '✓ Capítulo leído')).toBeVisible();
   await expect(texto(page, '2 de 4 capítulos de Rut')).toBeVisible();
+});
+
+test('al bajar leyendo se apartan la cabecera y las barras, y vuelven al subir', async ({ page }) => {
+  await page.goto('/juan/3');
+  const titulo = visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }));
+  const pestañas = page.getByRole('tablist');
+  await expect(titulo).toBeInViewport();
+  await expect(pestañas).toBeInViewport();
+
+  // La rueda del ratón también llega como desplazamiento en el teléfono emulado. Con la máquina cargada
+  // el primer giro puede llegar antes de que el lector escuche el desplazamiento: se vuelve a girar.
+  await expect(page.getByText('Porque de tal manera amó Dios al mundo')).toBeVisible();
+  await page.mouse.move(200, 400);
+  await expect(async () => {
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 160);
+    await expect(titulo).not.toBeInViewport({ timeout: 1000 });
+  }).toPass();
+  await expect(pestañas).not.toBeInViewport();
+
+  await page.mouse.wheel(0, -120);
+  await expect(titulo).toBeInViewport();
+  await expect(pestañas).toBeInViewport();
 });

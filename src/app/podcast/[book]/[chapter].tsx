@@ -84,9 +84,7 @@ export default function Podcast() {
             {player.playing ? (
               <PauseIcon color={colors.surface} size={26} />
             ) : (
-              <View style={{ marginLeft: 4 }}>
-                <PlayIcon color={colors.surface} size={30} />
-              </View>
+              <PlayIcon color={colors.surface} size={30} />
             )}
           </Pressable>
           <Pressable
