@@ -2,8 +2,9 @@ import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { LockIcon } from '@/components/icons';
 import NoteEditor from '@/components/NoteEditor';
-import { Chips, text } from '@/components/comunidad/ui';
+import { Chips, IconText, text } from '@/components/comunidad/ui';
 import { Book, getBooks, getChapter } from '@/lib/data';
 import { HIGHLIGHT_COLORS, HighlightColor, useAllHighlights } from '@/lib/highlights';
 import { parseNoteKey, useNotes } from '@/lib/notas';
@@ -34,7 +35,7 @@ export default function MisNotas() {
 
   const filters: { value: Filter; label: string }[] = [
     { value: 'todo', label: 'Todo' },
-    { value: 'notas', label: `✎ Notas (${Object.keys(notes).length})` },
+    { value: 'notas', label: `Notas (${Object.keys(notes).length})` },
     ...(Object.keys(HIGHLIGHT_COLORS) as HighlightColor[])
       .filter((c) => Object.values(marks).some((m) => m.color === c))
       .map((c) => ({ value: c, label: `● ${c[0].toUpperCase()}${c.slice(1)}` })),
@@ -67,9 +68,9 @@ export default function MisNotas() {
               />
             ))}
           </View>
-          <Text style={[text.small, { color: colors.muted, marginTop: 20, textAlign: 'center' }]}>
-            🔒 Tus notas y resaltados se guardan solo en este dispositivo.
-          </Text>
+          <IconText icon={LockIcon} color={colors.muted} size={13} style={{ marginTop: 20, justifyContent: 'center' }}>
+            <Text style={[text.small, { color: colors.muted, flexShrink: 1 }]}>Tus notas y resaltados se guardan solo en este dispositivo.</Text>
+          </IconText>
         </>
       )}
       {editing && (

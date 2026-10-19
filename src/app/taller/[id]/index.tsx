@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { confirm } from '@/components/comunidad/confirm';
-import { Button, Card, Chips, ErrorText, Field, SectionTitle, text, useAction } from '@/components/comunidad/ui';
+import { Button, Card, Chips, ErrorText, Field, IconText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, type IconProps, PlayIcon, SparkIcon } from '@/components/icons';
 import { DinamicaCard, DinamicaPicker } from '@/components/taller/Dinamicas';
 import TallerIA, { Modo, Paso } from '@/components/taller/TallerIA';
 import { api, useAccount } from '@/lib/comunidad';
@@ -124,7 +125,9 @@ export default function MensajeScreen() {
 
         {step !== 'compartir' && (
           <View style={[styles.aiBox, { borderColor: colors.border }]}>
-            <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 12, letterSpacing: 1 }}>✦ ACOMPAÑANTE</Text>
+            <IconText icon={SparkIcon} color={colors.accent} size={13}>
+              <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 12, letterSpacing: 1 }}>ACOMPAÑANTE</Text>
+            </IconText>
             {m.pasaje ? (
               <View style={styles.aiRow}>
                 <Button label="Pregúntame" kind="outline" onPress={() => askAI('preguntar')} style={{ flex: 1 }} />
@@ -143,12 +146,12 @@ export default function MensajeScreen() {
 
         <View style={styles.nav}>
           {step !== 'pasaje' ? (
-            <Button label="‹ Anterior" kind="quiet" onPress={() => setStep(STEPS[STEPS.findIndex((s) => s.step === step) - 1].step)} />
+            <Button label="Anterior" icon={ChevronLeftIcon} kind="quiet" onPress={() => setStep(STEPS[STEPS.findIndex((s) => s.step === step) - 1].step)} />
           ) : (
             <View />
           )}
           {step !== 'compartir' && (
-            <Button label="Siguiente ›" onPress={() => setStep(STEPS[STEPS.findIndex((s) => s.step === step) + 1].step)} />
+            <Button label="Siguiente" icon={ChevronRightIcon} iconAfter onPress={() => setStep(STEPS[STEPS.findIndex((s) => s.step === step) + 1].step)} />
           )}
         </View>
       </ScrollView>
@@ -357,10 +360,10 @@ function BosquejoStep({ m, mensajes, set }: StepProps & { mensajes: Mensaje[] })
                 />
               </View>
               <View style={styles.secTools}>
-                <Tool label="↑" disabled={i === 0} onPress={() => move(i, -1)} hint="Subir" />
-                <Tool label="↓" disabled={i === m.secciones.length - 1} onPress={() => move(i, 1)} hint="Bajar" />
+                <Tool icon={ArrowUpIcon} disabled={i === 0} onPress={() => move(i, -1)} hint="Subir" />
+                <Tool icon={ArrowDownIcon} disabled={i === m.secciones.length - 1} onPress={() => move(i, 1)} hint="Bajar" />
                 <Tool
-                  label="✕"
+                  icon={CloseIcon}
                   hint="Quitar"
                   onPress={async () => {
                     const empty = !s.texto.trim() && !s.paraGrupo?.trim();
@@ -448,11 +451,11 @@ function BosquejoStep({ m, mensajes, set }: StepProps & { mensajes: Mensaje[] })
   );
 }
 
-function Tool({ label, onPress, disabled, hint }: { label: string; onPress: () => void; disabled?: boolean; hint: string }) {
+function Tool({ icon: Icon, onPress, disabled, hint }: { icon: (p: IconProps) => React.ReactNode; onPress: () => void; disabled?: boolean; hint: string }) {
   const colors = useColors();
   return (
     <Pressable onPress={onPress} disabled={disabled} hitSlop={6} accessibilityLabel={hint} style={[styles.tool, disabled && { opacity: 0.3 }]}>
-      <Text style={{ color: colors.muted, fontSize: 15 }}>{label}</Text>
+      <Icon color={colors.muted} size={17} />
     </Pressable>
   );
 }
@@ -478,13 +481,13 @@ function RevisarStep({ m, set, onReview }: StepProps & { onReview: () => void })
             style={[styles.check, { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accentSoft : colors.surface }]}
           >
             <View style={[styles.box, { borderColor: colors.accent }, on && { backgroundColor: colors.accent }]}>
-              {on && <Text style={{ color: colors.surface, fontSize: 13, fontWeight: '700' }}>✓</Text>}
+              {on && <CheckIcon color={colors.surface} size={15} strokeWidth={2.6} />}
             </View>
             <Text style={{ color: colors.text, flex: 1, fontSize: 15, lineHeight: 21 }}>{r.texto}</Text>
           </Pressable>
         );
       })}
-      {m.pasaje && <Button label="✦ Revisa mi borrador" kind="outline" onPress={onReview} style={{ marginTop: 6 }} />}
+      {m.pasaje && <Button label="Revisa mi borrador" icon={SparkIcon} kind="outline" onPress={onReview} style={{ marginTop: 6 }} />}
       <SectionTitle>Después de presentarlo</SectionTitle>
       <Field
         multiline
@@ -544,7 +547,7 @@ function CompartirStep({ m, books }: { m: Mensaje; books: Book[] }) {
 
   return (
     <View style={{ marginTop: 16, gap: 12 }}>
-      <Button label="▶ Presentar" onPress={() => navigate(() => router.push(`/taller/${m.id}/presentar`), 'forward')} />
+      <Button label="Presentar" icon={PlayIcon} onPress={() => navigate(() => router.push(`/taller/${m.id}/presentar`), 'forward')} />
       <Text style={{ color: colors.muted, fontSize: 13 }}>
         Pantalla completa con letra grande, una parte a la vez, temporizador y el pasaje a un toque.
       </Text>

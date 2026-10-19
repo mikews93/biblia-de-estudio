@@ -1,13 +1,7 @@
-// Íconos del reproductor, con el mismo trazo que los de las pantallas de cuenta (comunidad/icons.tsx).
+// Íconos del reproductor (base común en iconLine.tsx).
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 
-type Props = { color: string; size?: number };
-
-const Line = ({ size = 22, color, children }: Props & { children: React.ReactNode }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-    {children}
-  </Svg>
-);
+import { Line, STROKE, type IconProps as Props } from './iconLine';
 
 /** El triángulo tiene su centro de gravedad en el centro de la caja: así se ve centrado en un botón redondo. */
 export const PlayIcon = ({ size = 22, color }: Props) => (
@@ -46,10 +40,10 @@ const Skip = ({ size = 26, color, seconds, forward }: Props & { seconds: number;
     <Path
       d={forward ? 'M19.4 9.2A8 8 0 1 1 15.6 4.8' : 'M4.6 9.2A8 8 0 1 0 8.4 4.8'}
       stroke={color}
-      strokeWidth={1.7}
+      strokeWidth={STROKE}
       strokeLinecap="round"
     />
-    <Path d={forward ? 'M15.4 2.2l.6 3.1-3.1.8' : 'M8.6 2.2 8 5.3l3.1.8'} stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d={forward ? 'M15.4 2.2l.6 3.1-3.1.8' : 'M8.6 2.2 8 5.3l3.1.8'} stroke={color} strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round" />
     <SvgText x={12} y={15.6} fill={color} fontSize={8} fontWeight="700" textAnchor="middle">
       {seconds}
     </SvgText>

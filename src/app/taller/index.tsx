@@ -3,13 +3,14 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Card, SectionTitle, text } from '@/components/comunidad/ui';
+import { type IconProps, LampIcon, LecternIcon, PeopleIcon, PlusIcon } from '@/components/icons';
 import { ago } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import { Pasaje, TIPOS, Tipo, crearMensaje, duracion, pasajeLabel, tipoInfo, tituloDe, useTaller } from '@/lib/taller';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-const ICONOS: Record<Tipo, string> = { reflexion: '❧', encuentro: '◎', sermon: '¶' };
+const ICONOS: Record<Tipo, (p: IconProps) => React.ReactNode> = { reflexion: LampIcon, encuentro: PeopleIcon, sermon: LecternIcon };
 
 /** El Taller: preparar reflexiones, encuentros de grupo y sermones. Desde el lector llega con un pasaje. */
 export default function TallerScreen() {
@@ -59,7 +60,10 @@ export default function TallerScreen() {
             style={({ pressed }) => [styles.type, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.7 }]}
           >
             <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
-              <Text style={{ color: colors.accent, fontSize: 22, fontFamily: serif }}>{ICONOS[t.tipo]}</Text>
+              {(() => {
+                const Icon = ICONOS[t.tipo];
+                return <Icon color={colors.accent} size={24} />;
+              })()}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.typeName, { color: colors.text }]}>
@@ -67,7 +71,7 @@ export default function TallerScreen() {
               </Text>
               <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>{t.descripcion}</Text>
             </View>
-            <Text style={{ color: colors.accent, fontSize: 22 }}>+</Text>
+            <PlusIcon color={colors.accent} size={22} />
           </Pressable>
         ))}
       </View>

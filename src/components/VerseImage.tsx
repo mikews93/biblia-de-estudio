@@ -5,6 +5,8 @@ import { ComponentRef, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
+import { IconText } from '@/components/comunidad/ui';
+import { PeopleIcon } from '@/components/icons';
 import VerseArt from '@/components/VerseArt';
 import {
   IMAGE_SIZE,
@@ -204,7 +206,9 @@ function PublishToCommunity({
   if (!open) {
     return (
       <Pressable onPress={() => setOpen(true)} style={[styles.publish, { borderColor: colors.border }]} accessibilityRole="button">
-        <Text style={{ color: colors.accent, fontWeight: '700' }}>◎ Publicar en Comunidad</Text>
+        <IconText icon={PeopleIcon} color={colors.accent} size={18} gap={8}>
+          <Text style={{ color: colors.accent, fontWeight: '700' }}>Publicar en Comunidad</Text>
+        </IconText>
       </Pressable>
     );
   }

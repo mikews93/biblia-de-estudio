@@ -2,6 +2,8 @@ import { useIsFocused } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { IconText } from '@/components/comunidad/ui';
+import { SparkIcon } from '@/components/icons';
 import StudyPanel from '@/components/StudyPanel';
 import { Book, Word } from '@/lib/data';
 import { describeMorph } from '@/lib/morph';
@@ -72,7 +74,9 @@ export function WhyButton({ onPress }: { onPress: () => void }) {
       style={({ pressed }) => [styles.why, { borderColor: colors.accent }, pressed && { opacity: 0.6 }]}
       accessibilityRole="button"
     >
-      <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>✦ ¿Por qué esta palabra?</Text>
+      <IconText icon={SparkIcon} color={colors.accent} size={16}>
+        <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>¿Por qué esta palabra?</Text>
+      </IconText>
     </Pressable>
   );
 }

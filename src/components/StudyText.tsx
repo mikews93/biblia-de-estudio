@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ArrowRightIcon, BooksIcon, ChevronRightIcon, CompassIcon, CrossIcon, EyeIcon, type IconProps, LampIcon, LinkIcon } from '@/components/icons';
 import { Source } from '@/lib/estudio';
 import { Colors, serif } from '@/lib/theme';
 
@@ -12,7 +13,7 @@ export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors
         <Pressable key={s.n} onPress={() => s.ref && onOpen(s.ref)} style={styles.sourceRow} disabled={!s.ref}>
           <Text style={[styles.sourceNumber, { color: colors.accent }]}>{s.n}</Text>
           <Text style={{ color: colors.text, flex: 1 }}>{s.label}</Text>
-          {s.ref && <Text style={{ color: colors.muted }}>›</Text>}
+          {s.ref && <ChevronRightIcon color={colors.muted} size={16} />}
         </Pressable>
       ))}
     </View>
@@ -21,26 +22,31 @@ export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors
 
 /** Markdown mínimo: títulos ##, listas con -, **negritas** y marcas de cita ⟦n⟧. */
 // Iconos de las secciones del estudio profundo, por la palabra con que empieza el título.
-const SECTION_ICONS: [RegExp, string][] = [
-  [/^(panorama|resumen)/i, '◎'],
-  [/^(observa|cómo avanza)/i, '◉'],
+// La letra griega se queda como letra: es la misma marca del texto original en el lector.
+const SECTION_ICONS: [RegExp, ((p: IconProps) => ReactNode) | string][] = [
+  [/^(panorama|resumen)/i, CompassIcon],
+  [/^(observa|cómo avanza)/i, EyeIcon],
   [/^(palabras|qué dice el)/i, 'α'],
-  [/^interpreta/i, '✎'],
-  [/^pasajes/i, '↗'],
-  [/^hacia cristo/i, '✝'],
-  [/^(para aplicar|para reflexionar|para pensar)/i, '→'],
-  [/^(cómo la traduce|dónde más)/i, '¶'],
+  [/^interpreta/i, LampIcon],
+  [/^pasajes/i, LinkIcon],
+  [/^hacia cristo/i, CrossIcon],
+  [/^(para aplicar|para reflexionar|para pensar)/i, ArrowRightIcon],
+  [/^(cómo la traduce|dónde más)/i, BooksIcon],
 ];
 
 /** Título de sección; con «ornate», con su icono en un círculo, como en el estudio profundo. */
 function Heading({ text, colors, ornate }: { text: string; colors: Colors; ornate?: boolean }) {
   const title = text.replace(/^#{1,3} /, '');
-  const icon = ornate ? SECTION_ICONS.find(([re]) => re.test(title))?.[1] : undefined;
-  if (!icon) return <Text style={[styles.h2, { color: colors.text }]}>{inline(title, colors)}</Text>;
+  const Icon = ornate ? SECTION_ICONS.find(([re]) => re.test(title))?.[1] : undefined;
+  if (!Icon) return <Text style={[styles.h2, { color: colors.text }]}>{inline(title, colors)}</Text>;
   return (
     <View style={styles.ornate}>
       <View style={[styles.ornateIcon, { backgroundColor: colors.accentSoft }]}>
-        <Text style={{ color: colors.accent, fontFamily: serif, fontSize: 14 }}>{icon}</Text>
+        {typeof Icon === 'string' ? (
+          <Text style={{ color: colors.accent, fontFamily: serif, fontSize: 14 }}>{Icon}</Text>
+        ) : (
+          <Icon color={colors.accent} size={15} strokeWidth={2} />
+        )}
       </View>
       <Text style={[styles.h2, styles.ornateText, { color: colors.text }]}>{inline(title, colors)}</Text>
     </View>

@@ -75,7 +75,7 @@ test.describe('Herramientas del capítulo con IA', () => {
     await otro.close();
 
     // «Preparar otra versión» sí vuelve a pedirlo
-    await v(page.getByRole('button', { name: '↻ Preparar otra versión' })).click();
+    await v(page.getByRole('button', { name: 'Preparar otra versión' })).click();
     await expect.poll(async () => (await peticionesIA(request, marca)).length).toBe(antes + 2);
     await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
   });
@@ -102,7 +102,7 @@ test.describe('Herramientas del capítulo con IA', () => {
 
     // Repaso del capítulo: dos pendientes
     await expect(page).toHaveURL(new RegExp(`/repaso\\?libro=jhn&capitulo=${cap}$`));
-    await expect(v(page.getByText(`▤ REPASO · JUAN ${cap}`))).toBeVisible();
+    await expect(v(page.getByText(`REPASO · JUAN ${cap}`))).toBeVisible();
     await expect(v(page.getByText('2 tarjetas pendientes'))).toBeVisible();
 
     // Primera: mostrar la respuesta y decir «Otra vez» (vuelve al final de la sesión)
@@ -145,7 +145,7 @@ test.describe('Herramientas del capítulo con IA', () => {
 
     await page.goto('/');
     await expect(v(page.getByText('1 tarjeta te espera para no olvidar lo que estudiaste.'))).toBeVisible();
-    await v(page.getByText('Repasar →')).click();
+    await v(page.getByText('Repasar ›')).click();
     await expect(page).toHaveURL(/\/repaso$/);
     await expect(v(page.getByText('MEMORIZAR · Juan 3:16'))).toBeVisible();
     await v(page.getByText('Dilo de memoria y toca para comprobar')).click();

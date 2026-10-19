@@ -10,7 +10,7 @@ const AMO = 'ἠγ\u1f71πησεν';
 const ESTUDIO = 'Estudio simulado del pasaje: Dios ama al mundo y da a su Hijo.';
 
 const esEstudio = (r: Request) => r.url().endsWith('/api/estudiar') && r.method() === 'POST';
-const panel = (page: Page, kicker = '✦ ESTUDIO') => page.getByRole('dialog').filter({ hasText: kicker });
+const panel = (page: Page, kicker = 'ESTUDIO') => page.getByRole('dialog').filter({ hasText: kicker });
 
 test.beforeEach(({ page }) => modoProfundo(page));
 
@@ -93,10 +93,10 @@ test('«¿Por qué esta palabra?» desde el interlineal estudia la palabra grieg
   await expect(ficha.getByText('Juan 3:16')).toBeVisible();
 
   const pedido = page.waitForRequest(esEstudio);
-  await ficha.getByRole('button', { name: '✦ ¿Por qué esta palabra?' }).click();
+  await ficha.getByRole('button', { name: '¿Por qué esta palabra?' }).click();
   expect((await pedido).postDataJSON()).toMatchObject({ book: 'jhn', chapter: 3, verse: 16, word: 2 });
 
-  const estudio = panel(page, '✦ ¿POR QUÉ ESTA PALABRA?');
+  const estudio = panel(page, '¿POR QUÉ ESTA PALABRA?');
   await expect(estudio.getByText(`${AMO} en Juan 3:16`)).toBeVisible();
   await expect(estudio.getByText(ESTUDIO)).toBeVisible();
   await expect(estudio.getByText('¿Por qué no se tradujo de otra forma?')).toBeVisible();

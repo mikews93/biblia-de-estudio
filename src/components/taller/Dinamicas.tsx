@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Chips } from '@/components/comunidad/ui';
+import { CloseIcon } from '@/components/icons';
 import { APERTURA_LABEL, DINAMICAS, Dinamica, MOMENTOS, Momento } from '@/lib/dinamicas';
 import { serif, useColors } from '@/lib/theme';
 
@@ -83,7 +84,7 @@ export function DinamicaPicker({ onPick, onClear, onClose, initial }: { onPick: 
               </Pressable>
             )}
             <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar">
-              <Text style={{ color: colors.muted, fontSize: 20 }}>✕</Text>
+              <CloseIcon color={colors.muted} size={22} />
             </Pressable>
           </View>
           <Text style={{ color: colors.muted, paddingHorizontal: 20, marginBottom: 8 }}>Todas se hacen sin materiales.</Text>

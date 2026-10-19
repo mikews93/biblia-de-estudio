@@ -13,6 +13,8 @@ import {
   View,
 } from 'react-native';
 
+import { IconText } from '@/components/comunidad/ui';
+import { ArrowUpIcon, CloseIcon, SparkIcon } from '@/components/icons';
 import { Markdown, Sources } from '@/components/StudyPanel';
 import { parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
@@ -120,13 +122,15 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, minHeight: 0 }}>
             <View style={[styles.header, { borderColor: colors.border }]}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.kicker, { color: colors.accent }]}>✦ ACOMPAÑANTE</Text>
+                <IconText icon={SparkIcon} color={colors.accent} size={13}>
+                  <Text style={[styles.kicker, { color: colors.accent }]}>ACOMPAÑANTE</Text>
+                </IconText>
                 <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
                   {title}
                 </Text>
               </View>
               <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar">
-                <Text style={{ color: colors.muted, fontSize: 20 }}>✕</Text>
+                <CloseIcon color={colors.muted} size={22} />
               </Pressable>
             </View>
             <View style={[styles.modes, { borderColor: colors.border }]}>
@@ -213,7 +217,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                 accessibilityLabel="Enviar"
                 style={[styles.send, { backgroundColor: busy || !question.trim() ? colors.border : colors.accent }]}
               >
-                <Text style={{ color: colors.surface, fontSize: 18, fontWeight: '700' }}>↑</Text>
+                <ArrowUpIcon color={colors.surface} size={20} strokeWidth={2.2} />
               </Pressable>
             </View>
           </KeyboardAvoidingView>

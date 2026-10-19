@@ -1,13 +1,7 @@
-// Íconos de línea de las pantallas de cuenta, con el mismo trazo que GlobeIcon y TreeIcon.
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+// Íconos de línea de las pantallas de cuenta y de comunidad (base común en ../iconLine.tsx).
+import { Circle, Path, Rect } from 'react-native-svg';
 
-type Props = { color: string; size?: number };
-
-const Line = ({ size = 22, color, children }: Props & { children: React.ReactNode }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-    {children}
-  </Svg>
-);
+import { Line, type IconProps as Props } from '../iconLine';
 
 /** Biblia abierta con su cinta. */
 export const OpenBookIcon = (p: Props) => (

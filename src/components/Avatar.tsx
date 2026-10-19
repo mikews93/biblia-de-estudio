@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Persona } from '@/lib/genealogia';
 import { Colors, serif } from '@/lib/theme';
@@ -36,27 +35,7 @@ export function Avatar({
   );
 }
 
-/** Pequeño globo terráqueo de línea. */
-export function GlobeIcon({ color, size = 22 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6}>
-      <Circle cx={12} cy={12} r={9} />
-      <Path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z" />
-    </Svg>
-  );
-}
-
-/** Árbol genealógico de línea: una persona arriba y dos abajo. */
-export function TreeIcon({ color, size = 22 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6}>
-      <Circle cx={12} cy={5} r={2.6} />
-      <Circle cx={6} cy={19} r={2.6} />
-      <Circle cx={18} cy={19} r={2.6} />
-      <Path d="M12 7.6V12M6 16.4V12h12v4.4" />
-    </Svg>
-  );
-}
+export { GlobeIcon, TreeIcon } from './icons';
 
 const styles = StyleSheet.create({
   avatar: { alignItems: 'center', justifyContent: 'center' },
