@@ -16,7 +16,20 @@ from html import unescape
 API = "https://en.wikipedia.org/w/api.php"
 USER_AGENT = "BibliaDeEstudio/1.0 (https://biblia.migueblanco.com; datos para una app bíblica gratuita)"
 FREE = re.compile(r"^(public domain|pd\b|cc0|cc[ -]by\b|cc[ -]by-sa\b|cc[ -]zero)", re.I)
-THUMB = 800
+# Wikimedia solo sirve miniaturas en unos anchos fijos (https://w.wiki/GHai): cualquier otro responde con un
+# error 429 y la imagen no carga en la app (pasaba con las de 800 px, como la de Samaria en Juan 4).
+THUMB_STEPS = (250, 330, 500, 960, 1280, 1920)
+THUMB = 960
+
+
+def standard_thumb(url):
+    """La misma miniatura de upload.wikimedia.org en el ancho estándar más cercano por arriba."""
+    m = re.search(r"/thumb/.+/(\d+)px-[^/]+$", url or "")
+    if not m:
+        return url
+    width = int(m.group(1))
+    step = next((s for s in THUMB_STEPS if s >= width), THUMB_STEPS[-1])
+    return url[:m.start(1)] + str(step) + url[m.end(1):]
 
 # kind: "objeto" o "mapa". pattern: se busca en el texto (respetando mayúsculas); books/chapters lo limitan.
 # wiki: artículos candidatos, se usa el primero que tenga una imagen libre.
@@ -191,6 +204,7 @@ def resolve(cache_path):
         hit = next((cache[t] for t in o["wiki"] if cache.get(t, {}).get("img")), None)
         if hit:
             result[o["id"]] = {k: hit[k] for k in ("img", "w", "h", "page", "author", "license")}
+            result[o["id"]]["img"] = standard_thumb(hit["img"])
         else:
             why = "; ".join(f"{t}: {cache.get(t, {}).get('rejected') or cache.get(t, {}).get('file') or 'sin imagen'}"
                             for t in o["wiki"])

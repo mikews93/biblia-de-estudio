@@ -9,19 +9,20 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
 import { IconText } from '@/components/comunidad/ui';
-import { ArrowUpIcon, CloseIcon, SparkIcon } from '@/components/icons';
-import { Markdown, Sources } from '@/components/StudyPanel';
+import { CloseIcon, SparkIcon } from '@/components/icons';
+import AskBar from '@/components/AskBar';
+import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
 import { parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
-import { TallerRequest, Turn, askStudy } from '@/lib/estudio';
+import { useConversations } from '@/lib/conversaciones';
+import { Source, TallerRequest, askStudy } from '@/lib/estudio';
 import { verseHref } from '@/lib/routes';
 import { Mensaje, borradorParaIA, plantilla } from '@/lib/taller';
 import { serif, useColors } from '@/lib/theme';
@@ -44,58 +45,40 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
   // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
   const focused = useIsFocused();
   const [modo, setModo] = useState<Modo>(initialModo);
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
-  const abort = useRef<AbortController | null>(null);
-  const lastHistory = useRef<Turn[]>([]);
+  const [peek, setPeek] = useState<Source | null>(null);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const p = mensaje.pasaje!;
   const single = p.from && !p.to ? p.from : undefined;
 
-  const run = async (history: Turn[]) => {
-    abort.current?.abort();
-    const controller = new AbortController();
-    abort.current = controller;
-    lastHistory.current = history;
-    setBusy(true);
-    setError(null);
-    setTurns([...history, { role: 'assistant', text: '', sources: [] }]);
-    try {
-      const answer = await askStudy(
-        {
-          book: p.book,
-          chapter: p.chapter,
-          verse: single,
-          messages: history,
-          taller: {
-            modo,
-            paso,
-            tipo: mensaje.tipo,
-            plantilla: plantilla(mensaje.plantilla)?.nombre,
-            desde: single ? undefined : p.from,
-            hasta: single ? undefined : p.to,
-            borrador: borradorParaIA(mensaje),
-          },
+  // Una conversación por modo: cambiar de pestaña no la vuelve a pedir ni detiene la que se está escribiendo.
+  const convs = useConversations<Modo>((m, history, onUpdate, signal) =>
+    askStudy(
+      {
+        book: p.book,
+        chapter: p.chapter,
+        verse: single,
+        messages: history,
+        taller: {
+          modo: m,
+          paso,
+          tipo: mensaje.tipo,
+          plantilla: plantilla(mensaje.plantilla)?.nombre,
+          desde: single ? undefined : p.from,
+          hasta: single ? undefined : p.to,
+          // El borrador se lee al abrir cada modo y en cada pregunta, no en cada tecla.
+          borrador: borradorParaIA(mensaje),
         },
-        (text, sources) => setTurns([...history, { role: 'assistant', text, sources }]),
-        controller.signal,
-      );
-      setTurns([...history, { role: 'assistant', ...answer }]);
-    } catch (e) {
-      if (controller.signal.aborted) return;
-      setError(e instanceof Error ? e.message : 'No se pudo consultar a la IA.');
-      setTurns((t) => (t[t.length - 1]?.text ? t : history));
-    } finally {
-      if (abort.current === controller) setBusy(false);
-    }
-  };
+      },
+      onUpdate,
+      signal,
+    ),
+  );
+  const { turns, busy, error } = convs.get(modo);
+  const retry = () => convs.retry(modo);
 
   useEffect(() => {
-    run([]);
-    return () => abort.current?.abort();
-    // El borrador se lee al abrir o al cambiar de modo, no en cada tecla.
+    if (!convs.started(modo)) convs.run(modo, []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modo]);
 
@@ -103,7 +86,8 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
     const text = q.trim();
     if (!text || busy) return;
     setQuestion('');
-    run([...turns, { role: 'user', text }]);
+    setPeek(null);
+    convs.run(modo, [...turns, { role: 'user', text }]);
   };
 
   const open = (ref: string) => {
@@ -139,13 +123,18 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                 return (
                   <Pressable
                     key={m.modo}
-                    onPress={() => !busy && setModo(m.modo)}
+                    onPress={() => {
+                      setModo(m.modo);
+                      setPeek(null);
+                    }}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: on }}
                     accessibilityHint={m.hint}
                     style={[styles.mode, { borderColor: on ? colors.accent : colors.border }, on && { backgroundColor: colors.accentSoft }]}
                   >
                     <Text style={{ color: on ? colors.accent : colors.text, fontWeight: '700', fontSize: 14 }}>{m.label}</Text>
+                    {/* Otra pestaña que sigue escribiendo mientras se mira esta */}
+                    {!on && convs.get(m.modo).busy && <View style={[styles.writing, { backgroundColor: colors.accent }]} />}
                   </Pressable>
                 );
               })}
@@ -155,7 +144,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
               ref={scroll}
               style={{ flex: 1, minHeight: 0 }}
               contentContainerStyle={styles.body}
-              onContentSizeChange={() => turns.length > 1 && scroll.current?.scrollToEnd({ animated: true })}
+              onContentSizeChange={() => busy && turns.length > 1 && scroll.current?.scrollToEnd({ animated: true })}
             >
               {turns.map((turn, i) =>
                 turn.role === 'user' ? (
@@ -164,7 +153,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                   </View>
                 ) : (
                   <View key={i}>
-                    {turn.text ? <Markdown text={turn.text} colors={colors} /> : null}
+                    {turn.text ? <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} /> : null}
                     {!!turn.sources?.length && (!busy || i < turns.length - 1) && (
                       <Sources sources={turn.sources} colors={colors} onOpen={open} />
                     )}
@@ -183,12 +172,12 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                 </View>
               ) : error === NEEDS_ACCOUNT ? (
                 <View style={styles.waiting}>
-                  <Welcome kind="ia" title="Prepara con IA" intro="Te hace preguntas y te sugiere ideas a partir del pasaje; el mensaje lo escribes tú. Solo necesitas una cuenta gratuita." onReady={() => run(lastHistory.current)} />
+                  <Welcome kind="ia" title="Prepara con IA" intro="Te hace preguntas y te sugiere ideas a partir del pasaje; el mensaje lo escribes tú. Solo necesitas una cuenta gratuita." onReady={retry} />
                 </View>
               ) : error && (
                 <View style={styles.waiting}>
                   <Text style={{ color: colors.text, textAlign: 'center' }}>{error}</Text>
-                  <Pressable onPress={() => run(lastHistory.current)} style={[styles.retry, { borderColor: colors.accent }]}>
+                  <Pressable onPress={retry} style={[styles.retry, { borderColor: colors.accent }]}>
                     <Text style={{ color: colors.accent, fontWeight: '700' }}>Reintentar</Text>
                   </Pressable>
                 </View>
@@ -199,27 +188,19 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
               </Text>
             </ScrollView>
 
-            <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-              <TextInput
-                value={question}
-                onChangeText={setQuestion}
-                onSubmitEditing={() => ask(question)}
-                placeholder="Responde o pregunta algo más"
-                placeholderTextColor={colors.muted}
-                maxLength={600}
-                editable={!busy && !!turns[0]?.text}
-                returnKeyType="send"
-                style={[styles.input, { color: colors.text }]}
-              />
-              <Pressable
-                onPress={() => ask(question)}
-                disabled={busy || !question.trim()}
-                accessibilityLabel="Enviar"
-                style={[styles.send, { backgroundColor: busy || !question.trim() ? colors.border : colors.accent }]}
-              >
-                <ArrowUpIcon color={colors.surface} size={20} strokeWidth={2.2} />
-              </Pressable>
-            </View>
+            {peek && <SourcePeek source={peek} colors={colors} onOpen={open} onClose={() => setPeek(null)} />}
+
+            <AskBar
+              value={question}
+              onChange={setQuestion}
+              onSend={() => ask(question)}
+              placeholder="Responde o pregunta algo más"
+              busy={busy}
+              onStop={turns.length > 1 ? () => convs.stop(modo) : undefined}
+              disabled={!turns[0]?.text}
+              sendLabel="Enviar"
+              colors={colors}
+            />
           </KeyboardAvoidingView>
         </View>
       </View>
@@ -245,20 +226,11 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   title: { fontSize: 22, fontFamily: serif, marginTop: 2 },
   modes: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  mode: { flex: 1, alignItems: 'center', borderWidth: 1, borderRadius: 18, paddingVertical: 8, paddingHorizontal: 10 },
+  mode: { flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 6, alignItems: 'center', borderWidth: 1, borderRadius: 18, paddingVertical: 8, paddingHorizontal: 10 },
+  writing: { width: 6, height: 6, borderRadius: 3 },
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 },
   question: { alignSelf: 'flex-end', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, marginTop: 20, maxWidth: '85%' },
   waiting: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 24 },
   retry: { marginTop: 12, borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 8 },
   disclaimer: { fontSize: 12, lineHeight: 17, marginTop: 24, textAlign: 'center' },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  input: { flex: 1, fontSize: 16, paddingHorizontal: 8, paddingVertical: 8 },
-  send: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 });

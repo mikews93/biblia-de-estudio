@@ -25,7 +25,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from books import BOOKS
-from imagenes import chapter_objects, resolve as resolve_images
+from imagenes import THUMB, chapter_objects, resolve as resolve_images, standard_thumb
 from medidas import chapter_measures
 
 ROOT = Path(__file__).resolve().parent
@@ -368,9 +368,10 @@ def photo_for(place, images):
     if not img:
         return None
     w, h = img["width"], img["height"]
-    width = min(800, w)
+    # Miniatura en un ancho que Wikimedia sirve (ver imagenes.py); las fotos pequeñas, el archivo original.
+    width = min(THUMB, w)
     return {
-        "img": img["thumbnail_url_pattern"].replace("####", str(width)) if w > 800 else img["file_url"],
+        "img": standard_thumb(img["thumbnail_url_pattern"].replace("####", str(width))) if w > THUMB else img["file_url"],
         "w": width, "h": round(h * width / w), "page": img["url"],
         "author": re.sub(r"<[^>]+>", "", img.get("credit") or img.get("author") or "")[:120] or None,
         "license": img["license"].replace("CC-Zero", "CC0").replace("-", " ").replace("CC BY SA", "CC BY-SA"),

@@ -12,6 +12,7 @@ import { playChapter } from '@/lib/audio';
 import { Book, Verse, getChapter } from '@/lib/data';
 import { parseDevocional, saveEntrada } from '@/lib/diario';
 import { Source } from '@/lib/estudio';
+import { studyKeep, useKept } from '@/lib/recordado';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -26,7 +27,8 @@ type Props = {
   /** Lo que se muestra si la IA no pudo responder (error, cuenta). */
   problem?: ReactNode;
   onOpen: (ref: string) => void;
-  onClose: () => void;
+  /** Al tocar un número ⟦n⟧ de una cita. */
+  onCite?: (source: Source) => void;
   /** Al cambiar de paso, para volver arriba. */
   onStep?: () => void;
 };
@@ -55,17 +57,19 @@ const native = Platform.OS !== 'web';
  * para hoy y orar con pistas del texto. La IA abre el texto y pregunta; lo que la persona escribe es suyo
  * y se guarda en su diario.
  */
-export default function Devotional({ book, chapter, verse, text, sources, busy, problem, onOpen, onClose, onStep }: Props) {
+export default function Devotional({ book, chapter, verse, text, sources, busy, problem, onOpen, onCite, onStep }: Props) {
   const colors = useColors();
-  const [step, setStepState] = useState(0);
+  // El paso y lo escrito sobreviven a seguir un enlace y volver atrás (src/lib/recordado.ts).
+  const keep = `${studyKeep(book.id, chapter, verse)}devocional.`;
+  const [step, setStepState] = useKept(`${keep}paso`, 0);
   const [verses, setVerses] = useState<Verse[]>([]);
-  const [palabra, setPalabra] = useState('');
-  const [oracion, setOracion] = useState('');
-  const [paso, setPaso] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [palabra, setPalabra] = useKept(`${keep}palabra`, '');
+  const [oracion, setOracion] = useKept(`${keep}oracion`, '');
+  const [paso, setPaso] = useKept(`${keep}hoy`, '');
+  const [saved, setSaved] = useKept(`${keep}guardado`, false);
   const [sharing, setSharing] = useState(false);
-  const [marked, setMarked] = useState<number | null>(null);
-  const id = useRef(`${Date.now()}`).current;
+  const [marked, setMarked] = useKept<number | null>(`${keep}marcado`, null);
+  const [id] = useKept(`${keep}id`, () => `${Date.now()}`);
   const d = useMemo(() => parseDevocional(text), [text]);
   const passage = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
 
@@ -119,7 +123,6 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
   };
 
   const openDiario = () => {
-    onClose();
     navigate(() => router.push('/diario' as never), 'forward');
   };
 
@@ -217,7 +220,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
             <View style={[styles.insightRule, { backgroundColor: colors.accent }]} />
             <View style={{ flex: 1 }}>
               <Label colors={colors}>LO QUE DICE EL TEXTO</Label>
-              <Markdown text={d.observa} colors={colors} />
+              <Markdown text={d.observa} colors={colors} sources={sources} onCite={onCite} />
             </View>
           </View>
           <Label colors={colors} style={{ marginTop: 22 }}>
@@ -229,7 +232,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                 <Text style={[styles.qNumText, { color: colors.accent }]}>{i + 1}</Text>
               </View>
               <View style={{ flex: 1, paddingTop: 3 }}>
-                <Markdown text={q} colors={colors} />
+                <Markdown text={q} colors={colors} sources={sources} onCite={onCite} />
               </View>
             </Appear>
           ))}
@@ -269,7 +272,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                     {on && <CheckIcon color={colors.surface} size={13} strokeWidth={2.6} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Markdown text={v} colors={colors} />
+                    <Markdown text={v} colors={colors} sources={sources} onCite={onCite} />
                   </View>
                 </Pressable>
               </Appear>
@@ -308,7 +311,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                       <Text style={{ color: colors.muted, fontSize: 12 }}>{info.hint}</Text>
                     </View>
                   )}
-                  <Markdown text={o.text.charAt(0).toUpperCase() + o.text.slice(1)} colors={colors} />
+                  <Markdown text={o.text.charAt(0).toUpperCase() + o.text.slice(1)} colors={colors} sources={sources} onCite={onCite} />
                 </Appear>
               );
             })}
