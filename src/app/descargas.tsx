@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
-import { CheckIcon, DownloadIcon, OfflineIcon } from '@/components/comunidad/icons';
 import { SectionTitle, text } from '@/components/comunidad/ui';
+import { CheckIcon, CommentaryIcon, DownloadIcon, OfflineIcon, PeopleIcon, SearchIcon, SparkIcon } from '@/components/icons';
 import { useOnline } from '@/lib/conexion';
 import { Book, Version, getVersions } from '@/lib/data';
 import {
@@ -146,7 +146,12 @@ export default function Descargas() {
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 6 }]}>
           {NEEDS_NET.map(([title, detail], i) => (
             <View key={title} style={[styles.netRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
-              <Text style={{ color: colors.accent, fontFamily: serif, fontSize: 18, width: 26 }}>{NEEDS_NET_ICONS[i]}</Text>
+              <View style={{ width: 26, paddingTop: 1 }}>
+                {(() => {
+                  const Icon = NEEDS_NET_ICONS[i];
+                  return <Icon color={colors.accent} size={20} />;
+                })()}
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{title}</Text>
                 <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }}>{detail}</Text>
@@ -181,7 +186,7 @@ const NEEDS_NET: [string, string][] = [
   ['Buscar por idea', 'Buscar una cita, como «Juan 3:16», sí funciona sin conexión.'],
   ['Comentarios', 'Los que ya abriste quedan guardados; los nuevos se traen de internet.'],
 ];
-const NEEDS_NET_ICONS = ['✦', '◎', '⌕', '❡'];
+const NEEDS_NET_ICONS = [SparkIcon, PeopleIcon, SearchIcon, CommentaryIcon];
 
 function PackCard({
   d,

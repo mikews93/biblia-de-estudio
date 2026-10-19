@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from '@/components/icons';
 import { Book, formatRef, getBooks } from '@/lib/data';
 import {
   ERAS,
@@ -653,7 +654,7 @@ function Flecha({ lado, onPress }: { lado: 'izq' | 'der'; onPress: () => void })
         (hovered || pressed) && { borderColor: colors.accent },
       ]}
     >
-      <Text style={{ color: colors.text, fontSize: 22, lineHeight: 24 }}>{lado === 'izq' ? '‹' : '›'}</Text>
+      {lado === 'izq' ? <ChevronLeftIcon color={colors.text} size={22} strokeWidth={2} /> : <ChevronRightIcon color={colors.text} size={22} strokeWidth={2} />}
     </Pressable>
   );
 }
@@ -712,7 +713,7 @@ function Detalle({
         <View style={[styles.rotuloPunto, { backgroundColor: color }]} />
         <Text style={[styles.kicker, { color, flex: 1 }]}>{kicker.toUpperCase()}</Text>
         <Pressable accessibilityLabel="Cerrar" onPress={onCerrar} hitSlop={10} style={styles.cerrar}>
-          <Text style={{ color: colors.muted, fontSize: 18 }}>✕</Text>
+          <CloseIcon color={colors.muted} size={20} />
         </Pressable>
       </View>
       <Text style={[styles.detalleTitulo, { color: colors.text }]}>{titulo}</Text>

@@ -3,9 +3,11 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { MindMapIcon } from '@/components/icons';
 import MindMapView from '@/components/MindMapView';
 import { Sources } from '@/components/StudyPanel';
 import { ToolFooter, ToolState } from '@/components/ToolState';
+import { IconText } from '@/components/comunidad/ui';
 import { Book, getBooks, parseRef } from '@/lib/data';
 import { useHerramienta } from '@/lib/herramientas';
 import { parseMindMap, versesLabel } from '@/lib/mapaMental';
@@ -39,7 +41,9 @@ export default function MindMapScreen() {
       <Stack.Screen options={{ title: 'Mapa mental' }} />
       <View style={styles.head}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.kicker, { color: colors.accent }]}>◉ MAPA MENTAL</Text>
+          <IconText icon={MindMapIcon} color={colors.accent} size={14}>
+            <Text style={[styles.kicker, { color: colors.accent }]}>MAPA MENTAL</Text>
+          </IconText>
           <Text style={[styles.title, { color: colors.text, fontFamily: serif }]}>{book ? `${book.name} ${chapter}` : ''}</Text>
         </View>
         {ready && (

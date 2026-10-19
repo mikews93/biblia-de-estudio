@@ -1,10 +1,11 @@
 import { Stack, router } from 'expo-router';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, SectionTitle, useAction } from '@/components/comunidad/ui';
+import { CandleIcon, CardsIcon, CommentIcon, type IconProps, OpenBookIcon, PlusSquareIcon, ShareIcon } from '@/components/icons';
 import { Ajustes, Soporte, Tipo, activar, buildEstado, cambiar, desactivar, permiso, probar, soporte, useAvisos } from '@/lib/avisos';
 import { dailyMessage, horaLabel } from '@/lib/avisosTexto';
 import { useAccount } from '@/lib/comunidad';
@@ -23,11 +24,11 @@ const PRESETS = [
   { hora: 21 * 60, label: 'Antes de dormir' },
 ];
 
-const TIPOS: { tipo: Tipo; icon: string; title: string; detail: string }[] = [
-  { tipo: 'lectura', icon: '📖', title: 'Lectura del día', detail: 'Lo que toca en tu plan o donde te quedaste. Si ya leíste, no te escribimos.' },
-  { tipo: 'tarjetas', icon: '🗂️', title: 'Tarjetas para repasar', detail: 'Cuántas tarjetas te esperan ese día para no olvidar lo estudiado.' },
-  { tipo: 'reto', icon: '🕯️', title: 'Desafío de temporada', detail: 'El día y la lectura de Adviento, Cuaresma o Año Nuevo, si te uniste.' },
-  { tipo: 'comunidad', icon: '💬', title: 'Comunidad', detail: 'Comentarios, me gusta, invitaciones de amistad y quién se une a tus grupos. Llegan al momento.' },
+const TIPOS: { tipo: Tipo; icon: (p: IconProps) => ReactNode; title: string; detail: string }[] = [
+  { tipo: 'lectura', icon: OpenBookIcon, title: 'Lectura del día', detail: 'Lo que toca en tu plan o donde te quedaste. Si ya leíste, no te escribimos.' },
+  { tipo: 'tarjetas', icon: CardsIcon, title: 'Tarjetas para repasar', detail: 'Cuántas tarjetas te esperan ese día para no olvidar lo estudiado.' },
+  { tipo: 'reto', icon: CandleIcon, title: 'Desafío de temporada', detail: 'El día y la lectura de Adviento, Cuaresma o Año Nuevo, si te uniste.' },
+  { tipo: 'comunidad', icon: CommentIcon, title: 'Comunidad', detail: 'Comentarios, me gusta, invitaciones de amistad y quién se une a tus grupos. Llegan al momento.' },
 ];
 
 /** Notificaciones: recordatorio diario a la hora elegida y avisos de la comunidad (web instalada). */
@@ -138,7 +139,7 @@ export default function NotificationsScreen() {
             return (
               <View key={t.tipo} style={[styles.toggle, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
                 <View style={[styles.toggleIcon, { backgroundColor: colors.accentSoft }]}>
-                  <Text style={{ fontSize: 18 }}>{t.icon}</Text>
+                  <t.icon color={colors.accent} size={20} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{t.title}</Text>
@@ -147,7 +148,7 @@ export default function NotificationsScreen() {
                   </Text>
                   {needsAccount && (
                     <Pressable onPress={() => navigate(() => router.push('/entrar'), 'forward')} accessibilityRole="link">
-                      <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 6 }}>Entrar o crear cuenta →</Text>
+                      <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 6 }}>Entrar o crear cuenta ›</Text>
                     </Pressable>
                   )}
                 </View>
@@ -272,7 +273,7 @@ function StatusCard({
 function InstallGuide({ colors }: { colors: Colors }) {
   const steps: { icon: ReactNode; text: ReactNode }[] = [
     {
-      icon: <ShareIcon color={colors.accent} />,
+      icon: <ShareIcon color={colors.accent} size={22} />,
       text: (
         <>
           Toca <Text style={{ fontWeight: '700' }}>Compartir</Text> en la barra de Safari.
@@ -280,7 +281,7 @@ function InstallGuide({ colors }: { colors: Colors }) {
       ),
     },
     {
-      icon: <PlusSquare color={colors.accent} />,
+      icon: <PlusSquareIcon color={colors.accent} size={22} />,
       text: (
         <>
           Elige <Text style={{ fontWeight: '700' }}>Agregar a pantalla de inicio</Text>.
@@ -430,24 +431,6 @@ function Bell({ colors, active }: { colors: Colors; active: boolean }) {
         {active && <Circle cx={36} cy={11} r={6} fill="#4C9A6A" stroke={colors.accentSoft} strokeWidth={3} />}
       </Svg>
     </View>
-  );
-}
-
-function ShareIcon({ color }: { color: string }) {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M12 3v12M8 7l4-4 4 4" />
-      <Path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
-    </Svg>
-  );
-}
-
-function PlusSquare({ color }: { color: string }) {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
-      <Rect x={3.5} y={3.5} width={17} height={17} rx={4} />
-      <Path d="M12 8v8M8 12h8" />
-    </Svg>
   );
 }
 

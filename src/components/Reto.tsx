@@ -4,9 +4,11 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { CheckIcon, ChevronRightIcon, MoonIcon, PeopleIcon, StarIcon } from '@/components/icons';
 import { readingsLabel, shortDate } from '@/components/PlanCard';
+import PlanIcon from '@/components/PlanIcon';
 import { confirm } from '@/components/comunidad/confirm';
-import { Button, Field, SectionTitle, text } from '@/components/comunidad/ui';
+import { Button, Field, IconText, SectionTitle, text } from '@/components/comunidad/ui';
 import { useAccount } from '@/lib/comunidad';
 import { Book } from '@/lib/data';
 import { useAllHighlights } from '@/lib/highlights';
@@ -98,11 +100,11 @@ function Hero({
   return (
     <Appear>
       <View style={[styles.hero, { backgroundColor: tint.soft }]}>
-        <Text style={[styles.heroGlyph, { color: tint.accent }]} aria-hidden>
-          {def.icon}
-        </Text>
+        <View style={styles.heroGlyph} aria-hidden>
+          <PlanIcon icono={def.icono} color={tint.accent} size={200} strokeWidth={1.1} />
+        </View>
         <View style={[styles.badge, { backgroundColor: tint.accent }]}>
-          <Text style={{ color: tint.soft, fontSize: 24, fontFamily: serif }}>{def.icon}</Text>
+          <PlanIcon icono={def.icono} color={tint.soft} size={26} />
         </View>
         <Text style={[styles.kicker, { color: tint.accent, marginTop: 16 }]}>
           Reto de temporada · {tint.name} {run.year}
@@ -236,7 +238,9 @@ function Joined({
       {celebration && (
         <Appear delay={20}>
           <View style={[styles.celebrate, { backgroundColor: tint.accent }]}>
-            <Text style={[styles.kicker, { color: tint.soft }]}>✦ {progress.celebrate}</Text>
+            <IconText icon={StarIcon} color={tint.soft} size={13}>
+              <Text style={[styles.kicker, { color: tint.soft }]}>{progress.celebrate}</Text>
+            </IconText>
             <Text style={{ color: tint.soft, fontSize: 16, lineHeight: 23, marginTop: 6 }}>{celebration.text}</Text>
             <Text style={{ color: tint.soft, fontFamily: serif, fontSize: 17, lineHeight: 25, marginTop: 10, fontStyle: 'italic' }}>
               «{celebration.verse}»
@@ -290,7 +294,7 @@ function Joined({
             ]}
             accessibilityLabel={`${m.label}${m.reached ? ', alcanzado' : ''}`}
           >
-            <Text style={{ color: m.reached ? tint.accent : colors.muted, fontSize: 18 }}>{m.reached ? '✦' : '○'}</Text>
+            <StarIcon color={m.reached ? tint.accent : colors.muted} size={20} filled={m.reached} />
             <Text style={{ color: m.reached ? colors.text : colors.muted, fontWeight: '600', fontSize: 13, textAlign: 'center' }}>
               {m.label}
             </Text>
@@ -366,7 +370,7 @@ function Calendar({
           colors={colors}
         />
         {weeks.some((w) => w.some((c) => c.index === null && !c.outside)) && (
-          <Legend swatch={<Text style={{ color: colors.muted, fontSize: 14 }}>☾</Text>} label="Descanso" colors={colors} />
+          <Legend swatch={<MoonIcon color={colors.muted} size={14} />} label="Descanso" colors={colors} />
         )}
       </View>
     </View>
@@ -401,7 +405,7 @@ function Cell({
   if (cell.index === null) {
     return (
       <View style={styles.cell} accessibilityLabel={`${longDay(cell.date)}: descanso`}>
-        <Text style={{ color: colors.muted, fontSize: 14 }}>☾</Text>
+        <MoonIcon color={colors.muted} size={14} />
       </View>
     );
   }
@@ -493,9 +497,9 @@ function DayCard({
         {label} · {minutes} min
       </Text>
       {done && (
-        <Text style={{ color: tint.accent, fontSize: 13, fontWeight: '600', marginTop: 8 }}>
-          ✓ Leído el {shortDate(plan.done[index])}
-        </Text>
+        <IconText icon={CheckIcon} color={tint.accent} size={15} gap={5} style={{ marginTop: 8 }}>
+          <Text style={{ color: tint.accent, fontSize: 13, fontWeight: '600' }}>Leído el {shortDate(plan.done[index])}</Text>
+        </IconText>
       )}
       <Pressable
         onPress={() => navigate(() => router.push(chapterHref(b, c)), 'forward')}
@@ -528,7 +532,7 @@ function DayCard({
           {(changed || justSaved || saved) && (
             <View style={styles.saveRow}>
               <Text style={{ color: colors.muted, fontSize: 12, flex: 1 }}>
-                {justSaved ? 'Guardado en tu dispositivo ✓' : saved && !changed ? 'Tu respuesta está guardada.' : ' '}
+                {justSaved ? 'Guardado en tu dispositivo.' : saved && !changed ? 'Tu respuesta está guardada.' : ' '}
               </Text>
               {changed && (
                 <Pressable
@@ -583,7 +587,7 @@ function Company({
             accessibilityRole="link"
           >
             <View style={[styles.groupIcon, { backgroundColor: tint.soft }]}>
-              <Text style={{ color: tint.accent, fontSize: 16 }}>◎</Text>
+              <PeopleIcon color={tint.accent} size={18} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.text, fontWeight: '700' }}>{g.nombre}</Text>
@@ -593,7 +597,7 @@ function Company({
                   : `${g.miembros} ${g.miembros === 1 ? 'persona' : 'personas'} en el reto`}
               </Text>
             </View>
-            <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
+            <ChevronRightIcon color={colors.muted} size={18} />
           </Pressable>
         ))
       ) : (
@@ -637,7 +641,7 @@ function Stat({ value, label, tint, colors }: { value: number; label: string; ti
 
 const styles = StyleSheet.create({
   hero: { borderRadius: 24, padding: 22, overflow: 'hidden' },
-  heroGlyph: { position: 'absolute', right: -10, top: -30, fontSize: 180, fontFamily: serif, opacity: 0.08 },
+  heroGlyph: { position: 'absolute', right: -24, top: -26, opacity: 0.1 },
   badge: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   kicker: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
   heroTitle: { fontFamily: serif, fontSize: 28, lineHeight: 34, fontWeight: '700', marginTop: 4 },

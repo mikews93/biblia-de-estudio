@@ -1,6 +1,7 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { CheckIcon } from '@/components/icons';
 import { Version } from '@/lib/data';
 import { serif, useColors, useSettings } from '@/lib/theme';
 
@@ -38,7 +39,7 @@ export default function VersionPicker({ versions, onClose }: Props) {
                 <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{v.name}</Text>
                 <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{v.credit.split(' · ').slice(1).join(' · ')}</Text>
               </View>
-              {on && <Text style={{ color: colors.accent, fontSize: 16 }}>✓</Text>}
+              {on && <CheckIcon color={colors.accent} size={18} strokeWidth={2.6} />}
             </Pressable>
           );
         })}

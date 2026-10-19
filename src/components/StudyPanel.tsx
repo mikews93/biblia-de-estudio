@@ -1,5 +1,5 @@
 import { router, useIsFocused } from 'expo-router';
-import { ComponentRef, useEffect, useRef, useState } from 'react';
+import { ComponentRef, ReactNode, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,7 +14,9 @@ import {
 } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { IconText } from '@/components/comunidad/ui';
 import Devotional from '@/components/Devotional';
+import { CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
 import StudyContext from '@/components/StudyContext';
 import { Book, original, parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
@@ -176,13 +178,15 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
           >
             <View style={[styles.header, { borderColor: colors.border }, !word && { borderBottomWidth: 0, paddingBottom: 8 }]}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.kicker, { color: colors.accent }]}>
-                  {word ? '✦ ¿POR QUÉ ESTA PALABRA?' : mode === 'devocional' ? '♡ DEVOCIONAL' : '✦ ESTUDIO PROFUNDO'}
-                </Text>
+                <IconText icon={!word && mode === 'devocional' ? HeartIcon : SparkIcon} color={colors.accent} size={13}>
+                  <Text style={[styles.kicker, { color: colors.accent }]}>
+                    {word ? '¿POR QUÉ ESTA PALABRA?' : mode === 'devocional' ? 'DEVOCIONAL' : 'ESTUDIO PROFUNDO'}
+                  </Text>
+                </IconText>
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
               </View>
               <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar estudio">
-                <Text style={{ color: colors.muted, fontSize: 20 }}>✕</Text>
+                <CloseIcon color={colors.muted} size={22} />
               </Pressable>
             </View>
             {!word && <ModeSwitch mode={mode} onChange={switchMode} colors={colors} />}
@@ -292,7 +296,9 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                       onPress={() => switchMode('devocional')}
                       style={[styles.chip, { borderColor: colors.accent, backgroundColor: colors.accentSoft }]}
                     >
-                      <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>♡ Hacer el devocional de este pasaje</Text>
+                      <IconText icon={HeartIcon} color={colors.accent} size={14}>
+                        <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>Hacer el devocional de este pasaje</Text>
+                      </IconText>
                     </Pressable>
                   )}
                 </View>
@@ -357,9 +363,9 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   );
 }
 
-const MODES: { value: Enfoque; icon: string; label: string; hint: string }[] = [
-  { value: 'devocional', icon: '♡', label: 'Devocional', hint: 'Lee, medita, vive y ora · unos 10 minutos' },
-  { value: 'profundo', icon: '✦', label: 'Profundo', hint: 'Texto original, contexto y pasajes relacionados' },
+const MODES: { value: Enfoque; icon: (p: IconProps) => ReactNode; label: string; hint: string }[] = [
+  { value: 'devocional', icon: HeartIcon, label: 'Devocional', hint: 'Lee, medita, vive y ora · unos 10 minutos' },
+  { value: 'profundo', icon: SparkIcon, label: 'Profundo', hint: 'Texto original, contexto y pasajes relacionados' },
 ];
 
 /** Selector entre el devocional guiado y el estudio profundo: una píldora con el modo activo resaltado. */
@@ -378,9 +384,11 @@ function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: E
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${m.label}: ${m.hint}`}
             >
-              <Text style={[styles.modeLabel, { color: on ? colors.surface : colors.text }]} numberOfLines={1}>
-                <Text style={{ fontFamily: serif }}>{m.icon}</Text>  {m.label}
-              </Text>
+              <IconText icon={m.icon} color={on ? colors.surface : colors.text} size={15}>
+                <Text style={[styles.modeLabel, { color: on ? colors.surface : colors.text }]} numberOfLines={1}>
+                  {m.label}
+                </Text>
+              </IconText>
             </Pressable>
           );
         })}

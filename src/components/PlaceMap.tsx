@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 
+import { LocateIcon } from '@/components/icons';
 import { Basemap, Place, getBasemap } from '@/lib/data';
 import { Colors, isDark, sans } from '@/lib/theme';
 
@@ -252,7 +253,7 @@ export default function PlaceMap({ places, colors, verse, height = 280, onVerse 
             style={[styles.zoomBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             accessibilityLabel="Volver a centrar"
           >
-            <Text style={{ color: colors.text, fontSize: 14 }}>◎</Text>
+            <LocateIcon color={colors.text} size={17} />
           </Pressable>
         </View>
       </View>

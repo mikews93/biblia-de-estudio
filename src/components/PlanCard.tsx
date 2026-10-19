@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Meter } from '@/components/comunidad/ui';
+import { IconText, Meter } from '@/components/comunidad/ui';
+import { CheckIcon } from '@/components/icons';
 import { Book } from '@/lib/data';
 import { MyPlan, Words, dayMinutes, parseDate, planDays, planDef, planStatus, todayKey } from '@/lib/planes';
 import { chapterHref } from '@/lib/routes';
@@ -59,7 +60,9 @@ export default function PlanCard({ plan, books, words, colors }: { plan: MyPlan;
       <Text style={[styles.title, { color: colors.text, fontFamily: serif }]}>{plan.title}</Text>
 
       {plan.finished ? (
-        <Text style={{ color: colors.text, marginTop: 6 }}>🎉 Terminado el {shortDate(plan.finished)}.</Text>
+        <IconText icon={CheckIcon} color={colors.accent} size={16} style={{ marginTop: 6 }}>
+          <Text style={{ color: colors.text }}>Terminado el {shortDate(plan.finished)}.</Text>
+        </IconText>
       ) : waiting ? (
         <Text style={{ color: colors.text, marginTop: 6 }}>Empieza el {shortDate(plan.started)}. Te esperamos.</Text>
       ) : (

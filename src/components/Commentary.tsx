@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { ChevronLeftIcon, ChevronRightIcon } from '@/components/icons';
 import { Book, formatRef, parseRef } from '@/lib/data';
 import { Comentario, Estado, FUENTES, Parte, getComentario, reportarError, traducirParte } from '@/lib/comentarios';
 import { verseHref } from '@/lib/routes';
@@ -145,11 +146,11 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
         <>
           <View style={styles.nav}>
             <Pressable onPress={() => prev && setAt(prev.desde)} disabled={!prev} hitSlop={8}>
-              <Text style={{ color: prev ? colors.accent : colors.border, fontSize: 18 }}>‹</Text>
+              <ChevronLeftIcon color={prev ? colors.accent : colors.border} size={18} />
             </Pressable>
             <Text style={[styles.section, { color: colors.accent }]}>{label(section)}</Text>
             <Pressable onPress={() => after && setAt(after.desde)} disabled={!after} hitSlop={8}>
-              <Text style={{ color: after ? colors.accent : colors.border, fontSize: 18 }}>›</Text>
+              <ChevronRightIcon color={after ? colors.accent : colors.border} size={18} />
             </Pressable>
           </View>
           {section.desde > 0 && list[0]?.desde === 0 && (

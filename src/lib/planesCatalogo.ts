@@ -4,6 +4,11 @@
 //   (Cuaresma, Semana Santa, Pentecostés, Adviento y Año nuevo). Cada día trae una pregunta para pensar:
 //   lo que se busca es profundidad, no velocidad.
 
+import type { Icono } from './iconos';
+
+/** Los dibujos de la línea de tiempo y dos más: el libro abierto y el sol. */
+export type PlanIcono = Icono | 'libro' | 'sol';
+
 export type Season = 'cuaresma' | 'semana-santa' | 'pentecostes' | 'adviento' | 'anio-nuevo';
 
 /** [libro, capítulo] o [libro] para el libro entero. */
@@ -13,7 +18,10 @@ export type PlanDef = {
   id: string;
   title: string;
   description: string;
+  /** Símbolo de texto para el título de los avisos push, que no pueden llevar un dibujo. */
   icon: string;
+  /** El ícono de línea con que se ve el plan en la app (src/components/PlanIcon.tsx). */
+  icono: PlanIcono;
   /** Capítulos en orden; un libro sin capítulo significa el libro entero. */
   spec: Spec[];
   /** Solo en los de temporada: un título por día, en el mismo orden que los capítulos. */
@@ -41,6 +49,7 @@ export const PLANS: PlanDef[] = [
     title: 'El Evangelio de Juan',
     description: 'Para conocer a Jesús de cerca: sus señales, sus palabras y su cruz. Un buen primer plan.',
     icon: '✚',
+    icono: 'lampara',
     spec: [['jhn']],
   },
   {
@@ -48,6 +57,7 @@ export const PLANS: PlanDef[] = [
     title: 'Marcos, la vida de Jesús',
     description: 'El evangelio más corto y directo, lleno de acción. Se lee en pocas semanas.',
     icon: '✦',
+    icono: 'pluma',
     spec: [['mrk']],
   },
   {
@@ -55,6 +65,7 @@ export const PLANS: PlanDef[] = [
     title: 'Los Salmos',
     description: 'Ciento cincuenta oraciones para aprender a hablar con Dios en la alegría y en la angustia.',
     icon: '♪',
+    icono: 'arpa',
     spec: [['psa']],
   },
   {
@@ -62,6 +73,7 @@ export const PLANS: PlanDef[] = [
     title: 'Proverbios',
     description: 'Sabiduría práctica para el trabajo, la familia, las palabras y el dinero.',
     icon: '◆',
+    icono: 'corona',
     spec: [['pro']],
   },
   {
@@ -69,6 +81,7 @@ export const PLANS: PlanDef[] = [
     title: 'Romanos',
     description: 'El evangelio explicado paso a paso: pecado, gracia, fe y vida nueva.',
     icon: '¶',
+    icono: 'pergamino',
     spec: [['rom']],
   },
   {
@@ -76,6 +89,7 @@ export const PLANS: PlanDef[] = [
     title: 'Génesis',
     description: 'Los comienzos: la creación, la caída y las promesas a Abraham, Isaac, Jacob y José.',
     icon: '☼',
+    icono: 'olas',
     spec: [['gen']],
   },
   {
@@ -83,6 +97,7 @@ export const PLANS: PlanDef[] = [
     title: 'El Nuevo Testamento',
     description: 'De Mateo a Apocalipsis, a tu paso.',
     icon: '✧',
+    icono: 'paloma',
     spec: books(NT),
   },
   {
@@ -90,6 +105,7 @@ export const PLANS: PlanDef[] = [
     title: 'La Biblia completa',
     description: 'De Génesis a Apocalipsis. Con unos 13 minutos al día se lee en un año.',
     icon: '☰',
+    icono: 'libro',
     spec: books([...OT, ...NT]),
   },
 
@@ -100,6 +116,7 @@ export const PLANS: PlanDef[] = [
     description:
       'Cuarenta días desde el Miércoles de Ceniza hasta la Pascua. Los domingos no hay lectura nueva: son para descansar o ponerte al día.',
     icon: '✝',
+    icono: 'cruz',
     spec: [
       ['psa', 51], ['jol', 2], ['isa', 58], ['mat', 4], ['mat', 5], ['mat', 6], ['mat', 7], ['gen', 22], ['exo', 12],
       ['psa', 22], ['isa', 53], ['luk', 15], ['jhn', 3], ['jhn', 4], ['jhn', 6], ['jhn', 8], ['jhn', 9], ['jhn', 10],
@@ -168,6 +185,7 @@ export const PLANS: PlanDef[] = [
     title: 'Semana Santa: los últimos días',
     description: 'Ocho días con Jesús, del Domingo de Ramos a la mañana de la resurrección, un día de la semana a la vez.',
     icon: '✠',
+    icono: 'laurel',
     spec: [['luk', 19], ['mrk', 11], ['mat', 25], ['jhn', 12], ['jhn', 13], ['jhn', 19], ['isa', 53], ['luk', 24]],
     days: [
       'Domingo de Ramos: bendito el Rey que viene', 'Lunes: casa de oración', 'Martes: velad y estad listos',
@@ -192,6 +210,7 @@ export const PLANS: PlanDef[] = [
     description:
       'De la Ascensión a Pentecostés, como los discípulos que esperaron orando juntos la venida del Espíritu Santo.',
     icon: '✹',
+    icono: 'fuego',
     spec: [['act', 1], ['jhn', 14], ['jhn', 16], ['jol', 2], ['ezk', 36], ['ezk', 37], ['rom', 8], ['gal', 5], ['1co', 12], ['act', 2]],
     days: [
       'Esperad la promesa del Padre', 'Otro Consolador', 'Os conviene que yo me vaya', 'Derramaré mi Espíritu',
@@ -217,6 +236,7 @@ export const PLANS: PlanDef[] = [
     title: 'Adviento: la promesa cumplida',
     description: 'Del 1 al 25 de diciembre, siguiendo la promesa del Mesías desde el Edén hasta Belén.',
     icon: '✶',
+    icono: 'estrella',
     spec: [
       ['gen', 3], ['gen', 12], ['2sa', 7], ['psa', 2], ['isa', 7], ['isa', 9], ['isa', 11], ['isa', 35], ['isa', 40],
       ['isa', 42], ['isa', 60], ['isa', 61], ['jer', 23], ['mic', 5], ['mal', 3], ['luk', 1], ['mat', 1], ['psa', 98],
@@ -264,6 +284,7 @@ export const PLANS: PlanDef[] = [
     title: 'Año nuevo: 21 días para empezar',
     description: 'Del 1 al 21 de enero, para empezar el año con fundamentos firmes.',
     icon: '◐',
+    icono: 'sol',
     spec: [
       ['gen', 1], ['psa', 1], ['psa', 90], ['pro', 3], ['isa', 43], ['lam', 3], ['mat', 5], ['mat', 6], ['mat', 7],
       ['jhn', 1], ['jhn', 15], ['rom', 8], ['rom', 12], ['eph', 4], ['php', 3], ['php', 4], ['col', 3], ['heb', 11],

@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
-import { Avatar, GlobeIcon, TreeIcon } from '@/components/Avatar';
+import { Avatar } from '@/components/Avatar';
+import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, GlobeIcon, TreeIcon } from '@/components/icons';
 import { Book, formatRef, getBooks } from '@/lib/data';
 import {
   FUENTE_GENEALOGIA,
@@ -197,7 +198,7 @@ function EntryCard({
     >
       <View style={styles.cardHead}>
         <View style={[styles.iconWrap, { backgroundColor: on ? colors.surface : colors.accentSoft }]}>{icon}</View>
-        <Text style={{ color: colors.muted, fontSize: 16 }}>{on ? '⌃' : '⌄'}</Text>
+        {on ? <ChevronUpIcon color={colors.muted} size={18} /> : <ChevronDownIcon color={colors.muted} size={18} />}
       </View>
       <Text style={[styles.kicker, { color: colors.accent }]}>{kicker}</Text>
       <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
@@ -401,7 +402,7 @@ function Families({
                 {verses.length === 1 ? `v. ${verses[0]}` : `${verses.length} vv.`}
               </Text>
             </View>
-            <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
+            <ChevronRightIcon color={colors.muted} size={18} />
           </Pressable>
         ))}
       </View>

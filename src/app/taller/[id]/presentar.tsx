@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { IconText } from '@/components/comunidad/ui';
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from '@/components/icons';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { dinamica } from '@/lib/dinamicas';
 import { enPasaje, ideaCentral, pasajeLabel, tituloDe, useTaller } from '@/lib/taller';
@@ -58,7 +60,7 @@ export default function PresentarScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.top}>
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Salir de presentar">
-          <Text style={{ color: colors.muted, fontSize: 20 }}>✕</Text>
+          <CloseIcon color={colors.muted} size={22} />
         </Pressable>
         <Pressable onPress={() => setRunning(!running)} accessibilityLabel={running ? 'Pausar' : 'Seguir'} style={styles.timer}>
           <Text style={{ color: over ? '#B3412E' : colors.text, fontFamily: sans, fontSize: 16, fontVariant: ['tabular-nums'] }}>
@@ -130,7 +132,9 @@ export default function PresentarScreen() {
 
       <View style={[styles.bottom, { borderColor: colors.border }]}>
         <Pressable onPress={() => go(index - 1)} disabled={index < 0} style={[styles.navBtn, index < 0 && { opacity: 0.3 }]}>
-          <Text style={{ color: colors.text, fontSize: 16 }}>‹ Anterior</Text>
+          <IconText icon={ChevronLeftIcon} color={colors.text} size={18} gap={4}>
+            <Text style={{ color: colors.text, fontSize: 16 }}>Anterior</Text>
+          </IconText>
         </Pressable>
         {m.pasaje && (
           <Pressable onPress={() => setShowPassage(true)} style={[styles.passageBtn, { borderColor: colors.accent }]}>
@@ -142,7 +146,10 @@ export default function PresentarScreen() {
           disabled={index >= sections.length - 1}
           style={[styles.navBtn, { alignItems: 'flex-end' }, index >= sections.length - 1 && { opacity: 0.3 }]}
         >
-          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>Siguiente ›</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>Siguiente</Text>
+            <ChevronRightIcon color={colors.text} size={18} strokeWidth={2} />
+          </View>
         </Pressable>
       </View>
 

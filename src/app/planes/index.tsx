@@ -2,7 +2,9 @@ import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { CheckIcon, ChevronRightIcon, PeopleIcon, PlusIcon } from '@/components/icons';
 import PlanCard, { shortDate } from '@/components/PlanCard';
+import PlanIcon from '@/components/PlanIcon';
 import { SectionTitle, text } from '@/components/comunidad/ui';
 import { Book, getBooks } from '@/lib/data';
 import { PLANS, PlanDef, nextSeason, usePlans, useWords } from '@/lib/planes';
@@ -40,7 +42,8 @@ export default function Planes() {
 
       <View style={{ marginTop: 16 }}>
         <PlanRow
-          def={{ icon: '◎', title: 'Planes en grupo', description: 'Lee con tu iglesia o tus amigos el mismo plan y comenten juntos.' }}
+          def={{ title: 'Planes en grupo', description: 'Lee con tu iglesia o tus amigos el mismo plan y comenten juntos.' }}
+          icon={<PeopleIcon color={colors.accent} size={24} />}
           colors={colors}
           onPress={() => navigate(() => router.push('/grupos' as never), 'forward')}
         />
@@ -83,7 +86,9 @@ export default function Planes() {
           onPress={() => setPicking(!picking)}
           style={({ pressed }) => [styles.row, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && styles.pressed]}
         >
-          <Text style={[styles.icon, { color: colors.accent }]}>＋</Text>
+          <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
+            <PlusIcon color={colors.accent} size={22} />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.rowTitle, { color: colors.text }]}>Un libro que tú elijas</Text>
             <Text style={{ color: colors.muted, fontSize: 13 }}>Cualquier libro de la Biblia, a tu paso.</Text>
@@ -120,18 +125,26 @@ export default function Planes() {
 
 function PlanRow({
   def,
+  icon,
   note,
   colors,
   onPress,
 }: {
-  def: Pick<PlanDef, 'icon' | 'title' | 'description'>; note?: string; colors: Colors; onPress: () => void }) {
+  def: Pick<PlanDef, 'title' | 'description'> & Partial<Pick<PlanDef, 'icono'>>;
+  icon?: React.ReactNode;
+  note?: string;
+  colors: Colors;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.row, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && styles.pressed]}
       accessibilityRole="button"
     >
-      <Text style={[styles.icon, { color: colors.accent }]}>{def.icon}</Text>
+      <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
+        {icon ?? (def.icono && <PlanIcon icono={def.icono} color={colors.accent} size={24} />)}
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.rowTitle, { color: colors.text }]}>{def.title}</Text>
         {note && <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600', marginTop: 1 }}>{note}</Text>}
@@ -139,7 +152,7 @@ function PlanRow({
           {def.description}
         </Text>
       </View>
-      <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
+      <ChevronRightIcon color={colors.muted} size={18} />
     </Pressable>
   );
 }
@@ -173,12 +186,15 @@ function RetoTile({
       accessibilityRole="button"
       accessibilityLabel={`${def.title}. ${when}${joined ? '. Te uniste' : ''}`}
     >
-      <Text style={[styles.retoGlyph, { color: tint.accent }]}>{def.icon}</Text>
+      <View style={styles.retoGlyph} aria-hidden>
+        <PlanIcon icono={def.icono} color={tint.accent} size={92} strokeWidth={1.3} />
+      </View>
       <View style={styles.retoHead}>
         <Text style={[styles.retoKicker, { color: tint.accent }]}>{tint.name}</Text>
         {joined && (
           <View style={[styles.joined, { backgroundColor: tint.accent }]}>
-            <Text style={{ color: tint.soft, fontSize: 11, fontWeight: '700' }}>✓ Te uniste</Text>
+            <CheckIcon color={tint.soft} size={12} strokeWidth={2.4} />
+            <Text style={{ color: tint.soft, fontSize: 11, fontWeight: '700' }}>Te uniste</Text>
           </View>
         )}
       </View>
@@ -204,14 +220,14 @@ const range = (a: string, b: string) => `${shortDate(a)} – ${shortDate(b)}`;
 const styles = StyleSheet.create({
   retos: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   reto: { flexGrow: 1, flexBasis: '45%', minWidth: 150, borderRadius: 20, padding: 16, overflow: 'hidden', minHeight: 150 },
-  retoGlyph: { position: 'absolute', right: 8, bottom: -14, fontSize: 84, fontFamily: serif, opacity: 0.14 },
+  retoGlyph: { position: 'absolute', right: -6, bottom: -14, opacity: 0.16 },
   retoHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   retoKicker: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.9 },
   retoTitle: { fontFamily: serif, fontSize: 18, lineHeight: 23, marginTop: 8 },
-  joined: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  joined: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   page: { padding: 20, paddingBottom: 64, maxWidth: 680, width: '100%', alignSelf: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
-  icon: { fontSize: 22, width: 28, textAlign: 'center', fontFamily: serif },
+  icon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   rowTitle: { fontSize: 16, fontWeight: '600' },
   books: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   book: { borderRadius: 14, paddingHorizontal: 12, paddingVertical: 7 },
