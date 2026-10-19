@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { IconText } from '@/components/comunidad/ui';
+import { CheckIcon } from '@/components/icons';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks, getPlaces } from '@/lib/data';
 import { planDef, plansWaitingFor, todayKey, usePlans } from '@/lib/planes';
@@ -44,7 +46,9 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
 
       {done ? (
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.doneTitle, { color: colors.accent }]}>✓ Capítulo leído</Text>
+          <IconText icon={CheckIcon} color={colors.accent} size={18}>
+            <Text style={[styles.doneTitle, { color: colors.accent }]}>Capítulo leído</Text>
+          </IconText>
           <View style={styles.week}>
             {week.map((d, i) => (
               <View key={i} style={styles.day}>
@@ -93,7 +97,7 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
               >
                 <Text style={{ color: colors.text, fontSize: 13, textAlign: 'center' }}>
                   {p.finished
-                    ? `🎉 ¡Terminaste el plan «${p.title}»! Ver tu recorrido ›`
+                    ? `¡Terminaste el plan «${p.title}»! Ver tu recorrido ›`
                     : `${p.title}: ${Object.keys(p.done).length} de ${p.readings.length}` +
                       (nb === book.id && nc === chapter + 1 ? ' · ver el plan ›' : ` · Sigue con ${name(nb)} ${nc} ›`)}
                 </Text>

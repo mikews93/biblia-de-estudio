@@ -3,8 +3,10 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { CardsIcon, CheckIcon } from '@/components/icons';
 import { Sources } from '@/components/StudyPanel';
 import { ToolFooter, ToolState } from '@/components/ToolState';
+import { IconText } from '@/components/comunidad/ui';
 import { Book, getBooks, parseRef } from '@/lib/data';
 import { useHerramienta } from '@/lib/herramientas';
 import { bookIdFromParam, verseHref } from '@/lib/routes';
@@ -53,7 +55,9 @@ export default function ChapterCards() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title: 'Tarjetas de repaso' }} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.kicker, { color: colors.accent }]}>▤ TARJETAS DE REPASO</Text>
+        <IconText icon={CardsIcon} color={colors.accent} size={14}>
+          <Text style={[styles.kicker, { color: colors.accent }]}>TARJETAS DE REPASO</Text>
+        </IconText>
         <Text style={[styles.title, { color: colors.text, fontFamily: serif }]}>{book ? `${book.name} ${chapter}` : ''}</Text>
         <Text style={{ color: colors.muted, marginTop: 6, lineHeight: 20 }}>
           Elige las que quieras guardar. Te las mostraremos justo antes de que se te olviden: primero mañana, luego en unos
@@ -100,7 +104,7 @@ export default function ChapterCards() {
                 ]}
               >
                 <View style={[styles.check, { borderColor: on || saved ? colors.accent : colors.border }, (on || saved) && { backgroundColor: colors.accent }]}>
-                  {(on || saved) && <Text style={{ color: colors.surface, fontSize: 12, fontWeight: '700' }}>✓</Text>}
+                  {(on || saved) && <CheckIcon color={colors.surface} size={14} strokeWidth={2.6} />}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600', lineHeight: 21 }}>{c.front}</Text>

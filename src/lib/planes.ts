@@ -72,7 +72,7 @@ export function planDef(id: string, books: Book[]): PlanDef | undefined {
   if (id.startsWith('libro-')) {
     const book = books.find((b) => b.id === id.slice(6));
     if (!book) return undefined;
-    return { id, title: book.name, description: `Tu plan para leer ${book.name} completo.`, icon: '☰', spec: [[book.id]] };
+    return { id, title: book.name, description: `Tu plan para leer ${book.name} completo.`, icon: '☰', icono: 'libro', spec: [[book.id]] };
   }
   return PLANS.find((p) => p.id === id);
 }

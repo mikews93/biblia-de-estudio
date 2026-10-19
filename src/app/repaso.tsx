@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { IconText } from '@/components/comunidad/ui';
+import { CardsIcon, CheckIcon } from '@/components/icons';
 import { Book, getBooks } from '@/lib/data';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Card, Grade, SESSION_SIZE, dueCards, grade, intervalLabel, removeCards, schedule, useCards } from '@/lib/tarjetas';
@@ -66,7 +68,9 @@ export default function Review() {
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
       <Stack.Screen options={{ title: 'Repaso' }} />
-      <Text style={[styles.kicker, { color: colors.accent }]}>▤ REPASO · {scope.toUpperCase()}</Text>
+      <IconText icon={CardsIcon} color={colors.accent} size={14}>
+        <Text style={[styles.kicker, { color: colors.accent }]}>REPASO · {scope.toUpperCase()}</Text>
+      </IconText>
       {queue && queue.length > 0 && (
         <Text style={{ color: colors.muted, marginTop: 4 }}>
           {queue.length} {queue.length === 1 ? 'tarjeta pendiente' : 'tarjetas pendientes'}
@@ -145,7 +149,9 @@ export default function Review() {
         queue && (
           <Appear>
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}>
-              <Text style={{ fontSize: 34 }}>✓</Text>
+              <View style={[styles.done, { backgroundColor: colors.accentSoft }]}>
+                <CheckIcon color={colors.accent} size={30} strokeWidth={2.2} />
+              </View>
               <Text style={[styles.front, { color: colors.text, fontFamily: serif, textAlign: 'center' }]}>
                 {reviewed.size ? '¡Repaso terminado!' : 'Nada pendiente por hoy'}
               </Text>
@@ -187,6 +193,7 @@ function Empty({ colors }: { colors: ReturnType<typeof useColors> }) {
 }
 
 const styles = StyleSheet.create({
+  done: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   content: { padding: 20, paddingBottom: 64, maxWidth: 620, width: '100%', alignSelf: 'center' },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 22, marginTop: 18, minHeight: 220 },

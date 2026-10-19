@@ -1,7 +1,8 @@
 import { router, useIsFocused } from 'expo-router';
-import { ComponentRef, useEffect, useRef, useState } from 'react';
+import { ComponentRef, ReactNode, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -9,24 +10,30 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { IconText } from '@/components/comunidad/ui';
+import AskBar from '@/components/AskBar';
 import Devotional from '@/components/Devotional';
+import { CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
 import StudyContext from '@/components/StudyContext';
 import { Book, original, parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
+import { slide, useAutoHide } from '@/lib/chrome';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
-import { Enfoque, Turn, askStudy } from '@/lib/estudio';
+import { useConversations } from '@/lib/conversaciones';
+import { Enfoque, Source, askStudy } from '@/lib/estudio';
+import { conversationKey, forgetConversation, saveConversation, savedConversation } from '@/lib/misPreguntas';
+import { forgetKept, studyKeep } from '@/lib/recordado';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { BOOK_SLUGS, verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 import StudyBackground from '@/components/StudyBackground';
-import { Markdown, Sources } from '@/components/StudyText';
+import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
 
 export { Markdown, Sources };
 
@@ -43,97 +50,150 @@ type Props = {
 
 const SUGGESTIONS = ['Explícamelo más sencillo', '¿Cómo lo aplico hoy?', '¿Qué aportan los pasajes relacionados?'];
 const WORD_SUGGESTIONS = ['Explícamelo más sencillo', '¿Por qué no se tradujo de otra forma?', '¿Cómo lo aplico hoy?'];
+// Cuánto deja quieta la cabecera tras un desplazamiento que hace la app al seguir una respuesta.
+const FOLLOW_PAUSE = 1200;
 
-/** Estudio generado con IA a partir de las fuentes de la app, con citas y preguntas de seguimiento. */
+/**
+ * Estudio generado con IA a partir de las fuentes de la app, con citas y preguntas de seguimiento.
+ * El estudio del pasaje es el mismo para todos; las preguntas de cada persona se guardan solo en su
+ * dispositivo (src/lib/misPreguntas.ts). Al seguir un enlace la ventana se oculta y, al volver atrás,
+ * reaparece donde estaba.
+ */
 export default function StudyPanel({ book, chapter, verse, word, onClose, enfoque: initial }: Props) {
   const colors = useColors();
   const { settings, update } = useSettings();
   // «¿Por qué esta palabra?» siempre es estudio profundo.
   const [chosen, setChosen] = useState<Enfoque>(initial ?? settings.enfoque);
   const mode: Enfoque = word ? 'profundo' : chosen;
-  // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
+  // Al seguir un enlace o ir a /entrar, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
   const focused = useIsFocused();
-  const [turns, setTurns] = useState<Turn[]>([]);
-  // Lo ya generado en cada modo, para cambiar de uno a otro sin volver a pedirlo.
-  const saved = useRef<Partial<Record<Enfoque, Turn[]>>>({});
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
-  const abort = useRef<AbortController | null>(null);
-  const lastHistory = useRef<Turn[]>([]);
+  const [peek, setPeek] = useState<Source | null>(null);
+  const [clearing, setClearing] = useState(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const passage = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
   const title = word ? `${word.greek} en ${passage}` : passage;
+  const passageKey = `${book.id}.${chapter}.${verse ?? ''}.${word?.index ?? ''}`;
+  const storeKey = (e: Enfoque) => conversationKey(e, book.id, chapter, verse, word?.index);
 
-  const run = async (history: Turn[], enfoque: Enfoque = mode) => {
-    abort.current?.abort();
-    const controller = new AbortController();
-    abort.current = controller;
-    lastHistory.current = history;
-    setBusy(true);
-    setError(null);
-    setTurns([...history, { role: 'assistant', text: '', sources: [] }]);
-    try {
-      const answer = await askStudy(
-        { book: book.id, chapter, verse, word: word?.index, messages: history, enfoque },
-        (text, sources) => setTurns([...history, { role: 'assistant', text, sources }]),
-        controller.signal,
-      );
-      const done: Turn[] = [...history, { role: 'assistant', ...answer }];
-      saved.current[enfoque] = done;
-      setTurns(done);
-    } catch (e) {
-      if (controller.signal.aborted) return;
-      setError(e instanceof Error ? e.message : 'No se pudo generar el estudio.');
-      // Si falló sin escribir nada, se quita la respuesta vacía para poder reintentar.
-      setTurns((t) => (t[t.length - 1]?.text ? t : history));
-    } finally {
-      if (abort.current === controller) setBusy(false);
-    }
+  // Una conversación por modo: cambiar de Devocional a Profundo no vuelve a pedir nada ni detiene al otro.
+  const convs = useConversations<Enfoque>(
+    (enfoque, history, onUpdate, signal) =>
+      askStudy({ book: book.id, chapter, verse, word: word?.index, messages: history, enfoque }, onUpdate, signal),
+    (enfoque, done) => {
+      if (done.some((t) => t.role === 'user')) saveConversation(storeKey(enfoque), done);
+    },
+  );
+  const { turns, busy, error } = convs.get(mode);
+  const starting = useRef(new Set<string>());
+
+  /** Abre un modo: lo guardado en el dispositivo si la persona ya preguntó aquí; si no, el estudio de todos. */
+  const start = async (enfoque: Enfoque) => {
+    const id = `${passageKey}:${enfoque}`;
+    if (starting.current.has(id)) return;
+    starting.current.add(id);
+    const saved = await savedConversation(storeKey(enfoque));
+    if (!starting.current.has(id)) return; // cambió el pasaje mientras se leía
+    if (saved) convs.set(enfoque, saved);
+    else convs.run(enfoque, []);
   };
 
   useEffect(() => {
-    saved.current = {};
-    run([]);
-    return () => abort.current?.abort();
+    convs.reset();
+    starting.current.clear();
+    setPeek(null);
+    start(mode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [book.id, chapter, verse, word?.index]);
+  }, [passageKey]);
+
+  // Lo recordado del devocional y del trasfondo se olvida al cerrar el estudio de verdad.
+  useEffect(() => () => forgetKept(studyKeep(book.id, chapter, verse)), [book.id, chapter, verse]);
 
   const switchMode = (next: Enfoque) => {
     if (next === mode) return;
     setChosen(next);
     update({ enfoque: next });
-    setError(null);
-    const cached = saved.current[next];
-    if (cached) {
-      abort.current?.abort();
-      setBusy(false);
-      setTurns(cached);
-    } else run([], next);
+    setPeek(null);
+    setClearing(false);
+    if (!convs.started(next)) start(next);
   };
 
   const ask = (q: string) => {
     const text = q.trim();
     if (!text || busy) return;
     setQuestion('');
-    run([...turns, { role: 'user', text }]);
+    setPeek(null);
+    setClearing(false);
+    convs.run(mode, [...turns, { role: 'user', text }]);
   };
 
+  const clearMine = () => {
+    forgetConversation(storeKey(mode));
+    convs.set(mode, turns.slice(0, 1));
+    setClearing(false);
+  };
+
+  // Seguir un enlace no cierra el estudio: se oculta (focused) y al volver atrás sigue donde estaba.
   const open = (ref: string) => {
-    const { start } = parseRef(ref);
-    onClose();
-    navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward');
+    const { start: s } = parseRef(ref);
+    navigate(() => router.push(verseHref(s.book, s.chapter, s.verse)), 'forward');
   };
 
   const openMap = () => {
-    onClose();
     navigate(() => router.push(`/mapa/${BOOK_SLUGS[book.id] ?? book.id}/${chapter}` as never), 'forward');
+  };
+
+  // La cabecera (título y modos) se aparta al bajar leyendo y vuelve al subir, como las barras del lector.
+  const [bar] = useState(() => new Animated.Value(0));
+  const barHidden = useRef(false);
+  const [barHeight, setBarHeight] = useState(0);
+  const setBarHidden = (hide: boolean) => {
+    if (hide === barHidden.current) return;
+    barHidden.current = hide;
+    slide(bar, hide);
+  };
+  const autoHide = useAutoHide(setBarHidden, false);
+
+  // Al volver de un enlace el contenido se monta de nuevo: se vuelve a la misma altura.
+  const scrollY = useRef(0);
+  const viewHeight = useRef(0);
+  const restore = useRef<number | null>(null);
+  useEffect(() => {
+    if (focused && scrollY.current > 0) restore.current = scrollY.current;
+  }, [focused]);
+
+  // Mientras llega la respuesta a una pregunta, la app va bajando hasta el final: la cabecera vuelve al
+  // preguntar (para cambiar de modo o cerrar) y ese desplazamiento, ni lo que queda de la animación al
+  // terminar, no la aparta.
+  const following = busy && turns.length > 1;
+  useEffect(() => {
+    autoHide.pause(FOLLOW_PAUSE);
+    if (following) setBarHidden(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [following]);
+
+  const onContentSizeChange = (_: number, height: number) => {
+    if (restore.current !== null) {
+      if (height - viewHeight.current >= restore.current - 4) {
+        autoHide.pause();
+        scroll.current?.scrollTo({ y: restore.current, animated: false });
+        restore.current = null;
+      }
+      return;
+    }
+    // Mientras llega la respuesta a una pregunta, se sigue el final. Ese desplazamiento lo hace la app:
+    // no aparta la cabecera (con ella, el botón de cerrar).
+    if (following) {
+      autoHide.pause(FOLLOW_PAUSE);
+      scroll.current?.scrollToEnd({ animated: true });
+    }
   };
 
   const context = (
     <StudyContext book={book.id} chapter={chapter} verse={verse} onOpen={open} onOpenMap={openMap} />
   );
   const first = turns[0];
+  const retry = () => convs.retry(mode);
   const problem =
     error === NEEDS_CONNECTION ? (
                 <View style={styles.waiting}>
@@ -149,14 +209,14 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                         ? 'Te ayuda a meditar el pasaje con preguntas, pistas para orar y un paso para hoy, sacados del texto. Solo necesitas una cuenta gratuita.'
                         : 'Te explica el pasaje con el texto original y las referencias, y responde tus preguntas. Solo necesitas una cuenta gratuita.'
                     }
-                    onReady={() => run(lastHistory.current)}
+                    onReady={retry}
                   />
                 </View>
               ) : error && (
                 <View style={styles.waiting}>
                   <Text style={{ color: colors.text, textAlign: 'center' }}>{error}</Text>
                   <Pressable
-                    onPress={() => run(lastHistory.current)}
+                    onPress={retry}
                     style={[styles.retry, { borderColor: colors.accent }]}
                   >
                     <Text style={{ color: colors.accent, fontWeight: '700' }}>Reintentar</Text>
@@ -164,6 +224,63 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                 </View>
               );
   const waiting = busy && !turns[turns.length - 1]?.text;
+
+  // Las preguntas de la persona y sus respuestas, en los dos modos, bajo «Tus preguntas».
+  const mine = turns.length > 1 && (
+    <View style={[styles.followUps, { borderColor: colors.border }]}>
+      <View style={styles.mineHead}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.followKicker, { color: colors.accent }]}>TUS PREGUNTAS</Text>
+          <Text style={[styles.mineHint, { color: colors.muted }]}>Se guardan en este dispositivo: solo tú las ves.</Text>
+        </View>
+        {!busy &&
+          (clearing ? (
+            <View style={styles.confirm}>
+              <Pressable onPress={clearMine} hitSlop={6} accessibilityRole="button" accessibilityLabel="Sí, borrar mis preguntas">
+                <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>Borrar</Text>
+              </Pressable>
+              <Pressable onPress={() => setClearing(false)} hitSlop={6} accessibilityRole="button">
+                <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>Cancelar</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setClearing(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Borrar mis preguntas"
+              style={({ pressed }) => [styles.clear, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 12.5 }}>Borrar</Text>
+            </Pressable>
+          ))}
+      </View>
+      {turns.slice(1).map((turn, j) => {
+        const i = j + 1;
+        return turn.role === 'user' ? (
+          <Appear key={i} style={[styles.question, { backgroundColor: colors.accentSoft }]}>
+            <Text style={{ color: colors.text, fontSize: 15 }}>{turn.text}</Text>
+          </Appear>
+        ) : (
+          <View key={i}>
+            {turn.text ? (
+              <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} />
+            ) : (
+              <View style={styles.waiting}>
+                <ActivityIndicator color={colors.accent} />
+                <Text style={{ color: colors.muted, marginTop: 10, textAlign: 'center' }}>Buscando en las fuentes…</Text>
+              </View>
+            )}
+            {!!turn.sources?.length && (busy ? i < turns.length - 1 : true) && (
+              <Appear>
+                <Sources sources={turn.sources} colors={colors} onOpen={open} />
+              </Appear>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
 
   return (
     <Modal transparent animationType="slide" visible={focused} onRequestClose={onClose}>
@@ -174,24 +291,47 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1, minHeight: 0 }}
           >
-            <View style={[styles.header, { borderColor: colors.border }, !word && { borderBottomWidth: 0, paddingBottom: 8 }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.kicker, { color: colors.accent }]}>
-                  {word ? '✦ ¿POR QUÉ ESTA PALABRA?' : mode === 'devocional' ? '♡ DEVOCIONAL' : '✦ ESTUDIO PROFUNDO'}
-                </Text>
-                <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+            <Animated.View
+              style={
+                barHeight
+                  ? {
+                      height: bar.interpolate({ inputRange: [0, 1], outputRange: [barHeight, 0] }),
+                      opacity: bar.interpolate({ inputRange: [0, 0.6], outputRange: [1, 0], extrapolate: 'clamp' }),
+                      overflow: 'hidden',
+                    }
+                  : undefined
+              }
+            >
+              <View onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
+                <View style={[styles.header, { borderColor: colors.border }, !word && { borderBottomWidth: 0, paddingBottom: 8 }]}>
+                  <View style={{ flex: 1 }}>
+                    <IconText icon={!word && mode === 'devocional' ? HeartIcon : SparkIcon} color={colors.accent} size={13}>
+                      <Text style={[styles.kicker, { color: colors.accent }]}>
+                        {word ? '¿POR QUÉ ESTA PALABRA?' : mode === 'devocional' ? 'DEVOCIONAL' : 'ESTUDIO PROFUNDO'}
+                      </Text>
+                    </IconText>
+                    <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+                  </View>
+                  <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar estudio">
+                    <CloseIcon color={colors.muted} size={22} />
+                  </Pressable>
+                </View>
+                {!word && <ModeSwitch mode={mode} onChange={switchMode} colors={colors} />}
               </View>
-              <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar estudio">
-                <Text style={{ color: colors.muted, fontSize: 20 }}>✕</Text>
-              </Pressable>
-            </View>
-            {!word && <ModeSwitch mode={mode} onChange={switchMode} colors={colors} />}
+            </Animated.View>
 
             <ScrollView
               ref={scroll}
               style={{ flex: 1, minHeight: 0 }}
               contentContainerStyle={styles.body}
-              onContentSizeChange={() => turns.length > 1 && (mode === 'profundo' || busy) && scroll.current?.scrollToEnd({ animated: true })}
+              scrollEventThrottle={16}
+              onLayout={(e) => (viewHeight.current = e.nativeEvent.layout.height)}
+              onScroll={(e) => {
+                scrollY.current = e.nativeEvent.contentOffset.y;
+                if (following) autoHide.pause(FOLLOW_PAUSE);
+                autoHide.onScroll(e);
+              }}
+              onContentSizeChange={onContentSizeChange}
             >
               {mode === 'devocional' ? (
                 <Devotional
@@ -204,60 +344,30 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                   busy={busy && turns.length <= 1}
                   problem={turns.length <= 1 ? problem : null}
                   onOpen={open}
-                  onClose={onClose}
+                  onCite={setPeek}
                   onStep={() => scroll.current?.scrollTo({ y: 0, animated: true })}
                 />
               ) : null}
-              {mode === 'devocional' && turns.length > 1 && (
-                <View style={[styles.followUps, { borderColor: colors.border }]}>
-                  <Text style={[styles.followKicker, { color: colors.accent }]}>TUS PREGUNTAS</Text>
-                  {turns.slice(1).map((turn, i) =>
-                    turn.role === 'user' ? (
-                      <Appear key={i} style={[styles.question, { backgroundColor: colors.accentSoft }]}>
-                        <Text style={{ color: colors.text, fontSize: 15 }}>{turn.text}</Text>
-                      </Appear>
-                    ) : (
-                      <View key={i}>
-                        {turn.text ? (
-                          <Markdown text={turn.text} colors={colors} />
-                        ) : (
-                          <View style={styles.waiting}>
-                            <ActivityIndicator color={colors.accent} />
-                          </View>
-                        )}
-                        {!!turn.sources?.length && (busy ? i < turns.length - 2 : true) && (
-                          <Sources sources={turn.sources} colors={colors} onOpen={open} />
-                        )}
-                      </View>
-                    ),
-                  )}
-                </View>
-              )}
+              {mode === 'devocional' && mine}
               {mode === 'devocional' && turns.length > 1 && problem}
               {mode === 'devocional' ? null : (
               <>
               {!word && (
-                <StudyBackground book={book.id} bookName={book.name} chapter={chapter} verse={verse} onClose={onClose} />
+                <StudyBackground book={book.id} bookName={book.name} chapter={chapter} verse={verse} />
               )}
-              {turns.map((turn, i) =>
-                turn.role === 'user' ? (
-                  <Appear key={i} style={[styles.question, { backgroundColor: colors.accentSoft }]}>
-                    <Text style={{ color: colors.text, fontSize: 15 }}>{turn.text}</Text>
-                  </Appear>
-                ) : (
-                  <View key={i}>
-                    {turn.text ? <Markdown text={turn.text} colors={colors} ornate /> : null}
-                    {!!turn.sources?.length && (busy ? i < turns.length - 1 : true) && (
-                      <Appear>
-                        <Sources sources={turn.sources} colors={colors} onOpen={open} />
-                      </Appear>
-                    )}
-                    {i === 0 && turn.text && (busy ? turns.length > 1 : true) && context}
-                  </View>
-                ),
-              )}
+              {first?.text ? (
+                <View>
+                  <Markdown text={first.text} colors={colors} ornate sources={first.sources} onCite={setPeek} />
+                  {!!first.sources?.length && (busy ? turns.length > 1 : true) && (
+                    <Appear>
+                      <Sources sources={first.sources} colors={colors} onOpen={open} />
+                    </Appear>
+                  )}
+                  {(busy ? turns.length > 1 : true) && context}
+                </View>
+              ) : null}
 
-              {waiting && (
+              {waiting && turns.length <= 1 && (
                 <View style={styles.waiting}>
                   <ActivityIndicator color={colors.accent} />
                   <Text
@@ -267,14 +377,14 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                       textAlign: 'center',
                     }}
                   >
-                    {turns.length > 1
-                      ? 'Buscando en las fuentes…'
-                      : word
-                        ? `Comparando el ${original(book).name} con la traducción y buscando dónde más aparece…`
-                        : `Preparando el estudio con el texto, el ${original(book).name} y las referencias…`}
+                    {word
+                      ? `Comparando el ${original(book).name} con la traducción y buscando dónde más aparece…`
+                      : `Preparando el estudio con el texto, el ${original(book).name} y las referencias…`}
                   </Text>
                 </View>
               )}
+
+              {mine}
 
               {problem}
 
@@ -292,7 +402,9 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                       onPress={() => switchMode('devocional')}
                       style={[styles.chip, { borderColor: colors.accent, backgroundColor: colors.accentSoft }]}
                     >
-                      <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>♡ Hacer el devocional de este pasaje</Text>
+                      <IconText icon={HeartIcon} color={colors.accent} size={14}>
+                        <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>Hacer el devocional de este pasaje</Text>
+                      </IconText>
                     </Pressable>
                   )}
                 </View>
@@ -308,12 +420,13 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               )}
             </ScrollView>
 
+            {peek && <SourcePeek source={peek} colors={colors} onOpen={open} onClose={() => setPeek(null)} />}
+
             {(mode === 'profundo' || !!first?.text) && (
-            <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-              <TextInput
+              <AskBar
                 value={question}
-                onChangeText={setQuestion}
-                onSubmitEditing={() => ask(question)}
+                onChange={setQuestion}
+                onSend={() => ask(question)}
                 placeholder={
                   word
                     ? `Pregunta sobre ${word.greek}`
@@ -321,34 +434,11 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                       ? `¿Algo que no entiendas de ${title}?`
                       : `Pregunta sobre ${title}`
                 }
-                placeholderTextColor={colors.muted}
-                maxLength={600}
-                editable={!busy && !!first?.text}
-                returnKeyType="send"
-                style={[styles.input, { color: colors.text }]}
+                busy={busy}
+                onStop={turns.length > 1 ? () => convs.stop(mode) : undefined}
+                disabled={!first?.text}
+                colors={colors}
               />
-              <Pressable
-                onPress={() => ask(question)}
-                disabled={busy || !question.trim()}
-                accessibilityLabel="Enviar pregunta"
-                style={[
-                  styles.send,
-                  {
-                    backgroundColor: busy || !question.trim() ? colors.border : colors.accent,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: colors.surface,
-                    fontSize: 18,
-                    fontWeight: '700',
-                  }}
-                >
-                  ↑
-                </Text>
-              </Pressable>
-            </View>
             )}
           </KeyboardAvoidingView>
         </View>
@@ -357,9 +447,9 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   );
 }
 
-const MODES: { value: Enfoque; icon: string; label: string; hint: string }[] = [
-  { value: 'devocional', icon: '♡', label: 'Devocional', hint: 'Lee, medita, vive y ora · unos 10 minutos' },
-  { value: 'profundo', icon: '✦', label: 'Profundo', hint: 'Texto original, contexto y pasajes relacionados' },
+const MODES: { value: Enfoque; icon: (p: IconProps) => ReactNode; label: string; hint: string }[] = [
+  { value: 'devocional', icon: HeartIcon, label: 'Devocional', hint: 'Lee, medita, vive y ora · unos 10 minutos' },
+  { value: 'profundo', icon: SparkIcon, label: 'Profundo', hint: 'Texto original, contexto y pasajes relacionados' },
 ];
 
 /** Selector entre el devocional guiado y el estudio profundo: una píldora con el modo activo resaltado. */
@@ -378,9 +468,11 @@ function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: E
               accessibilityState={{ selected: on }}
               accessibilityLabel={`${m.label}: ${m.hint}`}
             >
-              <Text style={[styles.modeLabel, { color: on ? colors.surface : colors.text }]} numberOfLines={1}>
-                <Text style={{ fontFamily: serif }}>{m.icon}</Text>  {m.label}
-              </Text>
+              <IconText icon={m.icon} color={on ? colors.surface : colors.text} size={15}>
+                <Text style={[styles.modeLabel, { color: on ? colors.surface : colors.text }]} numberOfLines={1}>
+                  {m.label}
+                </Text>
+              </IconText>
             </Pressable>
           );
         })}
@@ -431,7 +523,11 @@ const styles = StyleSheet.create({
   },
   waiting: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 24 },
   followUps: { marginTop: 28, paddingTop: 20, borderTopWidth: StyleSheet.hairlineWidth },
-  followKicker: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
+  followKicker: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
+  mineHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 2 },
+  mineHint: { fontSize: 12, marginTop: 2 },
+  clear: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
+  confirm: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   retry: {
     marginTop: 12,
     borderWidth: 1.5,
@@ -456,21 +552,5 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: 24,
     textAlign: 'center',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  input: { flex: 1, fontSize: 16, paddingHorizontal: 8, paddingVertical: 8 },
-  send: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

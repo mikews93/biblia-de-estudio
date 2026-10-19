@@ -6,6 +6,7 @@ import Post from '@/components/comunidad/Post';
 import { confirm } from '@/components/comunidad/confirm';
 import { ChurchIcon, PeopleIcon, PinIcon } from '@/components/comunidad/icons';
 import { Avatar, Button, ErrorText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
+import { CheckIcon } from '@/components/icons';
 import { Persona, Publicacion, answerFriend, askFriend, getPerson, removeFriend } from '@/lib/social';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -45,7 +46,7 @@ export default function PersonScreen() {
 
   const action = {
     yo: null,
-    amigos: <Button label="Amigos ✓" kind="outline" onPress={unfriend} busy={busy} />,
+    amigos: <Button label="Amigos" icon={CheckIcon} kind="outline" onPress={unfriend} busy={busy} />,
     enviada: <Button label="Solicitud enviada" kind="outline" onPress={() => run(() => removeFriend(id).then(load))} busy={busy} />,
     recibida: <Button label="Aceptar amistad" onPress={() => run(() => answerFriend(id, true).then(load))} busy={busy} />,
     none: <Button label="Agregar como amigo" onPress={() => run(() => askFriend({ usuario: id }).then(load))} busy={busy} />,

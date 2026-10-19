@@ -1,6 +1,8 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { IconText } from '@/components/comunidad/ui';
 import Welcome from '@/components/comunidad/Welcome';
+import { RefreshIcon } from '@/components/icons';
 import { NeedsConnection } from '@/components/SinConexion';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
@@ -62,7 +64,9 @@ export function ToolFooter({ colors, done, onRegenerate }: { colors: Colors; don
       </Text>
       {done && (
         <Pressable onPress={onRegenerate} accessibilityRole="button" hitSlop={8}>
-          <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 13 }}>↻ Preparar otra versión</Text>
+          <IconText icon={RefreshIcon} color={colors.accent} size={14}>
+            <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 13 }}>Preparar otra versión</Text>
+          </IconText>
         </Pressable>
       )}
     </View>

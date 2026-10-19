@@ -2,11 +2,38 @@
 import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 
+import type { IconProps } from '@/components/iconLine';
 import { initials } from '@/lib/comunidad';
 import { Colors, sans, serif, useColors } from '@/lib/theme';
 
+/** Un ícono de línea delante de un texto corto (títulos pequeños, enlaces): mismo color, centrados. */
+export function IconText({
+  icon: Icon,
+  color,
+  size = 14,
+  gap = 6,
+  style,
+  children,
+}: {
+  icon: (p: IconProps) => ReactNode;
+  color: string;
+  size?: number;
+  gap?: number;
+  style?: ViewStyle;
+  children: ReactNode;
+}) {
+  return (
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap }, style]}>
+      <Icon color={color} size={size} strokeWidth={2} />
+      {children}
+    </View>
+  );
+}
+
 export function Button({
   label,
+  icon: Icon,
+  iconAfter,
   onPress,
   kind = 'primary',
   busy,
@@ -14,6 +41,9 @@ export function Button({
   style,
 }: {
   label: string;
+  /** Ícono de línea (src/components/icons.tsx) junto al texto; con «iconAfter», a la derecha. */
+  icon?: (p: IconProps) => ReactNode;
+  iconAfter?: boolean;
   onPress: () => void;
   kind?: 'primary' | 'outline' | 'quiet';
   busy?: boolean;
@@ -39,9 +69,11 @@ export function Button({
       {busy ? (
         <ActivityIndicator color={kind === 'primary' ? colors.surface : colors.accent} />
       ) : (
-        <Text style={{ color: kind === 'primary' ? colors.surface : colors.accent, fontWeight: '700', fontSize: 15 }}>
-          {label}
-        </Text>
+        <View style={styles.buttonRow}>
+          {Icon && !iconAfter && <Icon color={kind === 'primary' ? colors.surface : colors.accent} size={17} strokeWidth={2} />}
+          <Text style={{ color: kind === 'primary' ? colors.surface : colors.accent, fontWeight: '700', fontSize: 15 }}>{label}</Text>
+          {Icon && iconAfter && <Icon color={kind === 'primary' ? colors.surface : colors.accent} size={17} strokeWidth={2} />}
+        </View>
       )}
     </Pressable>
   );
@@ -206,6 +238,7 @@ export const text = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  buttonRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   button: { borderRadius: 24, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', minHeight: 46 },
   quiet: { paddingVertical: 8, paddingHorizontal: 8, minHeight: 0 },
   label: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, marginBottom: 6, textTransform: 'uppercase' },

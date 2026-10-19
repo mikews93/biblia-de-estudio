@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { IconText } from '@/components/comunidad/ui';
+import { LinkIcon } from '@/components/icons';
 import { Word } from '@/lib/data';
 import { Colors, serif } from '@/lib/theme';
 
@@ -53,9 +55,11 @@ export default function StudyVerse({ n, text, words, rtl, refCount, selected, ma
       )}
       {refCount > 0 && (
         <Pressable onPress={onRefs} style={[styles.chip, { backgroundColor: colors.accentSoft }]}>
-          <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '600' }}>
-            ↗ {refCount} {refCount === 1 ? 'referencia' : 'referencias'}
-          </Text>
+          <IconText icon={LinkIcon} color={colors.accent} size={13} gap={5}>
+            <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '600' }}>
+              {refCount} {refCount === 1 ? 'referencia' : 'referencias'}
+            </Text>
+          </IconText>
         </Pressable>
       )}
     </View>

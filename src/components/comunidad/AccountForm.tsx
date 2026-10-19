@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { CheckIcon } from '@/components/icons';
 import { signIn, signUp, useAccount } from '@/lib/comunidad';
 import { facebook, facebookAvailable, resumeFacebook } from '@/lib/perfil';
 import { verseHref } from '@/lib/routes';
@@ -156,7 +157,7 @@ export default function AccountForm({ mode }: { mode: Mode }) {
                           : { borderColor: colors.border },
                       ]}
                     >
-                      {longEnough && <Text style={{ color: colors.surface, fontSize: 10, fontWeight: '800' }}>✓</Text>}
+                      {longEnough && <CheckIcon color={colors.surface} size={12} strokeWidth={2.6} />}
                     </View>
                     <Text style={{ color: longEnough ? colors.text : colors.muted, fontSize: 13 }}>Al menos 8 caracteres</Text>
                   </View>

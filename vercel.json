@@ -3,6 +3,7 @@
   "framework": null,
   "buildCommand": "npm run data && npm run comentarios && npx expo export --platform web && python3 pipeline/seo_pages.py dist",
   "outputDirectory": "dist",
+  "ignoreCommand": "sh pipeline/vercel_ignorar.sh",
   "functions": {
     "api/estudiar.ts": {
       "includeFiles": "dist/data/{books.json,text/rv1909/**,interlinear/**,xrefs/**,concordance/**}",

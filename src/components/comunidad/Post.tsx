@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+import { CommentIcon, HeartIcon } from '@/components/icons';
 import VerseArt from '@/components/VerseArt';
 import { IMAGE_STYLES } from '@/lib/compartir';
 import { ago, chapterHref } from '@/lib/comunidad';
@@ -157,11 +158,11 @@ export default function Post({ post, detail, onRemoved }: Props) {
           accessibilityState={{ selected: liked }}
           accessibilityLabel={liked ? 'Ya no me gusta' : 'Me gusta'}
         >
-          <Text style={{ color: liked ? '#C2410C' : colors.muted, fontSize: 18 }}>{liked ? '♥' : '♡'}</Text>
+          <HeartIcon color={liked ? '#C2410C' : colors.muted} size={20} filled={liked} />
           <Text style={{ color: liked ? '#C2410C' : colors.muted, fontWeight: '600' }}>{likes || 'Me gusta'}</Text>
         </Pressable>
         <Pressable onPress={openPost} disabled={detail} hitSlop={8} style={styles.footItem} accessibilityRole="button">
-          <Text style={{ color: colors.muted, fontSize: 16 }}>💬</Text>
+          <CommentIcon color={colors.muted} size={19} />
           <Text style={{ color: colors.muted, fontWeight: '600' }}>
             {post.comentarios ? `${post.comentarios} ${post.comentarios === 1 ? 'comentario' : 'comentarios'}` : 'Comentar'}
           </Text>
