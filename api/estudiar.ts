@@ -222,7 +222,18 @@ async function db() {
       modelo text,
       creado timestamptz not null default now(),
       primary key (herramienta, libro, capitulo)
-    )`.catch((err) => {
+    )`
+    .then(
+      () => sql!`
+        create table if not exists estudios_ia (
+          clave text primary key,
+          texto text not null,
+          fuentes jsonb not null,
+          modelo text,
+          creado timestamptz not null default now()
+        )`,
+    )
+    .catch((err) => {
     ready = null;
     throw err;
   });
@@ -254,6 +265,33 @@ async function saveTool(herramienta: Herramienta, libro: string, capitulo: numbe
       do update set texto = excluded.texto, fuentes = excluded.fuentes, modelo = excluded.modelo, creado = now()`;
   } catch (err) {
     console.error('estudiar: guardar herramienta', err);
+  }
+}
+
+// Estudios y devocionales ya generados, compartidos por todos: el primer estudio de un pasaje es
+// igual para cualquiera, así que se guarda y al volver a abrirlo sale al momento.
+async function savedStudy(clave: string): Promise<Saved | null> {
+  try {
+    const s = await db();
+    if (!s) return null;
+    const [row] = await s<Saved[]>`select texto, fuentes from estudios_ia where clave = ${clave}`;
+    return row ?? null;
+  } catch (err) {
+    console.error('estudiar: leer estudio', err);
+    return null;
+  }
+}
+
+async function saveStudy(clave: string, saved: Saved) {
+  try {
+    const s = await db();
+    if (!s) return;
+    await s`insert into estudios_ia (clave, texto, fuentes, modelo)
+      values (${clave}, ${saved.texto}, ${s.json(saved.fuentes)}, ${MODEL})
+      on conflict (clave)
+      do update set texto = excluded.texto, fuentes = excluded.fuentes, modelo = excluded.modelo, creado = now()`;
+  } catch (err) {
+    console.error('estudiar: guardar estudio', err);
   }
 }
 
@@ -492,8 +530,14 @@ export async function POST(request: Request) {
   }
   if (body.nueva !== undefined && (typeof body.nueva !== 'boolean' || !herramienta)) return badRequest('Pedido no válido');
 
-  if (herramienta && !body.nueva) {
-    const saved = await savedTool(herramienta, book.id, chapter);
+  // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos.
+  const clave =
+    !herramienta && !taller && turns.length === 0
+      ? [devocional ? 'devocional' : 'profundo', book.id, chapter, verse ?? '', word ?? ''].join(':')
+      : null;
+
+  if ((herramienta || clave) && !body.nueva) {
+    const saved = herramienta ? await savedTool(herramienta, book.id, chapter) : await savedStudy(clave!);
     if (saved) {
       return ndjson([
         ...saved.fuentes.map((f) => ({ type: 'source', ...f })),
@@ -592,8 +636,9 @@ export async function POST(request: Request) {
           send({ type: 'error', message: 'No puedo ayudar con esta pregunta. Prueba a formularla de otra manera.' });
         } else {
           // Solo se guarda una respuesta completa
-          if (herramienta && final.stop_reason === 'end_turn' && texto.trim()) {
-            await saveTool(herramienta, book.id, chapter, { texto, fuentes });
+          if (final.stop_reason === 'end_turn' && texto.trim()) {
+            if (herramienta) await saveTool(herramienta, book.id, chapter, { texto, fuentes });
+            else if (clave) await saveStudy(clave, { texto, fuentes });
           }
           send({ type: 'done' });
         }

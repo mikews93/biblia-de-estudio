@@ -191,7 +191,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               ref={scroll}
               style={{ flex: 1, minHeight: 0 }}
               contentContainerStyle={styles.body}
-              onContentSizeChange={() => mode === 'profundo' && turns.length > 1 && scroll.current?.scrollToEnd({ animated: true })}
+              onContentSizeChange={() => turns.length > 1 && (mode === 'profundo' || busy) && scroll.current?.scrollToEnd({ animated: true })}
             >
               {mode === 'devocional' ? (
                 <Devotional
@@ -201,13 +201,40 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                   verse={verse}
                   text={first?.text ?? ''}
                   sources={first?.sources ?? []}
-                  busy={busy}
-                  problem={problem}
+                  busy={busy && turns.length <= 1}
+                  problem={turns.length <= 1 ? problem : null}
                   onOpen={open}
                   onClose={onClose}
                   onStep={() => scroll.current?.scrollTo({ y: 0, animated: true })}
                 />
-              ) : (
+              ) : null}
+              {mode === 'devocional' && turns.length > 1 && (
+                <View style={[styles.followUps, { borderColor: colors.border }]}>
+                  <Text style={[styles.followKicker, { color: colors.accent }]}>TUS PREGUNTAS</Text>
+                  {turns.slice(1).map((turn, i) =>
+                    turn.role === 'user' ? (
+                      <Appear key={i} style={[styles.question, { backgroundColor: colors.accentSoft }]}>
+                        <Text style={{ color: colors.text, fontSize: 15 }}>{turn.text}</Text>
+                      </Appear>
+                    ) : (
+                      <View key={i}>
+                        {turn.text ? (
+                          <Markdown text={turn.text} colors={colors} />
+                        ) : (
+                          <View style={styles.waiting}>
+                            <ActivityIndicator color={colors.accent} />
+                          </View>
+                        )}
+                        {!!turn.sources?.length && (busy ? i < turns.length - 2 : true) && (
+                          <Sources sources={turn.sources} colors={colors} onOpen={open} />
+                        )}
+                      </View>
+                    ),
+                  )}
+                </View>
+              )}
+              {mode === 'devocional' && turns.length > 1 && problem}
+              {mode === 'devocional' ? null : (
               <>
               {!word && (
                 <StudyBackground book={book.id} bookName={book.name} chapter={chapter} verse={verse} onClose={onClose} />
@@ -281,13 +308,19 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               )}
             </ScrollView>
 
-            {mode === 'profundo' && (
+            {(mode === 'profundo' || !!first?.text) && (
             <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <TextInput
                 value={question}
                 onChangeText={setQuestion}
                 onSubmitEditing={() => ask(question)}
-                placeholder={word ? `Pregunta sobre ${word.greek}` : `Pregunta sobre ${title}`}
+                placeholder={
+                  word
+                    ? `Pregunta sobre ${word.greek}`
+                    : mode === 'devocional'
+                      ? `¿Algo que no entiendas de ${title}?`
+                      : `Pregunta sobre ${title}`
+                }
                 placeholderTextColor={colors.muted}
                 maxLength={600}
                 editable={!busy && !!first?.text}
@@ -397,6 +430,8 @@ const styles = StyleSheet.create({
     maxWidth: '85%',
   },
   waiting: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 24 },
+  followUps: { marginTop: 28, paddingTop: 20, borderTopWidth: StyleSheet.hairlineWidth },
+  followKicker: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
   retry: {
     marginTop: 12,
     borderWidth: 1.5,
