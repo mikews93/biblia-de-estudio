@@ -63,7 +63,13 @@ function answer(body: Body): { text: string; cite: boolean } {
     if (first.includes('Revisa lo que llevo')) {
       return { text: '## Lo que funciona\n- Revisión simulada: la idea sale del texto.\n\n## Para mejorar\n- Concreta la aplicación.', cite: true };
     }
-    return { text: '## Idea central\n- Sugerencia simulada del Taller: Dios ama y da.', cite: true };
+    if (first.includes('Sugiere ideas para el bosquejo')) {
+      return { text: '## El versículo\n- Apunte simulado del bosquejo: leerlo despacio.', cite: true };
+    }
+    return {
+      text: '## Idea central\n- Sugerencia simulada del Taller: Dios ama y da.\n- Tema: El amor de Dios | Complemento: da a su Hijo al mundo\n\n## Necesidad humana\n- Necesidad simulada: sentirnos lejos de Dios.',
+      cite: true,
+    };
   }
   if (followUp) return { text: `Respuesta simulada a «${followUp}».`, cite: true };
   return { text: 'Estudio simulado del pasaje: Dios ama al mundo y da a su Hijo.', cite: true };

@@ -51,6 +51,20 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   );
   expect(sugerir).toBeTruthy();
 
+  // Lleva sugerencias a los campos con un toque, sin escribirlas: la idea central y la necesidad
+  await ia.getByRole('button', { name: '＋ Usar como idea central' }).click();
+  await expect(ia.getByText('✓ En la idea central')).toBeVisible();
+  await ia.getByRole('button', { name: '＋ Añadir a «La necesidad»' }).click();
+  await expect(ia.getByText('✓ En «La necesidad»')).toBeVisible();
+  // Una sin campo propio se elige de la lista, y se puede deshacer
+  await ia.getByRole('button', { name: '＋ Añadir a…' }).click();
+  await ia.getByLabel('Elegir campo').getByRole('button', { name: 'La gracia' }).click();
+  await expect(ia.getByText('✓ En «La gracia»')).toBeVisible();
+  await guardado(page, 'Sugerencia simulada del Taller');
+  await ia.getByRole('button', { name: 'Deshacer' }).first().click();
+  await expect(ia.getByText('✓ En «La gracia»')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('taller') ?? '')).not.toContain('Sugerencia simulada del Taller');
+
   // Responde al acompañante: la conversación sigue con el turno anterior
   const respuesta = `Me quedo con la segunda ${m}`;
   await ia.getByPlaceholder('Responde o pregunta algo más').fill(respuesta);
@@ -61,8 +75,10 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   await ia.getByLabel('Cerrar').last().click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
-  // Idea central con sus palabras
+  // Idea central con sus palabras: lo que llevó desde la IA ya está en los campos
   await page.getByRole('button', { name: 'Siguiente ›' }).click();
+  await expect(page.getByPlaceholder('Por ejemplo, el amor del Padre')).toHaveValue('El amor de Dios');
+  await expect(page.getByPlaceholder('Lo que compartimos con los primeros lectores')).toHaveValue(/Necesidad simulada: sentirnos lejos de Dios/);
   await page.getByPlaceholder('Por ejemplo, el amor del Padre').fill('El amor de Dios');
   await page.getByPlaceholder('…sale a buscarnos antes de que lleguemos').fill(`da a su Hijo ${m}`);
   await expect(page.getByText(`El amor de Dios: da a su Hijo ${m}`)).toBeVisible();

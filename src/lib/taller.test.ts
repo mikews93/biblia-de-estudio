@@ -19,6 +19,11 @@ import {
   revisionPara,
   Seccion,
   TIPOS,
+  agregarSugerencia,
+  deshacerSugerencia,
+  destinoSugerido,
+  destinosDe,
+  sugerenciasDe,
   tituloDe,
 } from './taller';
 
@@ -201,5 +206,55 @@ describe('guardado en el dispositivo', () => {
     m.borrarMensaje(id);
     await vi.advanceTimersByTimeAsync(400);
     expect((JSON.parse((await AsyncStorage.getItem('taller'))!) as Mensaje[]).map((x) => x.id)).toEqual([copia]);
+  });
+});
+
+describe('sugerencias de la IA', () => {
+  const fuentes = [
+    { n: 1, label: 'Juan 3:16' },
+    { n: 2, label: 'Griego de Juan 3:16' },
+  ];
+
+  it('separa las ideas por línea, limpia las negritas y vuelve las citas referencias', () => {
+    const md = 'Algunas opciones:\n\n## Idea central\n- **Tema:** El amor de Dios | **Complemento:** da a su Hijo ⟦1⟧\n- Dios ama primero ⟦1⟧⟦2⟧\n\n## Necesidad humana\n- Sentirnos lejos ⟦1⟧ de Dios';
+    expect(sugerenciasDe(md, fuentes)).toEqual([
+      {
+        seccion: 'Idea central',
+        texto: 'Tema: El amor de Dios | Complemento: da a su Hijo (Juan 3:16)',
+        idea: { tema: 'El amor de Dios', complemento: 'da a su Hijo' },
+      },
+      { seccion: 'Idea central', texto: 'Dios ama primero (Juan 3:16; Griego de Juan 3:16)', idea: undefined },
+      { seccion: 'Necesidad humana', texto: 'Sentirnos lejos (Juan 3:16) de Dios', idea: undefined },
+    ]);
+  });
+
+  it('sugiere el campo según el título y la parte del bosquejo', () => {
+    const sermon = mensaje({ tipo: 'sermon', secciones: [seccion({ id: 'a', titulo: 'Introducción: la necesidad' }), seccion({ id: 'b', titulo: 'Punto 1' })] });
+    const s = (seccion: string, texto = 'x') => ({ seccion, texto });
+    expect(destinoSugerido(sermon, { ...s('Idea central'), idea: { tema: 't', complemento: 'c' } })).toBe('idea');
+    expect(destinoSugerido(sermon, s('Necesidad humana'))).toBe('necesidad');
+    expect(destinoSugerido(sermon, s('La gracia'))).toBe('gracia');
+    expect(destinoSugerido(sermon, s('Punto 1'))).toBe('notas:b');
+    expect(destinoSugerido(sermon, s('Introducción'))).toBe('notas:a');
+    expect(destinoSugerido(sermon, s('Introducción: la necesidad'))).toBe('notas:a');
+    expect(destinoSugerido(sermon, s('Idea central'))).toBeUndefined();
+    const dbs = mensaje({ secciones: [seccion({ id: 'c', titulo: 'Conexión' }), seccion({ id: 'm', titulo: 'Mirar arriba' })] });
+    expect(destinoSugerido(dbs, s('Preguntas'))).toBe('grupo:m');
+    expect(destinoSugerido(dbs, s('Conexión'))).toBe('grupo:c');
+    expect(destinosDe(dbs).map((d) => d.id)).toEqual(['observacion', 'idea', 'tema', 'complemento', 'necesidad', 'gracia', 'grupo:c', 'notas:c', 'grupo:m', 'notas:m']);
+  });
+
+  it('añade sin borrar lo escrito, reemplaza la idea central y deshace solo ese campo', () => {
+    const m = mensaje({ tipo: 'sermon', necesidad: 'Lo mío', tema: 'Viejo', secciones: [seccion({ id: 'a', texto: 'Mis notas' }), seccion({ id: 'b', texto: '' })] });
+    const idea = { seccion: 'Idea central', texto: 'Tema: Nuevo | Complemento: c', idea: { tema: 'Nuevo', complemento: 'c' } };
+    expect(agregarSugerencia(m, 'idea', idea)).toEqual({ cambio: { tema: 'Nuevo', complemento: 'c' }, previo: { tema: 'Viejo', complemento: '' } });
+    expect(agregarSugerencia(m, 'necesidad', { seccion: '', texto: 'Otra' })?.cambio).toEqual({ necesidad: 'Lo mío\nOtra' });
+    const r = agregarSugerencia(m, 'notas:a', { seccion: '', texto: 'Apunte' })!;
+    expect(r.cambio.secciones?.map((x) => x.texto)).toEqual(['Mis notas\nApunte', '']);
+    // Después escribe en otra parte: deshacer no la toca
+    const despues = mensaje({ ...m, secciones: [{ ...r.cambio.secciones![0] }, { ...m.secciones[1], texto: 'Nuevo' }] });
+    expect(deshacerSugerencia(despues, 'notas:a', r.previo).secciones?.map((x) => x.texto)).toEqual(['Mis notas', 'Nuevo']);
+    expect(deshacerSugerencia(m, 'idea', { tema: 'Viejo', complemento: '' })).toEqual({ tema: 'Viejo', complemento: '' });
+    expect(agregarSugerencia(m, 'notas:zz', idea)).toBeNull();
   });
 });
