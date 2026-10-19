@@ -5,22 +5,22 @@
   "outputDirectory": "dist",
   "functions": {
     "api/estudiar.ts": {
-      "includeFiles": "dist/data/**",
+      "includeFiles": "dist/data/{books.json,text/rv1909/**,interlinear/**,xrefs/**,concordance/**}",
       "maxDuration": 120
     },
     "api/comunidades.ts": {
-      "includeFiles": "dist/data/**",
+      "includeFiles": "dist/data/{books.json,versions.json,text/**}",
       "maxDuration": 60
     },
     "api/audio.ts": {
       "maxDuration": 30
     },
     "api/buscar.ts": {
-      "includeFiles": "dist/data/**",
+      "includeFiles": "dist/data/{books.json,text/rv1909/**}",
       "maxDuration": 60
     },
     "api/comentario.ts": {
-      "includeFiles": "dist/**",
+      "includeFiles": "dist/{data/books.json,data/text/rv1909/**,comentarios/**}",
       "maxDuration": 120
     },
     "api/podcast-grabado.ts": {
