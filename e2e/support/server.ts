@@ -100,6 +100,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 async function clearSavedTools() {
   const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
   await sql`delete from herramientas_ia`.catch(() => {}); // la tabla aún no existe la primera vez
+  await sql`delete from estudios_ia`.catch(() => {});
   await sql.end();
 }
 

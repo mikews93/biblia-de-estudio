@@ -156,3 +156,33 @@ test('con la sesión caducada pide entrar de nuevo y luego estudia', async ({ pa
   await expect(page).toHaveURL(/\/juan\/3\/16$/);
   await expect(panel(page).getByText(ESTUDIO)).toBeVisible();
 });
+
+test('en el devocional también se puede preguntar, y al volver a abrir el estudio sigue en ese modo', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Devota'));
+  await page.goto('/juan/3/16');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  await expect(panel(page).getByText(ESTUDIO)).toBeVisible();
+
+  const pedido = page.waitForRequest(esEstudio);
+  await panel(page).getByRole('tab', { name: /^Devocional/ }).click();
+  expect((await pedido).postDataJSON()).toMatchObject({ book: 'jhn', chapter: 3, verse: 16, enfoque: 'devocional' });
+  const devocional = panel(page, 'DEVOCIONAL');
+  await expect(devocional.getByText('Estoy listo · Leer')).toBeVisible();
+
+  const pregunta = `¿Qué es el mundo aquí? ${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+  await devocional.getByPlaceholder('¿Algo que no entiendas de Juan 3:16?').fill(pregunta);
+  await devocional.getByLabel('Enviar pregunta').click();
+  await expect(devocional.getByText('TUS PREGUNTAS')).toBeVisible();
+  await expect(devocional.getByText(`Respuesta simulada a «${pregunta}».`)).toBeVisible();
+  // El devocional sigue arriba, listo para seguir
+  await expect(devocional.getByText('Estoy listo · Leer')).toBeVisible();
+  const [recibida] = await peticionesIA(request, pregunta);
+  expect(recibida.system).toBeDefined();
+  expect(JSON.stringify(recibida.system)).toContain('devocional');
+
+  // Al volver a abrir el estudio, empieza en el modo elegido
+  await page.getByLabel('Cerrar estudio').last().click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  await expect(panel(page, 'DEVOCIONAL').getByText('Estoy listo · Leer')).toBeVisible();
+});

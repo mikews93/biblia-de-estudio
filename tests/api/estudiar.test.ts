@@ -23,6 +23,10 @@ beforeAll(async () => {
   ({ POST: comunidades } = await import('../../api/comunidades'));
   if (DB_URL && HAS_DATA) {
     await ensureSchema(comunidades);
+    // Los estudios guardados de otra pasada harían que la IA no reciba el pedido
+    const sql = postgres(DB_URL, { max: 1, onnotice: () => {} });
+    await sql`delete from estudios_ia`.catch(() => {}); // la tabla aún no existe la primera vez
+    await sql.end();
     llave = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Estudio' })).json.llave;
   }
 });
@@ -184,6 +188,31 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(aiRequests.length).toBe(before + 2);
     await events(await ask(base));
     expect(aiRequests.length).toBe(before + 2);
+  });
+
+  it('el primer estudio y el devocional de un pasaje se guardan para todos; las preguntas no', async () => {
+    const base = { book: 'jhn', chapter: 5, verse: 24 };
+    const before = aiRequests.length;
+    const otra = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Lectora' })).json.llave;
+
+    const first = await events(await ask(base));
+    expect(aiRequests.length).toBe(before + 1);
+    const again = await events(await ask(base, otra));
+    expect(aiRequests.length).toBe(before + 1);
+    expect(textOf(again)).toBe(textOf(first));
+    expect(again.at(-1)?.type).toBe('done');
+
+    // El devocional del mismo pasaje es otro estudio, y también se guarda
+    await events(await ask({ ...base, enfoque: 'devocional' }));
+    expect(aiRequests.length).toBe(before + 2);
+    await events(await ask({ ...base, enfoque: 'devocional' }, otra));
+    expect(aiRequests.length).toBe(before + 2);
+
+    // Una pregunta de seguimiento siempre va a la IA
+    const messages = [{ role: 'assistant', text: textOf(first) }, { role: 'user', text: '¿Qué es vida eterna?' }];
+    await events(await ask({ ...base, messages }));
+    await events(await ask({ ...base, messages }));
+    expect(aiRequests.length).toBe(before + 4);
   });
 
   it('las herramientas devuelven un texto que la app sabe leer', async () => {
