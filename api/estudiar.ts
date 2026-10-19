@@ -123,13 +123,13 @@ function tallerTask(book: Book, chapter: number, verse: number | undefined, t: T
     }${t.tipo === 'encuentro' ? 'que las preguntas lleven al texto y no sean de sí o no; ' : ''}que la aplicación sea concreta; que quepa en el tiempo. Señala con cita cualquier afirmación que no salga del pasaje. Formato: "## Lo que funciona" y "## Para mejorar", con listas cortas. No reescribas mis secciones: dime qué revisar y por qué.`;
   } else if (t.paso === 'idea' || t.paso === 'pasaje') {
     ask =
-      'Propón tres formulaciones posibles de la idea central (tema y complemento, una frase cada una), cada una con el versículo que la sostiene, y dos maneras de nombrar la necesidad humana que toca el pasaje. Yo elegiré y la escribiré con mis palabras. Formato: "## Idea central" y "## Necesidad humana", con listas.';
+      'Propón tres formulaciones posibles de la idea central, cada una con el versículo que la sostiene; dos maneras de nombrar la necesidad humana que toca el pasaje; y dos de cómo responde la gracia de Dios en el pasaje. Yo elegiré y la escribiré con mis palabras. Formato: "## Idea central", "## Necesidad humana" y "## La gracia", con listas de una idea por línea; cada idea central en la forma "- Tema: … | Complemento: …".';
   } else if (t.tipo === 'encuentro') {
     const catalog = DINAMICAS.map((d) => `${d.nombre} (${d.minutos} min, apertura ${d.apertura}): ${d.objetivo}`).join('\n');
-    ask = `Sugiere para este encuentro: preguntas de conversación en tres niveles (sobre el texto, sobre Dios y las personas, para la vida), y de 2 a 3 dinámicas del catálogo de la app que encajen con el pasaje, diciendo en qué parte usarlas y por qué. Usa solo dinámicas de este catálogo, todas sin materiales:\n${catalog}\n\nFormato: "## Preguntas" y "## Dinámicas", con listas.`;
+    ask = `Sugiere para este encuentro: preguntas de conversación en tres niveles (sobre el texto, sobre Dios y las personas, para la vida), y de 2 a 3 dinámicas del catálogo de la app que encajen con el pasaje, diciendo en qué parte usarlas y por qué. Usa solo dinámicas de este catálogo, todas sin materiales:\n${catalog}\n\nFormato: "## Preguntas" y "## Dinámicas", con listas de una pregunta o dinámica por línea.`;
   } else {
     ask =
-      'Sugiere ideas para el bosquejo, no texto para leer: para cada sección, uno o dos apuntes de lo que el texto permite decir ahí (con cita), una idea de ilustración marcada como «Ejemplo, no hecho real» y una aplicación concreta. Formato: un título "## " por sección y listas cortas.';
+      'Sugiere ideas para el bosquejo, no texto para leer: para cada sección, uno o dos apuntes de lo que el texto permite decir ahí (con cita), una idea de ilustración marcada como «Ejemplo, no hecho real» y una aplicación concreta. Formato: un título "## " por sección con el mismo nombre que tiene en lo que llevo, y listas cortas con una idea por línea.';
   }
   return `${head}${draft}\n\n${ask}`;
 }
