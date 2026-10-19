@@ -67,3 +67,55 @@ export const CheckIcon = (p: Props) => (
     <Path d="M5 12.5l4.2 4.2L19 7" />
   </Line>
 );
+
+/** Cámara: cambiar la foto del perfil. */
+export const CameraIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4.5 8h2.8l1.6-2.5h6.2L16.7 8h2.8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-8A1.5 1.5 0 0 1 4.5 8z" />
+    <Circle cx={12} cy={13.2} r={3.4} />
+  </Line>
+);
+
+/** Templo con su cruz: la iglesia de la persona. */
+export const ChurchIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M12 2.5v4M10.3 4.2h3.4" />
+    <Path d="M5 20.5V12l7-5.5 7 5.5v8.5z" />
+    <Path d="M10 20.5v-4a2 2 0 0 1 4 0v4" />
+  </Line>
+);
+
+/** Marcador de mapa: la ciudad. */
+export const PinIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z" />
+    <Circle cx={12} cy={10} r={2.3} />
+  </Line>
+);
+
+/** Campana: los avisos. */
+export const BellIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" />
+    <Path d="M10 20.5a2 2 0 0 0 4 0" />
+  </Line>
+);
+
+/** Llave: entrar con correo y contraseña. */
+export const KeyIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={8} cy={14} r={4} />
+    <Path d="M11 11.2l8.5-8.2M16.5 6l2.5 2.5M14.3 8.2l2 2" />
+  </Line>
+);
+
+/** El logo de Facebook (la «f» blanca sobre su círculo azul), como lo pide su guía de marca. */
+export const FacebookLogo = ({ size = 22 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Circle cx={12} cy={12} r={12} fill="#0866FF" />
+    <Path
+      fill="#FFFFFF"
+      d="M13.4 24v-8.5h2.9l.5-3.4h-3.4V9.9c0-1 .3-1.6 1.7-1.6h1.8v-3a24 24 0 0 0-2.6-.2c-2.6 0-4.4 1.6-4.4 4.5v2.5H7v3.4h2.9V24z"
+    />
+  </Svg>
+);

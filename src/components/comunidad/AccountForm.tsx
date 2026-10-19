@@ -1,14 +1,15 @@
 import { Link, Stack, router } from 'expo-router';
-import { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { signIn, signUp, useAccount } from '@/lib/comunidad';
+import { facebook, facebookAvailable, resumeFacebook } from '@/lib/perfil';
 import { verseHref } from '@/lib/routes';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-import { DevicesIcon, OpenBookIcon, PeopleIcon, SparkIcon } from './icons';
+import { DevicesIcon, FacebookLogo, OpenBookIcon, PeopleIcon, SparkIcon } from './icons';
 import { Button, Field, text, useAction } from './ui';
 
 type Mode = 'entrar' | 'registro';
@@ -51,6 +52,18 @@ export default function AccountForm({ mode }: { mode: Mode }) {
   const longEnough = password.length >= 8;
   const complete = signingUp ? name.trim() && email.trim() && longEnough : email.trim() && password;
   const verse = VERSE[mode];
+  const [fbReady, setFbReady] = useState(false);
+  const fb = useAction();
+
+  useEffect(() => {
+    facebookAvailable().then(setFbReady);
+    // Al volver de Facebook en esta misma pestaña (si el navegador no dejó abrir otra ventana).
+    fb.run(async () => {
+      if (await resumeFacebook()) leave();
+    });
+  }, []);
+
+  const withFacebook = () => fb.run(async () => (await facebook('entrar')) && leave());
 
   const submit = () => {
     if (!complete || busy) return;
@@ -156,11 +169,29 @@ export default function AccountForm({ mode }: { mode: Mode }) {
                 disabled={!complete}
                 style={{ marginTop: 4 }}
               />
-              {error ? (
+              {error || fb.error ? (
                 <View style={[styles.error, { backgroundColor: colors.accentSoft, borderLeftColor: colors.accent }]} accessibilityRole="alert">
-                  <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{error}</Text>
+                  <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{error || fb.error}</Text>
                 </View>
               ) : null}
+              {fbReady && (
+                <>
+                  <View style={styles.or}>
+                    <View style={[styles.orLine, { backgroundColor: colors.border }]} />
+                    <Text style={{ color: colors.muted, fontSize: 13 }}>o</Text>
+                    <View style={[styles.orLine, { backgroundColor: colors.border }]} />
+                  </View>
+                  <Pressable
+                    // Se puede volver a tocar mientras espera, por si se cerró la ventana de Facebook.
+                    onPress={withFacebook}
+                    accessibilityRole="button"
+                    style={[styles.facebook, { borderColor: colors.border, backgroundColor: colors.background }, fb.busy && { opacity: 0.6 }]}
+                  >
+                    {fb.busy ? <ActivityIndicator color={colors.accent} /> : <FacebookLogo size={22} />}
+                    <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Continuar con Facebook</Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           )}
         </View>
@@ -237,6 +268,18 @@ const styles = StyleSheet.create({
   show: { paddingHorizontal: 12, paddingVertical: 8 },
   hint: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 2 },
   check: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  or: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  orLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  facebook: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 24,
+    minHeight: 46,
+    paddingHorizontal: 20,
+  },
   error: { borderRadius: 10, borderLeftWidth: 3, paddingHorizontal: 14, paddingVertical: 10 },
   benefits: { gap: 18, marginTop: 28, paddingHorizontal: 4 },
   benefit: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },

@@ -42,7 +42,7 @@ export default function FriendInvite() {
         <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
       ) : (
         <View style={{ gap: 16, alignItems: 'center' }}>
-          <Avatar name={person.nombre} size={72} filled />
+          <Avatar name={person.nombre} foto={person.foto} size={72} filled />
           <Text style={[styles.title, { color: colors.text }]}>{person.nombre} quiere leer la Biblia contigo</Text>
           <Text style={[text.body, { color: colors.muted, textAlign: 'center' }]}>
             Como amigos verán lo que cada uno lee, los versículos que resaltan y las preguntas que comparten.

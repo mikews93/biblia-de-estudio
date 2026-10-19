@@ -76,7 +76,7 @@ export default function Post({ post, detail, onRemoved }: Props) {
     <Card style={{ gap: 12 }}>
       <View style={styles.head}>
         <Pressable onPress={() => go(`/comunidades/persona/${post.autorId}`)} accessibilityRole="link">
-          <Avatar name={post.autor} size={38} />
+          <Avatar name={post.autor} foto={post.autorFoto} size={38} />
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.text }} numberOfLines={2}>

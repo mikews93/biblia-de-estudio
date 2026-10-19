@@ -1,6 +1,6 @@
 // Piezas comunes de las pantallas de comunidades, con los colores del tema.
 import { ReactNode, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 
 import { initials } from '@/lib/comunidad';
 import { Colors, sans, serif, useColors } from '@/lib/theme';
@@ -90,13 +90,37 @@ export function Card({ children, style }: { children: ReactNode; style?: ViewSty
   return <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, style]}>{children}</View>;
 }
 
-export function Avatar({ name, filled, size = 40 }: { name: string; filled?: boolean; size?: number }) {
+/** La foto de la persona o, sin foto, sus iniciales en un círculo. */
+export function Avatar({
+  name,
+  foto,
+  filled,
+  size = 40,
+}: {
+  name: string;
+  foto?: string | null;
+  filled?: boolean;
+  size?: number;
+}) {
   const colors = useColors();
+  const [broken, setBroken] = useState<string | null>(null);
+  const round = { width: size, height: size, borderRadius: size / 2 };
+  if (foto && broken !== foto) {
+    return (
+      <Image
+        source={{ uri: foto }}
+        onError={() => setBroken(foto)}
+        accessibilityIgnoresInvertColors
+        style={[round, { backgroundColor: colors.accentSoft }, filled && { borderWidth: 2, borderColor: colors.accent }]}
+      />
+    );
+  }
   return (
     <View
       style={[
         styles.avatar,
-        { width: size, height: size, borderRadius: size / 2, borderColor: filled ? colors.accent : colors.border },
+        round,
+        { borderColor: filled ? colors.accent : colors.border },
         filled && { backgroundColor: colors.accent },
       ]}
     >

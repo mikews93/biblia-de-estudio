@@ -77,7 +77,7 @@ export default function Comunidad() {
           headerRight: () =>
             usuario ? (
               <Pressable onPress={() => go('/cuenta')} hitSlop={8} style={{ marginRight: 16 }} accessibilityLabel="Tu cuenta">
-                <Avatar name={usuario.nombre} size={30} />
+                <Avatar name={usuario.nombre} foto={usuario.foto} size={30} />
               </Pressable>
             ) : null,
         }}
@@ -99,7 +99,7 @@ export default function Comunidad() {
         <>
           <Pressable onPress={() => go('/comunidades/publicar')} accessibilityRole="button">
             <Card style={styles.composer}>
-              <Avatar name={usuario.nombre} size={36} filled />
+              <Avatar name={usuario.nombre} foto={usuario.foto} size={36} filled />
               <Text style={{ color: colors.muted, flex: 1, fontSize: 15 }}>Pregúntale algo a la comunidad…</Text>
             </Card>
           </Pressable>
