@@ -5,9 +5,8 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
-import { BellIcon, CameraIcon, ChurchIcon, FacebookLogo, KeyIcon, PinIcon } from '@/components/comunidad/icons';
 import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { ChevronRightIcon } from '@/components/icons';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, KeyIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
 import {
   disconnectFacebook,

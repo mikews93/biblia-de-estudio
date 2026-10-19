@@ -1,5 +1,5 @@
 // Íconos de línea de las pantallas de cuenta y de comunidad (base común en ../iconLine.tsx).
-import { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { Line, type IconProps as Props } from '../iconLine';
 
@@ -79,21 +79,7 @@ export const ChurchIcon = (p: Props) => (
   </Line>
 );
 
-/** Marcador de mapa: la ciudad. */
-export const PinIcon = (p: Props) => (
-  <Line {...p}>
-    <Path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z" />
-    <Circle cx={12} cy={10} r={2.3} />
-  </Line>
-);
 
-/** Campana: los avisos. */
-export const BellIcon = (p: Props) => (
-  <Line {...p}>
-    <Path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" />
-    <Path d="M10 20.5a2 2 0 0 0 4 0" />
-  </Line>
-);
 
 /** Llave: entrar con correo y contraseña. */
 export const KeyIcon = (p: Props) => (

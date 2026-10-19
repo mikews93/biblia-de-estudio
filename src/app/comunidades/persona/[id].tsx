@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 
 import Post from '@/components/comunidad/Post';
 import { confirm } from '@/components/comunidad/confirm';
-import { ChurchIcon, PeopleIcon, PinIcon } from '@/components/comunidad/icons';
+import { ChurchIcon, PeopleIcon, PinIcon } from '@/components/icons';
 import { Avatar, Button, ErrorText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { CheckIcon } from '@/components/icons';
 import { Persona, Publicacion, answerFriend, askFriend, getPerson, removeFriend } from '@/lib/social';
