@@ -166,8 +166,12 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
       }
       return;
     }
-    // Mientras llega la respuesta a una pregunta, se sigue el final.
-    if (busy && turns.length > 1) scroll.current?.scrollToEnd({ animated: true });
+    // Mientras llega la respuesta a una pregunta, se sigue el final. Ese desplazamiento lo hace la app:
+    // no aparta la cabecera (con ella, el botón de cerrar).
+    if (busy && turns.length > 1) {
+      autoHide.pause();
+      scroll.current?.scrollToEnd({ animated: true });
+    }
   };
 
   const context = (
