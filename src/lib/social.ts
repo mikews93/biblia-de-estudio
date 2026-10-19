@@ -25,14 +25,23 @@ export type Publicacion = {
   actualizado: string;
   autorId: string;
   autor: string;
+  autorFoto: string | null;
   mia: boolean;
   meGusta: number;
   yoMeGusta: boolean;
   comentarios: number;
 };
 
-export type Comentario = { id: string; texto: string; creado: string; autorId: string; autor: string; mio: boolean };
-export type PersonaBreve = { id: string; nombre: string };
+export type Comentario = {
+  id: string;
+  texto: string;
+  creado: string;
+  autorId: string;
+  autor: string;
+  autorFoto: string | null;
+  mio: boolean;
+};
+export type PersonaBreve = { id: string; nombre: string; foto: string | null };
 export type Red = {
   codigo: string;
   compartirLecturas: boolean;
@@ -41,7 +50,13 @@ export type Red = {
   enviadas: PersonaBreve[];
   sugerencias: (PersonaBreve & { grupo: string })[];
 };
-export type Persona = PersonaBreve & { amigos: number; relacion: Relacion };
+export type Persona = PersonaBreve & {
+  bio: string | null;
+  iglesia: string | null;
+  ciudad: string | null;
+  amigos: number;
+  relacion: Relacion;
+};
 
 export type NuevaPublicacion = {
   tipo: Exclude<TipoPublicacion, 'lectura'>;

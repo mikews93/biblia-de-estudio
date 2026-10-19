@@ -64,7 +64,10 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       const ana = await persona('Ana');
       const yo = await call('yo', {}, ana.llave);
       expect(yo.status).toBe(200);
-      expect(yo.json).toEqual({ usuario: { id: ana.id, nombre: ana.nombre, correo: null }, grupos: [] });
+      expect(yo.json).toEqual({
+        usuario: { id: ana.id, nombre: ana.nombre, correo: null, foto: null, bio: null, iglesia: null, ciudad: null, conClave: false, facebook: null },
+        grupos: [],
+      });
     });
 
     it('valida nombre, correo y contraseña', async () => {
@@ -97,7 +100,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       const ana = await persona('Ana');
       const { correo } = unique('ana');
       const r = await call('protegerCuenta', { correo, clave: 'clave-segura' }, ana.llave);
-      expect(r.json.usuario).toEqual({ id: ana.id, nombre: ana.nombre, correo });
+      expect(r.json.usuario).toMatchObject({ id: ana.id, nombre: ana.nombre, correo, conClave: true });
       expect((await call('entrar', { correo, clave: 'clave-segura' })).json.usuario.id).toBe(ana.id);
       // Otra persona no puede quedarse con ese correo
       const otra = await persona('Otra');
@@ -130,12 +133,12 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
 
       // El código se acepta en minúsculas y con guiones
       const escrito = `${codigo.slice(0, 4).toLowerCase()}-${codigo.slice(4)}`;
-      expect((await call('verCodigoAmigo', { codigo: escrito })).json.persona).toEqual({ id: ana.id, nombre: ana.nombre });
+      expect((await call('verCodigoAmigo', { codigo: escrito })).json.persona).toEqual({ id: ana.id, nombre: ana.nombre, foto: null });
       expect((await call('pedirAmistad', { codigo: escrito }, beto.llave)).json).toEqual({ id: ana.id, relacion: 'enviada' });
       expect((await call('pedirAmistad', { codigo }, ana.llave)).json.error).toBe('Ese es tu propio código');
 
       let red = (await call('amigos', {}, ana.llave)).json;
-      expect(red.recibidas).toEqual([{ id: beto.id, nombre: beto.nombre }]);
+      expect(red.recibidas).toEqual([{ id: beto.id, nombre: beto.nombre, foto: null }]);
       expect((await call('persona', { usuario: ana.id }, beto.llave)).json.persona.relacion).toBe('enviada');
 
       expect((await call('responderAmistad', { usuario: beto.id }, ana.llave)).json.relacion).toBe('amigos');

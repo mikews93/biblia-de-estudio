@@ -27,6 +27,14 @@
       "expo-router",
       "expo-sharing",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "La app usa tus fotos para que elijas la foto de tu perfil.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-audio",
         {
           "microphonePermission": false,

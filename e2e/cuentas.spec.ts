@@ -107,11 +107,11 @@ test('el nombre nuevo se guarda en la cuenta y se ve al entrar desde otro dispos
   await page.goto('/cuenta');
   const nombre = page.getByRole('textbox').first();
   await expect(nombre).toHaveValue('Saulo');
-  const guardar = page.getByRole('button', { name: 'Guardar nombre' });
+  const guardar = page.getByRole('button', { name: 'Guardar cambios' });
   await expect(guardar).toBeDisabled();
   await nombre.fill('Pablo de Tarso');
   await guardar.click();
-  await expect(page.getByText('Nombre guardado')).toBeVisible();
+  await expect(page.getByText('Perfil guardado')).toBeVisible();
 
   // Otro navegador, sin nada guardado: entra con el correo y ve el nombre nuevo.
   const otro = await browser.newContext();
