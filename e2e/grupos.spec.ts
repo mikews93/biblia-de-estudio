@@ -162,7 +162,7 @@ test('peticiones de oración: compartir, «estoy orando» y marcarla respondida'
   await expect(pb.getByText(peticion)).toBeVisible();
   await expect(pb.getByText('Dios respondió')).toHaveCount(0); // solo quien la compartió la cierra
   await pb.getByRole('button', { name: 'Estoy orando' }).click();
-  await expect(pb.getByRole('button', { name: 'Estoy orando ✓' })).toBeVisible();
+  await expect(pb.getByRole('button', { name: 'Estoy orando' })).toBeVisible();
   await expect(pb.getByText('1 persona ora por esto')).toBeVisible();
 
   // Ana ve que Beto ora por ella y marca la petición como respondida.

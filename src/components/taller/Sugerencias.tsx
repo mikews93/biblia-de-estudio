@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { IconText } from '@/components/comunidad/ui';
+import { CheckIcon, PlusIcon } from '@/components/icons';
 import { Markdown } from '@/components/StudyPanel';
 import { Source } from '@/lib/estudio';
 import {
@@ -30,6 +32,7 @@ export default function Sugerencias({
   mensaje,
   colors,
   listo,
+  onCite,
 }: {
   text: string;
   sources: Source[];
@@ -37,6 +40,7 @@ export default function Sugerencias({
   colors: Colors;
   /** Mientras la respuesta llega no se ofrecen los botones. */
   listo: boolean;
+  onCite?: (s: Source) => void;
 }) {
   const [hechos, setHechos] = useState<Record<number, Hecho>>({});
   const [abierto, setAbierto] = useState<number | null>(null);
@@ -53,7 +57,7 @@ export default function Sugerencias({
   const rows = lines.map((line, i) => {
     if (!line.trim()) return <View key={i} style={{ height: 4 }} />;
     const s = ideas[i];
-    if (!s || !listo) return <Markdown key={i} text={line} colors={colors} />;
+    if (!s || !listo) return <Markdown key={i} text={line} colors={colors} sources={sources} onCite={onCite} />;
 
     const hecho = hechos[i];
     const sugerido = destinoSugerido(mensaje, s);
@@ -74,14 +78,16 @@ export default function Sugerencias({
 
     return (
       <View key={i} style={styles.item}>
-        <Markdown text={line} colors={colors} />
+        <Markdown text={line} colors={colors} sources={sources} onCite={onCite} />
         <View style={styles.actions}>
           {hecho ? (
             <>
               <View style={[styles.done, { backgroundColor: colors.accentSoft }]}>
-                <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }} numberOfLines={1}>
-                  ✓ En {d(hecho.destino) ? etiqueta(d(hecho.destino)!) : 'tu borrador'}
-                </Text>
+                <IconText icon={CheckIcon} color={colors.accent} size={14} gap={5}>
+                  <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13, flexShrink: 1 }} numberOfLines={1}>
+                    En {d(hecho.destino) ? etiqueta(d(hecho.destino)!) : 'tu borrador'}
+                  </Text>
+                </IconText>
               </View>
               <Pressable onPress={undo} hitSlop={8} accessibilityRole="button" accessibilityLabel="Deshacer">
                 <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>Deshacer</Text>
@@ -94,9 +100,11 @@ export default function Sugerencias({
                 accessibilityRole="button"
                 style={({ pressed }) => [styles.add, { borderColor: colors.accent, opacity: pressed ? 0.6 : 1 }]}
               >
-                <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }} numberOfLines={1}>
-                  {dSugerido ? (dSugerido.id === 'idea' ? '＋ Usar como idea central' : `＋ Añadir a «${dSugerido.label}»`) : '＋ Añadir a…'}
-                </Text>
+                <IconText icon={PlusIcon} color={colors.accent} size={14} gap={5}>
+                  <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13, flexShrink: 1 }} numberOfLines={1}>
+                    {dSugerido ? (dSugerido.id === 'idea' ? 'Usar como idea central' : `Añadir a «${dSugerido.label}»`) : 'Añadir a…'}
+                  </Text>
+                </IconText>
               </Pressable>
               {dSugerido && (
                 <Pressable onPress={() => setAbierto(abierto === i ? null : i)} hitSlop={8} accessibilityRole="button">
@@ -143,12 +151,11 @@ export default function Sugerencias({
   return (
     <View>
       {listo && hayIdeas && (
-        <View style={[styles.tip, { backgroundColor: colors.accentSoft }]}>
-          <Text style={{ color: colors.text, fontSize: 13, lineHeight: 19 }}>
-            <Text style={{ color: colors.accent, fontWeight: '700' }}>＋ </Text>
+        <IconText icon={PlusIcon} color={colors.accent} size={15} gap={8} style={{ ...styles.tip, backgroundColor: colors.accentSoft }}>
+          <Text style={{ color: colors.text, fontSize: 13, lineHeight: 19, flex: 1 }}>
             Lleva a tu borrador las ideas que te sirvan y termínalas con tus palabras. Lo que ya escribiste no se borra.
           </Text>
-        </View>
+        </IconText>
       )}
       {rows}
     </View>

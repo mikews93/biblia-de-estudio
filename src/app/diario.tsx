@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { CheckIcon, HeartIcon, LockIcon, PrayIcon } from '@/components/icons';
 import StudyPanel from '@/components/StudyPanel';
-import { text } from '@/components/comunidad/ui';
+import { IconText, text } from '@/components/comunidad/ui';
 import { Book, getBooks } from '@/lib/data';
 import { verseOfTheDay } from '@/lib/daily';
 import { Entrada, deleteEntrada, toggleHecho, useDiario } from '@/lib/diario';
@@ -35,7 +36,7 @@ export default function Diario() {
 
       {entradas.length === 0 ? (
         <Appear style={[styles.empty, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={{ fontFamily: serif, fontSize: 34, color: colors.accent }}>♡</Text>
+          <HeartIcon color={colors.accent} size={40} strokeWidth={1.5} />
           <Text style={[text.title, { color: colors.text, textAlign: 'center', marginTop: 6 }]}>Tu diario está esperando</Text>
           <Text style={[text.body, { color: colors.muted, textAlign: 'center', marginTop: 8 }]}>
             Al terminar un devocional, lo que escribas (la frase que te detuvo, tu oración y tu paso para hoy) se guarda
@@ -61,7 +62,9 @@ export default function Diario() {
                 onPress={() => setToday(true)}
                 style={({ pressed }) => [styles.todayBtn, { backgroundColor: colors.accent }, pressed && { opacity: 0.85 }]}
               >
-                <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>♡ Haz el devocional de hoy</Text>
+                <IconText icon={HeartIcon} color={colors.surface} size={18} gap={8}>
+                  <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>Haz el devocional de hoy</Text>
+                </IconText>
                 <Text style={{ color: colors.accentSoft, fontSize: 13 }}>10 min</Text>
               </Pressable>
             )}
@@ -71,9 +74,9 @@ export default function Diario() {
               <EntryCard entrada={e} colors={colors} />
             </Appear>
           ))}
-          <Text style={[text.small, { color: colors.muted, marginTop: 8, textAlign: 'center' }]}>
-            🔒 Tu diario se guarda solo en este dispositivo.
-          </Text>
+          <IconText icon={LockIcon} color={colors.muted} size={13} style={{ marginTop: 8, justifyContent: 'center' }}>
+            <Text style={[text.small, { color: colors.muted, flexShrink: 1 }]}>Tu diario se guarda solo en este dispositivo.</Text>
+          </IconText>
         </>
       )}
 
@@ -115,7 +118,7 @@ function Week({ entradas, colors }: { entradas: Entrada[]; colors: Colors }) {
                 },
               ]}
             >
-              {done && <Text style={{ color: colors.surface, fontSize: 13 }}>♡</Text>}
+              {done && <HeartIcon color={colors.surface} size={14} filled />}
             </View>
             <Text style={{ color: today ? colors.text : colors.muted, fontSize: 12, fontWeight: today ? '700' : '500', marginTop: 6 }}>
               {label}
@@ -177,7 +180,7 @@ function EntryCard({ entrada: e, colors }: { entrada: Entrada; colors: Colors })
           accessibilityState={{ checked: !!e.hecho }}
         >
           <View style={[styles.check, { borderColor: colors.accent, backgroundColor: e.hecho ? colors.accent : 'transparent' }]}>
-            {e.hecho && <Text style={{ color: colors.surface, fontSize: 12, fontWeight: '800' }}>✓</Text>}
+            {e.hecho && <CheckIcon color={colors.surface} size={14} strokeWidth={2.6} />}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.stepLabel, { color: colors.accent }]}>{e.hecho ? 'PASO DADO' : 'MI PASO'}</Text>
@@ -194,7 +197,9 @@ function EntryCard({ entrada: e, colors }: { entrada: Entrada; colors: Colors })
           </Pressable>
         ) : (
           <Pressable onPress={() => setPrayer(true)} hitSlop={6}>
-            <Text style={{ color: colors.accent, fontWeight: '600', marginTop: 12 }}>♡ Ver mi oración</Text>
+            <IconText icon={PrayIcon} color={colors.accent} size={15} style={{ marginTop: 12 }}>
+              <Text style={{ color: colors.accent, fontWeight: '600' }}>Ver mi oración</Text>
+            </IconText>
           </Pressable>
         ))}
 

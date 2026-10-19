@@ -1,11 +1,22 @@
 import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
-import MicIcon from '@/components/MicIcon';
-import SearchIcon from '@/components/SearchIcon';
+import PlanIcon from '@/components/PlanIcon';
+import {
+  BellIcon,
+  BooksIcon,
+  DownloadIcon,
+  HeartIcon,
+  MicIcon,
+  PencilIcon,
+  PeopleIcon,
+  PlansIcon,
+  SearchIcon,
+  SparkIcon,
+  type IconProps,
+} from '@/components/icons';
 import PlanCard from '@/components/PlanCard';
 import StudyPanel from '@/components/StudyPanel';
 import VerseImage from '@/components/VerseImage';
@@ -132,7 +143,7 @@ export default function Today() {
           <Text style={[styles.continueTitle, { color: colors.surface, fontFamily: serif }]}>
             {name(continueTo.book)} {continueTo.chapter}
           </Text>
-          <Text style={{ color: colors.accentSoft, marginTop: 4 }}>Abrir el capítulo →</Text>
+          <Text style={{ color: colors.accentSoft, marginTop: 4 }}>Abrir el capítulo ›</Text>
         </Pressable>
       </Appear>
 
@@ -149,7 +160,10 @@ export default function Today() {
               style={({ pressed }) => [styles.devotional, { backgroundColor: colors.accent }, pressed && styles.pressed]}
               accessibilityRole="button"
             >
-              <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>♡ Haz el devocional de hoy</Text>
+              <View style={styles.devotionalLabel}>
+                <HeartIcon color={colors.surface} size={18} strokeWidth={2} />
+                <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>Haz el devocional de hoy</Text>
+              </View>
               <Text style={{ color: colors.accentSoft, fontSize: 13 }}>10 min</Text>
             </Pressable>
           )}
@@ -185,7 +199,7 @@ export default function Today() {
             <Text style={{ color: colors.text, fontSize: 17, marginTop: 6 }}>
               {due} {due === 1 ? 'tarjeta te espera' : 'tarjetas te esperan'} para no olvidar lo que estudiaste.
             </Text>
-            <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 10 }}>Repasar →</Text>
+            <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 10 }}>Repasar ›</Text>
           </Pressable>
         </Appear>
       )}
@@ -197,7 +211,9 @@ export default function Today() {
             style={({ pressed }) => [styles.card, styles.reto, { backgroundColor: upcomingTint.soft, borderColor: upcomingTint.soft }, pressed && styles.pressed]}
             accessibilityRole="button"
           >
-            <Text style={[styles.retoGlyph, { color: upcomingTint.accent, fontFamily: serif }]}>{upcoming.def.icon}</Text>
+            <View style={styles.retoGlyph} aria-hidden>
+              <PlanIcon icono={upcoming.def.icono} color={upcomingTint.accent} size={150} strokeWidth={1.2} />
+            </View>
             <Text style={[styles.kicker, { color: upcomingTint.accent }]}>
               {upcoming.season.running
                 ? `Reto de ${upcomingTint.name} · en curso`
@@ -208,7 +224,7 @@ export default function Today() {
             <Text style={[styles.continueTitle, { color: colors.text, fontFamily: serif, fontSize: 22 }]}>{upcoming.def.title}</Text>
             <Text style={{ color: colors.text, marginTop: 6, opacity: 0.85 }}>{upcoming.def.description}</Text>
             <View style={[styles.retoButton, { backgroundColor: upcomingTint.accent }]}>
-              <Text style={{ color: upcomingTint.soft, fontWeight: '700' }}>Ver el reto →</Text>
+              <Text style={{ color: upcomingTint.soft, fontWeight: '700' }}>Ver el reto ›</Text>
             </View>
           </Pressable>
         </Appear>
@@ -266,28 +282,28 @@ export default function Today() {
       </Appear>
 
       <Appear delay={160} style={styles.grid}>
-        <Tile icon="☰" label="Libros" colors={colors} onPress={() => navigate(() => router.push('/libros'))} />
+        <Tile icon={BooksIcon} label="Libros" colors={colors} onPress={() => navigate(() => router.push('/libros'))} />
         <Tile
-          icon="❖"
+          icon={PlansIcon}
           label={activePlans.length ? 'Planes' : 'Elegir un plan'}
           colors={colors}
           onPress={() => navigate(() => router.push('/planes'), 'forward')}
         />
-        <Tile icon="✎" label="Mis notas" colors={colors} onPress={() => navigate(() => router.push('/notas'), 'forward')} />
-        <Tile icon="♡" label="Mi diario" colors={colors} onPress={() => navigate(() => router.push('/diario' as never), 'forward')} />
+        <Tile icon={PencilIcon} label="Mis notas" colors={colors} onPress={() => navigate(() => router.push('/notas'), 'forward')} />
+        <Tile icon={HeartIcon} label="Mi diario" colors={colors} onPress={() => navigate(() => router.push('/diario' as never), 'forward')} />
         <Tile
-          icon="✦"
+          icon={SparkIcon}
           label="Estudiar con IA"
           colors={colors}
           onPress={() => navigate(() => router.push(chapterHref(continueTo.book, continueTo.chapter)), 'forward')}
         />
         <Tile
-          icon="◎"
+          icon={PeopleIcon}
           label="Comunidad"
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
-        <Tile icon="⤓" label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
+        <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
       </Appear>
       {devotional && books.find((b) => b.id === daily.book) && (
         <StudyPanel
@@ -331,16 +347,7 @@ function SmallButton({ label, colors, onPress }: { label: string; colors: C; onP
   );
 }
 
-function BellIcon({ color, size = 20 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M6 9a6 6 0 0 1 12 0c0 4.5 1.5 6.5 2.5 7.5h-17C4.5 15.5 6 13.5 6 9Z" />
-      <Path d="M10 20a2.2 2.2 0 0 0 4 0" />
-    </Svg>
-  );
-}
-
-function Tile({ icon, label, colors, onPress }: { icon: string; label: string; colors: C; onPress: () => void }) {
+function Tile({ icon: Icon, label, colors, onPress }: { icon: (p: IconProps) => React.ReactNode; label: string; colors: C; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
@@ -351,8 +358,10 @@ function Tile({ icon, label, colors, onPress }: { icon: string; label: string; c
       ]}
       accessibilityRole="button"
     >
-      <Text style={{ color: colors.accent, fontSize: 22, fontFamily: serif }}>{icon}</Text>
-      <Text style={{ color: colors.text, fontWeight: '600', marginTop: 6 }}>{label}</Text>
+      <View style={[styles.tileIcon, { backgroundColor: colors.accentSoft }]}>
+        <Icon color={colors.accent} size={22} />
+      </View>
+      <Text style={{ color: colors.text, fontWeight: '600', marginTop: 8 }}>{label}</Text>
     </Pressable>
   );
 }
@@ -374,7 +383,7 @@ const styles = StyleSheet.create({
   continueTitle: { fontSize: 28, marginTop: 6 },
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20 },
   reto: { overflow: 'hidden' },
-  retoGlyph: { position: 'absolute', right: 6, top: -26, fontSize: 130, opacity: 0.1 },
+  retoGlyph: { position: 'absolute', right: -14, top: -18, opacity: 0.12 },
   retoButton: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 9, marginTop: 14 },
   verse: { fontSize: 21, lineHeight: 31, marginTop: 10 },
   ref: { marginTop: 8, fontSize: 14, fontWeight: '600' },
@@ -393,6 +402,8 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  tileIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  devotionalLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   tile: { flexGrow: 1, flexBasis: '28%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 16, alignItems: 'center' },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
 });

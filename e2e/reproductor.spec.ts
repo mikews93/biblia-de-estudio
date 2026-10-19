@@ -43,7 +43,15 @@ test.describe('Reproductor único', () => {
     // El versículo avanza con los tiempos de la grabación
     await expect(v(page.getByText(/v\. 2/))).toBeVisible({ timeout: 15_000 });
 
-    // Otra pantalla: la barra sigue y el audio no se corta
+    // Otra pantalla: la barra sigue y el audio no se corta. Si el lector se desplazó mientras sonaba (con la
+    // máquina cargada pasa), las barras se apartaron y la píldora de capítulos queda bajo el reproductor:
+    // se sube un poco, como haría quien lee, para que vuelvan.
+    const titulo = v(page.getByRole('button', { name: 'Elegir libro y capítulo' }));
+    await page.mouse.move(200, 300);
+    await expect(async () => {
+      await page.mouse.wheel(0, -200);
+      await expect(titulo).toBeInViewport({ timeout: 1000 });
+    }).toPass();
     await v(page.getByLabel('Capítulo siguiente')).click();
     await expect(page).toHaveURL(/\/marcos\/2$/);
     await expect(v(page.getByText('Audio dramatizado', { exact: true }))).toBeVisible();

@@ -42,14 +42,14 @@ test('una cita abreviada abre el versículo, y escrita con espacios se ve antes 
   await expect(texto(page, 'Juan 3:16')).toBeVisible();
   await expect(texto(page, jn316)).toBeVisible();
   await expect(texto(page, 'RV1909')).toBeVisible();
-  await visible(page.getByRole('link', { name: 'Abrir en Juan 3 →' })).click();
+  await visible(page.getByRole('link', { name: 'Abrir en Juan 3 ›' })).click();
   await expect(page).toHaveURL(/\/juan\/3\/16$/);
 
   // Un capítulo entero, con números dichos en palabras
   await page.goto('/buscar');
   await campo(page).fill('salmo veintitres');
   await expect(texto(page, 'Salmos 23')).toBeVisible();
-  await visible(page.getByRole('link', { name: 'Leer Salmos 23 →' })).click();
+  await visible(page.getByRole('link', { name: 'Leer Salmos 23 ›' })).click();
   await expect(page).toHaveURL(/\/salmos\/23$/);
   await expect(texto(page, (await versiculo(request, 'psa', 23, 1)).slice(0, 40))).toBeVisible();
 });
@@ -70,7 +70,7 @@ test('una versión que aún no está avisa y abre en la versión actual; una que
   await expect(page).toHaveURL(/\/buscar/);
   await expect(texto(page, '1 Reyes 2:5')).toBeVisible();
   await expect(texto(page, reyes.slice(0, 60))).toBeVisible();
-  await visible(page.getByRole('link', { name: 'Abrir en 1 Reyes 2 →' })).click();
+  await visible(page.getByRole('link', { name: 'Abrir en 1 Reyes 2 ›' })).click();
   await expect(page).toHaveURL(/\/1-reyes\/2\/5$/);
   await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText('RV1909');
   await expect(texto(page, reyes.slice(0, 60))).toBeVisible();

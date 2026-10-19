@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test';
 import { conSesion, cuentaNueva, expect, peticionesIA, test } from './support/fixtures';
 
 const marca = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-const acompanante = (page: Page) => page.getByRole('dialog').filter({ hasText: '✦ ACOMPAÑANTE' });
+const acompanante = (page: Page) => page.getByRole('dialog').filter({ hasText: 'ACOMPAÑANTE' });
 const paso = (page: Page, nombre: string) => page.getByRole('tab', { name: nombre });
 
 /** Espera a que el Taller se haya guardado en el dispositivo con `texto` dentro. */
@@ -51,18 +51,27 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   );
   expect(sugerir).toBeTruthy();
 
+  // Volver a Pregúntame no lo pide otra vez: cada pestaña guarda lo suyo
+  await ia.getByRole('tab', { name: 'Pregúntame' }).click();
+  await expect(ia.getByText('Preguntas del Taller simuladas:')).toBeVisible();
+  await ia.getByRole('tab', { name: 'Sugiéreme' }).click();
+  await expect(ia.getByText('Sugerencia simulada del Taller: Dios ama y da.')).toBeVisible();
+  const pedidos = await peticionesIA(request, `Observo ${m}`);
+  expect(pedidos.filter((r) => JSON.stringify(r.messages[0].content).includes('Hazme de 3 a 5 preguntas'))).toHaveLength(1);
+  expect(pedidos.filter((r) => JSON.stringify(r.messages[0].content).includes('Propón tres formulaciones'))).toHaveLength(1);
+
   // Lleva sugerencias a los campos con un toque, sin escribirlas: la idea central y la necesidad
-  await ia.getByRole('button', { name: '＋ Usar como idea central' }).click();
-  await expect(ia.getByText('✓ En la idea central')).toBeVisible();
-  await ia.getByRole('button', { name: '＋ Añadir a «La necesidad»' }).click();
-  await expect(ia.getByText('✓ En «La necesidad»')).toBeVisible();
+  await ia.getByRole('button', { name: 'Usar como idea central' }).click();
+  await expect(ia.getByText('En la idea central')).toBeVisible();
+  await ia.getByRole('button', { name: 'Añadir a «La necesidad»' }).click();
+  await expect(ia.getByText('En «La necesidad»')).toBeVisible();
   // Una sin campo propio se elige de la lista, y se puede deshacer
-  await ia.getByRole('button', { name: '＋ Añadir a…' }).click();
+  await ia.getByRole('button', { name: 'Añadir a…' }).click();
   await ia.getByLabel('Elegir campo').getByRole('button', { name: 'La gracia' }).click();
-  await expect(ia.getByText('✓ En «La gracia»')).toBeVisible();
+  await expect(ia.getByText('En «La gracia»')).toBeVisible();
   await guardado(page, 'Sugerencia simulada del Taller');
   await ia.getByRole('button', { name: 'Deshacer' }).first().click();
-  await expect(ia.getByText('✓ En «La gracia»')).toHaveCount(0);
+  await expect(ia.getByText('En «La gracia»')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('taller') ?? '')).not.toContain('Sugerencia simulada del Taller');
 
   // Responde al acompañante: la conversación sigue con el turno anterior
@@ -76,7 +85,7 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   // Idea central con sus palabras: lo que llevó desde la IA ya está en los campos
-  await page.getByRole('button', { name: 'Siguiente ›' }).click();
+  await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
   await expect(page.getByPlaceholder('Por ejemplo, el amor del Padre')).toHaveValue('El amor de Dios');
   await expect(page.getByPlaceholder('Lo que compartimos con los primeros lectores')).toHaveValue(/Necesidad simulada: sentirnos lejos de Dios/);
   await page.getByPlaceholder('Por ejemplo, el amor del Padre').fill('El amor de Dios');
@@ -84,7 +93,7 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   await expect(page.getByText(`El amor de Dios: da a su Hijo ${m}`)).toBeVisible();
 
   // Bosquejo: escribe en la primera parte del devocional
-  await page.getByRole('button', { name: 'Siguiente ›' }).click();
+  await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
   await expect(page.getByLabel('Título de la parte').first()).toHaveValue('El versículo');
   await page.getByPlaceholder('Escríbelo con tus palabras').first().fill(`Leemos Juan 3:16 juntos ${m}`);
   await guardado(page, `Leemos Juan 3:16 juntos ${m}`);
@@ -135,7 +144,7 @@ test('prepara un sermón desde el lector, lo revisa con la IA, lo presenta y lo 
   await paso(page, '4 Revisar').click();
   await page.getByRole('checkbox', { name: '¿Puedo decir la idea central en una frase?' }).click();
   await expect(page.getByText(/\(1 de 9\)/)).toBeVisible();
-  await page.getByRole('button', { name: '✦ Revisa mi borrador' }).click();
+  await page.getByRole('button', { name: 'Revisa mi borrador' }).first().click();
   const ia = acompanante(page);
   await expect(ia.getByText('Revisión simulada: la idea sale del texto.')).toBeVisible();
   const [revision] = await peticionesIA(request, `La entrega de Dios ${m}`);
@@ -148,14 +157,14 @@ test('prepara un sermón desde el lector, lo revisa con la IA, lo presenta y lo 
 
   // Presentar: portada con la idea central, una parte a la vez y el pasaje a un toque
   await paso(page, '5 Presentar').click();
-  await page.getByRole('button', { name: '▶ Presentar' }).click();
+  await page.getByRole('button', { name: 'Presentar', exact: true }).click();
   await expect(page).toHaveURL(/\/presentar$/);
   await expect(page.getByText(`La entrega de Dios ${m}: nos da vida eterna`)).toBeVisible();
-  await page.getByText('Siguiente ›').filter({ visible: true }).click();
+  await page.getByText('Siguiente', { exact: true }).filter({ visible: true }).click();
   await expect(page.getByText('1 DE 5')).toBeVisible();
   await expect(page.getByText('Desequilibrio')).toBeVisible();
   await expect(page.getByText(`Todos buscamos amor ${m}`)).toBeVisible();
-  await page.getByText('Siguiente ›').filter({ visible: true }).click();
+  await page.getByText('Siguiente', { exact: true }).filter({ visible: true }).click();
   await expect(page.getByText('2 DE 5')).toBeVisible();
   await expect(page.getByText('Análisis', { exact: true })).toBeVisible();
   await page.getByText('Pasaje', { exact: true }).filter({ visible: true }).click();
@@ -163,7 +172,7 @@ test('prepara un sermón desde el lector, lo revisa con la IA, lo presenta y lo 
   await expect(page.getByText('Juan 3:16 · RV1909')).toBeVisible();
   await texto.click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByText('‹ Anterior').filter({ visible: true }).click();
+  await page.getByText('Anterior', { exact: true }).filter({ visible: true }).click();
   await expect(page.getByText('1 DE 5')).toBeVisible();
   await page.getByLabel('Salir de presentar').click();
   await expect(page).toHaveURL(/\/taller\/[a-z0-9]+$/);

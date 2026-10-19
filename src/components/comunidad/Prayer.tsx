@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CheckIcon, PrayIcon } from '@/components/icons';
 import { Peticion, ago, api } from '@/lib/comunidad';
 import { useColors } from '@/lib/theme';
 
 import { confirm } from './confirm';
-import { Button, ErrorText, Field, SectionTitle, text, useAction } from './ui';
+import { Button, ErrorText, Field, IconText, SectionTitle, text, useAction } from './ui';
 
 /** Peticiones de oración del grupo. En vez de «me gusta», cada quien dice «estoy orando». */
 export default function Prayer({ group }: { group: string }) {
@@ -66,9 +67,9 @@ export default function Prayer({ group }: { group: string }) {
             accessibilityState={{ selected: p.yoOrando }}
             style={[styles.pray, { borderColor: colors.accent }, p.yoOrando && { backgroundColor: colors.accent }]}
           >
-            <Text style={{ color: p.yoOrando ? colors.surface : colors.accent, fontWeight: '700', fontSize: 13 }}>
-              {p.yoOrando ? 'Estoy orando ✓' : 'Estoy orando'}
-            </Text>
+            <IconText icon={p.yoOrando ? CheckIcon : PrayIcon} color={p.yoOrando ? colors.surface : colors.accent} size={14} gap={5}>
+              <Text style={{ color: p.yoOrando ? colors.surface : colors.accent, fontWeight: '700', fontSize: 13 }}>Estoy orando</Text>
+            </IconText>
           </Pressable>
         )}
         <Text style={{ color: colors.muted, fontSize: 13, flex: 1 }}>
