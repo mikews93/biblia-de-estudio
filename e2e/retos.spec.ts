@@ -46,14 +46,14 @@ test('unirse al reto de Adviento, leer lo de hoy, responder la pregunta y celebr
 
   // El día queda leído y se celebra el primer hito
   await expect(v(page.getByText('1 de 25'))).toBeVisible();
-  await expect(v(page.getByText(/✓ Leído el 3 de diciembre/))).toBeVisible();
-  await expect(v(page.getByText('✦ Primer paso'))).toBeVisible();
+  await expect(v(page.getByText(/Leído el 3 de diciembre/))).toBeVisible();
+  await expect(v(page.getByText('Primer paso', { exact: true })).first()).toBeVisible();
   await expect(v(page.getByLabel('Primer paso, alcanzado'))).toBeVisible();
 
   // Responder la pregunta: se guarda en el dispositivo y sigue ahí al recargar
   await v(page.getByLabel('Tu respuesta')).fill('Que Dios cumple sus promesas aunque tarden.');
   await v(page.getByRole('button', { name: 'Guardar respuesta' })).click();
-  await expect(v(page.getByText('Guardado en tu dispositivo ✓'))).toBeVisible();
+  await expect(v(page.getByText('Guardado en tu dispositivo.'))).toBeVisible();
   await page.reload();
   await expect(v(page.getByLabel('Tu respuesta'))).toHaveValue('Que Dios cumple sus promesas aunque tarden.');
   await expect(v(page.getByText('respuesta escrita'))).toBeVisible();
@@ -82,7 +82,7 @@ test('hacer el reto con un grupo: el grupo ve el día, la pregunta para conversa
   await page.goto('/planes/adviento');
   await v(page.getByRole('button', { name: 'Hacerlo con mi grupo' })).click();
   await expect(page).toHaveURL(/\/grupos\/nuevo\?reto=adviento$/);
-  await expect(v(page.getByRole('radio', { name: `✶ Adviento ${Y}` }))).toBeVisible();
+  await expect(v(page.getByRole('radio', { name: `Adviento ${Y}` }))).toBeVisible();
   await expect(v(page.getByText(`Del 1 de diciembre al 25 de diciembre: 25 lecturas`, { exact: false }))).toBeVisible();
   await v(page.getByPlaceholder('Célula de los jueves')).fill(nombre);
   await v(page.getByRole('button', { name: 'Crear el grupo' })).click();

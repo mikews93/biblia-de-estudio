@@ -280,7 +280,7 @@ test('marcar capítulos como leídos actualiza la semana y el total en Hoy', asy
 
   await page.goto('/rut/1');
   await visible(page.getByRole('button', { name: 'Terminé este capítulo' })).click();
-  await expect(texto(page, '✓ Capítulo leído')).toBeVisible();
+  await expect(texto(page, 'Capítulo leído')).toBeVisible();
   await expect(texto(page, '1 de 4 capítulos de Rut')).toBeVisible();
   await expect(texto(page, '1 de 5 días esta semana. Si un día no puedes, no pasa nada.')).toBeVisible();
 
@@ -299,7 +299,7 @@ test('marcar capítulos como leídos actualiza la semana y el total en Hoy', asy
   await page.reload();
   await expect(texto(page, '1 de 5 días esta semana · 2 capítulos leídos en total')).toBeVisible();
   await page.goto('/rut/1');
-  await expect(texto(page, '✓ Capítulo leído')).toBeVisible();
+  await expect(texto(page, 'Capítulo leído')).toBeVisible();
   await expect(texto(page, '2 de 4 capítulos de Rut')).toBeVisible();
 });
 
