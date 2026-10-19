@@ -26,7 +26,7 @@ process.env.PUSH_HOSTS = 'localhost,127.0.0.1';
 
 type Handler = (request: Request) => Promise<Response>;
 const handlers = new Map<string, Promise<Record<string, Handler>>>();
-const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar', 'notificaciones'];
+const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar', 'notificaciones', 'podcast-grabado'];
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

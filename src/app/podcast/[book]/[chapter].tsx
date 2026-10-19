@@ -3,13 +3,14 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BackIcon, ForwardIcon, PauseIcon, PlayIcon, TalkIcon } from '@/components/audioIcons';
+import { BackIcon, ForwardIcon, PauseIcon, PlayIcon } from '@/components/audioIcons';
 
+import { PodcastGrabado } from '@/components/PodcastGrabado';
 import { Sources } from '@/components/StudyPanel';
 import { ToolFooter, ToolState } from '@/components/ToolState';
 import { Book, getBooks, parseRef } from '@/lib/data';
 import { useHerramienta } from '@/lib/herramientas';
-import { closeAudio, playRecordedPodcast, playSpeech, recordingId, toggle, useAudio, useCatalog } from '@/lib/audio';
+import { closeAudio, playSpeech, recordingId, toggle, useAudio, useCatalog } from '@/lib/audio';
 import { Line, SPEAKERS, minutes, parseScript } from '@/lib/podcast';
 import { bookIdFromParam, verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
@@ -60,27 +61,7 @@ export default function Podcast() {
           Ana y Tomás conversan sobre el capítulo{ready ? ` · unos ${minutes(lines)} min` : ''}
         </Text>
 
-        {recorded && (
-          <Pressable
-            onPress={() => playRecordedPodcast(bookId, chapter, title)}
-            accessibilityRole="button"
-            accessibilityLabel="Escuchar la versión grabada con voces naturales"
-            style={({ pressed }) => [
-              styles.recorded,
-              { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={[styles.recordedIcon, { backgroundColor: colors.accent }]}>
-              <TalkIcon color={colors.surface} size={20} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Versión grabada</Text>
-              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Con voces naturales, lista para escuchar</Text>
-            </View>
-            <PlayIcon color={colors.accent} size={22} />
-          </Pressable>
-        )}
+        <PodcastGrabado book={bookId} chapter={chapter} title={title} inApp={recorded} scriptReady={ready} />
 
         <View style={[styles.player, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Pressable
@@ -202,16 +183,6 @@ const styles = StyleSheet.create({
   side: { padding: 6 },
   play: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
-  recorded: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    marginTop: 20,
-  },
-  recordedIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   progress: { fontSize: 12, textAlign: 'center', marginTop: 8 },
   line: { flexDirection: 'row', gap: 10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginHorizontal: -10 },
   speaker: { width: 52, fontWeight: '700', fontSize: 13, marginTop: 3 },
