@@ -1,6 +1,6 @@
 import { router, useIsFocused } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import {
   Book,
@@ -17,6 +17,7 @@ import {
 } from '@/lib/data';
 import Commentary from '@/components/Commentary';
 import GroupNotes from '@/components/comunidad/GroupNotes';
+import { CloseIcon } from '@/components/icons';
 import PlaceMap from '@/components/PlaceMap';
 import StudyPanel from '@/components/StudyPanel';
 import { WhyButton } from '@/components/WordCard';
@@ -41,6 +42,8 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
   const colors = useColors();
   // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
   const focused = useIsFocused();
+  // En pantallas anchas la hoja flota como una tarjeta centrada, separada del borde inferior.
+  const wide = useWindowDimensions().width >= 900;
   const [tab, setTab] = useState<Tab>(initialTab ?? (book.interlinear ? 'interlineal' : 'referencias'));
 
   const tabs: [Tab, string][] = [
@@ -54,45 +57,59 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
   return (
     <Modal transparent animationType="slide" visible={focused} onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar" />
-      <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.handleRow}>
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
-        </View>
-        <Text style={[styles.ref, { color: colors.accent }]}>
-          {book.name} {chapter}:{verse}
-        </Text>
-        <Text style={[styles.verseText, { color: colors.text }]} numberOfLines={3}>
-          {text}
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={[styles.tabs, { borderColor: colors.border }]}
-          contentContainerStyle={{ flexGrow: 0 }}
-        >
-          {tabs.map(([key, label]) => (
+      {/* Este contenedor centra la hoja: con position absolute, alignSelf no la centraba en pantallas anchas. */}
+      <View style={styles.sheetWrap} pointerEvents="box-none">
+        <View style={[styles.sheet, wide && styles.sheetWide, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.handleRow}>
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
+          </View>
+          <View style={styles.head}>
+            <Text style={[styles.ref, { color: colors.accent }]}>
+              {book.name} {chapter}:{verse}
+            </Text>
             <Pressable
-              key={key}
-              onPress={() => setTab(key)}
-              style={[styles.tab, tab === key && { borderBottomColor: colors.accent }]}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: tab === key }}
+              onPress={onClose}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar panel"
+              style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [styles.close, { backgroundColor: hovered || pressed ? colors.border : 'transparent' }]}
             >
-              <Text style={{ color: tab === key ? colors.text : colors.muted, fontWeight: '600' }}>{label}</Text>
+              <CloseIcon color={colors.muted} size={18} />
             </Pressable>
-          ))}
-        </ScrollView>
-        <ScrollView contentContainerStyle={styles.body}>
-          {tab === 'interlineal' && <Interlinear book={book} chapter={chapter} verse={verse} colors={colors} />}
-          {tab === 'referencias' && (
-            <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
-          )}
-          {tab === 'mapa' && <Places book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />}
-          {tab === 'comentario' && (
-            <Commentary book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
-          )}
-          {tab === 'grupo' && <GroupNotes book={book} books={books} chapter={chapter} verse={verse} onNavigate={onClose} />}
-        </ScrollView>
+          </View>
+          <Text style={[styles.verseText, { color: colors.text }]} numberOfLines={3}>
+            {text}
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={[styles.tabs, { borderColor: colors.border }]}
+            contentContainerStyle={{ flexGrow: 0 }}
+          >
+            {tabs.map(([key, label]) => (
+              <Pressable
+                key={key}
+                onPress={() => setTab(key)}
+                style={[styles.tab, tab === key && { borderBottomColor: colors.accent }]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === key }}
+              >
+                <Text style={{ color: tab === key ? colors.text : colors.muted, fontWeight: '600' }}>{label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <ScrollView contentContainerStyle={styles.body}>
+            {tab === 'interlineal' && <Interlinear book={book} chapter={chapter} verse={verse} colors={colors} />}
+            {tab === 'referencias' && (
+              <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+            )}
+            {tab === 'mapa' && <Places book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />}
+            {tab === 'comentario' && (
+              <Commentary book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+            )}
+            {tab === 'grupo' && <GroupNotes book={book} books={books} chapter={chapter} verse={verse} onNavigate={onClose} />}
+          </ScrollView>
+        </View>
       </View>
     </Modal>
   );
@@ -268,11 +285,8 @@ function Places({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, alignItems: 'center', justifyContent: 'flex-end' },
   sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     maxHeight: '80%',
     minHeight: '55%',
     borderTopLeftRadius: 16,
@@ -283,6 +297,17 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  sheetWide: {
+    marginBottom: 24,
+    maxHeight: '84%',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: -6 },
   handleRow: { alignItems: 'center', paddingVertical: 8 },
   handle: { width: 40, height: 4, borderRadius: 2 },
   ref: { fontSize: 15, fontWeight: '700' },
