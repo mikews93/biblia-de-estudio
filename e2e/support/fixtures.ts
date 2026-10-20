@@ -43,3 +43,14 @@ export async function peticionesIA(request: APIRequestContext, marca: string) {
 export const test = base;
 export { expect };
 export type { Page };
+
+/** Desliza con el dedo en horizontal desde (x, y), dx píxeles (solo Chromium: el toque va por CDP). */
+export async function deslizar(page: Page, x: number, y: number, dx: number) {
+  const cdp = await page.context().newCDPSession(page);
+  const toque = (type: 'touchStart' | 'touchMove' | 'touchEnd', px: number) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: px, y }] });
+  await toque('touchStart', x);
+  for (let i = 1; i <= 10; i++) await toque('touchMove', x + (dx * i) / 10);
+  await toque('touchEnd', x + dx);
+  await cdp.detach();
+}

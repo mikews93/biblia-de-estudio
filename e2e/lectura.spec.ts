@@ -324,3 +324,29 @@ test('al bajar leyendo se apartan la cabecera y las barras, y vuelven al subir',
   await expect(titulo).toBeInViewport();
   await expect(pestañas).toBeInViewport();
 });
+
+test('en el computador el ratón selecciona texto sin pasar la hoja, y las flechas del teclado pasan de capítulo', async ({
+  page,
+  request,
+}, info) => {
+  test.skip(info.project.name !== 'escritorio', 'el ratón y el teclado son del computador');
+  await page.goto('/juan/3');
+  const [, primero] = (await capitulo(request, 'jhn', 3))[0];
+  const verso = texto(page, primero.slice(0, 40));
+  await expect(verso).toBeVisible();
+
+  // Arrastrar hacia la izquierda sobre el texto lo selecciona; no es un gesto de pasar la hoja
+  const box = (await verso.boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width - 10, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 12; i++) await page.mouse.move(box.x + box.width - 10 - i * 30, y);
+  await page.mouse.up();
+  await expect(page).toHaveURL(url('jhn', 3));
+  expect((await page.evaluate(() => window.getSelection()?.toString() ?? '')).length).toBeGreaterThan(5);
+
+  await page.keyboard.press('ArrowRight');
+  await expect(page).toHaveURL(url('jhn', 4));
+  await page.keyboard.press('ArrowLeft');
+  await expect(page).toHaveURL(url('jhn', 3));
+});
