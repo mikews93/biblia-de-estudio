@@ -333,6 +333,8 @@ test('en el computador el ratón selecciona texto sin pasar la hoja, y las flech
   await page.goto('/juan/3');
   const [, primero] = (await capitulo(request, 'jhn', 3))[0];
   const verso = texto(page, primero.slice(0, 40));
+  // Hasta que la app arranca se ve el texto estático de la página; al arrancar se reemplaza y la selección se perdería
+  await expect(visible(page.getByLabel('Capítulo siguiente'))).toBeVisible();
   await expect(verso).toBeVisible();
 
   // Arrastrar hacia la izquierda sobre el texto lo selecciona; no es un gesto de pasar la hoja
@@ -347,6 +349,9 @@ test('en el computador el ratón selecciona texto sin pasar la hoja, y las flech
 
   await page.keyboard.press('ArrowRight');
   await expect(page).toHaveURL(url('jhn', 4));
+  // Mientras la hoja está pasando no hay lector enfocado: se espera a que termine
+  await page.waitForFunction(() => !('nav' in document.documentElement.dataset));
+  await expect(visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }))).toHaveText('Juan 4');
   await page.keyboard.press('ArrowLeft');
   await expect(page).toHaveURL(url('jhn', 3));
 });
