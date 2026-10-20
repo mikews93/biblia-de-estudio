@@ -286,7 +286,10 @@ test('en el teléfono, deslizar dentro del estudio no pasa la hoja; fuera de él
   // Sin el estudio abierto, el mismo gesto pasa al capítulo siguiente
   await page.getByLabel('Cerrar estudio').last().click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  // El panel sale deslizándose y hasta que termina sigue encima del lector (aria-modal)
+  await expect(page.locator('[aria-modal="true"]')).toHaveCount(0);
   const vp = page.viewportSize()!;
-  await deslizar(page, vp.width - 20, vp.height / 2, -(vp.width - 40));
+  // Sobre el texto, por encima de la hoja de acciones del versículo seleccionado
+  await deslizar(page, vp.width - 20, vp.height * 0.25, -(vp.width - 40));
   await expect(page).toHaveURL(/\/juan\/4$/);
 });
