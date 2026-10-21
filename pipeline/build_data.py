@@ -92,6 +92,26 @@ def write(out, rel, data):
     path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
+# Puntuación pegada a la palabra en TAGNT/TAHOT («ἀγάπῃ.»): no forma parte de la palabra en la concordancia
+FORM_PUNCT = re.compile(r"[.,;:·!?'\"“”‘’()\[\]־׃]+$")
+
+
+def write_concordance(out, concordance, meta, prefix):
+    """Una concordancia por número de Strong: lema, significado, transliteración, acepciones hermanas del mismo
+    número (H2617A y H2617B) y cada aparición como [referencia, forma original, glosa española]."""
+    keys = [k for k in concordance if re.fullmatch(prefix + r"\d+[A-Za-z]?", k)]
+    family = defaultdict(list)
+    for k in keys:
+        family[re.sub(r"[A-Za-z]$", "", k)].append(k)
+    for k in keys:
+        lemma, meaning, translit = meta.get(k, ("", "", ""))
+        related = [r for r in sorted(family[re.sub(r"[A-Za-z]$", "", k)]) if r != k]
+        write(out, f"concordance/{k}.json", {
+            "lemma": lemma, "meaning": meaning, "translit": translit, "related": related,
+            "uses": [[ref, FORM_PUNCT.sub("", form) or form, gloss] for ref, form, gloss in concordance[k]],
+        })
+
+
 def build_text(out):
     src = json.loads(fetch("rv1909.json").read_text(encoding="utf-8"))
     assert len(src["books"]) == len(BOOKS)
@@ -140,10 +160,20 @@ def build_xrefs(out):
         write(out, f"xrefs/{bid}/{ch}.json", verses)
 
 
+def remember_lemma(meta, strong, lemma, meaning, form, translit):
+    """Lema y significado de cada Strong; la transliteración, de una aparición escrita igual que el lema."""
+    known = meta.get(strong)
+    if not known:
+        meta[strong] = known = (lemma, meaning, "")
+    if not known[2] and translit and FORM_PUNCT.sub("", form) == lemma:
+        meta[strong] = (known[0] or lemma, known[1] or meaning, translit)
+
+
 def build_interlinear(out):
     by_chapter = defaultdict(lambda: defaultdict(list))
     paragraph_ends = defaultdict(set)
     concordance = defaultdict(list)
+    meta = {}
     for name in ("tagnt1.txt", "tagnt2.txt"):
         with fetch(name).open(encoding="utf-8-sig") as f:
             for line in f:
@@ -166,6 +196,7 @@ def build_interlinear(out):
                 lemma, _, lemma_gloss = cols[4].partition("=")
                 gloss = fix_gloss(cols[8].strip(), strong.strip())
                 concordance[strong.strip()].append([f"{STEP_TO_ID[book]}.{ch}.{v}", greek.strip(), gloss])
+                remember_lemma(meta, strong.strip(), lemma.strip(), lemma_gloss.strip(), greek.strip(), translit.rstrip(")").strip())
                 by_chapter[(STEP_TO_ID[book], ch)][v].append([
                     greek.strip(),
                     translit.rstrip(")").strip(),
@@ -180,10 +211,8 @@ def build_interlinear(out):
         write(out, f"interlinear/{bid}/{ch}.json", verses)
     for (bid, ch), ends in paragraph_ends.items():
         write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
-    # Concordancia por número de Strong: [referencia, forma griega, glosa]. La usa «¿Por qué esta palabra?».
-    for strong, uses in concordance.items():
-        if re.fullmatch(r"G\d+[A-Za-z]?", strong):
-            write(out, f"concordance/{strong}.json", uses)
+    # La concordancia la usan la pantalla /concordancia y «¿Por qué esta palabra?»
+    write_concordance(out, concordance, meta, "G")
 
 
 # "Gen.1.1#01=L" o "Psa.3.1(3.2)#01=Q(K)": referencia de las Biblias españolas e inglesas (la de la RV1909),
@@ -224,6 +253,7 @@ def build_hebrew(out):
     by_chapter = defaultdict(lambda: defaultdict(list))
     paragraph_ends = defaultdict(set)
     concordance = defaultdict(list)
+    meta = {}
     missing = set()
     for i in range(1, 5):
         with fetch(f"tahot{i}.txt").open(encoding="utf-8-sig") as f:
@@ -254,6 +284,7 @@ def build_hebrew(out):
                     missing.add(english)
                 translit = cols[2].replace("/", "").replace(".", "").replace("\\", "").lower()
                 concordance[strong].append([f"{bid}.{ch}.{v}", hebrew, gloss])
+                remember_lemma(meta, strong, lemma, meaning, hebrew, translit)
                 by_chapter[(bid, ch)][str(v)].append([
                     hebrew, translit, gloss, english.replace("/ ", " ").replace("/", ""),
                     lemma, meaning, strong, cols[5].strip(),
@@ -264,9 +295,7 @@ def build_hebrew(out):
         write(out, f"interlinear/{bid}/{ch}.json", verses)
     for (bid, ch), ends in paragraph_ends.items():
         write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
-    for strong, uses in concordance.items():
-        if re.fullmatch(r"H\d+[A-Za-z]?", strong):
-            write(out, f"concordance/{strong}.json", uses)
+    write_concordance(out, concordance, meta, "H")
 
 
 VERSIONS = [

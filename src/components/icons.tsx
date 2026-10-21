@@ -372,3 +372,13 @@ export const CompareIcon = (p: Props) => (
     <Path d="M5.8 8.5h3M5.8 11.5h3M5.8 14.5h2M15.3 8.5h3M15.3 11.5h2M15.3 14.5h3" />
   </Line>
 );
+
+/** Concordancia: renglones con la misma palabra marcada en cada uno. */
+export const ConcordanceIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4 6h3.5M11.5 6H20M4 12h7M15 12h5M4 18h2.5M10.5 18H20" />
+    <Rect x={7.5} y={4.3} width={4} height={3.4} rx={1.2} />
+    <Rect x={11} y={10.3} width={4} height={3.4} rx={1.2} />
+    <Rect x={6.5} y={16.3} width={4} height={3.4} rx={1.2} />
+  </Line>
+);
