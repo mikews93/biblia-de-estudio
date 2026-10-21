@@ -19,6 +19,42 @@ const text = (c: Msg['content']) =>
   typeof c === 'string' ? c : c.flatMap((b) => (b.type === 'text' && b.text ? [b.text] : [])).join('\n');
 const systemText = (s: Body['system']) => (typeof s === 'string' ? s : (s ?? []).map((b) => b.text ?? '').join('\n'));
 
+const SEMANA = [
+  '# Nacer de nuevo',
+  ...[
+    ['Un encuentro de noche', 'Juan 3:1-3', 'Nicodemo vino de noche', 3],
+    ['El viento sopla', 'Juan 3:4-8', 'El Espíritu es como el viento', 8],
+    ['Mirar y vivir', 'Juan 3:9-15', 'Mirar a Jesús como a la serpiente', 14],
+    ['Tanto amó Dios', 'Juan 3:16-18', 'Dios amó primero', 16],
+    ['De la luz a la luz', 'Juan 3:19-21', 'Venir a la luz', 21],
+  ].map(
+    ([titulo, pasaje, domingo, llevar], i) => `## Día ${i + 1} · ${titulo}
+Pasaje: ${pasaje}
+Del domingo: «${domingo}»
+
+### Observa
+Observación simulada del día ${i + 1}: el texto muestra a Dios que busca.
+
+### Medita
+- ¿Qué ves de Dios en el día ${i + 1}?
+- ¿Dónde te encuentras tú en este texto?
+- ¿Qué te dice hoy «${domingo}»?
+
+### Vive
+- Paso simulado ${i + 1}: llama a alguien y escúchale.
+- Lee el pasaje otra vez antes de dormir.
+
+### Ora
+- Adora: Dios que da vida.
+- Confiesa: lo que escondes de noche.
+- Agradece: su amor que busca.
+- Pide: ojos para ver su reino.
+
+### Llévalo contigo
+${llevar}`,
+  ),
+].join('\n\n');
+
 /** Texto de la respuesta y, si corresponde, una cita al primer documento. */
 function answer(body: Body): { text: string; cite: boolean } {
   const system = systemText(body.system);
@@ -55,6 +91,8 @@ function answer(body: Body): { text: string; cite: boolean } {
       cite: false,
     };
   }
+  // Del sermón a tu semana: cinco días con el formato de src/lib/semanas.ts
+  if (system.includes('Reglas de la semana')) return { text: SEMANA, cite: true };
   // Taller: una respuesta distinta por modo (preguntar, sugerir, revisar) en el primer turno.
   if (system.includes('Reglas del Taller') && !followUp) {
     if (first.includes('Hazme de 3 a 5 preguntas')) {

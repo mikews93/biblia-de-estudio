@@ -38,6 +38,8 @@ type Request = {
   enfoque?: Enfoque;
   /** Pedir otra versión de la herramienta en vez de la que ya está guardada */
   nueva?: boolean;
+  /** Del sermón a tu semana: las notas del sermón para preparar cinco días (src/lib/semanas.ts). */
+  semana?: { notas: string; desde?: number; hasta?: number; predicador?: string };
 };
 
 /** Los dos modos de la pestaña de estudio: un devocional guiado o el estudio profundo del texto. */

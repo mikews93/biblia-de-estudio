@@ -9,6 +9,7 @@ import {
   BooksIcon,
   DownloadIcon,
   HeartIcon,
+  LecternIcon,
   MicIcon,
   PencilIcon,
   PeopleIcon,
@@ -27,9 +28,11 @@ import { useAccount } from '@/lib/comunidad';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
+import { Ruta } from '@/components/SemanaSermon';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { seasonTint } from '@/lib/retos';
+import { diaDeHoy, semanaActiva, siguiente, useSemanas } from '@/lib/semanas';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { dueCards, useCards } from '@/lib/tarjetas';
 import { serif, useColors, useLastRead, useSettings } from '@/lib/theme';
@@ -45,6 +48,7 @@ export default function Today() {
   const plans = usePlans();
   const words = useWords();
   const due = dueCards(useCards()).length;
+  const semana = semanaActiva(useSemanas().semanas);
   const [books, setBooks] = useState<Book[]>([]);
   const last = useLastRead();
   const nube = useEstadoNube();
@@ -196,6 +200,8 @@ export default function Today() {
         </View>
       </Appear>
 
+      {semana && <SemanaCard semana={semana} colors={colors} />}
+
       {activePlans.map((p, i) => (
         <Appear key={p.id} delay={100 + i * 20}>
           <PlanCard plan={p} books={books} words={words} colors={colors} />
@@ -321,6 +327,12 @@ export default function Today() {
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
+        <Tile
+          icon={LecternIcon}
+          label="Del sermón"
+          colors={colors}
+          onPress={() => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward')}
+        />
         <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
       </Appear>
       {devotional && books.find((b) => b.id === daily.book) && (
@@ -362,6 +374,37 @@ function SmallButton({ label, colors, onPress }: { label: string; colors: C; onP
     >
       <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>{label}</Text>
     </Pressable>
+  );
+}
+
+/** La semana del sermón en curso: el día que toca y el camino de los cinco días. */
+function SemanaCard({ semana, colors }: { semana: NonNullable<ReturnType<typeof semanaActiva>>; colors: C }) {
+  const sig = siguiente(semana)!;
+  const hoy = diaDeHoy(semana);
+  return (
+    <Appear delay={90}>
+      <Pressable
+        onPress={() => navigate(() => router.push(`/semana/${semana.id}/${sig + 1}` as never), 'forward')}
+        style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+        accessibilityRole="button"
+      >
+        <Text style={[styles.kicker, { color: colors.warm }]}>Del sermón · {semana.referencia}</Text>
+        <Text style={[styles.continueTitle, { color: colors.text, fontFamily: serif, fontSize: 22 }]} numberOfLines={2}>
+          Día {sig + 1} · {semana.dias[sig].titulo}
+        </Text>
+        {!!semana.dias[sig].domingo && (
+          <Text style={{ color: colors.muted, fontFamily: serif, fontStyle: 'italic', fontSize: 15, lineHeight: 22, marginTop: 6 }} numberOfLines={2}>
+            «{semana.dias[sig].domingo}»
+          </Text>
+        )}
+        <View style={{ marginTop: 16 }}>
+          <Ruta semana={semana} colors={colors} size={26} />
+        </View>
+        <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 14 }}>
+          {sig === hoy ? 'Hacer el día de hoy' : `Seguir con el día ${sig + 1}`} · 10 min ›
+        </Text>
+      </Pressable>
+    </Appear>
   );
 }
 

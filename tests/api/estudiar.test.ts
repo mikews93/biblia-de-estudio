@@ -170,6 +170,35 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(text).toContain('La persona tocó la palabra griega οὕτως');
   });
 
+  it('valida las notas del sermón', async () => {
+    const base = { book: 'jhn', chapter: 3 };
+    const semana = { notas: 'Dios nos busca de noche', desde: 1, hasta: 21 };
+    expect(await bad({ ...base, semana: { ...semana, notas: 'corta' } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana: { ...semana, notas: 'x'.repeat(8001) } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana: { ...semana, desde: 5, hasta: 2 } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana: { ...semana, hasta: undefined, desde: undefined, predicador: 'x'.repeat(81) } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, verse: 3, semana })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana, taller: { modo: 'sugerir', tipo: 'sermon', paso: 'bosquejo' } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana, herramienta: 'mapa' })).toBe('Herramienta no válida');
+  });
+
+  it('la semana del sermón usa sus reglas, lleva las notas y no se guarda para todos', async () => {
+    const semana = { notas: 'Nicodemo vino de noche. Hay que nacer de nuevo.', desde: 1, hasta: 21, predicador: 'Pastor Luis' };
+    const first = textOf(await events(await ask({ book: 'jhn', chapter: 3, semana })));
+    expect(first).toContain('## Día 5');
+    const sent = aiRequests.at(-1)!;
+    expect(sent.system).toContain('Reglas de la semana');
+    expect(sent.system).toContain('No juzgues ni corrijas a quien predicó');
+    const task = sent.messages[0].content.at(-1).text as string;
+    expect(task).toContain('el sermón del domingo sobre Juan 3:1-21, que predicó Pastor Luis');
+    expect(task).toContain('<notas>\nNicodemo vino de noche. Hay que nacer de nuevo.\n</notas>');
+    expect(task).toContain('Prepara cinco días de devocional');
+    // Cada semana es personal: la siguiente vuelve a pedirse a la IA
+    const before = aiRequests.length;
+    await events(await ask({ book: 'jhn', chapter: 3, semana }));
+    expect(aiRequests.length).toBe(before + 1);
+  });
+
   it('el Taller usa sus reglas y lleva el borrador', async () => {
     await events(
       await ask({ book: 'jhn', chapter: 3, taller: { modo: 'revisar', tipo: 'encuentro', paso: 'revisar', desde: 1, hasta: 8, borrador: 'Mi idea' } }),

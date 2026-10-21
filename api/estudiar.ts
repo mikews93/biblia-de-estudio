@@ -1,5 +1,6 @@
 // Función de Vercel: genera un estudio de un capítulo o versículo y responde preguntas sobre él.
 // Con «word» (posición de una palabra hebrea o griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
+// Con «semana» convierte las notas de un sermón en cinco días de devocional sobre su pasaje («Del sermón a tu semana»).
 // Con «herramienta» prepara, para un capítulo, el guion de un resumen en audio a dos voces («podcast»),
 // tarjetas de repaso («tarjetas») o un mapa mental («mapa»), con el formato que la app sabe leer.
 // Lo que sale bien se guarda en la base de datos por capítulo: la siguiente persona lo recibe al instante, sin
@@ -51,7 +52,10 @@ type Body = {
   /** «devocional»: el pasaje guiado para orar y vivirlo. Sin él, el estudio profundo. */
   enfoque?: 'devocional' | 'profundo';
   nueva?: boolean;
+  semana?: Semana;
 };
+// Del sermón a tu semana: lo que la persona anotó del sermón del domingo, para cinco días de devocional.
+type Semana = { notas: string; desde?: number; hasta?: number; predicador?: string };
 // Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
 // pero nunca escribe el mensaje por la persona.
 type Taller = {
@@ -103,6 +107,18 @@ Reglas del devocional:
 - Nunca escribas una oración para que la persona la rece, ni un sermón, ni frases como «Dios te dice hoy…». Ofrece pistas para que ella ore con sus palabras, ancladas en versículos concretos.
 - Las preguntas son abiertas, personales y vuelven al texto; ninguna se responde con sí o no.
 - Tono cálido y sobrio, en segunda persona («tú»). Sé breve.`;
+
+const SEMANA_SYSTEM = `
+
+Ahora acompañas «Del sermón a tu semana»: la persona escuchó un sermón el domingo, te comparte sus notas y quiere seguir meditando ese pasaje cinco días, con un devocional breve cada día. Las notas son suyas: lo que oyó y lo que le tocó.
+
+Reglas de la semana:
+- El centro es el texto bíblico, leído en su contexto y con citas; las notas solo te dicen qué subrayar y por dónde empezar. No añadas un sermón nuevo ni completes el que escuchó.
+- No juzgues ni corrijas a quien predicó. Si algo de las notas no se ve en el texto, no construyas un día sobre eso: quédate con lo que el pasaje sí dice.
+- Cuando cites las notas, copia sus palabras tal como están, sin inventar frases que no escribió.
+- Nunca escribas una oración para que la persona la rece, ni frases como «Dios te dice hoy…». Ofrece preguntas y pistas para que ella ore y decida con sus palabras.
+- Las preguntas son abiertas, personales y vuelven al texto; ninguna se responde con sí o no.
+- Tono cálido y sobrio, en segunda persona («tú»). Sé breve: cada día se hace en 10 minutos.`;
 
 const PASOS = {
   pasaje: 'observar el pasaje (quién, qué, dónde, cuándo, por qué; palabras repetidas; conectores como «pero», «por tanto», «para que»)',
@@ -552,6 +568,63 @@ Son pistas breves para que la persona ore con sus palabras, no oraciones redacta
 El número del versículo del pasaje que conviene memorizar o repetir durante el día, solo el número${verse ? ` (normalmente ${verse})` : ''}.`;
 }
 
+function semanaTask(book: Book, chapter: number, s: Semana) {
+  const target = `${book.name} ${chapter}${s.desde ? `:${s.desde}${s.hasta && s.hasta !== s.desde ? `-${s.hasta}` : ''}` : ''}`;
+  const dia = (n: number, foco: string) => `## Día ${n} · Un título breve (de 2 a 6 palabras)
+Pasaje: ${n === 1 ? target : 'la cita'}
+Del domingo: «una frase copiada tal cual de las notas»
+
+### Observa
+De 60 a 110 palabras: ${foco}, con citas.
+
+### Medita
+- Tres preguntas abiertas, una por línea, con su cita. Una de ellas vuelve a la frase «Del domingo».
+
+### Vive
+- Dos o tres pasos pequeños y concretos para las próximas 24 horas, que salgan del texto (una frase cada uno, con cita).
+
+### Ora
+- Adora: (una frase, con cita)
+- Confiesa: (una frase, con cita)
+- Agradece: (una frase, con cita)
+- Pide: (una frase, con cita)
+
+### Llévalo contigo
+El número de un versículo del pasaje del día, solo el número.`;
+  return `Esta semana quiero seguir meditando el sermón del domingo sobre ${target}${s.predicador ? `, que predicó ${s.predicador}` : ''}. Mis notas del sermón están entre <notas> y </notas>.
+
+<notas>
+${s.notas}
+</notas>
+
+Prepara cinco días de devocional. Los días 1 a 4 recorren el pasaje en orden, cada uno con una porción de pocos versículos (o el pasaje entero si es corto); el día 5 lee un pasaje relacionado de las referencias cruzadas o vuelve al pasaje entero para mirar la semana. Cada día toma de las notas una frase distinta, si las notas lo permiten. Usa la cita del pasaje de cada día con el nombre del libro en español, como «${book.name} ${chapter}:1-4». La app muestra cada sección como un paso; respeta el formato exacto, sin texto antes ni después:
+
+# El título de la semana (de 2 a 6 palabras, sacado del pasaje)
+
+${dia(1, 'la idea central del pasaje y qué revela de Dios')}
+
+${dia(2, 'qué dice esta porción en su contexto')}
+
+(Los días 3, 4 y 5 con el mismo formato. En el día 5, el Observa une lo de la semana sin repetirlo.)`;
+}
+
+const MAX_NOTAS = 8000;
+
+function validSemana(t: unknown): t is Semana {
+  if (!t || typeof t !== 'object') return false;
+  const x = t as Record<string, unknown>;
+  const optInt = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 200);
+  return (
+    typeof x.notas === 'string' &&
+    x.notas.trim().length >= 10 &&
+    x.notas.length <= MAX_NOTAS &&
+    (x.predicador === undefined || (typeof x.predicador === 'string' && x.predicador.length <= 80)) &&
+    optInt(x.desde) &&
+    optInt(x.hasta) &&
+    (x.hasta === undefined || (x.desde !== undefined && (x.hasta as number) >= (x.desde as number)))
+  );
+}
+
 function badRequest(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
@@ -590,20 +663,24 @@ export async function POST(request: Request) {
   }
   if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
   const taller = body.taller;
+  if (body.semana !== undefined && (!validSemana(body.semana) || taller || verse !== undefined || word !== undefined || turns.length > 0)) {
+    return badRequest('Notas del sermón no válidas');
+  }
+  const semana = body.semana;
   const herramienta = body.herramienta;
   if (body.enfoque !== undefined && !['devocional', 'profundo'].includes(body.enfoque)) return badRequest('Enfoque no válido');
   const devocional = body.enfoque === 'devocional' && !taller && !herramienta && word === undefined;
   if (
     herramienta !== undefined &&
-    (!Object.hasOwn(HERRAMIENTAS, herramienta) || verse !== undefined || taller || turns.length > 0)
+    (!Object.hasOwn(HERRAMIENTAS, herramienta) || verse !== undefined || taller || semana || turns.length > 0)
   ) {
     return badRequest('Herramienta no válida');
   }
   if (body.nueva !== undefined && (typeof body.nueva !== 'boolean' || !herramienta)) return badRequest('Pedido no válido');
 
-  // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos.
+  // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos. La semana es de cada persona.
   const clave =
-    !herramienta && !taller && turns.length === 0
+    !herramienta && !taller && !semana && turns.length === 0
       ? [STUDY_VERSION, devocional ? 'devocional' : 'profundo', book.id, chapter, verse ?? '', word ?? ''].join(':')
       : null;
 
@@ -636,7 +713,9 @@ export async function POST(request: Request) {
         ...docs.map((d) => d.param),
         {
           type: 'text',
-          text: taller
+          text: semana
+            ? semanaTask(book, chapter, semana)
+            : taller
             ? tallerTask(book, chapter, verse, taller)
             : herramienta
               ? HERRAMIENTAS[herramienta](book, chapter, hasOriginal && book.interlinear)
@@ -665,7 +744,13 @@ export async function POST(request: Request) {
           {
             model: MODEL,
             max_tokens: 16000,
-            system: taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM,
+            system: semana
+              ? SYSTEM + SEMANA_SYSTEM
+              : taller
+                ? SYSTEM + TALLER_SYSTEM
+                : devocional
+                  ? SYSTEM + DEVOCIONAL_SYSTEM
+                  : SYSTEM,
             messages,
             cache_control: { type: 'ephemeral' },
             output_config: { effort: 'medium' },
