@@ -5,6 +5,7 @@ import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
 import AvisosSync from '@/components/AvisosSync';
+import SincroniaCuenta from '@/components/Sincronia';
 import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
 import { init as initDownloads } from '@/lib/descargas';
@@ -97,6 +98,7 @@ function AppStack() {
       <OfflineBanner />
       <TabBar />
       {Platform.OS === 'web' && <AvisosSync />}
+      <SincroniaCuenta />
       {Platform.OS === 'web' && (
         <>
           <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />

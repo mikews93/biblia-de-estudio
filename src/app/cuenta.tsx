@@ -3,6 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { ProgresoCuenta } from '@/components/Sincronia';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
@@ -110,9 +111,9 @@ export default function AccountScreen() {
 
   const out = async () => {
     const msg = hasPassword
-      ? 'Podrás volver a entrar con tu correo y tu contraseña.'
+      ? 'Tu progreso queda guardado en tu cuenta. Podrás volver a entrar con tu correo y tu contraseña.'
       : usuario.facebook
-        ? 'Podrás volver a entrar con Facebook.'
+        ? 'Tu progreso queda guardado en tu cuenta. Podrás volver a entrar con Facebook.'
         : 'Tu cuenta no tiene correo: si sales, no podrás volver a entrar en ella.';
     if (!(await confirm('¿Cerrar sesión en este dispositivo?', msg, 'Cerrar sesión'))) return;
     await signOut();
@@ -122,7 +123,7 @@ export default function AccountScreen() {
   const remove = async () => {
     const ok = await confirm(
       '¿Borrar tu cuenta?',
-      'Se borran tu nombre, tu foto, tus notas, tus peticiones, tus publicaciones, tus comentarios y tus amistades, y sales de todos tus grupos. No se puede deshacer.',
+      'Se borran tu nombre, tu foto, el progreso guardado en la cuenta, tus notas, tus peticiones, tus publicaciones, tus comentarios y tus amistades, y sales de todos tus grupos. No se puede deshacer.',
       'Borrar cuenta',
     );
     if (!ok) return;
@@ -179,6 +180,10 @@ export default function AccountScreen() {
           </View>
           <ErrorText>{photoAction.error}</ErrorText>
         </View>
+      </Appear>
+
+      <Appear delay={40}>
+        <ProgresoCuenta />
       </Appear>
 
       <Appear delay={60}>

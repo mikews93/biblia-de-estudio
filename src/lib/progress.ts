@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 
 import { reportReading } from './comunidad';
 import { markPlanReading } from './planes';
+import { cambio, registrar } from './sincronia';
 
-// Progreso de lectura guardado en el dispositivo. La racha es semanal y perdona días:
+// Progreso de lectura guardado en el dispositivo (y en la cuenta, si hay una: ver sincronia.ts). La racha es semanal y perdona días:
 // cuenta cuántos días distintos se leyó en la semana, con una meta de 5 de 7.
 
 export const WEEKLY_GOAL = 5;
@@ -36,12 +37,44 @@ export async function markChapterRead(book: string, chapter: number) {
   const read = new Set(state.chapters[book] ?? []);
   read.add(chapter);
   const days = state.days.includes(today()) ? state.days : [...state.days, today()].slice(-120);
-  state = { chapters: { ...state.chapters, [book]: [...read].sort((a, b) => a - b) }, days };
-  AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
-  listeners.forEach((l) => l());
+  write({ chapters: { ...state.chapters, [book]: [...read].sort((a, b) => a - b) }, days });
+  cambio();
   reportReading(book, chapter);
   markPlanReading(book, chapter);
 }
+
+function write(next: Progress) {
+  state = next;
+  AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
+  listeners.forEach((l) => l());
+}
+
+// En la cuenta va un capítulo leído por entrada («c.jhn.3») y un día con lectura por entrada («d.2026-10-21»):
+// lo leído en dos dispositivos se suma.
+registrar<Progress>({
+  nombre: 'progreso',
+  leer: () => load().then(() => state),
+  escribir: write,
+  partir: (s) => {
+    const out: Record<string, 1> = {};
+    for (const [book, chapters] of Object.entries(s.chapters)) for (const c of chapters) out[`c.${book}.${c}`] = 1;
+    for (const d of s.days) out[`d.${d}`] = 1;
+    return out;
+  },
+  unir: (entradas) => {
+    const chapters: Record<string, number[]> = {};
+    const days: string[] = [];
+    for (const k of Object.keys(entradas)) {
+      if (k.startsWith('d.')) days.push(k.slice(2));
+      else if (k.startsWith('c.')) {
+        const [, book, c] = k.split('.');
+        (chapters[book] ??= []).push(Number(c));
+      }
+    }
+    for (const list of Object.values(chapters)) list.sort((a, b) => a - b);
+    return { chapters, days: days.sort().slice(-120) };
+  },
+});
 
 /** Lunes a domingo de la semana actual, con si hubo lectura ese día. */
 export function weekDays(days: string[]) {

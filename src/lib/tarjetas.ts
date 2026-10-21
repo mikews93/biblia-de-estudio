@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { Source } from './estudio';
 import { splitCites } from './herramientas';
 import { dateKey } from './planes';
+import { cambio, registrar } from './sincronia';
 
-// Tarjetas de repaso con repetición espaciada, guardadas solo en el dispositivo.
+// Tarjetas de repaso con repetición espaciada, guardadas en el dispositivo (y en la cuenta, si hay una).
 // Hay dos tipos: las que la IA prepara de un capítulo (pregunta y respuesta con su cita) y los
 // versículos que la persona elige memorizar. El calendario sigue una versión sencilla de SM-2
 // (el algoritmo de Anki): cada acierto alarga el intervalo según la facilidad de la tarjeta.
@@ -50,11 +51,25 @@ function load() {
   return loaded;
 }
 
-function save(next: Record<string, Card>) {
+function write(next: Record<string, Card>) {
   state = next;
   AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
   listeners.forEach((l) => l());
 }
+
+function save(next: Record<string, Card>) {
+  write(next);
+  cambio();
+}
+
+registrar<Record<string, Card>>({
+  nombre: 'tarjetas',
+  leer: () => load().then(() => state),
+  escribir: write,
+  partir: (s) => s,
+  unir: (entradas) => entradas as Record<string, Card>,
+  hora: (v) => (v as Card).created,
+});
 
 export function useCards(): Record<string, Card> {
   const [, setTick] = useState(0);

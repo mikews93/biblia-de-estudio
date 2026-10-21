@@ -9,6 +9,8 @@ export {
   CameraIcon,
   CheckIcon,
   ChurchIcon,
+  CloudCheckIcon,
+  CloudUpIcon,
   DevicesIcon,
   DownloadIcon,
   FacebookLogo,

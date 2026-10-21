@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Turn } from './estudio';
+import { cambio, registrar } from './sincronia';
 
-// Las preguntas que cada persona le hace a la IA en el estudio, con sus respuestas, guardadas solo en el
-// dispositivo: nadie más las ve. El estudio del pasaje es el mismo para todos (se guarda en el servidor);
+// Las preguntas que cada persona le hace a la IA en el estudio, con sus respuestas: nadie más las ve. Se guardan
+// en el dispositivo y, si hay cuenta, en ella (privadas, como las notas). El estudio del pasaje es el mismo para todos (se guarda en el servidor);
 // aquí va la conversación entera para volver a verla al abrir el estudio otra vez.
 
 const KEY = 'mis-preguntas';
@@ -55,7 +56,20 @@ export async function saveConversation(key: string, turns: Turn[]) {
   }
   state = next;
   await AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
+  cambio();
 }
+
+registrar<Record<string, Entry>>({
+  nombre: 'preguntas',
+  leer: () => load().then(() => state),
+  escribir: (next) => {
+    state = next;
+    AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
+  },
+  partir: (s) => s,
+  unir: (entradas) => entradas as Record<string, Entry>,
+  hora: (v) => (v as Entry).updated,
+});
 
 /** Borra las preguntas de un pasaje; el estudio general sigue ahí. */
 export const forgetConversation = (key: string) => saveConversation(key, []);

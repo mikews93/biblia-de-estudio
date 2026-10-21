@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { cambio, registrar } from './sincronia';
+
 // Diario devocional: lo que la persona escribe al terminar un devocional (la frase que la detuvo,
-// su oración y el paso para hoy). Se guarda solo en el dispositivo, como las notas.
+// su oración y el paso para hoy). Se guarda en el dispositivo y, si hay cuenta, en ella, como las notas.
 
 export type Entrada = {
   id: string;
@@ -38,11 +40,25 @@ function load() {
   return loaded;
 }
 
-function save(next: Entrada[]) {
+function write(next: Entrada[]) {
   state = next;
   AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
   listeners.forEach((l) => l());
 }
+
+function save(next: Entrada[]) {
+  write(next);
+  cambio();
+}
+
+registrar<Entrada[]>({
+  nombre: 'diario',
+  leer: () => load().then(() => state),
+  escribir: write,
+  partir: (s) => Object.fromEntries(s.map((e) => [e.id, e])),
+  unir: (entradas) => (Object.values(entradas) as Entrada[]).sort((a, b) => b.created - a.created),
+  hora: (v) => (v as Entrada).created,
+});
 
 /** Guarda la entrada (o la reemplaza si ya existe con el mismo id) y la deja la primera. */
 export async function saveEntrada(entrada: Entrada) {

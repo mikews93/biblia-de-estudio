@@ -55,6 +55,22 @@ export const OfflineIcon = (p: Props) => (
   </Line>
 );
 
+/** Nube cerrada con una marca: todo guardado en la cuenta. */
+export const CloudCheckIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7.2 18.5h10.3a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7.5 9a4.75 4.75 0 0 0-.3 9.5z" />
+    <Path d="M9.6 13.9l1.8 1.8 3.2-3.4" />
+  </Line>
+);
+
+/** Nube con flecha hacia arriba: guardando en la cuenta. */
+export const CloudUpIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7 17.5H6a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 16 8a4.5 4.5 0 0 1 2 8.6" />
+    <Path d="M12 20.5V12M8.8 15.2 12 12l3.2 3.2" />
+  </Line>
+);
+
 /** Marca de listo. */
 export const CheckIcon = (p: Props) => (
   <Line {...p}>
