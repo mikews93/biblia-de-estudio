@@ -372,3 +372,29 @@ export const CompareIcon = (p: Props) => (
     <Path d="M5.8 8.5h3M5.8 11.5h3M5.8 14.5h2M15.3 8.5h3M15.3 11.5h2M15.3 14.5h3" />
   </Line>
 );
+
+/** Ondas a los lados de un punto: un evento en vivo. */
+export const LiveIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={12} cy={12} r={2.2} fill={p.color} />
+    <Path d="M8.2 8.2a5.4 5.4 0 0 0 0 7.6M15.8 8.2a5.4 5.4 0 0 1 0 7.6M5.3 5.3a9.5 9.5 0 0 0 0 13.4M18.7 5.3a9.5 9.5 0 0 1 0 13.4" />
+  </Line>
+);
+
+/** Tres esquinas de un código QR: unirse con la cámara. */
+export const QrIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={4} y={4} width={6} height={6} rx={1.2} />
+    <Rect x={14} y={4} width={6} height={6} rx={1.2} />
+    <Rect x={4} y={14} width={6} height={6} rx={1.2} />
+    <Path d="M14 14h2.5v2.5M20 14v.01M14 20h.01M17.5 20H20v-3" />
+  </Line>
+);
+
+/** Una pantalla sobre su pie: proyectar en la iglesia. */
+export const ScreenIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={3.5} y={4.5} width={17} height={11.5} rx={1.8} />
+    <Path d="M12 16v3.5M8.5 19.5h7" />
+  </Line>
+);

@@ -21,8 +21,9 @@ export type Seccion = {
   /** Notas o borrador de quien prepara (en un encuentro, las notas del líder). */
   texto: string;
   minutos: number;
-  /** Solo encuentros: lo que ve el grupo (preguntas, instrucciones) y quién guía la parte. */
+  /** Lo que ve el grupo (preguntas, instrucciones) en un encuentro, o la congregación en un evento de iglesia. */
   paraGrupo?: string;
+  /** Solo encuentros: quién guía la parte. */
   responsable?: string;
   dinamica?: string;
 };
@@ -44,6 +45,8 @@ export type Mensaje = {
   minutos: number;
   creado: string;
   actualizado: string;
+  /** Si se publicó como evento de iglesia (src/lib/eventos.ts): su código y si lleva las notas de quien predica. */
+  evento?: { codigo: string; conNotas: boolean; gradual: boolean };
 };
 
 type SeccionBase = { titulo: string; ayuda: string; minutos: number; dinamica?: string };
@@ -334,6 +337,7 @@ export async function duplicarMensaje(id: string): Promise<string | null> {
     secciones: m.secciones.map((s) => ({ ...s, id: uid() })),
     revision: [],
     seguimiento: '',
+    evento: undefined,
     creado: now,
     actualizado: now,
   };

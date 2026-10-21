@@ -15,7 +15,7 @@ import postgres from 'postgres';
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 
 /** Los almacenes que se guardan (src/lib/sincronia.ts → registrar). */
-const ALMACENES = new Set(['ajustes', 'ultima-lectura', 'progreso', 'resaltados', 'notas', 'planes', 'diario', 'tarjetas', 'taller', 'preguntas']);
+const ALMACENES = new Set(['ajustes', 'ultima-lectura', 'progreso', 'resaltados', 'notas', 'planes', 'diario', 'tarjetas', 'taller', 'preguntas', 'eventos']);
 const MAX_CAMBIOS = 400;
 const MAX_CLAVE = 200;
 /** Bytes del JSON de una entrada (un mensaje largo del Taller cabe de sobra). */

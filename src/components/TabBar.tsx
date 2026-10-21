@@ -22,7 +22,7 @@ const TABS: Tab[] = [
 function current(path: string): Tab['key'] {
   if (path === '/' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas') return 'hoy';
   if (/^\/(planes|grupos|unirse)(\/|$)/.test(path)) return 'planes';
-  if (/^\/(comunidades|amigo|cuenta)(\/|$)/.test(path)) return 'comunidad';
+  if (/^\/(comunidades|amigo|cuenta|eventos?)(\/|$)/.test(path)) return 'comunidad';
   if (path.startsWith('/taller')) return 'taller';
   return 'leer';
 }
@@ -38,8 +38,8 @@ export default function TabBar() {
   // Las barras ocultas al leer vuelven en cuanto se cambia de pantalla.
   useEffect(() => setChromeHidden(false), [path]);
 
-  // Al presentar un mensaje la pantalla es toda para el texto.
-  if (path.endsWith('/presentar')) return null;
+  // Al presentar un mensaje (o proyectarlo en la iglesia) la pantalla es toda para el texto.
+  if (path.endsWith('/presentar') || path.endsWith('/proyectar')) return null;
 
   const go = async (key: Tab['key']) => {
     if (key === active && key !== 'leer' && (key !== 'hoy' || path === '/')) return;

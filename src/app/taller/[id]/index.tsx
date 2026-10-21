@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, Card, Chips, ErrorText, Field, IconText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, type IconProps, PlayIcon, SparkIcon } from '@/components/icons';
+import PublicarEvento from '@/components/evento/Publicar';
 import { DinamicaCard, DinamicaPicker } from '@/components/taller/Dinamicas';
 import TallerIA, { Modo, Paso } from '@/components/taller/TallerIA';
 import { api, useAccount } from '@/lib/comunidad';
@@ -551,6 +552,8 @@ function CompartirStep({ m, books }: { m: Mensaje; books: Book[] }) {
       <Text style={{ color: colors.muted, fontSize: 13 }}>
         Pantalla completa con letra grande, una parte a la vez, temporizador y el pasaje a un toque.
       </Text>
+
+      <PublicarEvento m={m} books={books} />
 
       {encuentro && (
         <>

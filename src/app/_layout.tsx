@@ -93,6 +93,9 @@ function AppStack() {
           <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
           <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
           <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
+          <Stack.Screen name="eventos" options={{ title: 'Eventos' }} />
+          <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
+          <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
         </Stack>
       </View>
       <AudioBar />
