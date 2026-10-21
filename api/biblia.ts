@@ -51,33 +51,57 @@ async function youversion<T>(pathAndQuery: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-let yvCache: { at: number; ids: Promise<Set<number>> } | null = null;
+type YvBible = { id: number; abbreviation?: string; localized_abbreviation?: string; title?: string };
+let yvCache: { at: number; bibles: Promise<YvBible[]> } | null = null;
+/** Lo que respondió YouVersion la última vez, para ?diagnostico=1 (sin claves). */
+const yvLog: string[] = [];
 
-/** Ids de YouVersion de las Biblias en español e inglés cuya licencia aceptó la app. */
-function yvAccessible(): Promise<Set<number>> {
+/** Biblias en español e inglés cuya licencia aceptó la app de YouVersion. */
+function yvAccessible(): Promise<YvBible[]> {
   if (!yvCache || Date.now() - yvCache.at > LIST_TTL) {
+    yvLog.length = 0;
     // Con varios idiomas a la vez solo devuelve los del primero que tenga Biblias: se pide cada uno por separado.
-    const ids = Promise.all(
-      ['es', 'en'].map((lang) =>
-        youversion<{ data: { id: number }[] }>(`bibles?language_ranges[]=${lang}&page_size=99&fields[]=id`)
-          .then((r) => r.data.map((b) => b.id))
-          .catch(() => [] as number[]),
+    // El código puede ir en ISO 639-1 (es) o 639-3 (spa): se prueban los dos.
+    const bibles = Promise.all(
+      ['es', 'spa', 'en', 'eng'].map((lang) =>
+        youversion<{ data: YvBible[] }>(`bibles?language_ranges[]=${lang}&page_size=99`)
+          .then((r) => {
+            yvLog.push(`${lang}: ${r.data.length} Biblias`);
+            return r.data;
+          })
+          .catch((err) => {
+            yvLog.push(`${lang}: ${err instanceof Error ? err.message : err}`);
+            console.error(`YouVersion ${lang}:`, err);
+            return null;
+          }),
       ),
-    ).then((lists) => new Set(lists.flat()));
-    ids.catch(() => (yvCache = null));
-    yvCache = { at: Date.now(), ids };
+    ).then((lists) => {
+      if (lists.every((l) => l === null)) yvCache = null; // sin respuesta: se vuelve a preguntar
+      const seen = new Map<number, YvBible>();
+      for (const b of lists.flat()) if (b) seen.set(b.id, b);
+      return [...seen.values()];
+    });
+    yvCache = { at: Date.now(), bibles };
   }
-  return yvCache.ids;
+  return yvCache.bibles;
+}
+
+/** Id de YouVersion de una versión: por su id conocido o, si no, por su abreviatura. */
+function yvIdOf(v: Licensed, bibles: YvBible[]): number | undefined {
+  const known = v.yvIds?.find((id) => bibles.some((b) => b.id === id));
+  if (known) return known;
+  const abbr = v.abbr.toUpperCase();
+  return bibles.find((b) => [b.abbreviation, b.localized_abbreviation].some((a) => a?.toUpperCase() === abbr))?.id;
 }
 
 /** De dónde se lee una versión: API.Bible si la clave la tiene, si no YouVersion; null si ninguna. */
 async function sourceOf(v: Licensed): Promise<{ apiBible: string } | { yv: number } | null> {
   const [api, yv] = await Promise.all([
     KEY ? accessible().catch(() => new Set<string>()) : new Set<string>(),
-    YV_KEY ? yvAccessible() : new Set<number>(),
+    YV_KEY ? yvAccessible() : ([] as YvBible[]),
   ]);
   if (v.bibleId && api.has(v.bibleId)) return { apiBible: v.bibleId };
-  const yvId = v.yvIds?.find((id) => yv.has(id));
+  const yvId = yvIdOf(v, yv);
   return yvId ? { yv: yvId } : null;
 }
 
@@ -109,6 +133,21 @@ type ChapterResponse = {
 export async function GET(request: Request) {
   const query = new URL(request.url).searchParams;
   try {
+    if (query.get('diagnostico')) {
+      // Qué ve cada clave, sin mostrar las claves: para revisar desde el navegador por qué falta una versión.
+      const [api, yv] = await Promise.all([
+        KEY
+          ? accessible()
+              .then((ids) => LICENSED.filter((v) => v.bibleId && ids.has(v.bibleId)).map((v) => v.abbr))
+              .catch((e) => String(e))
+          : 'sin API_BIBLE_KEY',
+        YV_KEY ? yvAccessible() : ([] as YvBible[]),
+      ]);
+      return json({
+        apiBible: api,
+        youversion: YV_KEY ? { respuestas: yvLog, biblias: yv.map((b) => `${b.id} ${b.abbreviation ?? ''} ${b.title ?? ''}`) } : 'sin YVP_APP_KEY',
+      });
+    }
     if (query.get('versiones')) {
       const sources = await Promise.all(LICENSED.map((v) => sourceOf(v).catch(() => null)));
       const versions = LICENSED.filter((_, i) => sources[i]).map(({ id, abbr, name, credit, link }) => ({
@@ -119,7 +158,7 @@ export async function GET(request: Request) {
         link,
         licensed: true,
       }));
-      return json({ versions }, 200, 'public, s-maxage=21600, stale-while-revalidate=86400');
+      return json({ versions }, 200, 'public, s-maxage=3600, stale-while-revalidate=86400');
     }
     const version = licensedById(query.get('v') ?? '');
     const book = (query.get('book') ?? '').toLowerCase();
