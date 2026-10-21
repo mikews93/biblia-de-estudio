@@ -60,6 +60,8 @@ function AppStack() {
           <Stack.Screen name="[book]/[chapter]/index" options={{ title: '' }} />
           <Stack.Screen name="[book]/[chapter]/[verse]" options={{ title: '' }} />
           <Stack.Screen name="mapa/[book]/[chapter]" options={{ title: 'Lugares' }} />
+          <Stack.Screen name="recorrido/[book]/[chapter]" options={{ title: 'En el mapa' }} />
+          <Stack.Screen name="recorridos" options={{ title: 'Recorridos' }} />
           <Stack.Screen name="podcast/[book]/[chapter]" options={{ title: 'Resumen en audio' }} />
           <Stack.Screen name="comparar/[book]/[chapter]" options={{ title: 'Comparar versiones' }} />
           <Stack.Screen name="mapa-mental/[book]/[chapter]" options={{ title: 'Mapa mental' }} />

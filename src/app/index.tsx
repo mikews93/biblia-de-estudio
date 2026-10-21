@@ -7,6 +7,7 @@ import PlanIcon from '@/components/PlanIcon';
 import {
   BellIcon,
   BooksIcon,
+  RouteIcon,
   DownloadIcon,
   HeartIcon,
   MicIcon,
@@ -321,6 +322,7 @@ export default function Today() {
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
+        <Tile icon={RouteIcon} label="Recorridos" colors={colors} onPress={() => navigate(() => router.push('/recorridos' as never), 'forward')} />
         <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
       </Appear>
       {devotional && books.find((b) => b.id === daily.book) && (

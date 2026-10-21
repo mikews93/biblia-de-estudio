@@ -1,5 +1,5 @@
 import { useAudioPlayerStatus } from 'expo-audio';
-import { usePathname } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -24,8 +24,11 @@ import {
   useAudio,
   useCatalog,
 } from '@/lib/audio';
+import { RouteIcon } from '@/components/icons';
+import { getPlaces } from '@/lib/data';
+import { journeysFor, recorridoHref } from '@/lib/recorridos';
 import { Colors, serif, useColors } from '@/lib/theme';
-import { fixedInTransition } from '@/lib/transition';
+import { fixedInTransition, navigate } from '@/lib/transition';
 
 import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon, TalkIcon } from './audioIcons';
 
@@ -46,6 +49,8 @@ export default function AudioBar() {
   useEffect(() => setLocation(path), [path]);
 
   if (!audio.open) return null;
+  // El mapa que sigue la lectura ya trae sus controles para el capítulo que suena
+  if (audio.book && audio.kind !== 'podcast' && path === recorridoHref(audio.book, audio.chapter)) return null;
   return <Bar />;
 }
 
@@ -56,6 +61,15 @@ function Bar() {
   const status = useAudioPlayerStatus(getPlayer());
   const [width, setWidth] = useState(0);
   const [picking, setPicking] = useState(false);
+  const path = usePathname();
+  const [mappable, setMappable] = useState(false);
+  useEffect(() => {
+    setMappable(false);
+    if (!audio.book) return;
+    if (journeysFor(audio.book, audio.chapter).length) setMappable(true);
+    else getPlaces(audio.book, audio.chapter).then((p) => setMappable(p.length > 0), () => {});
+  }, [audio.book, audio.chapter]);
+  const onMap = path.startsWith('/recorrido/');
 
   const speech = audio.speech;
   const file = audio.audio;
@@ -86,6 +100,18 @@ function Bar() {
           </Text>
           <Subtitle audio={audio} colors={colors} canPick={others.length > 0} onPick={() => setPicking(!picking)} />
         </View>
+        {mappable && !onMap && audio.kind !== 'podcast' && (
+          <Pressable
+            onPress={() => navigate(() => router.push(recorridoHref(audio.book!, audio.chapter) as never), 'forward')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Seguir en el mapa"
+            style={({ pressed }) => [styles.mapBtn, { borderColor: colors.border }, pressed && styles.pressed]}
+          >
+            <RouteIcon color={colors.text} size={17} />
+            <Text style={[styles.mapText, { color: colors.text }]}>Mapa</Text>
+          </Pressable>
+        )}
         <Pressable
           onPress={closeAudio}
           hitSlop={12}
@@ -248,6 +274,8 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   badge: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 16, fontWeight: '700' },
+  mapBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, height: 30 },
+  mapText: { fontSize: 12.5, fontWeight: '700' },
   close: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   switch: {
     flexDirection: 'row',
