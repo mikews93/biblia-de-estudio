@@ -12,15 +12,18 @@ import {
   MicIcon,
   PencilIcon,
   PeopleIcon,
+  PersonIcon,
   PlansIcon,
   SearchIcon,
   SparkIcon,
   type IconProps,
 } from '@/components/icons';
 import PlanCard from '@/components/PlanCard';
-import { InvitacionCuenta, NubeEstado } from '@/components/Sincronia';
+import { Avatar } from '@/components/comunidad/ui';
+import { InvitacionCuenta, NubeEstado, useEstadoNube } from '@/components/Sincronia';
 import StudyPanel from '@/components/StudyPanel';
 import VerseImage from '@/components/VerseImage';
+import { useAccount } from '@/lib/comunidad';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
@@ -36,6 +39,7 @@ import { voiceSupported } from '@/lib/voz';
 /** Inicio («Hoy»): seguir leyendo, el versículo del día, la semana y accesos. */
 export default function Today() {
   const colors = useColors();
+  const { usuario } = useAccount();
   const { settings } = useSettings();
   const progress = useProgress();
   const plans = usePlans();
@@ -43,6 +47,7 @@ export default function Today() {
   const due = dueCards(useCards()).length;
   const [books, setBooks] = useState<Book[]>([]);
   const last = useLastRead();
+  const nube = useEstadoNube();
   const [verseText, setVerseText] = useState<string | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [sharing, setSharing] = useState(false);
@@ -93,7 +98,6 @@ export default function Today() {
             </Text>
             <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>{greeting()}</Text>
           </View>
-          <NubeEstado />
           {canNotify && (
             <Pressable
               onPress={() => navigate(() => router.push('/notificaciones' as never), 'forward')}
@@ -105,6 +109,15 @@ export default function Today() {
               {avisos.endpoint && <View style={[styles.bellDot, { backgroundColor: colors.accent, borderColor: colors.surface }]} />}
             </Pressable>
           )}
+          <Pressable
+            onPress={() => navigate(() => router.push('/cuenta'), 'forward')}
+            style={({ pressed }) => [styles.bell, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={nube ? `Tu perfil · ${nube}` : 'Tu perfil'}
+          >
+            {usuario ? <Avatar name={usuario.nombre} foto={usuario.foto} size={38} /> : <PersonIcon color={colors.accent} />}
+            <NubeEstado />
+          </Pressable>
         </View>
       </Appear>
 

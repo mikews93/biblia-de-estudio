@@ -54,7 +54,8 @@ test('lo del teléfono pasa a la cuenta y aparece en otro dispositivo', async ({
   await page2.goto('/');
   await expect(page2.getByTestId('aviso-sincronia')).toHaveText('Trajimos tu progreso de la cuenta');
   await expect(page2.getByText('Romanos 8')).toBeVisible();
-  await expect(page2.getByTestId('nube-estado')).toHaveAccessibleName('Tu progreso: Guardado en tu cuenta');
+  await expect(page2.getByTestId('nube-estado')).toBeVisible();
+  await expect(page2.getByRole('button', { name: 'Tu perfil · Guardado en tu cuenta' })).toBeVisible();
   await page2.goto('/notas');
   await expect(v(page2.getByLabel('Editar nota'))).toHaveText('Todo ayuda a bien.');
 

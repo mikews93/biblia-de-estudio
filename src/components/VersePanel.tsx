@@ -16,6 +16,7 @@ import {
   parseRef,
 } from '@/lib/data';
 import Commentary from '@/components/Commentary';
+import { CompareVerse } from '@/components/Comparar';
 import GroupNotes from '@/components/comunidad/GroupNotes';
 import { CloseIcon } from '@/components/icons';
 import PlaceMap from '@/components/PlaceMap';
@@ -26,7 +27,7 @@ import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
-export type Tab = 'interlineal' | 'referencias' | 'mapa' | 'comentario' | 'grupo';
+export type Tab = 'interlineal' | 'versiones' | 'referencias' | 'mapa' | 'comentario' | 'grupo';
 
 type Props = {
   book: Book;
@@ -48,6 +49,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
 
   const tabs: [Tab, string][] = [
     ['interlineal', 'Interlineal'],
+    ['versiones', 'Versiones'],
     ['referencias', 'Referencias'],
     ['mapa', 'Mapa'],
     ['comentario', 'Comentario'],
@@ -77,9 +79,12 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
               <CloseIcon color={colors.muted} size={18} />
             </Pressable>
           </View>
-          <Text style={[styles.verseText, { color: colors.text }]} numberOfLines={3}>
-            {text}
-          </Text>
+          {/* En Versiones el versículo ya está en la primera tarjeta */}
+          {tab !== 'versiones' && (
+            <Text style={[styles.verseText, { color: colors.text }]} numberOfLines={3}>
+              {text}
+            </Text>
+          )}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -100,6 +105,9 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
           </ScrollView>
           <ScrollView contentContainerStyle={styles.body}>
             {tab === 'interlineal' && <Interlinear book={book} chapter={chapter} verse={verse} colors={colors} />}
+            {tab === 'versiones' && (
+              <CompareVerse book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+            )}
             {tab === 'referencias' && (
               <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
             )}

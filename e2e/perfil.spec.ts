@@ -7,6 +7,18 @@ import { conSesion, cuentaNueva, expect, test } from './support/fixtures';
 
 const FOTO = path.resolve('assets/icon.png');
 
+test('el perfil se abre desde Hoy, con la foto cuando la hay', async ({ page, request }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Tu perfil' }).click();
+  await expect(page).toHaveURL(/\/cuenta$/);
+
+  const ana = await cuentaNueva(request, 'Ana');
+  await conSesion(page, ana);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Tu perfil' }).click();
+  await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeVisible();
+});
+
 test('editar el perfil: lo que escribes lo ve otra persona en tu perfil', async ({ page, request, browser }) => {
   const ana = await cuentaNueva(request, 'Ana Profetisa');
   await conSesion(page, ana);

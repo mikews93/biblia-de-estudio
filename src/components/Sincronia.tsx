@@ -89,24 +89,35 @@ function EstadoIcono({ estado, colors, size = 22 }: { estado: Estado; colors: Co
   return <CloudCheckIcon color={colors.accent} size={size} />;
 }
 
-/** Botón redondo de la cabecera de Hoy con el estado de la sincronía; lleva al perfil. */
+/** Cómo se lee el estado de la sincronía (para el botón del perfil en Hoy), o null sin cuenta. */
+export function useEstadoNube(): string | null {
+  const { usuario } = useAccount();
+  const { estado } = useSincronia();
+  if (!usuario || estado === 'sin-cuenta') return null;
+  return TEXTOS[estado].corto;
+}
+
+/** Insignia con una nube sobre la foto del botón del perfil en Hoy: el estado de la sincronía. */
 export function NubeEstado() {
   const colors = useColors();
   const { usuario } = useAccount();
   const { estado } = useSincronia();
   if (!usuario || estado === 'sin-cuenta') return null;
-  const t = TEXTOS[estado];
+  const tinta = estado === 'error' ? colors.surface : estado === 'sin-conexion' ? colors.muted : colors.accent;
   return (
-    <Pressable
-      onPress={() => navigate(() => router.push('/cuenta'), 'forward')}
-      style={({ pressed }) => [styles.round, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={`Tu progreso: ${t.corto}`}
+    <View
+      pointerEvents="none"
       testID="nube-estado"
+      style={[styles.badge, { backgroundColor: estado === 'error' ? colors.accent : colors.surface, borderColor: colors.background }]}
     >
-      <EstadoIcono estado={estado} colors={colors} />
-      {estado === 'error' && <View style={[styles.dot, { backgroundColor: colors.accent, borderColor: colors.surface }]} />}
-    </Pressable>
+      {estado === 'sin-conexion' ? (
+        <OfflineIcon color={tinta} size={13} strokeWidth={2.2} />
+      ) : estado === 'guardando' || estado === 'pendiente' ? (
+        <CloudUpIcon color={tinta} size={13} strokeWidth={2.2} />
+      ) : (
+        <CloudCheckIcon color={tinta} size={13} strokeWidth={2.2} />
+      )}
+    </View>
   );
 }
 
@@ -258,8 +269,17 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   toast: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 22, paddingHorizontal: 18, paddingVertical: 11, boxShadow: '0 6px 24px rgba(0,0,0,0.18)' },
-  round: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  dot: { position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5, borderWidth: 2 },
+  badge: {
+    position: 'absolute',
+    right: -3,
+    bottom: -3,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 18, gap: 16 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },

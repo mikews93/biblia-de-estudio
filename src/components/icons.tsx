@@ -191,6 +191,14 @@ export const MicIcon = (p: Props) => (
   </Line>
 );
 
+/** Una persona: tu perfil. */
+export const PersonIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={12} cy={8.5} r={3.6} />
+    <Path d="M5 20c.8-3.6 3.6-5.8 7-5.8s6.2 2.2 7 5.8" />
+  </Line>
+);
+
 /** Campana: recordatorios y notificaciones. */
 export const BellIcon = (p: Props) => (
   <Line {...p}>
@@ -353,5 +361,14 @@ export const StarIcon = ({ filled, ...p }: Props & { filled?: boolean }) => (
   <Line {...p}>
     <Path d="M12 3.5c.6 4.3 2.2 5.9 6.5 6.5-4.3.6-5.9 2.2-6.5 6.5-.6-4.3-2.2-5.9-6.5-6.5 4.3-.6 5.9-2.2 6.5-6.5z" fill={filled ? p.color : 'none'} />
     <Path d="M18 16.5v4M16 18.5h4" />
+  </Line>
+);
+
+/** Dos páginas lado a lado con renglones: comparar versiones. */
+export const CompareIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={3.5} y={4.5} width={7.5} height={15} rx={1.8} />
+    <Rect x={13} y={4.5} width={7.5} height={15} rx={1.8} />
+    <Path d="M5.8 8.5h3M5.8 11.5h3M5.8 14.5h2M15.3 8.5h3M15.3 11.5h2M15.3 14.5h3" />
   </Line>
 );
