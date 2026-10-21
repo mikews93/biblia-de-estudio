@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/icons';
 import { Book, formatRef, parseRef } from '@/lib/data';
-import { ACTIVAS, Comentario, Estado, Parte, getComentario, reportarError, traducirParte } from '@/lib/comentarios';
+import { ACTIVAS, Comentario, Estado, Parte, comenta, getComentario, reportarError, traducirParte } from '@/lib/comentarios';
 import { verseHref } from '@/lib/routes';
 import { Colors, serif } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -20,9 +20,9 @@ const ESTADOS: Record<Estado, string> = {
 const ORDEN: Estado[] = ['traducido', 'revisado', 'humano', 'original'];
 
 // La fuente elegida se recuerda mientras la app está abierta.
-let lastSource = 'mhc';
+let lastSource = 'tosn';
 
-/** Pestaña Comentario del versículo: Matthew Henry y JFB traducidos al español, las fuentes propias con licencia y enlace a Enduring Word. */
+/** Pestaña Comentario del versículo: comentarios libres traducidos al español, las fuentes propias con licencia y enlace a Enduring Word. */
 export default function Commentary({ book, books, chapter, verse, colors, onNavigate }: Props) {
   const [source, setSource] = useState(lastSource);
   // Versículo que se está viendo: 0 es la introducción del capítulo; las flechas pasan de sección en sección.
@@ -32,7 +32,10 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState('');
   const abort = useRef<AbortController | null>(null);
-  const fuente = ACTIVAS.find((f) => f.id === source) ?? ACTIVAS[0];
+  // Solo las fuentes que comentan este libro (Keil y Delitzsch solo el AT, Spurgeon solo los Salmos…).
+  const visibles = ACTIVAS.filter((f) => f.tipo === 'enlace' || comenta(f, book));
+  const legibles = visibles.filter((f) => f.tipo !== 'enlace');
+  const fuente = legibles.find((f) => f.id === source) ?? legibles[0];
   const ew = ACTIVAS.find((f) => f.tipo === 'enlace')!;
   const section = data?.seccion ?? null;
 
@@ -45,7 +48,7 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
     setParts([]);
     setDraft(null);
     setError('');
-    getComentario(source, book.id, chapter, at)
+    getComentario(fuente.id, book.id, chapter, at)
       .then((c) => {
         if (!alive) return;
         setData(c);
@@ -55,7 +58,7 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
     return () => {
       alive = false;
     };
-  }, [source, book, chapter, at]);
+  }, [fuente.id, book, chapter, at]);
 
   const next = section && parts.length < section.partes ? parts.length : null;
 
@@ -66,7 +69,7 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
     setDraft('');
     setError('');
     try {
-      const key = { fuente: source, libro: book.id, capitulo: chapter, desde: section.desde, parte: next };
+      const key = { fuente: fuente.id, libro: book.id, capitulo: chapter, desde: section.desde, parte: next };
       const part = await traducirParte(key, setDraft, controller.signal);
       setParts((p) => [...p, part]);
     } catch (err) {
@@ -104,41 +107,54 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
 
   return (
     <View>
-      <View style={styles.sources}>
-        {ACTIVAS.map((f) => {
-          const selected = f.id === source;
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.sourcesScroll}
+        contentContainerStyle={styles.sources}
+        accessibilityRole="tablist"
+      >
+        {visibles.map((f) => {
+          const selected = f.id === fuente.id;
+          const link = f.tipo === 'enlace';
           return (
             <Pressable
               key={f.id}
               onPress={() => {
-                if (f.tipo === 'enlace') {
+                if (link) {
                   if (f.url) Linking.openURL(f.url(book.ewSlug, chapter));
                   return;
                 }
                 lastSource = f.id;
                 setSource(f.id);
               }}
-              style={[
+              style={({ pressed }) => [
                 styles.chip,
-                { borderColor: selected ? colors.accent : colors.border },
-                selected && { backgroundColor: colors.accentSoft },
+                { borderColor: selected ? colors.accent : colors.border, opacity: pressed ? 0.7 : 1 },
+                selected && { backgroundColor: colors.accent },
               ]}
-              accessibilityRole="button"
+              accessibilityRole={link ? 'link' : 'tab'}
               accessibilityState={{ selected }}
+              aria-selected={link ? undefined : selected}
+              accessibilityHint={f.nota}
             >
-              <Text style={{ color: selected ? colors.text : colors.muted, fontWeight: '600', fontSize: 13 }}>
+              <Text style={[styles.chipText, { color: selected ? colors.surface : link ? colors.muted : colors.text }]}>
                 {f.nombre}
-                {f.tipo === 'enlace' ? ' ↗' : ''}
+                {link ? ' ↗' : ''}
               </Text>
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
+      <Text style={[styles.nota, { color: colors.muted }]} numberOfLines={2}>
+        <Text style={{ color: colors.text, fontWeight: '600' }}>{fuente.obra}</Text>
+        {fuente.año ? ` · ${fuente.año}` : ''}. {fuente.nota}
+      </Text>
 
       {!data && !error && <ActivityIndicator color={colors.accent} style={{ marginTop: 16 }} />}
       {data && !section && (
         <Text style={{ color: colors.muted }}>
-          {fuente.nombre} no comenta este capítulo. Prueba con la otra fuente o con Enduring Word.
+          {fuente.nombre} no comenta este capítulo. Prueba con otra fuente o con Enduring Word.
         </Text>
       )}
 
@@ -203,7 +219,7 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
           colors={colors}
           send={(nota) =>
             reportarError(
-              { fuente: source, libro: book.id, capitulo: chapter, desde: section.desde, parte: parts.length - 1 },
+              { fuente: fuente.id, libro: book.id, capitulo: chapter, desde: section.desde, parte: parts.length - 1 },
               nota,
             )
           }
@@ -323,8 +339,12 @@ function inline(text: string, books: Book[], colors: Colors, onRef: (ref: string
 }
 
 const styles = StyleSheet.create({
-  sources: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  // La fila de fuentes se desliza de lado y llega hasta el borde del panel.
+  sourcesScroll: { marginHorizontal: -20, flexGrow: 0 },
+  sources: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 2 },
+  chip: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 7 },
+  chipText: { fontWeight: '600', fontSize: 13 },
+  nota: { fontSize: 13, lineHeight: 19, marginTop: 10, marginBottom: 14 },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   section: { fontSize: 14, fontWeight: '700', flex: 1, textAlign: 'center' },
   h: { fontSize: 17, fontWeight: '700', marginTop: 6, marginBottom: 8, fontFamily: serif },

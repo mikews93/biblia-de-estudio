@@ -1,8 +1,8 @@
 // Función de Vercel: comentarios bíblicos en español.
-// Las fuentes en inglés (Matthew Henry, Jamieson-Fausset-Brown; dominio público) vienen por secciones de
-// pipeline/build_comentarios.py. Cada parte se traduce con IA la primera vez que alguien la abre, se guarda en la base
-// de datos y después otra pasada de la IA la revisa contra el original. Las fuentes que ya están en español (por
-// ejemplo Enduring Word, si llega el permiso) se sirven tal cual, sin traducir.
+// Las fuentes en inglés (Tyndale Open Study Notes, Matthew Henry, Calvino…; ver comentarioFuentes.ts) vienen por
+// secciones de pipeline/build_comentarios.py (ver _comentarios.ts). Cada parte se traduce con IA la primera vez que
+// alguien la abre, se guarda en la base de datos y después otra pasada de la IA la revisa contra el original. Las
+// fuentes que ya están en español (con licencia, como la Biblia del Diario Vivir si llega) se sirven sin traducir.
 //
 // GET  ?fuente=mhc&libro=jhn&capitulo=3&versiculo=16
 //      -> { secciones: [{ desde, hasta, partes }], seccion: { desde, hasta, partes, traducidas: [{ parte, texto, estado }] } }
@@ -14,15 +14,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { gunzipSync } from 'node:zlib';
 import postgres from 'postgres';
 
+import { Section, sections } from './_comentarios';
 import { ACTIVAS, Fuente } from '../src/lib/comentarioFuentes';
 
 const MODEL = process.env.COMENTARIO_MODEL ?? 'claude-sonnet-5-5';
 const REVIEW_MODEL = process.env.COMENTARIO_REVISOR ?? 'claude-opus-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
-const SOURCES_DIR = process.env.COMENTARIOS_DIR ?? path.join(process.cwd(), 'dist', 'comentarios');
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 // Tope de partes nuevas traducidas al día entre todos (lo ya traducido no cuenta): protege la cuenta de la IA.
 const PER_DAY = Number(process.env.COMENTARIO_PARTES_DIA ?? 400);
@@ -84,7 +83,6 @@ Responde solo con la traducción corregida completa, sin comentarios. Si no hace
 
 type Book = { id: string; name: string; chapters: number };
 type Verse = [number, string];
-type Section = { desde: number; hasta: number; titulo: string; partes: string[] };
 type Sql = ReturnType<typeof postgres>;
 type Key = { fuente: Fuente; libro: Book; capitulo: number; seccion: Section; parte: number };
 
@@ -117,28 +115,19 @@ function books() {
   return booksCache;
 }
 
-async function sections(fuente: Fuente, libro: string, capitulo: number): Promise<Section[]> {
-  try {
-    const raw = await readFile(path.join(SOURCES_DIR, fuente.id, libro, `${capitulo}.json.gz`));
-    return JSON.parse(gunzipSync(raw).toString('utf8')) as Section[];
-  } catch {
-    return [];
-  }
-}
-
 /** Valida fuente, libro y capítulo, y devuelve las secciones del capítulo. */
-async function chapter(q: { fuente?: unknown; libro?: unknown; capitulo?: unknown }) {
+async function chapter(request: Request, q: { fuente?: unknown; libro?: unknown; capitulo?: unknown }) {
   const fuente = ACTIVAS.find((f) => f.id === q.fuente && f.tipo !== 'enlace');
   const libro = (await books()).find((b) => b.id === q.libro);
   const capitulo = Number(q.capitulo);
   if (!fuente || !libro || !Number.isInteger(capitulo) || capitulo < 1 || capitulo > libro.chapters) {
     throw new Fail('Comentario no válido');
   }
-  return { fuente, libro, capitulo, secciones: await sections(fuente, libro.id, capitulo) };
+  return { fuente, libro, capitulo, secciones: await sections(request, fuente, libro.id, capitulo) };
 }
 
-async function key(body: Record<string, unknown>): Promise<Key> {
-  const { fuente, libro, capitulo, secciones } = await chapter(body);
+async function key(request: Request, body: Record<string, unknown>): Promise<Key> {
+  const { fuente, libro, capitulo, secciones } = await chapter(request, body);
   const seccion = secciones.find((s) => s.desde === body.desde);
   const parte = Number(body.parte);
   if (!seccion || !Number.isInteger(parte) || parte < 0 || parte >= seccion.partes.length) {
@@ -175,7 +164,7 @@ const marks = (s: string) => (s.match(/⟦[^⟧]*⟧/g) ?? []).sort().join(' ');
 
 async function getHandler(request: Request) {
   const q = Object.fromEntries(new URL(request.url).searchParams);
-  const { fuente, libro, capitulo, secciones } = await chapter(q);
+  const { fuente, libro, capitulo, secciones } = await chapter(request, q);
   const verse = Number(q.versiculo ?? 0);
   const seccion =
     secciones.find((s) => s.desde <= verse && verse <= s.hasta && (verse > 0 || s.desde === 0)) ??
@@ -265,8 +254,8 @@ function waitUntil(promise: Promise<unknown>) {
   if (ctx?.waitUntil) ctx.waitUntil(promise);
 }
 
-async function translate(body: Record<string, unknown>) {
-  const k = await key(body);
+async function translate(request: Request, body: Record<string, unknown>) {
+  const k = await key(request, body);
   if (k.fuente.idioma === 'es') throw new Fail('Este comentario ya está en español');
   const sql = await db();
   const claimed = await claim(sql, k);
@@ -332,8 +321,8 @@ async function translate(body: Record<string, unknown>) {
   });
 }
 
-async function report(body: Record<string, unknown>) {
-  const k = await key(body);
+async function report(request: Request, body: Record<string, unknown>) {
+  const k = await key(request, body);
   const nota = typeof body.nota === 'string' ? body.nota.trim().slice(0, MAX_NOTE) : '';
   if (!nota) throw new Fail('Escribe qué está mal');
   const sql = await db();
@@ -364,8 +353,8 @@ export async function POST(request: Request) {
     } catch {
       throw new Fail('JSON no válido');
     }
-    if (body.reporte && typeof body.reporte === 'object') return await report(body.reporte as Record<string, unknown>);
-    return await translate(body);
+    if (body.reporte && typeof body.reporte === 'object') return await report(request, body.reporte as Record<string, unknown>);
+    return await translate(request, body);
   } catch (err) {
     return failure(err);
   }

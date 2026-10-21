@@ -222,6 +222,15 @@ def drop_scripture(paras, kjv):
     return paras
 
 
+def drop_preface(paras, verse):
+    """Calvino trae a veces, antes de la nota «**1.**», el prefacio del traductor y la dedicatoria del libro: páginas
+    que no comentan el pasaje. Un argumento corto del capítulo sí se queda."""
+    start = next((i for i, p in enumerate(paras) if p.startswith(f"**{verse}.**")), 0)
+    if sum(len(p.split()) for p in paras[:start]) > 1200:
+        return paras[start:]
+    return paras
+
+
 def split_intro(osis):
     """En el primer versículo, Matthew Henry trae a veces el prefacio del libro y la introducción del capítulo.
     Devuelve (introducción del capítulo, resto); el prefacio del libro se descarta."""
@@ -297,6 +306,8 @@ def build(name, out, counts, kjv):
                 paras, titles = convert(osis)
                 if name == "mhc" and v:
                     paras = drop_scripture(paras, " ".join(kjv[i][ch - 1]))
+                if name == "calvin" and v:
+                    paras = drop_preface(paras, v)
                 if not paras:
                     continue
                 sections.append({"desde": v, "hasta": v, "titulo": titles[-1] if titles else "", "paras": paras})

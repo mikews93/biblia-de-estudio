@@ -19,6 +19,8 @@ let llave: string;
 
 beforeAll(async () => {
   ({ requests: aiRequests } = await prepareEnv({ ai: true }));
+  // Dos comentarios de muestra (Tyndale y Matthew Henry); los demás no están y se dejan fuera.
+  process.env.COMENTARIOS_DIR = path.resolve(import.meta.dirname, '../fixtures/comentarios');
   ({ POST: estudiar } = await import('../../api/estudiar'));
   ({ POST: comunidades } = await import('../../api/comunidades'));
   if (DB_URL && HAS_DATA) {
@@ -113,14 +115,21 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     // La marca de cita llega después de su fuente
     expect(evs.findIndex((e) => e.type === 'source')).toBeLessThan(evs.findIndex((e) => e.text === '⟦1⟧'));
 
-    // La IA recibió el capítulo de la RV1909, el griego y las referencias cruzadas como documentos
+    // La IA recibió el capítulo de la RV1909, el griego, las referencias cruzadas y los comentarios como documentos
     const sent = aiRequests.at(-1)!;
     const docs = sent.messages[0].content.filter((b: { type: string }) => b.type === 'document');
     expect(docs.map((d: { title: string }) => d.title)).toEqual([
       'Juan 3 · Reina-Valera 1909',
       'Juan 3 · Griego (STEPBible TAGNT)',
       'Referencias cruzadas de Juan 3 (OpenBible.info)',
+      'Notas de estudio abiertas de Tyndale, Tyndale House Publishers (2022) · comentario sobre Juan 3',
+      'Comentario de toda la Biblia, Matthew Henry (1706-1721) · comentario sobre Juan 3',
     ]);
+    expect(docs[4].source.content.map((b: { text: string }) => b.text)).toEqual([
+      "In this chapter we have Christ's discourse with Nicodemus.",
+      'The love of God\nHere is the great gospel truth.',
+    ]);
+    expect(sent.system).toContain('Los comentarios ayudan a entender el texto');
     const rv = JSON.parse(readFileSync(path.join(DATA_DIR, 'text/rv1909/jhn/3.json'), 'utf8')) as [number, string][];
     expect(docs[0].source.content).toHaveLength(rv.length);
     expect(docs[0].source.content[15].text).toBe(`3:16 ${rv[15][1]}`);
@@ -142,6 +151,16 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     ]);
     // Con versículo, el griego va con el análisis completo
     expect(lastAiText()).toContain('adverbio');
+    // y de cada comentario solo la sección del versículo, con las referencias legibles (⟦…⟧ marca las citas)
+    const docs = sent.messages[0].content.filter((b: { type: string }) => b.type === 'document');
+    const tyndale = docs.find((d: { title: string }) => d.title.startsWith('Notas de estudio abiertas de Tyndale'));
+    expect(tyndale.title).toContain('comentario sobre Juan 3:16');
+    expect(tyndale.source.content.map((b: { text: string }) => b.text)).toEqual([
+      '**3:16** *For God loved the world so much:* God’s love is the source of salvation (Romanos 5:8).',
+      'A second paragraph about eternal life.',
+    ]);
+    const henry = docs.find((d: { title: string }) => d.title.startsWith('Comentario de toda la Biblia'));
+    expect(henry.source.content).toEqual([{ type: 'text', text: 'The love of God\nHere is the great gospel truth.' }]);
   });
 
   it('«¿Por qué esta palabra?» añade otros pasajes con la misma palabra', async () => {

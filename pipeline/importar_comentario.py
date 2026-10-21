@@ -1,7 +1,7 @@
 """Importa un comentario con licencia que ya está en español (fuente «propia» en src/lib/comentarioFuentes.ts).
 
 Uso:
-  python3 pipeline/importar_comentario.py <fuente> <archivo o URL> [carpeta_salida]   (por defecto: public/comentarios)
+  python3 pipeline/importar_comentario.py <fuente> <archivo o URL> [carpeta_salida]   (por defecto: comentarios-licencia)
   python3 pipeline/importar_comentario.py --entorno [carpeta_salida]
 
 Con --entorno importa cada fuente propia que tenga la variable COMENTARIO_<ID>_URL (por ejemplo COMENTARIO_BDV_URL) y,
@@ -17,7 +17,8 @@ Las notas del mismo pasaje (mismo libro, capítulo y desde) se juntan en una sec
 
 Salida: la misma que pipeline/build_comentarios.py: <fuente>/<libro>/<capítulo>.json.gz con una lista de secciones
   {"desde": 16, "hasta": 16, "titulo": "…", "partes": ["…"]}
-que /api/comentario sirve tal cual, sin traducir.
+que /api/comentario sirve tal cual, sin traducir. Va a comentarios-licencia/, fuera de la web publicada (dist/): el
+texto solo sale por /api/comentario, sección a sección.
 """
 
 import gzip
@@ -108,7 +109,7 @@ def importar(fuente, origen, out, token=None):
 def main():
     args = sys.argv[1:]
     if args[:1] == ["--entorno"]:
-        out = Path(args[1] if len(args) > 1 else "public/comentarios")
+        out = Path(args[1] if len(args) > 1 else "comentarios-licencia")
         for fuente in propias():
             url = os.environ.get(f"COMENTARIO_{fuente.upper()}_URL")
             if url:
@@ -116,7 +117,7 @@ def main():
         return
     if len(args) < 2:
         sys.exit(__doc__)
-    importar(args[0], args[1], Path(args[2] if len(args) > 2 else "public/comentarios"))
+    importar(args[0], args[1], Path(args[2] if len(args) > 2 else "comentarios-licencia"))
 
 
 if __name__ == "__main__":
