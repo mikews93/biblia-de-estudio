@@ -24,7 +24,7 @@
       "excludeFiles": "dist/**"
     },
     "api/comentario.ts": {
-      "includeFiles": "dist/{data/books.json,data/text/rv1909/**,comentarios/**}",
+      "includeFiles": "{dist/data/books.json,dist/data/text/rv1909/**,comentarios-licencia/**}",
       "maxDuration": 120,
       "excludeFiles": "dist/**"
     },

@@ -202,13 +202,21 @@ test('el comentario del versículo se traduce con IA y enlaza a Enduring Word', 
   await page.goto('/juan/3/16');
   await visible(page.getByRole('button', { name: 'Comentario' })).click();
 
-  // Matthew Henry: la sección que comenta el versículo, traducida (la IA simulada)
-  await expect(visible(page.getByRole('button', { name: 'Matthew Henry' }))).toBeVisible();
+  // Primero las notas de Tyndale: la sección que comenta el versículo, traducida (la IA simulada)
+  await expect(visible(page.getByRole('tab', { name: 'Tyndale' }))).toHaveAttribute('aria-selected', 'true');
   await expect(texto(page, 'Traducción simulada')).toBeVisible({ timeout: 30_000 });
-  await expect(texto(page, 'Comentario de toda la Biblia, Matthew Henry (1706-1721).')).toBeVisible();
+  await expect(texto(page, 'Notas de estudio abiertas de Tyndale, Tyndale House Publishers (2022). Adaptado de')).toBeVisible();
+  // Keil y Delitzsch solo comenta el Antiguo Testamento y Spurgeon solo los Salmos
+  await expect(page.getByRole('tab', { name: 'Keil y Delitzsch' })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Spurgeon' })).toHaveCount(0);
 
-  // JFB: otra fuente, también traducida
-  await visible(page.getByRole('button', { name: 'JFB' })).click();
+  // Matthew Henry: otra fuente, también traducida
+  await visible(page.getByRole('tab', { name: 'Matthew Henry' })).click();
+  await expect(texto(page, 'Comentario de toda la Biblia, Matthew Henry (1706-1721).')).toBeVisible({ timeout: 30_000 });
+  await expect(texto(page, 'Traducción simulada')).toBeVisible();
+
+  // JFB
+  await visible(page.getByRole('tab', { name: 'JFB' })).click();
   await expect(texto(page, 'Comentario crítico y explicativo de toda la Biblia, Robert Jamieson')).toBeVisible({
     timeout: 30_000,
   });

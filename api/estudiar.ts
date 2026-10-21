@@ -4,8 +4,9 @@
 // tarjetas de repaso («tarjetas») o un mapa mental («mapa»), con el formato que la app sabe leer.
 // Lo que sale bien se guarda en la base de datos por capítulo: la siguiente persona lo recibe al instante, sin
 // volver a llamar a la IA. Con «nueva: true» («Preparar otra versión») se genera otra y sustituye a la guardada.
-// Solo usa las fuentes de la app (RV1909, hebreo y griego de STEPBible y referencias de OpenBible.info),
-// que se pasan a Claude como documentos con citas activadas. La respuesta se envía como NDJSON:
+// Solo usa las fuentes de la app (RV1909, hebreo y griego de STEPBible, referencias de OpenBible.info y los
+// comentarios libres de comentarioFuentes.ts, en su inglés original), que se pasan a Claude como documentos con citas
+// activadas. La respuesta se envía como NDJSON:
 //   {"type":"text","text":"…"}  fragmento de texto en markdown; las citas llegan como ⟦n⟧
 //   {"type":"source","n":1,"label":"Juan 3:16","ref":"jhn.3.16"}  fuente de la cita n
 //   {"type":"done"} | {"type":"error","message":"…"}
@@ -15,7 +16,9 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import postgres from 'postgres';
 
+import { Section, sections } from './_comentarios';
 import { needsAccount } from './_cuenta';
+import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { original } from '../src/lib/original';
@@ -23,6 +26,10 @@ import { formatRef, parseRef } from '../src/lib/refs';
 
 const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
+// Palabras de cada comentario que lee la IA: para un versículo y para un capítulo entero.
+const COMMENT_WORDS = { verse: 700, chapter: 1200 };
+// Cambia cuando cambian las fuentes del estudio, para que los estudios guardados antes se preparen de nuevo.
+const STUDY_VERSION = 'c1';
 const MAX_TURNS = 12;
 const MAX_QUESTION = 600;
 const MAX_USES = 24;
@@ -63,11 +70,12 @@ type BlockMeta = { label: string; ref?: string };
 
 const SYSTEM = `Eres el asistente de estudio de una app bíblica gratuita en español. Ayudas a entender el texto; no sustituyes la lectura de la persona ni predicas por ella.
 
-Fuentes: en cada conversación recibes documentos de la app: el capítulo en la Reina-Valera 1909, el texto original palabra por palabra (hebreo y arameo del Antiguo Testamento, griego del Nuevo) con su análisis gramatical (STEPBible, Tyndale House) y referencias cruzadas votadas por lectores (OpenBible.info).
+Fuentes: en cada conversación recibes documentos de la app: el capítulo en la Reina-Valera 1909, el texto original palabra por palabra (hebreo y arameo del Antiguo Testamento, griego del Nuevo) con su análisis gramatical (STEPBible, Tyndale House), referencias cruzadas votadas por lectores (OpenBible.info) y lo que dicen del pasaje los comentarios bíblicos de la app, en su inglés original (las notas de estudio de Tyndale y comentaristas clásicos como Matthew Henry, Calvino o Spurgeon).
 
 Reglas:
 - Basa lo que afirmes en esos documentos y cítalos cada vez que los uses.
-- Si algo no está en los documentos (autoría, fechas, historia, costumbres, opiniones de comentaristas), dilo así: «esto no está en las fuentes de la app». Solo si de verdad ayuda, añade contexto general ampliamente aceptado, breve y marcado como «contexto general», sin inventar datos, fechas ni citas de autores.
+- Los comentarios ayudan a entender el texto (contexto, historia, costumbres, el sentido de una frase), pero son opiniones humanas, no tienen la autoridad de la Biblia. Cuando uses uno, nombra al autor («Matthew Henry señala…», «las notas de Tyndale explican…»), dilo con tus palabras en español sin copiar párrafos y cítalo. Si los comentaristas no coinciden, muéstralo sin tomar partido. Nunca atribuyas a un autor algo que no está en su comentario.
+- Si algo no está en los documentos (autoría, fechas, historia, costumbres), dilo así: «esto no está en las fuentes de la app». Solo si de verdad ayuda, añade contexto general ampliamente aceptado, breve y marcado como «contexto general», sin inventar datos, fechas ni citas de autores.
 - Para el hebreo y el griego usa la glosa, el lema y la gramática del documento; no inventes significados ni etimologías.
 - Cuando hay interpretaciones distintas dentro del cristianismo histórico (católica, ortodoxa, protestante y evangélica), dilo con respeto y sin tomar partido.
 - No uses ni presentes como interpretación cristiana las enseñanzas de grupos que niegan doctrinas centrales del cristianismo histórico, como la Trinidad o la divinidad de Cristo (por ejemplo, Testigos de Jehová o mormones).
@@ -344,7 +352,69 @@ async function wordUses(word: Word, here: string, books: Book[]) {
   return { total: uses.length + 1, blocks };
 }
 
-async function buildSources(book: Book, chapter: number, verse: number | undefined, books: Book[], word?: number) {
+/** Los primeros párrafos de un texto hasta unas palabras; el último se corta en una frase si hace falta. */
+function firstWords(paras: string[], max: number) {
+  const out: string[] = [];
+  let left = max;
+  for (const p of paras) {
+    const words = p.split(/\s+/);
+    if (words.length <= left) {
+      out.push(p);
+      left -= words.length;
+      continue;
+    }
+    if (left >= 40 || out.length === 0) out.push(words.slice(0, Math.max(left, 40)).join(' ') + '…');
+    break;
+  }
+  return out;
+}
+
+/** Lo que dicen del pasaje los comentarios que la IA puede leer: un documento por comentario. */
+async function commentaryDocs(request: Request, book: Book, chapter: number, verse: number | undefined, books: Book[]) {
+  const fuentes = ACTIVAS.filter((f) => f.tipo !== 'enlace' && f.ia !== false && comenta(f, book));
+  const docs = await Promise.all(
+    fuentes.map(async (f: Fuente) => {
+      const all = await sections(request, f, book.id, chapter);
+      // Un versículo: la sección que lo comenta (o la anterior más cercana, que suele cubrir un tramo).
+      const picked = verse
+        ? [all.find((s) => s.desde <= verse && verse <= s.hasta) ?? all.filter((s) => s.desde > 0 && s.desde <= verse).at(-1)].filter(
+            (s): s is Section => !!s,
+          )
+        : all;
+      if (!picked.length) return null;
+      const budget = verse ? COMMENT_WORDS.verse : COMMENT_WORDS.chapter;
+      const each = Math.max(60, Math.floor(budget / picked.length));
+      const blocks = picked.flatMap((s) => {
+        const where =
+          s.desde === 0 ? `${book.name} ${chapter}` : `${book.name} ${chapter}:${s.desde}${s.hasta > s.desde ? `-${s.hasta}` : ''}`;
+        const paras = s.partes.join('\n\n').split(/\n{2,}/);
+        const text = firstWords(paras, each).map((p) =>
+          // Las referencias ⟦jhn.3.16⟧ se leen como «Juan 3:16»: ⟦…⟧ marca las citas en la respuesta.
+          p.replace(/⟦([^⟧]+)⟧/g, (_, r: string) => {
+            try {
+              return formatRef(r, books);
+            } catch {
+              return '';
+            }
+          }),
+        );
+        const meta = { label: `${f.nombre}, ${where}`, ref: `${book.id}.${chapter}.${Math.max(1, s.desde)}` };
+        return text.map((t, i) => ({ text: i === 0 && s.titulo ? `${s.titulo}\n${t}` : t, meta }));
+      });
+      return doc(`${f.obra}, ${f.autor}${f.año ? ` (${f.año})` : ''} · comentario sobre ${verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`}`, blocks);
+    }),
+  );
+  return docs.filter((d) => d !== null);
+}
+
+async function buildSources(
+  request: Request,
+  book: Book,
+  chapter: number,
+  verse: number | undefined,
+  books: Book[],
+  word?: number,
+) {
   const [verses, interlinear, xrefs] = await Promise.all([
     load<Verse[]>(`text/rv1909/${book.id}/${chapter}.json`),
     load<Record<string, Word[]>>(`interlinear/${book.id}/${chapter}.json`, {}),
@@ -409,7 +479,8 @@ async function buildSources(book: Book, chapter: number, verse: number | undefin
     }
     focus = { word: w, total: uses.total };
   }
-  return { docs, focus };
+  docs.push(...(await commentaryDocs(request, book, chapter, verse, books)));
+  return { docs, focus, hasOriginal: greek.length > 0 };
 }
 
 const testamentName = (book: Book) => (book.testament === 'AT' ? 'Antiguo Testamento' : 'Nuevo Testamento');
@@ -533,7 +604,7 @@ export async function POST(request: Request) {
   // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos.
   const clave =
     !herramienta && !taller && turns.length === 0
-      ? [devocional ? 'devocional' : 'profundo', book.id, chapter, verse ?? '', word ?? ''].join(':')
+      ? [STUDY_VERSION, devocional ? 'devocional' : 'profundo', book.id, chapter, verse ?? '', word ?? ''].join(':')
       : null;
 
   if ((herramienta || clave) && !body.nueva) {
@@ -549,8 +620,9 @@ export async function POST(request: Request) {
 
   let docs;
   let focus;
+  let hasOriginal = false;
   try {
-    ({ docs, focus } = await buildSources(book, chapter, verse, books, word));
+    ({ docs, focus, hasOriginal } = await buildSources(request, book, chapter, verse, books, word));
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
@@ -567,12 +639,12 @@ export async function POST(request: Request) {
           text: taller
             ? tallerTask(book, chapter, verse, taller)
             : herramienta
-              ? HERRAMIENTAS[herramienta](book, chapter, docs.length > 1 && book.interlinear)
+              ? HERRAMIENTAS[herramienta](book, chapter, hasOriginal && book.interlinear)
               : focus && verse
               ? wordTask(book, chapter, verse, focus)
               : devocional
               ? devotionalTask(book, chapter, verse)
-              : studyTask(book, chapter, verse, docs.length > 1 && book.interlinear),
+              : studyTask(book, chapter, verse, hasOriginal && book.interlinear),
         },
       ],
     },
