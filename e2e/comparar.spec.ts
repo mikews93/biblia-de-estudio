@@ -40,7 +40,8 @@ test('el versículo se compara en varias versiones desde su panel', async ({ pag
   // Se añade la NBLA (con derechos): aparece con su aviso
   await visible(page.getByRole('checkbox', { name: 'Nueva Biblia de las Américas' })).click();
   await expect(texto(page, JN316)).toBeVisible();
-  await expect(visible(page.getByRole('link', { name: /The Lockman Foundation/ })).first()).toBeVisible();
+  await expect(texto(page, 'The Lockman Foundation')).toBeVisible();
+  await expect(visible(page.getByRole('link', { name: /NuevaBiblia\.com/ })).first()).toBeVisible();
   await page.waitForTimeout(500);
   await captura(page, '1-versiculo');
 
