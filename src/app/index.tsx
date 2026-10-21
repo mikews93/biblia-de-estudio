@@ -106,7 +106,7 @@ export default function Today() {
               accessibilityLabel="Notificaciones"
             >
               <BellIcon color={colors.accent} />
-              {avisos.endpoint && <View style={[styles.bellDot, { backgroundColor: colors.accent, borderColor: colors.surface }]} />}
+              {avisos.endpoint && <View style={[styles.bellDot, { backgroundColor: colors.warm, borderColor: colors.surface }]} />}
             </Pressable>
           )}
           <Pressable
@@ -163,7 +163,7 @@ export default function Today() {
 
       <Appear delay={80}>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.kicker, { color: colors.accent }]}>Versículo del día</Text>
+          <Text style={[styles.kicker, { color: colors.warm }]}>Versículo del día</Text>
           <Text style={[styles.verse, { color: colors.text, fontFamily: serif }]}>
             {verseText ? `«${verseText}»` : ' '}
           </Text>
@@ -283,7 +283,7 @@ export default function Today() {
                 <View
                   style={[
                     styles.dot,
-                    { borderColor: d.isToday ? colors.accent : colors.border },
+                    { borderColor: d.isToday ? colors.warm : colors.border },
                     d.read && { backgroundColor: colors.accent, borderColor: colors.accent },
                   ]}
                 />
