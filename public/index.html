@@ -8,7 +8,7 @@
     <!-- use-credentials: si el dominio tiene protección de Vercel, el navegador pide el manifiesto con la sesión -->
     <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
     <!-- La barra de estado toma el color del fondo del tema (lo ajustan el script de abajo y src/app/_layout.tsx). -->
-    <meta name="theme-color" content="#151311" />
+    <meta name="theme-color" content="#131313" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -21,7 +21,7 @@
         var t = 'auto';
         try { t = JSON.parse(localStorage.getItem('ajustes') || '{}').theme || 'auto'; } catch (e) {}
         var dark = t === 'oscuro' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-        var c = t === 'sepia' ? ['#F4ECD8', '#8A4B2A', '#E0D3B8'] : dark ? ['#151311', '#E0A07A', '#36312B'] : ['#FBF8F3', '#8A4B2A', '#E5DED3'];
+        var c = t === 'sepia' ? ['#F4ECD8', '#3E362E', '#E0D3B8'] : dark ? ['#131313', '#E6E3DE', '#302F2D'] : ['#F9F8F6', '#2A2826', '#E3E0DB'];
         var s = document.documentElement.style;
         s.backgroundColor = c[0];
         s.setProperty('--papel', c[0]);
@@ -40,7 +40,7 @@
         position: fixed;
         inset: 0;
         z-index: 100;
-        background: var(--papel, #FBF8F3);
+        background: var(--papel, #F9F8F6);
         align-items: center;
         justify-content: center;
         flex-direction: column;
@@ -51,7 +51,7 @@
       #portada.fuera { opacity: 0; pointer-events: none; }
       #portada img { width: 64px; height: 64px; border-radius: 16px; animation: portada-respira 1.6s ease-in-out infinite; }
       #portada i { display: block; width: 72px; height: 2px; border-radius: 1px; background: var(--linea, #E5DED3); overflow: hidden; position: relative; }
-      #portada i::after { content: ''; position: absolute; inset: 0; width: 40%; border-radius: 1px; background: var(--acento, #8A4B2A); animation: portada-carga 1.1s ease-in-out infinite; }
+      #portada i::after { content: ''; position: absolute; inset: 0; width: 40%; border-radius: 1px; background: var(--acento, #2A2826); animation: portada-carga 1.1s ease-in-out infinite; }
       @keyframes portada-respira { 50% { transform: scale(0.95); opacity: 0.85; } }
       @keyframes portada-carga { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
       @media (prefers-reduced-motion: reduce) { #portada img, #portada i::after { animation: none; } }

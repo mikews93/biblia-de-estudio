@@ -115,7 +115,7 @@ export function DiffText({
   style: object;
 }) {
   const pieces = useMemo(() => (marks && base !== null ? diffWords(base, text) : [{ text, changed: false }]), [base, text, marks]);
-  const tint = isDark(colors) ? 'rgba(224, 160, 122, 0.20)' : 'rgba(138, 75, 42, 0.11)';
+  const tint = isDark(colors) ? 'rgba(226, 168, 104, 0.18)' : 'rgba(168, 100, 31, 0.10)';
   return (
     <Text style={style}>
       {pieces.map((p, i) =>

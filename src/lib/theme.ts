@@ -3,13 +3,16 @@ import { createContext, createElement, ReactNode, useContext, useEffect, useStat
 import { Platform, useColorScheme } from 'react-native';
 
 const light = {
-  background: '#FBF8F3',
+  background: '#F9F8F6',
   surface: '#FFFFFF',
-  text: '#1F1B16',
-  muted: '#6B6358',
-  border: '#E5DED3',
-  accent: '#8A4B2A',
-  accentSoft: '#F3E6DC',
+  text: '#1C1B19',
+  muted: '#6A6660',
+  border: '#E3E0DB',
+  accent: '#2A2826',
+  accentSoft: '#ECEAE6',
+  /** El toque cálido: solo en lo destacado (versículo del día, el día de hoy, el aviso de la campana). */
+  warm: '#A8641F',
+  warmSoft: '#F5E9D8',
   highlight: '#FFF1C7',
   greek: '#2F4A6B',
 };
@@ -22,20 +25,24 @@ const sepia: Colors = {
   text: '#3B2F22',
   muted: '#7A6A55',
   border: '#E0D3B8',
-  accent: '#8A4B2A',
-  accentSoft: '#EADBC0',
+  accent: '#3E362E',
+  accentSoft: '#E6DAC2',
+  warm: '#9A5A1E',
+  warmSoft: '#EED9B8',
   highlight: '#F2DFA6',
   greek: '#3D5470',
 };
 
 const dark: Colors = {
-  background: '#151311',
-  surface: '#1E1B18',
-  text: '#EDE7DE',
-  muted: '#A39A8E',
-  border: '#36312B',
-  accent: '#E0A07A',
-  accentSoft: '#3A2A20',
+  background: '#131313',
+  surface: '#1C1C1B',
+  text: '#ECEAE6',
+  muted: '#9D9A94',
+  border: '#302F2D',
+  accent: '#E6E3DE',
+  accentSoft: '#2C2B29',
+  warm: '#E2A868',
+  warmSoft: '#36291B',
   highlight: '#4A3F1E',
   greek: '#9DB8D9',
 };
