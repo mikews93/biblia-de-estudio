@@ -39,6 +39,9 @@
     },
     "api/facebook.ts": {
       "maxDuration": 30
+    },
+    "api/vivo.ts": {
+      "maxDuration": 15
     }
   },
   "rewrites": [

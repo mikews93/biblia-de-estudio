@@ -1,0 +1,341 @@
+// Eventos de iglesia: quien predica publica el bosquejo de un mensaje del Taller con un código corto y la
+// congregación lo sigue en el teléfono (/evento/CODIGO) mientras avanza, punto por punto, con los versículos a
+// un toque y sus propias notas. El servidor es api/vivo.ts.
+//
+// Las notas y una copia de lo que se vio de cada evento se guardan en el dispositivo y, con cuenta, en ella
+// (almacén «eventos» de la sincronía), así quedan en «Mis eventos» aunque el evento se borre después.
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
+
+import { parseCita } from './cita';
+import { sessionKey } from './comunidad';
+import { requireConnection } from './conexion';
+import type { Book } from './data';
+import { cambio, registrar } from './sincronia';
+import { type Mensaje, type Pasaje, ideaCentral, tituloDe } from './taller';
+
+const API = process.env.EXPO_PUBLIC_API_URL ?? '';
+
+export type EstadoEvento = 'pronto' | 'en-vivo' | 'terminado';
+export type PuntoEvento = { titulo: string; texto: string; citas: string[] };
+
+export type Evento = {
+  codigo: string;
+  titulo: string;
+  pasaje: Pasaje | null;
+  idea: string | null;
+  autor: string;
+  iglesia: string | null;
+  estado: EstadoEvento;
+  /** El punto en que va quien predica; −1 es la portada (antes del primer punto). */
+  punto: number;
+  /** Si los puntos aparecen a medida que se avanza (los que vienen no llegan al teléfono). */
+  gradual: boolean;
+  total: number;
+  puntos: PuntoEvento[];
+  creado: string;
+  actualizado: string;
+  /** Solo para quien lo publicó: el mensaje del Taller. */
+  mensaje?: string;
+};
+
+export const CODIGO_LARGO = 6;
+
+/** El código como lo escriba la persona: «abc 234», «ABC-234» o el enlace entero. */
+export function limpiarCodigo(input: string) {
+  const raw = input.match(/evento\/([^/?#\s]+)/i)?.[1] ?? input;
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODIGO_LARGO);
+}
+
+/** «ABC234» → «ABC 234», para leerlo en voz alta o en la pantalla. */
+export const codigoLegible = (c: string) => `${c.slice(0, 3)} ${c.slice(3)}`;
+
+/** En la web, el mismo dominio; en el teléfono, la web publicada (como inviteUrl). */
+const origen = () => (typeof location !== 'undefined' ? location.origin : API || 'https://biblia.migueblanco.com');
+export const enlaceEvento = (codigo: string) => `${origen()}/evento/${codigo}`;
+/** Sin «https://», para escribirlo a mano desde la pantalla de la iglesia. */
+export const enlaceCorto = (codigo: string) => enlaceEvento(codigo).replace(/^https?:\/\//, '');
+
+// Servidor
+
+export class EventoError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+/** El evento como lo ve la congregación (sin cuenta). */
+export async function verEvento(codigo: string): Promise<Evento> {
+  requireConnection();
+  let res: Response;
+  try {
+    res = await fetch(`${API}/api/vivo?codigo=${encodeURIComponent(codigo)}`);
+  } catch {
+    throw new EventoError('No hay conexión. Para seguir el evento hace falta internet.', 0);
+  }
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new EventoError(json.error ?? `Algo falló (${res.status})`, res.status);
+  return json.evento as Evento;
+}
+
+async function accion<T>(nombre: string, body: Record<string, unknown> = {}): Promise<T> {
+  requireConnection();
+  const llave = await sessionKey();
+  if (!llave) throw new EventoError('Para publicar un evento necesitas una cuenta.', 401);
+  let res: Response;
+  try {
+    res = await fetch(`${API}/api/vivo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${llave}` },
+      body: JSON.stringify({ accion: nombre, ...body }),
+    });
+  } catch {
+    throw new EventoError('No hay conexión. Inténtalo cuando vuelvas a tener internet.', 0);
+  }
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new EventoError(json.error ?? `Algo falló (${res.status})`, res.status);
+  return json as T;
+}
+
+// Mis eventos publicados: se piden una vez y se guardan en memoria mientras la app está abierta.
+let mios: Evento[] | null = null;
+let miosCargando: Promise<Evento[]> | null = null;
+const escuchasMios = new Set<() => void>();
+
+function ponerMio(e: Evento) {
+  mios = [e, ...(mios ?? []).filter((x) => x.codigo !== e.codigo)];
+  escuchasMios.forEach((l) => l());
+  return e;
+}
+
+export function cargarMios(forzar = false) {
+  if (forzar) miosCargando = null;
+  miosCargando ??= accion<{ eventos: Evento[] }>('mios')
+    .then((r) => {
+      mios = r.eventos;
+      escuchasMios.forEach((l) => l());
+      return r.eventos;
+    })
+    .catch((e) => {
+      miosCargando = null;
+      throw e;
+    });
+  return miosCargando;
+}
+
+export function useMisEventos(activo: boolean) {
+  const [, setTick] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const l = () => setTick((t) => t + 1);
+    escuchasMios.add(l);
+    if (activo) cargarMios().catch((e) => setError(e.message));
+    return () => {
+      escuchasMios.delete(l);
+    };
+  }, [activo]);
+  return { eventos: activo ? mios : [], error };
+}
+
+export const publicarEvento = async (datos: ReturnType<typeof contenidoDe> & { mensaje: string; gradual: boolean }) =>
+  ponerMio((await accion<{ evento: Evento }>('publicar', datos)).evento);
+
+export const moverEvento = async (codigo: string, cambio: { punto?: number; estado?: EstadoEvento }) =>
+  ponerMio((await accion<{ evento: Evento }>('mover', { codigo, ...cambio })).evento);
+
+export const verMiEvento = async (codigo: string) => ponerMio((await accion<{ evento: Evento }>('ver', { codigo })).evento);
+
+export async function borrarEvento(codigo: string) {
+  await accion('borrar', { codigo });
+  mios = (mios ?? []).filter((x) => x.codigo !== codigo);
+  escuchasMios.forEach((l) => l());
+}
+
+// Del Taller al evento
+
+/** Junta en un texto las piezas no vacías, separadas por un párrafo. */
+const juntar = (...partes: (string | undefined)[]) =>
+  partes
+    .map((p) => p?.trim())
+    .filter(Boolean)
+    .join('\n\n');
+
+const CANDIDATA = /(?:\b[1-3]\s?)?[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,}\.?\s+\d{1,3}\s*[:.]\s*\d{1,3}(?:\s*[-–]\s*\d{1,3})?/g;
+
+/** Las citas con versículo que aparecen en un texto («Romanos 5:8», «1 Jn 4:9-10»), escritas con el nombre del libro. */
+export function citasEn(texto: string, books: Book[]): string[] {
+  const out: string[] = [];
+  for (const [candidata] of texto.matchAll(CANDIDATA)) {
+    const c = parseCita(candidata, books);
+    if (!c || c.problem || c.verse === undefined) continue;
+    const name = books.find((b) => b.id === c.book)?.name ?? c.book;
+    const label = `${name} ${c.chapter}:${c.verse}${c.verseEnd ? `-${c.verseEnd}` : ''}`;
+    if (!out.includes(label)) out.push(label);
+  }
+  return out.slice(0, 12);
+}
+
+/**
+ * Lo que se publica de un mensaje del Taller. Cada punto lleva lo que se escribió «para la congregación» (en un
+ * encuentro, «para el grupo») y, si se elige, también las notas de quien predica. Las citas se sacan de todo,
+ * aunque las notas no se muestren: los versículos del punto siempre llegan.
+ */
+export function contenidoDe(m: Mensaje, books: Book[], conNotas: boolean) {
+  return {
+    titulo: tituloDe(m, books),
+    idea: ideaCentral(m),
+    pasaje: m.pasaje,
+    puntos: m.secciones.map((s) => ({
+      titulo: s.titulo.trim() || 'Sin título',
+      texto: juntar(s.paraGrupo, conNotas ? s.texto : undefined),
+      citas: citasEn(`${s.paraGrupo ?? ''}\n${s.texto}`, books),
+    })),
+  };
+}
+
+/** Si lo publicado ya no coincide con el mensaje (se editó después de publicar). */
+export function desactualizado(e: Evento, m: Mensaje, books: Book[]) {
+  const c = contenidoDe(m, books, !!m.evento?.conNotas);
+  // Postgres guarda el JSON con las claves en otro orden: se compara campo por campo.
+  const pasaje = (p: Pasaje | null) => (p ? [p.book, p.chapter, p.from ?? null, p.to ?? null].join('.') : '');
+  const punto = (p: PuntoEvento) => JSON.stringify([p.titulo, p.texto, p.citas]);
+  return (
+    c.titulo !== e.titulo ||
+    (c.idea || null) !== e.idea ||
+    pasaje(c.pasaje) !== pasaje(e.pasaje) ||
+    c.puntos.map(punto).join() !== e.puntos.map(punto).join()
+  );
+}
+
+/** Una cita escrita («Romanos 5:8») lista para abrir el capítulo y mostrar los versículos. */
+export function leerCita(label: string, books: Book[]) {
+  const c = parseCita(label, books);
+  if (!c || c.problem) return null;
+  return { book: c.book, chapter: c.chapter, from: c.verse, to: c.verseEnd ?? c.verse };
+}
+
+// Lo que cada persona guarda de los eventos que siguió
+
+export type Seguido = {
+  codigo: string;
+  titulo: string;
+  pasaje: Pasaje | null;
+  idea: string | null;
+  autor: string;
+  iglesia: string | null;
+  /** Los puntos que llegó a ver (con «gradual», los que se fueron mostrando). */
+  puntos: PuntoEvento[];
+  total: number;
+  /** Cuándo lo abrió por primera vez (ms). */
+  visto: number;
+  /** Último cambio de las notas o de la copia (ms). */
+  actualizado: number;
+  /** Notas por punto («0», «1»…) y la general («general»). */
+  notas: Record<string, string>;
+};
+
+const KEY = 'eventos';
+let state: Record<string, Seguido> = {};
+let loaded: Promise<void> | null = null;
+let isLoaded = false;
+const listeners = new Set<() => void>();
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function load() {
+  loaded ??= AsyncStorage.getItem(KEY)
+    .then((raw) => {
+      if (raw) state = JSON.parse(raw) as Record<string, Seguido>;
+    })
+    .catch(() => {})
+    .then(() => {
+      isLoaded = true;
+      listeners.forEach((l) => l());
+    });
+  return loaded;
+}
+
+function write(next: Record<string, Seguido>, now = false) {
+  state = next;
+  listeners.forEach((l) => l());
+  if (saveTimer) clearTimeout(saveTimer);
+  const save = () => AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
+  if (now) save();
+  else saveTimer = setTimeout(save, 400);
+}
+
+registrar<Record<string, Seguido>>({
+  nombre: 'eventos',
+  leer: () => load().then(() => state),
+  escribir: (next) => write(next, true),
+  partir: (s) => s,
+  unir: (entradas) => entradas as Record<string, Seguido>,
+  hora: (v) => (v as Seguido).actualizado,
+});
+
+/** Guarda la copia de lo que se ve del evento. Los puntos ya vistos se conservan aunque el servidor no los mande. */
+export async function recordarEvento(e: Evento) {
+  await load();
+  const antes = state[e.codigo];
+  const puntos = e.puntos.length >= (antes?.puntos.length ?? 0) ? e.puntos : [...e.puntos, ...antes!.puntos.slice(e.puntos.length)];
+  const copia = { titulo: e.titulo, pasaje: e.pasaje, idea: e.idea, autor: e.autor, iglesia: e.iglesia, puntos, total: e.total };
+  if (antes && JSON.stringify({ ...copia }) === JSON.stringify({ titulo: antes.titulo, pasaje: antes.pasaje, idea: antes.idea, autor: antes.autor, iglesia: antes.iglesia, puntos: antes.puntos, total: antes.total })) {
+    return;
+  }
+  const now = Date.now();
+  write({ ...state, [e.codigo]: { codigo: e.codigo, visto: antes?.visto ?? now, notas: antes?.notas ?? {}, ...copia, actualizado: now } });
+  cambio('eventos');
+}
+
+/** Escribe la nota de un punto («0», «1»…) o la general («general»). */
+export function guardarNotaEvento(codigo: string, donde: string, texto: string) {
+  const antes = state[codigo];
+  if (!antes) return;
+  const notas = { ...antes.notas };
+  if (texto.trim()) notas[donde] = texto;
+  else delete notas[donde];
+  write({ ...state, [codigo]: { ...antes, notas, actualizado: Date.now() } });
+  cambio('eventos');
+}
+
+export function olvidarEvento(codigo: string) {
+  const next = { ...state };
+  delete next[codigo];
+  write(next);
+  cambio('eventos');
+}
+
+export const cuantasNotas = (s: Seguido) => Object.values(s.notas).filter((t) => t.trim()).length;
+
+export function useEventosSeguidos() {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const l = () => setTick((t) => t + 1);
+    listeners.add(l);
+    load();
+    return () => {
+      listeners.delete(l);
+    };
+  }, []);
+  return { seguidos: state, ready: isLoaded };
+}
+
+/** Las notas de un evento como texto, para copiarlas o mandarlas. */
+export function notasComoTexto(s: Seguido, pasaje: string) {
+  const out = [s.titulo];
+  if (pasaje && pasaje !== s.titulo) out.push(pasaje);
+  out.push(`${s.autor}${s.iglesia ? ` · ${s.iglesia}` : ''}`);
+  if (s.idea) out.push('', `Idea central: ${s.idea}`);
+  s.puntos.forEach((p, i) => {
+    const nota = s.notas[String(i)]?.trim();
+    out.push('', `*${i + 1}. ${p.titulo}*`);
+    if (p.citas.length) out.push(p.citas.join(' · '));
+    if (nota) out.push(`Mi nota: ${nota}`);
+  });
+  const general = s.notas.general?.trim();
+  if (general) out.push('', '*Mis notas*', general);
+  return out.join('\n');
+}

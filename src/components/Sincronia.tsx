@@ -14,6 +14,7 @@ import { useCards } from '@/lib/tarjetas';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 // Los almacenes se registran al importarse: este archivo se carga con la app, así que todos están desde el inicio.
+import '@/lib/eventos';
 import '@/lib/misPreguntas';
 import { useOraciones } from '@/lib/oraciones';
 import '@/lib/taller';

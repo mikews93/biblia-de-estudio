@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Post from '@/components/comunidad/Post';
+import { EntradaEventos } from '@/components/evento/piezas';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
 import { Avatar, Button, Card, Chips, ErrorText, text } from '@/components/comunidad/ui';
@@ -94,6 +95,7 @@ export default function Comunidad() {
         <>
           <Text style={[text.title, { color: colors.text, marginBottom: 12 }]}>La comunidad</Text>
           <Welcome intro="Mira lo que leen tus amigos, comparte los versículos que resaltas y las imágenes que creas, haz preguntas y anímense unos a otros." />
+          <EntradaEventos style={{ marginTop: 14 }} />
         </>
       ) : (
         <>
@@ -103,6 +105,8 @@ export default function Comunidad() {
               <Text style={{ color: colors.muted, flex: 1, fontSize: 15 }}>Pregúntale algo a la comunidad…</Text>
             </Card>
           </Pressable>
+
+          <EntradaEventos style={{ marginTop: 10 }} />
 
           <View style={styles.bar}>
             <Chips

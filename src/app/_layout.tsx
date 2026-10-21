@@ -101,6 +101,9 @@ function AppStack() {
           <Stack.Screen name="semana/nueva" options={{ title: 'Del sermón a tu semana' }} />
           <Stack.Screen name="semana/[id]/index" options={{ title: '' }} />
           <Stack.Screen name="semana/[id]/[dia]" options={{ title: '' }} />
+          <Stack.Screen name="eventos" options={{ title: 'Eventos' }} />
+          <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
+          <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
         </Stack>
       </View>
       <AudioBar />
