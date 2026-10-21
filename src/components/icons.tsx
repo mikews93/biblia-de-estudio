@@ -189,6 +189,14 @@ export const MicIcon = (p: Props) => (
   </Line>
 );
 
+/** Una persona: tu perfil. */
+export const PersonIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={12} cy={8.5} r={3.6} />
+    <Path d="M5 20c.8-3.6 3.6-5.8 7-5.8s6.2 2.2 7 5.8" />
+  </Line>
+);
+
 /** Campana: recordatorios y notificaciones. */
 export const BellIcon = (p: Props) => (
   <Line {...p}>
