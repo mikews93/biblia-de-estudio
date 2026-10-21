@@ -398,3 +398,12 @@ export const ScreenIcon = (p: Props) => (
     <Path d="M12 16v3.5M8.5 19.5h7" />
   </Line>
 );
+
+/** Reloj de arena: el tiempo de una dinámica. */
+export const HourglassIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7 3.5h10M7 20.5h10" />
+    <Path d="M8 3.5c0 4 4 5 4 8.5s-4 4.5-4 8.5M16 3.5c0 4-4 5-4 8.5s4 4.5 4 8.5" />
+    <Path d="M10 18.5h4" />
+  </Line>
+);

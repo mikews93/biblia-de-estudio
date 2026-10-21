@@ -21,7 +21,7 @@ const TABS: Tab[] = [
 
 function current(path: string): Tab['key'] {
   if (path === '/' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas') return 'hoy';
-  if (/^\/(planes|grupos|unirse)(\/|$)/.test(path)) return 'planes';
+  if (/^\/(planes|grupos|unirse|vivo)(\/|$)/.test(path)) return 'planes';
   if (/^\/(comunidades|amigo|cuenta|eventos?)(\/|$)/.test(path)) return 'comunidad';
   if (path.startsWith('/taller')) return 'taller';
   return 'leer';
@@ -40,6 +40,8 @@ export default function TabBar() {
 
   // Al presentar un mensaje (o proyectarlo en la iglesia) la pantalla es toda para el texto.
   if (path.endsWith('/presentar') || path.endsWith('/proyectar')) return null;
+  // La lectura en vivo también: abajo van los mandos de quien guía.
+  if (/^\/vivo\/[^/]+$/.test(path)) return null;
 
   const go = async (key: Tab['key']) => {
     if (key === active && key !== 'leer' && (key !== 'hoy' || path === '/')) return;

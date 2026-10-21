@@ -41,7 +41,9 @@
       "maxDuration": 30
     },
     "api/vivo.ts": {
-      "maxDuration": 15
+      "includeFiles": "dist/data/books.json",
+      "maxDuration": 15,
+      "excludeFiles": "dist/**"
     }
   },
   "rewrites": [

@@ -84,6 +84,8 @@ function AppStack() {
           <Stack.Screen name="entrar" options={{ title: '' }} />
           <Stack.Screen name="registro" options={{ title: '' }} />
           <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
+          <Stack.Screen name="vivo/index" options={{ title: 'Lectura en vivo' }} />
+          <Stack.Screen name="vivo/[codigo]" options={{ headerShown: false }} />
           <Stack.Screen name="planes/index" options={{ title: 'Planes de lectura' }} />
           <Stack.Screen name="planes/[id]" options={{ title: '' }} />
           <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
