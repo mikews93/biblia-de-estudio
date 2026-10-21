@@ -23,6 +23,7 @@ import {
   Word,
   getBooks,
   getChapter,
+  getChapterExtras,
   getCrossRefs,
   getInterlinear,
   getParagraphEnds,
@@ -80,6 +81,8 @@ export default function Reader() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [showVersions, setShowVersions] = useState(false);
   const [verses, setVerses] = useState<Verse[] | null>(null);
+  // Versiones con derechos: aviso del editor y notas al pie que hay que mostrar con el texto
+  const [extras, setExtras] = useState<{ copyright: string | null; notes: Record<number, string[]> } | null>(null);
   const [xrefs, setXrefs] = useState<Record<string, CrossRef[]>>({});
   const [paragraphEnds, setParagraphEnds] = useState<number[]>([]);
   const [interlinear, setInterlinear] = useState<Record<string, Word[]>>({});
@@ -110,8 +113,12 @@ export default function Reader() {
     setPanelTab(null);
     setProgress(0);
     setChromeHidden(false);
+    setExtras(null);
     getChapter(bookId, chapter, settings.version)
-      .then(setVerses)
+      .then((v) => {
+        setVerses(v);
+        getChapterExtras(bookId, chapter, settings.version).then(setExtras, () => {});
+      })
       .catch((e) => setError(String(e.message)));
     getCrossRefs(bookId, chapter).then(setXrefs).catch(() => {});
     getParagraphEnds(bookId, chapter).then(setParagraphEnds).catch(() => {});
@@ -200,6 +207,22 @@ export default function Reader() {
     navigate(() => router.push(`/${path}/${BOOK_SLUGS[bookId] ?? bookId}/${chapter}` as never), 'forward');
   const noteMark = (n: number) =>
     notes[n] ? <Text style={{ fontSize: size * 0.7, color: colors.accent }} accessibilityLabel="Tiene nota">{' ✎'}</Text> : null;
+
+  // Letras de las notas al pie (a, b, c…) en el orden del capítulo
+  const footnotes = Object.entries(extras?.notes ?? {})
+    .map(([n, texts]) => [Number(n), texts] as const)
+    .sort(([a], [b]) => a - b)
+    .flatMap(([n, texts]) => texts.map((text) => ({ n, text })))
+    .map((f, i) => ({ ...f, letter: i < 26 ? String.fromCharCode(97 + i) : String(i + 1) }));
+  const footMark = (n: number) => {
+    const letters = footnotes.filter((f) => f.n === n).map((f) => f.letter);
+    return letters.length ? (
+      <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }} accessibilityLabel="Tiene nota al pie">
+        {'\u2009'}
+        {letters.join(',')}
+      </Text>
+    ) : null;
+  };
 
   const verseBlocks = settings.study || settings.layout === 'versiculo';
   const selectedText = verses?.find(([n]) => n === selected)?.[1] ?? '';
@@ -429,6 +452,7 @@ export default function Reader() {
                       {'\u2009'}
                     </Text>
                     {text}
+                    {footMark(n)}
                     {noteMark(n)}
                   </Text>
                 ))}
@@ -475,6 +499,7 @@ export default function Reader() {
                 <Text style={{ fontFamily, fontSize: size, lineHeight: size * 1.6, color: colors.text }}>
                   <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>{label ?? n} </Text>
                   {text}
+                  {footMark(n)}
                   {noteMark(n)}
                 </Text>
               </Pressable>
@@ -490,14 +515,41 @@ export default function Reader() {
             onNext={() => go(1)}
           />
         )}
+        {verses && footnotes.length > 0 && (
+          <View style={[styles.footnotes, { borderColor: colors.border }]}>
+            <Text style={[styles.footnotesTitle, { color: colors.muted }]}>Notas de la {version?.abbr ?? 'versión'}</Text>
+            {footnotes.map((f) => (
+              <Text key={f.letter} style={[styles.footnote, { color: colors.text }]}>
+                <Text style={{ color: colors.accent, fontWeight: '700' }}>
+                  {chapter}:{f.n}
+                  {f.letter}
+                </Text>
+                {'  '}
+                {f.text}
+              </Text>
+            ))}
+          </View>
+        )}
         {verses && (
-          <Text
-            style={[styles.credit, { color: colors.muted }, version?.link && { textDecorationLine: 'underline' }]}
-            onPress={version?.link ? () => Linking.openURL(version.link!) : undefined}
-            accessibilityRole={version?.link ? 'link' : undefined}
-          >
-            {version?.credit ?? 'Reina-Valera 1909 · dominio público'}
-          </Text>
+          <View style={styles.creditBox}>
+            <Text style={[styles.credit, { color: colors.muted }]}>
+              {extras?.copyright ?? version?.credit ?? 'Reina-Valera 1909 · dominio público'}
+            </Text>
+            {version?.links?.length ? (
+              <View style={styles.creditLinks}>
+                {version.links.map((l) => (
+                  <Text
+                    key={l.url}
+                    style={[styles.creditLink, { color: colors.accent }]}
+                    onPress={() => Linking.openURL(l.url)}
+                    accessibilityRole="link"
+                  >
+                    {l.label}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
         )}
       </ScrollView>
 
@@ -672,7 +724,13 @@ const styles = StyleSheet.create({
   tools: { flexGrow: 1, flexDirection: 'row', justifyContent: 'center', gap: 2, paddingHorizontal: 16 },
   studyHint: { fontSize: 13, textAlign: 'center', marginTop: 12, maxWidth: 360 },
   verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
-  credit: { fontSize: 12, textAlign: 'center', marginTop: 24 },
+  creditBox: { marginTop: 24, gap: 8, alignItems: 'center' },
+  credit: { fontSize: 12, textAlign: 'center' },
+  creditLinks: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 },
+  creditLink: { fontSize: 12, fontWeight: '600', textDecorationLine: 'underline' },
+  footnotes: { marginTop: 28, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
+  footnotesTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  footnote: { fontSize: 14, lineHeight: 21 },
   navWrap: { position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center' },
   navPill: {
     flexDirection: 'row',

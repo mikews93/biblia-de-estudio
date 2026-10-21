@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chapterVerses, chapterVersesHtml, licensedById, type ApiNode } from './licenciadas';
+import { chapterHtml, chapterVerses, chapterVersesHtml, licensedById, type ApiNode } from './licenciadas';
 
 const verse = (n: string): ApiNode => ({
   name: 'verse',
@@ -84,5 +84,16 @@ describe('licensedById', () => {
   it('conoce las versiones de API.Bible y no las libres', () => {
     expect(licensedById('nbla')?.bibleId).toBe('ce11b813f9a27e20-01');
     expect(licensedById('rv1909')).toBeUndefined();
+  });
+});
+
+describe('chapterHtml', () => {
+  it('separa las notas al pie del texto y las guarda por versículo', () => {
+    const html =
+      '<div class="p"><span class="yv-v" v="16"></span><span class="yv-vlbl">16</span>Porque de tal manera amó Dios al mundo, que dio a su Hijo unigénito' +
+      '<span class="yv-n f"><span class="fr">3:16 </span><span class="ft">O único</span></span>, para que…</div>';
+    const { verses, notes } = chapterHtml(html);
+    expect(verses).toEqual([[16, 'Porque de tal manera amó Dios al mundo, que dio a su Hijo unigénito, para que…']]);
+    expect(notes).toEqual({ 16: ['O único'] });
   });
 });
