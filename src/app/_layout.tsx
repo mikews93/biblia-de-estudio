@@ -5,6 +5,7 @@ import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
 import AvisosSync from '@/components/AvisosSync';
+import SincroniaCuenta from '@/components/Sincronia';
 import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
 import { init as initDownloads } from '@/lib/descargas';
@@ -30,6 +31,7 @@ function AppStack() {
     if (Platform.OS !== 'web') return;
     document.documentElement.style.backgroundColor = colors.background;
     document.documentElement.style.setProperty('--papel', colors.background);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', colors.background);
   }, [colors.background]);
 
   useEffect(() => {
@@ -97,6 +99,7 @@ function AppStack() {
       <OfflineBanner />
       <TabBar />
       {Platform.OS === 'web' && <AvisosSync />}
+      <SincroniaCuenta />
       {Platform.OS === 'web' && (
         <>
           <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />

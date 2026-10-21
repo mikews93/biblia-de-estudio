@@ -1,11 +1,13 @@
-// El Taller: preparar reflexiones, encuentros de grupo y sermones. Todo se guarda en el dispositivo.
+// El Taller: preparar reflexiones, encuentros de grupo y sermones. Todo se guarda en el dispositivo (y en la cuenta, si hay una).
 // El recorrido es el mismo para los tres tipos: pasaje → idea central → bosquejo → revisión → presentar.
+// Con cuenta, cada mensaje también se guarda en ella (sincronia.ts).
 // Diseño: investigacion/reflexiones-dinamicas-sermones.md en los archivos del proyecto.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import type { Book } from './data';
+import { cambio, registrar } from './sincronia';
 
 export type Tipo = 'reflexion' | 'encuentro' | 'sermon';
 
@@ -259,7 +261,26 @@ function commit(next: Mensaje[]) {
   // Se guarda poco después de dejar de escribir.
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {}), 400);
+  cambio();
 }
+
+registrar<Mensaje[]>({
+  nombre: 'taller',
+  leer: () => load().then(() => state),
+  escribir: (next) => {
+    state = next;
+    listeners.forEach((l) => l());
+    if (saveTimer) clearTimeout(saveTimer);
+    AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
+  },
+  partir: (s) => Object.fromEntries(s.map((m) => [m.id, m])),
+  // Se conserva el orden del dispositivo; los mensajes que llegan de otro van primero.
+  unir: (entradas, antes) => {
+    const order = antes.map((m) => m.id);
+    return (Object.values(entradas) as Mensaje[]).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id) || b.creado.localeCompare(a.creado));
+  },
+  hora: (v) => Date.parse((v as Mensaje).actualizado) || undefined,
+});
 
 export async function crearMensaje(tipo: Tipo, pasaje: Pasaje | null = null, titulo = ''): Promise<string> {
   await load();

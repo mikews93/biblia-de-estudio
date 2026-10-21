@@ -270,7 +270,7 @@ test('los ajustes de lectura (tema, tamaño y versículo por línea) se aplican 
 
   const comprobar = async () => {
     await expect(verso()).toHaveCSS('font-size', '22px');
-    await expect(verso()).toHaveCSS('color', 'rgb(237, 231, 222)'); // texto del tema oscuro
+    await expect(verso()).toHaveCSS('color', 'rgb(236, 234, 230)'); // texto del tema oscuro
     // Un versículo por línea: el 1 y el 2 ya no están en el mismo párrafo
     await expect(verso().locator('xpath=..')).not.toContainText((await versiculo(request, 'jhn', 1, 2)).slice(0, 20));
   };
@@ -279,7 +279,7 @@ test('los ajustes de lectura (tema, tamaño y versículo por línea) se aplican 
   await comprobar();
   // El tema se aplica a toda la app
   await page.goto('/');
-  await expect(visible(page.getByText('Versículo del día'))).toHaveCSS('color', 'rgb(224, 160, 122)');
+  await expect(visible(page.getByText('Versículo del día'))).toHaveCSS('color', 'rgb(226, 168, 104)');
 });
 
 test('marcar capítulos como leídos actualiza la semana y el total en Hoy', async ({ page }) => {

@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
-// Versículos resaltados, guardados en el dispositivo. Clave «libro.capítulo.versículo» (numeración RV1909).
+import { cambio, registrar } from './sincronia';
+
+// Versículos resaltados, guardados en el dispositivo (y en la cuenta, si hay una). Clave «libro.capítulo.versículo» (numeración RV1909).
 
 export type HighlightColor = 'amarillo' | 'verde' | 'azul' | 'rosa';
 
@@ -39,10 +41,24 @@ export async function setHighlight(book: string, chapter: number, verse: number,
   const next = { ...state };
   if (color) next[key(book, chapter, verse)] = { color, at: Date.now() };
   else delete next[key(book, chapter, verse)];
+  write(next);
+  cambio();
+}
+
+function write(next: Store) {
   state = next;
   AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
   listeners.forEach((l) => l());
 }
+
+registrar<Store>({
+  nombre: 'resaltados',
+  leer: () => load().then(() => state),
+  escribir: write,
+  partir: (s) => s,
+  unir: (entradas) => entradas as Store,
+  hora: (v) => (v as Store[string]).at,
+});
 
 /** Colores de los versículos resaltados del capítulo, por número de versículo. */
 export function useChapterHighlights(book: string, chapter: number): Record<number, HighlightColor> {

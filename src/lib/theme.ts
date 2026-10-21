@@ -2,14 +2,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, createElement, ReactNode, useContext, useEffect, useState } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
+import { cambio, registrar } from './sincronia';
+
 const light = {
-  background: '#FBF8F3',
+  background: '#F9F8F6',
   surface: '#FFFFFF',
-  text: '#1F1B16',
-  muted: '#6B6358',
-  border: '#E5DED3',
-  accent: '#8A4B2A',
-  accentSoft: '#F3E6DC',
+  text: '#1C1B19',
+  muted: '#6A6660',
+  border: '#E3E0DB',
+  accent: '#2A2826',
+  accentSoft: '#ECEAE6',
+  /** El toque cálido: solo en lo destacado (versículo del día, el día de hoy, el aviso de la campana). */
+  warm: '#A8641F',
+  warmSoft: '#F5E9D8',
   highlight: '#FFF1C7',
   greek: '#2F4A6B',
 };
@@ -22,20 +27,24 @@ const sepia: Colors = {
   text: '#3B2F22',
   muted: '#7A6A55',
   border: '#E0D3B8',
-  accent: '#8A4B2A',
-  accentSoft: '#EADBC0',
+  accent: '#3E362E',
+  accentSoft: '#E6DAC2',
+  warm: '#9A5A1E',
+  warmSoft: '#EED9B8',
   highlight: '#F2DFA6',
   greek: '#3D5470',
 };
 
 const dark: Colors = {
-  background: '#151311',
-  surface: '#1E1B18',
-  text: '#EDE7DE',
-  muted: '#A39A8E',
-  border: '#36312B',
-  accent: '#E0A07A',
-  accentSoft: '#3A2A20',
+  background: '#131313',
+  surface: '#1C1C1B',
+  text: '#ECEAE6',
+  muted: '#9D9A94',
+  border: '#302F2D',
+  accent: '#E6E3DE',
+  accentSoft: '#2C2B29',
+  warm: '#E2A868',
+  warmSoft: '#36291B',
   highlight: '#4A3F1E',
   greek: '#9DB8D9',
 };
@@ -73,21 +82,52 @@ function initialSettings(): Settings {
   }
 }
 
+// Los ajustes viven fuera de React para que la sincronía con la cuenta (sincronia.ts) los lea y los cambie.
+let current: Settings = initialSettings();
+let loaded: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function load() {
+  loaded ??= AsyncStorage.getItem(KEY)
+    .then((raw) => {
+      if (raw) current = { ...current, ...JSON.parse(raw) };
+    })
+    .catch(() => {})
+    .then(() => listeners.forEach((l) => l()));
+  return loaded;
+}
+
+function write(next: Settings) {
+  current = next;
+  AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+  listeners.forEach((l) => l());
+}
+
+// En la cuenta cada ajuste es una entrada: cambiar la letra en el teléfono no pisa el tema elegido en el computador.
+registrar<Settings>({
+  nombre: 'ajustes',
+  leer: () => load().then(() => current),
+  escribir: write,
+  partir: (s) => s,
+  unir: (entradas) => ({ ...DEFAULTS, ...(entradas as Partial<Settings>) }),
+});
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState(initialSettings);
+  const [settings, setSettings] = useState(current);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then((raw) => raw && setSettings((s) => ({ ...s, ...JSON.parse(raw) })))
-      .catch(() => {});
+    const l = () => setSettings(current);
+    listeners.add(l);
+    load();
+    return () => {
+      listeners.delete(l);
+    };
   }, []);
 
-  const update = (patch: Partial<Settings>) =>
-    setSettings((s) => {
-      const next = { ...s, ...patch };
-      AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
-      return next;
-    });
+  const update = (patch: Partial<Settings>) => {
+    write({ ...current, ...patch });
+    cambio();
+  };
 
   return createElement(SettingsContext.Provider, { value: { settings, update } }, children);
 }
@@ -124,8 +164,25 @@ export const themeSwatches: { name: ThemeName; label: string; colors: Colors | n
 
 const LAST = 'ultima-lectura';
 
-export const saveLastRead = (book: string, chapter: number) =>
-  AsyncStorage.setItem(LAST, JSON.stringify({ book, chapter })).catch(() => {});
+const lastListeners = new Set<(last: { book: string; chapter: number } | null) => void>();
+
+export function saveLastRead(book: string, chapter: number) {
+  cambio();
+  return AsyncStorage.setItem(LAST, JSON.stringify({ book, chapter })).catch(() => {});
+}
+
+/** La última lectura; cambia si llega una más nueva de otro dispositivo. */
+export function useLastRead() {
+  const [last, setLast] = useState<{ book: string; chapter: number } | null>(null);
+  useEffect(() => {
+    getLastRead().then(setLast);
+    lastListeners.add(setLast);
+    return () => {
+      lastListeners.delete(setLast);
+    };
+  }, []);
+  return last;
+}
 
 export async function getLastRead(): Promise<{ book: string; chapter: number } | null> {
   try {
@@ -135,3 +192,15 @@ export async function getLastRead(): Promise<{ book: string; chapter: number } |
     return null;
   }
 }
+
+registrar<{ book: string; chapter: number } | null>({
+  nombre: 'ultima-lectura',
+  leer: getLastRead,
+  escribir: (last) => {
+    if (last) AsyncStorage.setItem(LAST, JSON.stringify(last)).catch(() => {});
+    else AsyncStorage.removeItem(LAST).catch(() => {});
+    lastListeners.forEach((l) => l(last));
+  },
+  partir: (last) => (last ? { ultima: last } : {}),
+  unir: (entradas) => (entradas.ultima as { book: string; chapter: number } | undefined) ?? null,
+});
