@@ -81,3 +81,13 @@ export const TalkIcon = (p: Props) => (
     <Path d="M18 9h1.5A1.5 1.5 0 0 1 21 10.5v5a1.5 1.5 0 0 1-1.5 1.5H19v3l-3.5-3H12" />
   </Line>
 );
+
+/** La lectura en la lengua original: la letra (α o א) con dos ondas de sonido. */
+export const OriginalIcon = ({ size = 22, color, letter = 'α' }: Props & { letter?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <SvgText x={8.5} y={letter === 'α' ? 16.5 : 17} fill={color} fontSize={letter === 'α' ? 15 : 14} fontWeight="600" textAnchor="middle">
+      {letter}
+    </SvgText>
+    <Path d="M16 9.2a4 4 0 0 1 0 5.6M19 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
+  </Svg>
+);

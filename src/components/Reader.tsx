@@ -33,7 +33,8 @@ import {
   original,
 } from '@/lib/data';
 import { journeysFor, recorridoHref } from '@/lib/recorridos';
-import { playChapter, playDramatized, recordingId, useCatalog } from '@/lib/audio';
+import { getPlayer, playChapter, playDramatized, playOriginal, recordingId, seekWord, useAudioSelect, useCatalog, useSpoken } from '@/lib/audio';
+import { OriginalIcon } from '@/components/audioIcons';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
 import { useChapterNotes } from '@/lib/notas';
@@ -145,9 +146,23 @@ export default function Reader() {
   const index = books.findIndex((b) => b.id === bookId);
   const book = books[index];
 
+  // Mientras suena el capítulo en hebreo o en griego, el lector muestra el interlineal aunque el modo estudio esté
+  // apagado, ilumina la palabra que suena y acompaña la lectura bajando hasta el versículo.
+  const listening = useAudioSelect((a) => a.open && a.kind === 'original' && a.book === bookId && a.chapter === chapter);
+  const spokenVerse = useSpoken((w) => w?.verse ?? 0);
+  const verseY = useRef<Record<number, number>>({});
+  const interlinearOn = settings.study || listening;
+
   useEffect(() => {
-    if (settings.study && book?.interlinear) getInterlinear(bookId, chapter).then(setInterlinear).catch(() => {});
-  }, [settings.study, book, bookId, chapter]);
+    if (interlinearOn && book?.interlinear) getInterlinear(bookId, chapter).then(setInterlinear).catch(() => {});
+  }, [interlinearOn, book, bookId, chapter]);
+
+  useEffect(() => {
+    const y = verseY.current[spokenVerse];
+    if (!listening || !spokenVerse || y === undefined || !getPlayer().playing) return;
+    scroll.current?.scrollTo({ y: Math.max(0, y - insets.top - HEADER_HEIGHT - 24), animated: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar de versículo
+  }, [listening, spokenVerse]);
 
   /** Capítulo siguiente (1) o anterior (-1), saltando de libro; null en el principio o el final de la Biblia. */
   const neighbor = (delta: 1 | -1) => {
@@ -261,7 +276,7 @@ export default function Reader() {
     ) : null;
   };
 
-  const verseBlocks = settings.study || settings.layout === 'versiculo';
+  const verseBlocks = interlinearOn || settings.layout === 'versiculo';
   const selectedText = verses?.find(([n]) => n === selected)?.[1] ?? '';
   const title = book ? `${book.name} ${chapter}` : '';
   const version = versions.find((v) => v.id === settings.version);
@@ -274,6 +289,17 @@ export default function Reader() {
       icon: (c: string) => <ListenIcon color={c} size={22} />,
       onPress: () => playChapter(bookId, chapter, title),
     },
+    ...(catalog.original.includes(recordingId(bookId, chapter)) && book
+      ? [
+          {
+            key: 'original',
+            label: original(book).rtl ? 'Hebreo' : 'Griego',
+            hint: `Escuchar el capítulo en ${original(book).name}, con cada palabra iluminada en el interlineal`,
+            icon: (c: string) => <OriginalIcon color={c} size={22} letter={original(book).icon} />,
+            onPress: () => playOriginal(bookId, chapter, title),
+          },
+        ]
+      : []),
     ...(catalog.dramatizado.includes(recordingId(bookId, chapter))
       ? [
           {
@@ -464,9 +490,11 @@ export default function Reader() {
                 <ToolButton key={t.key} index={i + 2} label={t.label} hint={t.hint} icon={t.icon} colors={colors} onPress={t.onPress} />
               ))}
             </ScrollView>
-            {settings.study && (
+            {interlinearOn && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
-                {`Toca una ${original(book).word} para ver su significado y gramática.`}
+                {listening
+                  ? `Cada ${original(book).word} se ilumina mientras suena. Tócala para saltar a ella.`
+                  : `Toca una ${original(book).word} para ver su significado y gramática.`}
               </Text>
             )}
           </View>
@@ -528,9 +556,16 @@ export default function Reader() {
         {verses &&
           verseBlocks &&
           verses.map(([n, text, label]) =>
-            settings.study ? (
-              <View key={n} onLayout={(e) => n === target && scrollToY(e.nativeEvent.layout.y)}>
+            interlinearOn ? (
+              <View
+                key={n}
+                onLayout={(e) => {
+                  verseY.current[n] = e.nativeEvent.layout.y;
+                  if (n === target) scrollToY(e.nativeEvent.layout.y);
+                }}
+              >
                 <StudyVerse
+                  listening={listening}
                   n={n}
                   text={text}
                   words={interlinear[String(n)]}
@@ -542,7 +577,10 @@ export default function Reader() {
                   fontFamily={fontFamily}
                   colors={colors}
                   onSelect={() => select(n)}
-                  onWord={(i) => setWord({ verse: n, index: i })}
+                  onWord={(i) => {
+                    // Mientras suena la lectura original, tocar una palabra salta a ella; en pausa, abre su ficha.
+                    if (!(listening && getPlayer().playing && seekWord(n, i))) setWord({ verse: n, index: i });
+                  }}
                   onRefs={() => {
                     setSelected(n);
                     setPanelTab('referencias');

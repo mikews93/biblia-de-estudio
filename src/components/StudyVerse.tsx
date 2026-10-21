@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { IconText } from '@/components/comunidad/ui';
 import { LinkIcon } from '@/components/icons';
+import { useSpoken } from '@/lib/audio';
 import { Word } from '@/lib/data';
 import { Colors, serif } from '@/lib/theme';
 
@@ -21,10 +22,14 @@ type Props = {
   onSelect: () => void;
   onWord: (index: number) => void;
   onRefs: () => void;
+  /** Suena el capítulo en la lengua original: la palabra que se lee se ilumina. */
+  listening?: boolean;
 };
 
 /** Versículo en modo estudio: el texto, debajo el griego o el hebreo palabra por palabra y las referencias a un toque. */
-export default function StudyVerse({ n, text, words, rtl, refCount, selected, mark, fontSize, fontFamily, colors, onSelect, onWord, onRefs }: Props) {
+export default function StudyVerse({ n, text, words, rtl, refCount, selected, mark, fontSize, fontFamily, colors, onSelect, onWord, onRefs, listening }: Props) {
+  // Solo se vuelve a dibujar el versículo que se está leyendo, no todo el capítulo.
+  const spoken = useSpoken((w) => (listening && w?.verse === n ? w.index : -1));
   return (
     <View
       style={[
@@ -41,16 +46,34 @@ export default function StudyVerse({ n, text, words, rtl, refCount, selected, ma
       </Pressable>
       {words && words.length > 0 && (
         <View style={[styles.words, rtl && styles.rtl]}>
-          {words.map(([original, , es], i) => (
-            <Pressable key={i} onPress={() => onWord(i)} style={styles.word} accessibilityLabel={`${original}, ${es}`}>
-              <Text style={{ fontFamily: serif, fontSize: fontSize * (rtl ? 0.95 : 0.82), color: colors.greek, writingDirection: rtl ? 'rtl' : 'ltr' }}>
-                {original}
-              </Text>
-              <Text style={{ fontSize: Math.max(11, fontSize * 0.55), color: colors.muted }} numberOfLines={1}>
-                {es || '·'}
-              </Text>
-            </Pressable>
-          ))}
+          {words.map(([original, , es], i) => {
+            const now = i === spoken;
+            return (
+              <Pressable
+                key={i}
+                onPress={() => onWord(i)}
+                style={[styles.word, now && { backgroundColor: colors.accentSoft, borderColor: colors.accent }]}
+                accessibilityLabel={`${original}, ${es}`}
+              >
+                <Text
+                  style={{
+                    fontFamily: serif,
+                    fontSize: fontSize * (rtl ? 0.95 : 0.82),
+                    color: now ? colors.accent : colors.greek,
+                    writingDirection: rtl ? 'rtl' : 'ltr',
+                  }}
+                >
+                  {original}
+                </Text>
+                <Text
+                  style={{ fontSize: Math.max(11, fontSize * 0.55), color: now ? colors.text : colors.muted, fontWeight: now ? '700' : '400' }}
+                  numberOfLines={1}
+                >
+                  {es || '·'}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       )}
       {refCount > 0 && (
@@ -68,8 +91,9 @@ export default function StudyVerse({ n, text, words, rtl, refCount, selected, ma
 
 const styles = StyleSheet.create({
   block: { paddingVertical: 12, paddingHorizontal: 8, marginHorizontal: -8, borderRadius: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  words: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 6, marginTop: 8 },
+  words: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 4, rowGap: 4, marginTop: 8, marginHorizontal: -6 },
   rtl: { flexDirection: 'row-reverse' },
-  word: { alignItems: 'center', maxWidth: 120 },
+  // El borde transparente reserva el sitio del resaltado: al iluminarse una palabra no se mueve nada.
+  word: { alignItems: 'center', maxWidth: 132, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'transparent' },
   chip: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginTop: 10 },
 });
