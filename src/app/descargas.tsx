@@ -42,7 +42,9 @@ export default function Descargas() {
   const saved = downloadedBytes(d);
   const anything = Object.keys(d.index).length > 0;
   // La versión que se lee va primero
-  const ordered = [...versions].sort((a, b) => Number(b.id === settings.version) - Number(a.id === settings.version));
+  // Las versiones con derechos (API.Bible) no se pueden descargar: su licencia solo deja leerlas en línea.
+  const licensed = versions.filter((v) => v.licensed);
+  const ordered = versions.filter((v) => !v.licensed).sort((a, b) => Number(b.id === settings.version) - Number(a.id === settings.version));
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
@@ -106,6 +108,11 @@ export default function Descargas() {
                 />
               </Appear>
             ))}
+          {d.ready && licensed.length > 0 && (
+            <Text style={[styles.licensedNote, { color: colors.muted }]}>
+              {licensed.map((v) => v.abbr).join(', ')}: sus editores solo permiten leerlas con conexión.
+            </Text>
+          )}
 
           <SectionTitle>Para estudiar</SectionTitle>
           {d.ready && (
@@ -331,6 +338,7 @@ const shadow = (colors: Colors) =>
   isDark(colors) ? null : { boxShadow: '0 1px 2px rgba(60, 40, 20, 0.05), 0 6px 20px rgba(60, 40, 20, 0.05)' };
 
 const styles = StyleSheet.create({
+  licensedNote: { fontSize: 13, lineHeight: 18, paddingHorizontal: 4, marginTop: -2 },
   content: { padding: 20, paddingBottom: 64, gap: 12, maxWidth: 680, width: '100%', alignSelf: 'center' },
   hero: { alignItems: 'center', gap: 10, borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, padding: 24 },
   emblem: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },

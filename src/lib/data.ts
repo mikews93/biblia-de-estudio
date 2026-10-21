@@ -1,8 +1,12 @@
 import { Platform } from 'react-native';
 
+import { reportView } from './fums';
+import { licensedById } from './licenciadas';
+
 // En web los datos se sirven desde public/data; en el teléfono, desde EXPO_PUBLIC_DATA_URL
 // (por ejemplo la web publicada) hasta que lleguen los paquetes descargables sin conexión.
 const BASE = process.env.EXPO_PUBLIC_DATA_URL ?? (Platform.OS === 'web' ? '/data' : '');
+const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
 export type Book = {
   id: string;
@@ -17,7 +21,8 @@ export type Book = {
 /** [número, texto, etiqueta si la versión une versículos («9-20»)] */
 export type Verse = [number, string, string?];
 
-export type Version = { id: string; name: string; abbr: string; credit: string };
+/** licensed: versión con derechos leída por API.Bible (solo en línea, sin IA ni audio); link: página que el aviso enlaza. */
+export type Version = { id: string; name: string; abbr: string; credit: string; licensed?: boolean; link?: string };
 
 // [palabra original, transliteración, glosa española, glosa inglesa, lema, significado del lema, Strong, morfología]
 export type Word = [string, string, string, string, string, string, string, string];
@@ -58,9 +63,54 @@ export function load<T>(path: string, optional = false): Promise<T> {
 }
 
 export const getBooks = () => load<Book[]>('books.json');
-export const getVersions = () => load<Version[]>('versions.json');
+let licensedVersions: Promise<Version[]> | null = null;
+
+/** Versiones con derechos que la clave de API.Bible tiene (api/biblia.ts); sin red o sin clave, ninguna. */
+function getLicensedVersions(): Promise<Version[]> {
+  licensedVersions ??= fetch(`${API}/api/biblia?versiones=1`)
+    .then((res) => (res.ok ? res.json() : { versions: [] }))
+    .then((r: { versions?: Version[] }) => r.versions ?? [])
+    .catch(() => {
+      licensedVersions = null; // se vuelve a preguntar cuando haya conexión
+      return [];
+    });
+  return licensedVersions;
+}
+
+/** Versiones libres (en los datos de la app) y, detrás, las de API.Bible. */
+export const getVersions = () =>
+  Promise.all([load<Version[]>('versions.json'), getLicensedVersions()]).then(([free, licensed]) => [...free, ...licensed]);
+
+const licensedChapters = new Map<string, Promise<{ verses: Verse[]; fums: string | null }>>();
+
+function getLicensedChapter(book: string, chapter: number, version: string): Promise<Verse[]> {
+  const key = `${version}/${book}/${chapter}`;
+  let p = licensedChapters.get(key);
+  if (!p) {
+    const q = new URLSearchParams({ v: version, book, chapter: String(chapter) });
+    p = fetch(`${API}/api/biblia?${q}`).then(
+      async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error ?? `No se pudo cargar ${key} (${res.status})`);
+        return body as { verses: Verse[]; fums: string | null };
+      },
+      () => {
+        throw new Error('Sin conexión. Esta versión solo se puede leer con internet.');
+      },
+    );
+    p.catch(() => licensedChapters.delete(key));
+    licensedChapters.set(key, p);
+  }
+  return p.then(({ verses, fums }) => {
+    reportView(fums);
+    return verses;
+  });
+}
+
 export const getChapter = (book: string, chapter: number, version = 'rv1909') =>
-  load<Verse[]>(`text/${version}/${book}/${chapter}.json`);
+  licensedById(version)
+    ? getLicensedChapter(book, chapter, version)
+    : load<Verse[]>(`text/${version}/${book}/${chapter}.json`);
 export const getInterlinear = (book: string, chapter: number) =>
   load<Record<string, Word[]>>(`interlinear/${book}/${chapter}.json`, true);
 export const getCrossRefs = (book: string, chapter: number) =>

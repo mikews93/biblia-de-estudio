@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { CheckIcon } from '@/components/icons';
@@ -7,7 +7,7 @@ import { serif, useColors, useSettings } from '@/lib/theme';
 
 type Props = { versions: Version[]; onClose: () => void };
 
-/** Lista de versiones disponibles. La NBLA y otras con licencia se añadirán cuando haya permiso. */
+/** Lista de versiones: primero las libres y después las que llegan con permiso por API.Bible o YouVersion. */
 export default function VersionPicker({ versions, onClose }: Props) {
   const colors = useColors();
   const { settings, update } = useSettings();
@@ -17,34 +17,46 @@ export default function VersionPicker({ versions, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar versiones" />
       <Appear style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.label, { color: colors.muted }]}>Versión</Text>
-        {versions.map((v) => {
-          const on = settings.version === v.id;
-          return (
-            <Pressable
-              key={v.id}
-              onPress={() => {
-                update({ version: v.id });
-                onClose();
-              }}
-              style={({ pressed }) => [
-                styles.row,
-                { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accentSoft : 'transparent' },
-                pressed && { opacity: 0.7 },
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-            >
-              <Text style={[styles.abbr, { color: colors.accent, fontFamily: serif }]}>{v.abbr}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{v.name}</Text>
-                <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{v.credit.split(' · ').slice(1).join(' · ')}</Text>
+        <ScrollView style={styles.list} contentContainerStyle={{ gap: 8 }}>
+          {versions.map((v, i) => {
+            const on = settings.version === v.id;
+            const pressable = (
+              <Pressable
+                key={v.id}
+                onPress={() => {
+                  update({ version: v.id });
+                  onClose();
+                }}
+                style={({ pressed }) => [
+                  styles.row,
+                  { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accentSoft : 'transparent' },
+                  pressed && { opacity: 0.7 },
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+              >
+                <Text style={[styles.abbr, { color: colors.accent, fontFamily: serif }]}>{v.abbr}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{v.name}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{v.licensed ? v.credit.split(' · ')[1] : v.credit.split(' · ').slice(1).join(' · ')}</Text>
+                </View>
+                {on && <CheckIcon color={colors.accent} size={18} strokeWidth={2.6} />}
+              </Pressable>
+            );
+            // Antes de la primera versión con derechos, su propio título
+            if (!v.licensed || versions[i - 1]?.licensed) return pressable;
+            return (
+              <View key={v.id} style={{ gap: 8 }}>
+                <Text style={[styles.label, styles.group, { color: colors.muted }]}>Con permiso de sus editores · en línea</Text>
+                {pressable}
               </View>
-              {on && <CheckIcon color={colors.accent} size={18} strokeWidth={2.6} />}
-            </Pressable>
-          );
-        })}
+            );
+          })}
+        </ScrollView>
         <Text style={[styles.note, { color: colors.muted }]}>
           El hebreo, el griego, las referencias y el estudio con IA siguen la numeración de la Reina-Valera 1909.
+          {versions.some((v) => v.licensed) &&
+            ' Las versiones con permiso solo se leen con conexión; la IA y el audio usan siempre las libres.'}
         </Text>
       </Appear>
     </Modal>
@@ -63,12 +75,15 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
     gap: 8,
+    maxHeight: '86%',
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
+  list: { flexGrow: 0 },
+  group: { marginTop: 8 },
   label: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 12, padding: 12 },
   abbr: { width: 56, fontSize: 15, fontWeight: '700' },
