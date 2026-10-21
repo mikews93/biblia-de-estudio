@@ -1,5 +1,5 @@
 // Genera todos los iconos de la app a partir de assets/icono/*.svg.
-// Uso: node pipeline/iconos.mjs   (usa el Chromium de Playwright)
+// Uso: node pipeline/iconos.mjs [parte del nombre]   (usa el Chromium de Playwright)
 import { chromium } from '@playwright/test';
 import fs from 'fs';
 
@@ -23,11 +23,14 @@ const SALIDAS = [
   { out: 'public/logo512.png', size: 512, capas: [[FONDO, 1], [LLAMA, 1]] },
   { out: 'public/maskable512.png', size: 512, capas: [[FONDO, 1], [LLAMA, 0.85]] },
   { out: 'public/apple-touch-icon.png', size: 180, capas: [[FONDO, 1], [LLAMA, 1]] },
+  // Insignia de las notificaciones: Android solo usa la transparencia, así que va la llama sola en blanco.
+  { out: 'public/badge96.png', size: 96, capas: [[LLAMA, 1.4]], mono: true },
 ];
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
-for (const s of SALIDAS) {
+const filtro = process.argv[2] ?? '';
+for (const s of SALIDAS.filter((x) => x.out.includes(filtro))) {
   await page.setViewportSize({ width: s.size, height: s.size });
   const imgs = s.capas
     .map(([src, k]) => `<img src="${src}" style="position:absolute;inset:0;width:100%;height:100%;transform:scale(${k});${s.mono ? 'filter:brightness(0) invert(1)' : ''}">`)
