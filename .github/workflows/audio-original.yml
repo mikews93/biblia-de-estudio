@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       capitulos:
-        description: Capítulos a alinear, separados por espacios (por ejemplo «jhn-3 psa-23»). Vacío = capitulos.txt
+        description: "Capítulos («jhn-3»), libros enteros («jhn») o «nt» / «at», separados por espacios. Vacío = capitulos.txt"
         default: ''
 
 permissions:
@@ -25,7 +25,7 @@ concurrency:
 jobs:
   alinear:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -45,9 +45,13 @@ jobs:
             pipeline/.cache
           key: audio-original-${{ hashFiles('pipeline/audio_original/capitulos.txt') }}
           restore-keys: audio-original-
+      # Un libro entero puede tardar horas: si el paso se corta por tiempo, lo ya alineado se publica igual y la
+      # siguiente tanda sigue donde quedó (alinear.py se salta los capítulos que ya tienen tiempos).
       - name: Alinear
-        run: python3 pipeline/audio_original/alinear.py ${{ github.event.inputs.capitulos }}
+        timeout-minutes: 330
+        run: python3 -u pipeline/audio_original/alinear.py ${{ github.event.inputs.capitulos }}
       - name: Publicar en la app
+        if: always()
         run: |
           python3 - <<'PY'
           import json, pathlib

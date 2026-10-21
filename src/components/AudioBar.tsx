@@ -13,6 +13,7 @@ import {
   getPlayer,
   playChapter,
   playDramatized,
+  playOriginal,
   recordingId,
   seekBy,
   seekChapter,
@@ -23,15 +24,19 @@ import {
   toggle,
   useAudio,
   useCatalog,
+  useSpoken,
 } from '@/lib/audio';
+import { getInterlinear, Word } from '@/lib/data';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { fixedInTransition } from '@/lib/transition';
 
-import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon, TalkIcon } from './audioIcons';
+import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, OriginalIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon, TalkIcon } from './audioIcons';
 
 const RATES = [1, 1.25, 1.5, 0.75];
+// En la lengua original también se puede ir a media velocidad, para repetir palabra por palabra.
+const ORIGINAL_RATES = [1, 0.75, 0.5];
 
-const KIND_ICON: Record<AudioKind, typeof ListenIcon> = { lectura: ListenIcon, dramatizado: DramaIcon, podcast: TalkIcon };
+const KIND_ICON: Record<AudioKind, typeof ListenIcon> = { lectura: ListenIcon, dramatizado: DramaIcon, podcast: TalkIcon, original: OriginalIcon };
 
 const clock = (s: number) => {
   const t = Math.max(0, Math.floor(s));
@@ -68,16 +73,27 @@ function Bar() {
     audio.kind === 'lectura' && file?.version
       ? audio.versions.filter((v) => v.id !== file.version!.id && v[file.testament ?? 'nt'])
       : [];
-  const hasDrama = !!audio.book && catalog.dramatizado.includes(recordingId(audio.book, audio.chapter));
+  const id = audio.book ? recordingId(audio.book, audio.chapter) : '';
+  const hasDrama = catalog.dramatizado.includes(id);
+  const hasOriginal = catalog.original.includes(id);
   const ready = !!speech || (!!file && !audio.loading);
   const Icon = KIND_ICON[audio.kind];
-  const step = speech ? 1 : 10;
+  const letter = file?.language === 'hebreo' ? 'א' : 'α';
+  const step = speech ? 1 : audio.kind === 'original' ? 5 : 10;
+  const rates = audio.kind === 'original' ? ORIGINAL_RATES : RATES;
+  const modes = [
+    ['lectura', 'Lectura', () => playChapter(audio.book!, audio.chapter, audio.title)] as const,
+    ...(hasDrama ? [['dramatizado', 'Dramatizado', () => playDramatized(audio.book!, audio.chapter, audio.title)] as const] : []),
+    ...(hasOriginal
+      ? [['original', isHebrew(audio.book) ? 'Hebreo' : 'Griego', () => playOriginal(audio.book!, audio.chapter, audio.title)] as const]
+      : []),
+  ];
 
   return (
     <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.border }, fixedInTransition('audio')]}>
       <View style={styles.head}>
         <View style={[styles.badge, { backgroundColor: colors.accentSoft }]}>
-          <Icon color={colors.accent} size={18} />
+          <Icon color={colors.accent} size={18} {...(audio.kind === 'original' ? { letter } : {})} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.text, fontFamily: serif }]} numberOfLines={1}>
@@ -97,14 +113,9 @@ function Bar() {
         </Pressable>
       </View>
 
-      {hasDrama && (audio.kind === 'lectura' || audio.kind === 'dramatizado') && (
+      {modes.length > 1 && audio.kind !== 'podcast' && (
         <View style={[styles.switch, { backgroundColor: colors.background, borderColor: colors.border }]}>
-          {(
-            [
-              ['lectura', 'Lectura', () => playChapter(audio.book!, audio.chapter, audio.title)],
-              ['dramatizado', 'Dramatizado', () => playDramatized(audio.book!, audio.chapter, audio.title)],
-            ] as const
-          ).map(([kind, label, play]) => {
+          {modes.map(([kind, label, play]) => {
             const on = audio.kind === kind;
             return (
               <Pressable
@@ -138,6 +149,10 @@ function Bar() {
         </View>
       )}
 
+      {audio.kind === 'original' && ready && !audio.error && audio.book && (
+        <SpokenWord book={audio.book} chapter={audio.chapter} hebrew={file?.language === 'hebreo'} colors={colors} />
+      )}
+
       {audio.error ? (
         <Text style={[styles.message, { color: colors.muted }]}>{audio.error}</Text>
       ) : !ready ? (
@@ -162,7 +177,7 @@ function Bar() {
               {speech ? `${speech.index + 1}/${speech.lines.length}` : clock(now)}
             </Text>
             <Pressable
-              onPress={() => setRate(RATES[(RATES.indexOf(audio.rate) + 1) % RATES.length])}
+              onPress={() => setRate(rates[(rates.indexOf(audio.rate) + 1) % rates.length])}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={`Velocidad ${audio.rate}×. Cambiar`}
@@ -174,10 +189,10 @@ function Bar() {
               onPress={() => seekBy(-step)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={speech ? 'Intervención anterior' : 'Atrás 10 segundos'}
+              accessibilityLabel={speech ? 'Intervención anterior' : `Atrás ${step} segundos`}
               style={({ pressed }) => [styles.small, pressed && styles.pressed]}
             >
-              {speech ? <BackIcon color={colors.text} size={26} /> : <SkipBackIcon color={colors.text} size={28} />}
+              {speech ? <BackIcon color={colors.text} size={26} /> : <SkipBackIcon color={colors.text} size={28} seconds={step} />}
             </Pressable>
             <Pressable
               onPress={toggle}
@@ -197,10 +212,10 @@ function Bar() {
               onPress={() => seekBy(step)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={speech ? 'Intervención siguiente' : 'Adelante 10 segundos'}
+              accessibilityLabel={speech ? 'Intervención siguiente' : `Adelante ${step} segundos`}
               style={({ pressed }) => [styles.small, pressed && styles.pressed]}
             >
-              {speech ? <ForwardIcon color={colors.text} size={26} /> : <SkipForwardIcon color={colors.text} size={28} />}
+              {speech ? <ForwardIcon color={colors.text} size={26} /> : <SkipForwardIcon color={colors.text} size={28} seconds={step} />}
             </Pressable>
             <View style={styles.rateSpacer} />
             <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]}>{speech ? '' : clock(total)}</Text>
@@ -210,6 +225,50 @@ function Bar() {
             {speech ? 'Voz del dispositivo · guion preparado con IA a partir de las fuentes de la app' : file?.credit}
           </Text>
         </>
+      )}
+    </View>
+  );
+}
+
+/** Libros del AT (se leen en hebreo): los ids de la app siguen el orden del canon, así que basta con la lista. */
+const OT = new Set('gen exo lev num deu jos jdg rut 1sa 2sa 1ki 2ki 1ch 2ch ezr neh est job psa pro ecc sng isa jer lam ezk dan hos jol amo oba jon mic nam hab zep hag zec mal'.split(' '));
+const isHebrew = (book: string | null) => !!book && OT.has(book);
+
+/** La palabra que suena en la lectura original, grande, con su transliteración y su glosa en español. */
+function SpokenWord({ book, chapter, hebrew, colors }: { book: string; chapter: number; hebrew: boolean; colors: Colors }) {
+  const [loaded, setLoaded] = useState<{ id: string; words: Record<string, Word[]> } | null>(null);
+  const key = useSpoken((w) => (w ? `${w.verse}:${w.index}` : ''));
+  const id = recordingId(book, chapter);
+  useEffect(() => {
+    getInterlinear(book, chapter)
+      .then((words) => setLoaded({ id: recordingId(book, chapter), words }))
+      .catch(() => {});
+  }, [book, chapter]);
+  const [verse, index] = key.split(':');
+  const word = key && loaded?.id === id ? loaded.words[verse]?.[Number(index)] : undefined;
+  return (
+    <View style={[styles.spoken, { backgroundColor: colors.accentSoft }]} accessibilityLiveRegion="polite">
+      {word ? (
+        <>
+          <Text
+            style={[styles.spokenWord, { color: colors.greek, fontFamily: serif, writingDirection: hebrew ? 'rtl' : 'ltr' }]}
+            numberOfLines={1}
+          >
+            {word[0]}
+          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
+              {word[2] || '·'}
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 12, fontStyle: 'italic' }} numberOfLines={1}>
+              {word[1]} · v. {verse}
+            </Text>
+          </View>
+        </>
+      ) : (
+        <Text style={{ color: colors.muted, fontSize: 12.5 }}>
+          Sigue las palabras en el interlineal: se iluminan mientras suenan. Toca una para saltar a ella.
+        </Text>
       )}
     </View>
   );
@@ -277,5 +336,7 @@ const styles = StyleSheet.create({
   small: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   play: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   note: { fontSize: 12, textAlign: 'center', marginTop: 4 },
+  spoken: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, marginTop: 10, minHeight: 52 },
+  spokenWord: { fontSize: 26, maxWidth: '55%' },
   credit: { fontSize: 10, textAlign: 'center', marginTop: 6 },
 });

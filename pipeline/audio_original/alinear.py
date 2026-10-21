@@ -22,6 +22,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 import unicodedata
 import urllib.parse
 import urllib.request
@@ -197,6 +198,7 @@ class Aligner:
         self.rate = bundle.sample_rate
         self.model = bundle.get_model(with_star=True).eval()
         self.dict = bundle.get_dict(star='*')
+        print('Modelo MMS listo', flush=True)
         torch.set_num_threads(max(1, torch.get_num_threads()))
 
     def load(self, path: Path):
@@ -221,8 +223,10 @@ class Aligner:
     def align(self, path: Path, words: list[dict]):
         """[inicio, fin, confianza] de cada palabra, en segundos."""
         torch = self.torch
+        began = time.time()
         wave = self.load(path)
         emission, step = self.emissions(wave)
+        print(f'  {len(wave) / self.rate:.0f} s de audio, modelo en {time.time() - began:.0f} s', flush=True)
         tokens, owner = [self.dict['*']], [-1]
         verse = None
         for i, w in enumerate(words):
@@ -267,8 +271,11 @@ def chapter(aligner: Aligner | None, chapter_id: str, text_only=False):
     source = GRIEGO if nt else HEBREO
     files = archive_files(source['item'])
     name = greek_file(book, ch, files) if nt else hebrew_file(book, words[0]['hch'], files)
-    print(f'{chapter_id}: {name}, {len(words)} palabras')
-    times, duration = aligner.align(download(source['item'], name), words)
+    print(f'{chapter_id}: {name}, {len(words)} palabras', flush=True)
+    began = time.time()
+    path = download(source['item'], name)
+    print(f'  descargado en {time.time() - began:.0f} s ({path.stat().st_size // 1024} KB)', flush=True)
+    times, duration = aligner.align(path, words)
     palabras: dict[str, list] = defaultdict(list)
     for w, t in zip(words, times):
         if not w['where']:
@@ -297,14 +304,39 @@ def chapter(aligner: Aligner | None, chapter_id: str, text_only=False):
     (OUT / f'{chapter_id}.json').write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')) + '\n')
 
 
+def chapters_of(book: str) -> list[int]:
+    """Capítulos de un libro según la RV1909 (los mismos del interlineal)."""
+    data = json.loads(fetch('rv1909.json').read_text(encoding='utf-8'))
+    return [c['chapter'] for c in data['books'][[b[0] for b in BOOKS].index(book)]['chapters']]
+
+
+def expand(arg: str) -> list[str]:
+    """'jhn-3' es un capítulo; 'jhn' es el libro entero; 'nt' y 'at', todo el Nuevo o el Antiguo Testamento."""
+    if re.fullmatch(r'\w+-\d+', arg):
+        return [arg]
+    books = NT_IDS if arg == 'nt' else [b[0] for b in BOOKS[:39]] if arg == 'at' else [arg]
+    return [f'{b}-{c}' for b in books for c in chapters_of(b)]
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     text_only = '--texto' in sys.argv
+    redo = '--rehacer' in sys.argv
     if not args:
         args = [l.strip() for l in (HERE / 'capitulos.txt').read_text().splitlines() if l.strip() and not l.startswith('#')]
     aligner = None if text_only else Aligner()
-    for chapter_id in args:
-        chapter(aligner, chapter_id, text_only)
+    failed = []
+    for chapter_id in [c for a in args for c in expand(a)]:
+        # Lo ya alineado no se repite (salvo con --rehacer): así el libro entero se puede alinear en varias tandas.
+        if not text_only and not redo and (OUT / f'{chapter_id}.json').exists():
+            continue
+        try:
+            chapter(aligner, chapter_id, text_only)
+        except (SystemExit, Exception) as e:  # un capítulo que falla no detiene los demás
+            print(f'{chapter_id}: {e}')
+            failed.append(chapter_id)
+    if failed:
+        print(f'Sin alinear: {" ".join(failed)}')
 
 
 if __name__ == '__main__':
