@@ -163,11 +163,13 @@ export function TextSkeleton({ colors, lines = 2 }: { colors: Colors; lines?: nu
 
 /** Aviso de derechos de una versión con permiso, con su enlace. */
 export function LicenseNote({ version, colors }: { version: Version; colors: Colors }) {
+  // Desde #47 las versiones traen sus enlaces en `links`; el aviso abre el primero (el del editor).
+  const url = version.links?.[0]?.url;
   return (
     <Text
-      style={[styles.license, { color: colors.muted }, version.link && { textDecorationLine: 'underline' }]}
-      onPress={version.link ? () => Linking.openURL(version.link!) : undefined}
-      accessibilityRole={version.link ? 'link' : undefined}
+      style={[styles.license, { color: colors.muted }, url ? { textDecorationLine: 'underline' } : null]}
+      onPress={url ? () => Linking.openURL(url) : undefined}
+      accessibilityRole={url ? 'link' : undefined}
     >
       {version.credit}
     </Text>
