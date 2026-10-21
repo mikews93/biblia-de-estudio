@@ -112,7 +112,8 @@ jobs:
           python3 - <<'PY'
           import json, pathlib
           root = pathlib.Path('public/audio')
-          catalog = {kind: sorted(p.stem for p in (root / kind).glob('*.mp3')) for kind in ('dramatizado', 'podcast')}
+          catalog = json.loads((root / 'index.json').read_text())
+          catalog.update({kind: sorted(p.stem for p in (root / kind).glob('*.mp3')) for kind in ('dramatizado', 'podcast')})
           (root / 'index.json').write_text(json.dumps(catalog, indent=2) + '\n')
           PY
           git config user.name 'github-actions[bot]'

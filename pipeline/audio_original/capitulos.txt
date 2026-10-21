@@ -1,0 +1,5 @@
+# Capítulos que la acción «Audio original» alinea cuando cambia este archivo o el script
+jhn-1
+jhn-3
+gen-1
+psa-23

@@ -1,0 +1,64 @@
+name: Audio original
+
+# Alinea palabra por palabra la lectura en griego (Marilyn Phemister) y en hebreo (Abraham Shmuelof) de Internet Archive
+# con el interlineal, y publica los tiempos en public/audio/original/<libro>-<cap>.json. El audio no se copia: la app lo
+# reproduce desde archive.org. Se lanza al cambiar pipeline/audio_original/ o a mano desde la pestaña Actions.
+
+on:
+  push:
+    paths:
+      - pipeline/audio_original/**
+      - .github/workflows/audio-original.yml
+  workflow_dispatch:
+    inputs:
+      capitulos:
+        description: Capítulos a alinear, separados por espacios (por ejemplo «jhn-3 psa-23»). Vacío = capitulos.txt
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audio-original-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  alinear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: .github/workflows/audio-original.yml
+      - name: Instalar ffmpeg y torchaudio
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install -q torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Recuperar el modelo, los textos y los audios
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/torch
+            pipeline/.cache
+          key: audio-original-${{ hashFiles('pipeline/audio_original/capitulos.txt') }}
+          restore-keys: audio-original-
+      - name: Alinear
+        run: python3 pipeline/audio_original/alinear.py ${{ github.event.inputs.capitulos }}
+      - name: Publicar en la app
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          root = pathlib.Path('public/audio')
+          catalog = json.loads((root / 'index.json').read_text())
+          catalog['original'] = sorted(p.stem for p in (root / 'original').glob('*.json'))
+          (root / 'index.json').write_text(json.dumps(catalog, indent=2) + '\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/audio
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(audio): publish Hebrew and Greek word timings"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done
