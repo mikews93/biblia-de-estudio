@@ -161,19 +161,17 @@ export function TextSkeleton({ colors, lines = 2 }: { colors: Colors; lines?: nu
   );
 }
 
-/** Aviso de derechos de una versión con permiso, con los enlaces de su editor. */
+/** Aviso de derechos de una versión con permiso, con su enlace. */
 export function LicenseNote({ version, colors }: { version: Version; colors: Colors }) {
+  // Desde #47 las versiones traen sus enlaces en `links`; el aviso abre el primero (el del editor).
+  const url = version.links?.[0]?.url;
   return (
-    <Text style={[styles.license, { color: colors.muted }]}>
+    <Text
+      style={[styles.license, { color: colors.muted }, url ? { textDecorationLine: 'underline' } : null]}
+      onPress={url ? () => Linking.openURL(url) : undefined}
+      accessibilityRole={url ? 'link' : undefined}
+    >
       {version.credit}
-      {version.links?.map((l) => (
-        <Text key={l.url}>
-          {' · '}
-          <Text style={{ textDecorationLine: 'underline' }} onPress={() => Linking.openURL(l.url)} accessibilityRole="link">
-            {l.label}
-          </Text>
-        </Text>
-      ))}
     </Text>
   );
 }
