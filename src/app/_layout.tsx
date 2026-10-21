@@ -38,9 +38,9 @@ function AppStack() {
     if (Platform.OS === 'web') hidePortadaWhenReady();
   }, []);
 
-  // Con algo descargado, mantiene al día la copia de la app para abrirla sin conexión.
+  // Lee qué hay descargado y, en la web, mantiene al día la copia de la app para abrirla sin conexión.
   useEffect(() => {
-    if (Platform.OS === 'web') initDownloads().catch(() => {});
+    initDownloads().catch(() => {});
   }, []);
 
   return (

@@ -141,6 +141,22 @@ describe('descargas sin conexión', () => {
     expect(mod.downloadsState().jobs).toEqual({});
   });
 
+  it('si el dispositivo dice que no cabe, avisa antes de bajar nada', async () => {
+    const { mod } = await setup();
+    const { fetch: f, asked } = server();
+    // Se deja un margen de 50 MB: caben las referencias de Judas (900 B), no el texto original (47 KB).
+    mod.useStoreForTests({ ...memoryStore().store, free: async () => 50e6 + 10_000 }, f);
+    await mod.init();
+    await vi.waitFor(() => expect(mod.downloadsState().free).toBe(50e6 + 10_000));
+    const before = asked.length;
+    await mod.download(mod.ORIGINAL, ['rut', 'jud', 'phm']);
+    expect(mod.downloadsState().jobs[mod.ORIGINAL].error).toMatch(/No queda espacio/);
+    expect(asked.length).toBe(before);
+    // Lo pequeño sí cabe
+    await mod.download(mod.REFERENCIAS, ['jud']);
+    expect(mod.isDownloaded(mod.REFERENCIAS, 'jud')).toBe(true);
+  });
+
   it('removeAll borra todo', async () => {
     const { mod, files } = await setup();
     await mod.download(mod.REFERENCIAS, ['jud']);

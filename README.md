@@ -20,7 +20,7 @@ npm run data      # descarga las fuentes y genera public/data (unos 26 MB)
 npm run web       # abre la app en el navegador
 ```
 
-En el teléfono (Expo Go o una build de desarrollo) los datos se leen de una URL: publica la web (`npm run build:web` genera `dist/`) y define `EXPO_PUBLIC_DATA_URL=https://tu-sitio/data` antes de `npm start`. Los paquetes descargables para leer sin conexión llegan en una fase posterior.
+En el teléfono (Expo Go o una build de desarrollo) los datos se leen de la web publicada (https://biblia.migueblanco.com/data); para usar otra, publica la web (`npm run build:web` genera `dist/`) y define `EXPO_PUBLIC_DATA_URL=https://tu-sitio/data` antes de `npm start`. Las traducciones libres, el interlineal y las referencias se pueden descargar completos desde «Sin conexión» (en la web con Cache Storage y en el teléfono con expo-file-system, ver `src/lib/almacen.native.ts`).
 
 ## Datos y licencias
 
