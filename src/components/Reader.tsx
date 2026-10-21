@@ -6,6 +6,7 @@ import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
 import { compareHref } from '@/components/Comparar';
 import NoteEditor from '@/components/NoteEditor';
+import { OrarConVersiculo } from '@/components/Oraciones';
 import ReaderSettings from '@/components/ReaderSettings';
 import { NeedsConnection } from '@/components/SinConexion';
 import StudyPanel from '@/components/StudyPanel';
@@ -55,6 +56,7 @@ import {
   ListenIcon,
   MindMapIcon,
   PencilIcon,
+  PrayIcon,
   ShareIcon,
   SparkIcon,
   TalkIcon,
@@ -93,6 +95,7 @@ export default function Reader() {
   const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState(0);
   const [sharing, setSharing] = useState(false);
+  const [praying, setPraying] = useState(false);
   const [study, setStudy] = useState<{ verse?: number } | null>(null);
   const [writing, setWriting] = useState(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -301,6 +304,7 @@ export default function Reader() {
           },
           { key: 'comentario', label: 'Comentario', icon: (c: string) => <CommentaryIcon color={c} size={21} />, onPress: () => setPanelTab('comentario') },
           { key: 'nota', label: notes[selected] ? 'Mi nota' : 'Nota', icon: (c: string) => <PencilIcon color={c} size={21} />, onPress: () => setWriting(true) },
+          { key: 'orar', label: 'Orar', icon: (c: string) => <PrayIcon color={c} size={21} />, onPress: () => setPraying(true) },
           { key: 'compartir', label: 'Compartir', icon: (c: string) => <ShareIcon color={c} size={21} />, onPress: () => setSharing(true) },
           {
             key: 'memorizar',
@@ -668,6 +672,12 @@ export default function Reader() {
             version: version?.abbr ?? 'RV1909',
           }}
           onClose={() => setSharing(false)}
+        />
+      )}
+      {praying && book && selected !== null && (
+        <OrarConVersiculo
+          versiculo={{ book: book.id, chapter, verse: selected, reference: `${book.name} ${chapter}:${selected}`, text: selectedText }}
+          onClose={() => setPraying(false)}
         />
       )}
       {writing && book && selected !== null && (
