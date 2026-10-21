@@ -4,6 +4,7 @@ import { ActivityIndicator, Animated, Linking, Platform, Pressable, ScrollView, 
 
 import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
+import { compareHref } from '@/components/Comparar';
 import NoteEditor from '@/components/NoteEditor';
 import ReaderSettings from '@/components/ReaderSettings';
 import { NeedsConnection } from '@/components/SinConexion';
@@ -46,6 +47,7 @@ import {
   ChevronRightIcon,
   CloseIcon,
   CommentaryIcon,
+  CompareIcon,
   DramaIcon,
   LecternIcon,
   LinkIcon,
@@ -262,6 +264,12 @@ export default function Reader() {
               ]
             : []),
           {
+            key: 'versiones',
+            label: 'Versiones',
+            icon: (c: string) => <CompareIcon color={c} size={21} />,
+            onPress: () => setPanelTab('versiones'),
+          },
+          {
             key: 'referencias',
             label: 'Referencias',
             badge: xrefs[String(selected)]?.length,
@@ -308,15 +316,31 @@ export default function Reader() {
           <View style={styles.chapterHead}>
             <Text style={[styles.bookName, { color: colors.accent }]}>{book.name}</Text>
             <Text style={[styles.chapterNumber, { color: colors.text, fontFamily: serif }]}>{chapter}</Text>
-            <Pressable
-              onPress={() => setShowVersions(true)}
-              style={({ pressed }) => [styles.version, { borderColor: colors.border }, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel={`Versión: ${version?.name ?? 'Reina-Valera 1909'}. Cambiar versión`}
-            >
-              <Text style={[styles.versionText, { color: colors.muted }]}>{version?.abbr ?? 'RV1909'}</Text>
-              <ChevronDownIcon color={colors.muted} size={14} strokeWidth={2.2} />
-            </Pressable>
+            <View style={styles.versionRow}>
+              <Pressable
+                onPress={() => setShowVersions(true)}
+                style={({ pressed }) => [styles.version, { borderColor: colors.border }, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`Versión: ${version?.name ?? 'Reina-Valera 1909'}. Cambiar versión`}
+              >
+                <Text style={[styles.versionText, { color: colors.muted }]}>{version?.abbr ?? 'RV1909'}</Text>
+                <ChevronDownIcon color={colors.muted} size={14} strokeWidth={2.2} />
+              </Pressable>
+              <Pressable
+                onPress={() => navigate(() => router.push(compareHref(bookId, chapter) as never), 'forward')}
+                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+                  styles.version,
+                  styles.compare,
+                  { borderColor: hovered ? colors.accent : colors.border },
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Comparar versiones de este capítulo"
+              >
+                <CompareIcon color={colors.muted} size={15} strokeWidth={2} />
+                <Text style={[styles.versionText, { color: colors.muted }]}>Comparar</Text>
+              </Pressable>
+            </View>
 
             <Appear delay={40} style={styles.studyWrap}>
               <Pressable
@@ -514,7 +538,7 @@ export default function Reader() {
           {/* Todas las acciones a la vista, en una rejilla de cuatro columnas */}
           <View style={styles.actions}>
             {verseActions.map((t, i) => (
-              <ToolButton key={t.key} index={i} label={t.label} icon={t.icon} badge={t.badge} colors={colors} onPress={t.onPress} width="25%" />
+              <ToolButton key={t.key} index={i} label={t.label} icon={t.icon} badge={t.badge} colors={colors} onPress={t.onPress} width={verseActions.length > 8 ? '20%' : '25%'} />
             ))}
           </View>
         </Appear>
@@ -626,8 +650,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     paddingLeft: 12,
     paddingRight: 9,
-    marginTop: 6,
   },
+  versionRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
+  compare: { paddingLeft: 10, paddingRight: 12, gap: 5 },
   versionText: { fontSize: 12.5, fontWeight: '700', letterSpacing: 0.4, lineHeight: 16 },
   studyWrap: { width: '100%', maxWidth: 420, marginTop: 18 },
   study: {
