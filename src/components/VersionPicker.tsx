@@ -7,7 +7,7 @@ import { serif, useColors, useSettings } from '@/lib/theme';
 
 type Props = { versions: Version[]; onClose: () => void };
 
-/** Lista de versiones: primero las libres y después las que llegan con permiso por API.Bible (NBLA, LBLA…). */
+/** Lista de versiones: primero las libres y después las que llegan con permiso por API.Bible o YouVersion. */
 export default function VersionPicker({ versions, onClose }: Props) {
   const colors = useColors();
   const { settings, update } = useSettings();

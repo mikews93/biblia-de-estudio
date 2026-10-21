@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chapterVerses, licensedById, type ApiNode } from './licenciadas';
+import { chapterVerses, chapterVersesHtml, licensedById, type ApiNode } from './licenciadas';
 
 const verse = (n: string): ApiNode => ({
   name: 'verse',
@@ -53,6 +53,30 @@ describe('chapterVerses', () => {
       { name: 'para', type: 'tag', attrs: { style: 'p' }, items: [text('Y al que puede…', 'ROM.16.25-ROM.16.27')] },
     ];
     expect(chapterVerses(content)).toEqual([[25, 'Y al que puede…', '25-27']]);
+  });
+});
+
+describe('chapterVersesHtml', () => {
+  it('parte el HTML de YouVersion por versículos, sin números visibles ni etiquetas', () => {
+    const html =
+      '<div class="p"><span class="yv-v" v="16"></span><span class="yv-vlbl">16</span>Porque de tal manera amó Dios al mundo, ' +
+      '<span class="wj">que ha dado a su Hijo unigénito</span>.</div>' +
+      '<div class="p"><span class="yv-v" v="17"></span><span class="yv-vlbl">17</span>Dios no envió a su Hijo &amp; al mundo&#8230;</div>';
+    expect(chapterVersesHtml(html)).toEqual([
+      [16, 'Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito.'],
+      [17, 'Dios no envió a su Hijo & al mundo…'],
+    ]);
+  });
+
+  it('acepta el versículo como envoltorio, versos poéticos y versículos unidos', () => {
+    const html =
+      '<div class="q1"><span v="1" class="yv-v"><span class="yv-vlbl">1</span>El Señor es mi pastor,</span></div>' +
+      '<div class="q2"><span class="yv-v" v="1">nada me falta.</span></div>' +
+      '<div class="p"><span class="yv-v" v="2-3"><span class="yv-vlbl">2-3</span>En verdes pastos…</span></div>';
+    expect(chapterVersesHtml(html)).toEqual([
+      [1, 'El Señor es mi pastor, nada me falta.'],
+      [2, 'En verdes pastos…', '2-3'],
+    ]);
   });
 });
 
