@@ -4,7 +4,7 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, Vie
 
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/icons';
 import { Book, formatRef, parseRef } from '@/lib/data';
-import { Comentario, Estado, FUENTES, Parte, getComentario, reportarError, traducirParte } from '@/lib/comentarios';
+import { ACTIVAS, Comentario, Estado, Parte, getComentario, reportarError, traducirParte } from '@/lib/comentarios';
 import { verseHref } from '@/lib/routes';
 import { Colors, serif } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -22,7 +22,7 @@ const ORDEN: Estado[] = ['traducido', 'revisado', 'humano', 'original'];
 // La fuente elegida se recuerda mientras la app está abierta.
 let lastSource = 'mhc';
 
-/** Pestaña Comentario del versículo: Matthew Henry y JFB traducidos al español, y enlace a Enduring Word. */
+/** Pestaña Comentario del versículo: Matthew Henry y JFB traducidos al español, las fuentes propias con licencia y enlace a Enduring Word. */
 export default function Commentary({ book, books, chapter, verse, colors, onNavigate }: Props) {
   const [source, setSource] = useState(lastSource);
   // Versículo que se está viendo: 0 es la introducción del capítulo; las flechas pasan de sección en sección.
@@ -32,8 +32,8 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState('');
   const abort = useRef<AbortController | null>(null);
-  const fuente = FUENTES.find((f) => f.id === source)!;
-  const ew = FUENTES.find((f) => f.tipo === 'enlace')!;
+  const fuente = ACTIVAS.find((f) => f.id === source) ?? ACTIVAS[0];
+  const ew = ACTIVAS.find((f) => f.tipo === 'enlace')!;
   const section = data?.seccion ?? null;
 
   useEffect(() => setAt(verse), [verse]);
@@ -105,7 +105,7 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
   return (
     <View>
       <View style={styles.sources}>
-        {FUENTES.map((f) => {
+        {ACTIVAS.map((f) => {
           const selected = f.id === source;
           return (
             <Pressable
@@ -194,7 +194,7 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
 
       {section && parts.length > 0 && (
         <Text style={[styles.credit, { color: colors.muted }]}>
-          {fuente.obra}, {fuente.autor} ({fuente.año}). {fuente.licencia}
+          {fuente.obra}, {fuente.autor}{fuente.año ? ` (${fuente.año})` : ''}. {fuente.licencia}
           {worst && ESTADOS[worst] ? ` ${ESTADOS[worst]}` : ''}
         </Text>
       )}

@@ -1,6 +1,6 @@
 // Cliente de /api/comentario: comentarios bíblicos traducidos al español (ver comentarioFuentes.ts).
 
-export { FUENTES } from './comentarioFuentes';
+export { ACTIVAS, FUENTES } from './comentarioFuentes';
 export type { Fuente } from './comentarioFuentes';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.

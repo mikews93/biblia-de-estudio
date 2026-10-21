@@ -17,7 +17,7 @@ import path from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import postgres from 'postgres';
 
-import { FUENTES, Fuente } from '../src/lib/comentarioFuentes';
+import { ACTIVAS, Fuente } from '../src/lib/comentarioFuentes';
 
 const MODEL = process.env.COMENTARIO_MODEL ?? 'claude-sonnet-5-5';
 const REVIEW_MODEL = process.env.COMENTARIO_REVISOR ?? 'claude-opus-5-5';
@@ -128,7 +128,7 @@ async function sections(fuente: Fuente, libro: string, capitulo: number): Promis
 
 /** Valida fuente, libro y capítulo, y devuelve las secciones del capítulo. */
 async function chapter(q: { fuente?: unknown; libro?: unknown; capitulo?: unknown }) {
-  const fuente = FUENTES.find((f) => f.id === q.fuente && f.tipo !== 'enlace');
+  const fuente = ACTIVAS.find((f) => f.id === q.fuente && f.tipo !== 'enlace');
   const libro = (await books()).find((b) => b.id === q.libro);
   const capitulo = Number(q.capitulo);
   if (!fuente || !libro || !Number.isInteger(capitulo) || capitulo < 1 || capitulo > libro.chapters) {
