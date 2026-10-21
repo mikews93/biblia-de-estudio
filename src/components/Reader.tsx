@@ -1,6 +1,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
@@ -467,7 +467,11 @@ export default function Reader() {
           />
         )}
         {verses && (
-          <Text style={[styles.credit, { color: colors.muted }]}>
+          <Text
+            style={[styles.credit, { color: colors.muted }, version?.link && { textDecorationLine: 'underline' }]}
+            onPress={version?.link ? () => Linking.openURL(version.link!) : undefined}
+            accessibilityRole={version?.link ? 'link' : undefined}
+          >
             {version?.credit ?? 'Reina-Valera 1909 · dominio público'}
           </Text>
         )}

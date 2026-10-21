@@ -18,6 +18,9 @@
     "api/audio.ts": {
       "maxDuration": 30
     },
+    "api/biblia.ts": {
+      "maxDuration": 30
+    },
     "api/buscar.ts": {
       "includeFiles": "dist/data/{books.json,text/rv1909/**}",
       "maxDuration": 60,
