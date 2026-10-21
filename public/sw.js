@@ -67,7 +67,7 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(aviso.title || 'Biblia de estudio', {
       body: aviso.body || '',
       icon: '/logo192.png',
-      badge: '/logo192.png',
+      badge: '/badge96.png',
       tag: aviso.tag || undefined,
       renotify: Boolean(aviso.tag),
       lang: 'es',
