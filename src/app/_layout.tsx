@@ -30,6 +30,7 @@ function AppStack() {
     if (Platform.OS !== 'web') return;
     document.documentElement.style.backgroundColor = colors.background;
     document.documentElement.style.setProperty('--papel', colors.background);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', colors.background);
   }, [colors.background]);
 
   useEffect(() => {

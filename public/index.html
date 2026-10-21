@@ -7,7 +7,8 @@
     <title>%WEB_TITLE%</title>
     <!-- use-credentials: si el dominio tiene protección de Vercel, el navegador pide el manifiesto con la sesión -->
     <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
-    <meta name="theme-color" content="#8A4B2A" />
+    <!-- La barra de estado toma el color del fondo del tema (lo ajustan el script de abajo y src/app/_layout.tsx). -->
+    <meta name="theme-color" content="#151311" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -27,6 +28,8 @@
         s.setProperty('--acento', c[1]);
         s.setProperty('--linea', c[2]);
         s.colorScheme = dark ? 'dark' : 'light';
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', c[0]);
         document.documentElement.classList.add('js');
       })();
     </script>
