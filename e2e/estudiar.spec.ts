@@ -3,7 +3,7 @@
 
 import type { Page, Request } from '@playwright/test';
 
-import { conSesion, correoUnico, cuentaNueva, expect, modoProfundo, peticionesIA, test } from './support/fixtures';
+import { conSesion, correoUnico, cuentaNueva, deslizar, expect, modoProfundo, peticionesIA, test } from './support/fixtures';
 
 // «amó» en griego, tal como viene en los datos de STEPBible (con oxía, no con tonos)
 const AMO = 'ἠγ\u1f71πησεν';
@@ -245,4 +245,51 @@ test('en el devocional también se puede preguntar, y al volver a abrir el estud
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
   await expect(panel(page, 'DEVOCIONAL').getByText('Estoy listo · Leer')).toBeVisible();
+});
+
+test('en el computador, seleccionar texto del estudio con el ratón no pasa la hoja ni cierra el estudio', async ({
+  page,
+  request,
+}, info) => {
+  test.skip(info.project.name !== 'escritorio', 'el ratón es del computador');
+  await conSesion(page, await cuentaNueva(request, 'Seleccionadora'));
+  await page.goto('/juan/3/16');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  const texto = panel(page).getByText(ESTUDIO);
+  await expect(texto).toBeVisible();
+
+  // Arrastra de izquierda a derecha sobre el texto, como al seleccionarlo
+  const box = (await texto.boundingBox())!;
+  await page.mouse.move(box.x + 4, box.y + box.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + 4 + i * 30, box.y + box.height / 2);
+  await page.mouse.up();
+
+  await expect(page).toHaveURL(/\/juan\/3\/16$/);
+  await expect(texto).toBeVisible();
+  expect((await page.evaluate(() => window.getSelection()?.toString() ?? '')).length).toBeGreaterThan(5);
+});
+
+test('en el teléfono, deslizar dentro del estudio no pasa la hoja; fuera de él sí', async ({ page, request }, info) => {
+  test.skip(info.project.name !== 'movil', 'el dedo es del teléfono');
+  await conSesion(page, await cuentaNueva(request, 'Deslizadora'));
+  await page.goto('/juan/3/16');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  const texto = panel(page).getByText(ESTUDIO);
+  await expect(texto).toBeVisible();
+
+  const box = (await texto.boundingBox())!;
+  await deslizar(page, box.x + box.width - 10, box.y + box.height / 2, -260);
+  await expect(page).toHaveURL(/\/juan\/3\/16$/);
+  await expect(texto).toBeVisible();
+
+  // Sin el estudio abierto, el mismo gesto pasa al capítulo siguiente
+  await page.getByLabel('Cerrar estudio').last().click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // El panel sale deslizándose y hasta que termina sigue encima del lector (aria-modal)
+  await expect(page.locator('[aria-modal="true"]')).toHaveCount(0);
+  const vp = page.viewportSize()!;
+  // Sobre el texto, por encima de la hoja de acciones del versículo seleccionado
+  await deslizar(page, vp.width - 20, vp.height * 0.25, -(vp.width - 40));
+  await expect(page).toHaveURL(/\/juan\/4$/);
 });

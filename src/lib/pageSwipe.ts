@@ -2,11 +2,14 @@ import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
 
-import { startTurnGesture, type TurnGesture } from './transition';
+import { navigate, startTurnGesture, type TurnGesture } from './transition';
 
 /** Distancia antes de decidir que el gesto es horizontal, y cuánto arrastre pasa la hoja entera. */
 const SLOP = 12;
 const FULL = 0.8;
+
+/** Donde un gesto no pasa la hoja: campos de texto y paneles abiertos encima del lector. */
+const IGNORE = 'input, textarea, [contenteditable="true"], [aria-modal="true"], [role="dialog"]';
 
 type HrefFor = (delta: 1 | -1) => Href | null;
 
@@ -15,8 +18,9 @@ let focused: { current: HrefFor } | null = null;
 let installed = false;
 
 /**
- * Deslizar a la izquierda o la derecha con el dedo o el cursor pasa la hoja siguiéndolo (solo web; en el
- * teléfono el lector cambia de capítulo con sus botones). hrefFor(1) es el capítulo siguiente y
+ * Deslizar a la izquierda o la derecha con el dedo pasa la hoja siguiéndolo (solo web; en el teléfono
+ * nativo el lector cambia de capítulo con sus botones). Con el ratón arrastrar es para seleccionar
+ * texto, así que en el computador la hoja pasa con las flechas ← → del teclado o los botones. hrefFor(1) es el capítulo siguiente y
  * hrefFor(-1) el anterior, o null si no hay. Al soltar, la hoja termina de pasar si se arrastró lo
  * bastante o se lanzó rápido; si no, vuelve a su sitio.
  */
@@ -48,8 +52,9 @@ function install() {
   let last = { x: 0, t: 0 };
 
   document.addEventListener('pointerdown', (e) => {
-    if (!focused || gesture || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    if ((e.target as Element | null)?.closest?.('input, textarea, [contenteditable="true"]')) return;
+    if (!focused || gesture || e.pointerType === 'mouse') return;
+    // Ni al escribir ni dentro de un panel abierto encima del lector (Estudio, versículo, notas...).
+    if ((e.target as Element | null)?.closest?.(IGNORE)) return;
     start = { x: e.clientX, y: e.clientY, id: e.pointerId };
     last = { x: e.clientX, t: e.timeStamp };
   });
@@ -107,4 +112,14 @@ function install() {
   };
   document.addEventListener('pointerup', up);
   document.addEventListener('pointercancel', up);
+
+  document.addEventListener('keydown', (e) => {
+    if (!focused || gesture || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    if ((e.target as Element | null)?.closest?.(IGNORE) || document.querySelector('[aria-modal="true"]')) return;
+    const href = focused.current(e.key === 'ArrowRight' ? 1 : -1);
+    if (!href) return;
+    e.preventDefault();
+    navigate(() => router.replace(href), e.key === 'ArrowRight' ? 'turn-forward' : 'turn-back');
+  });
 }
