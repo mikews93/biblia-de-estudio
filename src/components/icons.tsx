@@ -455,3 +455,20 @@ export const WordJourneyIcon = (p: Props) => (
     <Circle cx={19} cy={5.5} r={1.8} />
   </Line>
 );
+
+/** Cuatro esquinas hacia fuera: ver el mapa entero. */
+export const ExpandIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" />
+  </Line>
+);
+
+/** Camino punteado entre dos puntos: el mapa que sigue la lectura. */
+export const RouteIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={6} cy={18} r={2.2} />
+    <Path d="M18 11.5s-3.5-3-3.5-5.8a3.5 3.5 0 0 1 7 0c0 2.8-3.5 5.8-3.5 5.8z" />
+    <Circle cx={18} cy={5.8} r={0.9} fill={p.color} />
+    <Path d="M8.3 17.2c3.4-1 1.2-4.6 4.6-5.2 1.3-.2 2.4 0 3.4-.3" strokeDasharray="2 2.6" />
+  </Line>
+);

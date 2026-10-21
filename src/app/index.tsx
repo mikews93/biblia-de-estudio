@@ -7,6 +7,7 @@ import PlanIcon from '@/components/PlanIcon';
 import {
   BellIcon,
   BooksIcon,
+  RouteIcon,
   DownloadIcon,
   HeartIcon,
   LecternIcon,
@@ -346,6 +347,7 @@ export default function Today() {
           colors={colors}
           onPress={() => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward')}
         />
+        <Tile icon={RouteIcon} label="Recorridos" colors={colors} onPress={() => navigate(() => router.push('/recorridos' as never), 'forward')} />
         <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
         <Tile icon={WordJourneyIcon} label="Palabras" colors={colors} onPress={() => navigate(() => router.push(palabrasHref() as never), 'forward')} />
       </Appear>

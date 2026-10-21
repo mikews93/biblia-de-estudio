@@ -412,6 +412,8 @@ async function playChapterAt(step: 1 | -1) {
   // Si se está leyendo el capítulo que suena, la pantalla lo acompaña.
   const here = chapterHref(next.from.id, state.chapter);
   if (location === here || location.startsWith(`${here}/`)) router.replace(chapterHref(next.to.id, next.chapter));
+  // También el mapa que sigue la lectura (/recorrido/hechos/13)
+  else if (location.split('?')[0] === `/recorrido${here}`) router.replace(`/recorrido${chapterHref(next.to.id, next.chapter)}` as never);
   playChapter(next.to.id, next.chapter, `${next.to.name} ${next.chapter}`, state.audio?.version?.id);
 }
 

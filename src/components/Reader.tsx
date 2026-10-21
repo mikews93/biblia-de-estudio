@@ -28,9 +28,11 @@ import {
   getCrossRefs,
   getInterlinear,
   getParagraphEnds,
+  getPlaces,
   getVersions,
   original,
 } from '@/lib/data';
+import { journeysFor, recorridoHref } from '@/lib/recorridos';
 import { playChapter, playDramatized, recordingId, useCatalog } from '@/lib/audio';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
@@ -60,6 +62,7 @@ import {
   PencilIcon,
   PrayIcon,
   PromiseIcon,
+  RouteIcon,
   ShareIcon,
   SparkIcon,
   TalkIcon,
@@ -104,6 +107,7 @@ export default function Reader() {
   const [study, setStudy] = useState<{ verse?: number } | null>(null);
   const [writing, setWriting] = useState(false);
   const [fichas, setFichas] = useState<CapituloRow[]>([]);
+  const [placeCount, setPlaceCount] = useState(0);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const paragraphHeight = useRef(0);
 
@@ -133,6 +137,8 @@ export default function Reader() {
     getParagraphEnds(bookId, chapter).then(setParagraphEnds).catch(() => {});
     setFichas([]);
     getFichasCapitulo(bookId, chapter).then(setFichas).catch(() => {});
+    setPlaceCount(0);
+    getPlaces(bookId, chapter).then((p) => setPlaceCount(p.length), () => {});
     saveLastRead(bookId, chapter);
   }, [bookId, chapter, target, settings.version]);
 
@@ -276,6 +282,19 @@ export default function Reader() {
             hint: 'Escuchar el capítulo dramatizado, con voces, efectos y música',
             icon: (c: string) => <DramaIcon color={c} size={22} />,
             onPress: () => playDramatized(bookId, chapter, title),
+          },
+        ]
+      : []),
+    ...(placeCount || journeysFor(bookId, chapter).length
+      ? [
+          {
+            key: 'recorrido',
+            label: journeysFor(bookId, chapter).length ? 'Recorrido' : 'En el mapa',
+            hint: journeysFor(bookId, chapter).length
+              ? `Seguir en el mapa: ${journeysFor(bookId, chapter)[0].title}`
+              : 'Seguir en el mapa los lugares del capítulo mientras lees o escuchas',
+            icon: (c: string) => <RouteIcon color={c} size={22} />,
+            onPress: () => navigate(() => router.push(recorridoHref(bookId, chapter) as never), 'forward'),
           },
         ]
       : []),

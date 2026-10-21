@@ -37,6 +37,7 @@ const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.mp3': 'audio/mpeg',
   '.css': 'text/css; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -98,7 +99,17 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     res.writeHead(404);
     return res.end();
   }
-  res.writeHead(200, { 'content-type': TYPES[path.extname(p)] ?? 'application/octet-stream' });
+  const type = TYPES[path.extname(p)] ?? 'application/octet-stream';
+  // Rangos como Vercel: sin ellos el navegador no puede saltar dentro de un MP3 (seekTo vuelve al principio).
+  const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+  if (range) {
+    const { size } = await stat(p);
+    const start = range[1] ? Number(range[1]) : size - Number(range[2]);
+    const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+    res.writeHead(206, { 'content-type': type, 'accept-ranges': 'bytes', 'content-range': `bytes ${start}-${end}/${size}`, 'content-length': end - start + 1 });
+    return createReadStream(p, { start, end }).pipe(res);
+  }
+  res.writeHead(200, { 'content-type': type, 'accept-ranges': 'bytes' });
   createReadStream(p).pipe(res);
 }
 
