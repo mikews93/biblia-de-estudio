@@ -62,6 +62,11 @@ function answer(body: Body): { text: string; cite: boolean } {
   const last = body.messages[body.messages.length - 1];
   const followUp = body.messages.length > 1 ? text(last.content) : '';
 
+  if (system.startsWith('Traduces al español las fichas')) {
+    // Conserva las marcas de referencia del original, como pide la traducción
+    const marks = first.match(/⟦[^⟧]+⟧/g) ?? [];
+    return { text: `Descripción simulada de la ficha ${marks.slice(0, 2).join(' ')}.\n\nSegundo párrafo de la descripción.`, cite: false };
+  }
   if (system.startsWith('Traduces al español')) {
     return { text: 'Traducción simulada: Dios amó al mundo de tal manera que dio a su Hijo.', cite: false };
   }

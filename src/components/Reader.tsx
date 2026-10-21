@@ -37,6 +37,8 @@ import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } 
 import { useChapterNotes } from '@/lib/notas';
 import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
+import { CapituloRow, fichaHref, fichasDelVersiculo, getFichasCapitulo, marcarNombres } from '@/lib/fichas';
+import FichaChips from '@/components/FichaChips';
 import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import ReaderHeader, { HEADER_HEIGHT } from '@/components/ReaderHeader';
@@ -98,6 +100,7 @@ export default function Reader() {
   const [praying, setPraying] = useState(false);
   const [study, setStudy] = useState<{ verse?: number } | null>(null);
   const [writing, setWriting] = useState(false);
+  const [fichas, setFichas] = useState<CapituloRow[]>([]);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const paragraphHeight = useRef(0);
 
@@ -125,6 +128,8 @@ export default function Reader() {
       .catch((e) => setError(String(e.message)));
     getCrossRefs(bookId, chapter).then(setXrefs).catch(() => {});
     getParagraphEnds(bookId, chapter).then(setParagraphEnds).catch(() => {});
+    setFichas([]);
+    getFichasCapitulo(bookId, chapter).then(setFichas).catch(() => {});
     saveLastRead(bookId, chapter);
   }, [bookId, chapter, target, settings.version]);
 
@@ -160,6 +165,26 @@ export default function Reader() {
   usePageSwipe(neighbor);
 
   const select = (n: number) => setSelected(selected === n ? null : n);
+  const openFicha = (f: { id: string; nombre: string }) => navigate(() => router.push(fichaHref(f) as never), 'forward');
+  /** En el versículo elegido, los nombres con ficha se pueden tocar (solo en la RV1909, que es la de los nombres). */
+  const withNames = (n: number, text: string) =>
+    n !== selected || settings.version !== 'rv1909'
+      ? text
+      : marcarNombres(text, fichasDelVersiculo(fichas, n)).map((t, i) =>
+          t.ficha ? (
+            <Text
+              key={i}
+              onPress={() => openFicha({ id: t.ficha![0], nombre: t.ficha![1] })}
+              style={{ color: colors.accent, fontWeight: '700', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: colors.accent }}
+              accessibilityRole="link"
+              accessibilityLabel={`Ficha de ${t.ficha[1]}`}
+            >
+              {t.texto}
+            </Text>
+          ) : (
+            t.texto
+          ),
+        );
   const scrollToY = (y: number) => {
     autoHide.pause();
     scroll.current?.scrollTo({ y: Math.max(0, y - 80), animated: false });
@@ -455,7 +480,7 @@ export default function Reader() {
                       {label ?? n}
                       {'\u2009'}
                     </Text>
-                    {text}
+                    {withNames(n, text)}
                     {footMark(n)}
                     {noteMark(n)}
                   </Text>
@@ -502,7 +527,7 @@ export default function Reader() {
               >
                 <Text style={{ fontFamily, fontSize: size, lineHeight: size * 1.6, color: colors.text }}>
                   <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>{label ?? n} </Text>
-                  {text}
+                  {withNames(n, text)}
                   {footMark(n)}
                   {noteMark(n)}
                 </Text>
@@ -591,6 +616,7 @@ export default function Reader() {
               <CloseIcon color={colors.muted} size={16} />
             </Pressable>
           </View>
+          <FichaChips rows={fichasDelVersiculo(fichas, selected)} colors={colors} onOpen={openFicha} />
           {/* Todas las acciones a la vista, en una rejilla de cuatro columnas */}
           <View style={styles.actions}>
             {verseActions.map((t, i) => (
