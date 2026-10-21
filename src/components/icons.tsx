@@ -372,3 +372,22 @@ export const CompareIcon = (p: Props) => (
     <Path d="M5.8 8.5h3M5.8 11.5h3M5.8 14.5h2M15.3 8.5h3M15.3 11.5h2M15.3 14.5h3" />
   </Line>
 );
+
+/** Una palabra que se abre en dos: por qué difieren las versiones. */
+export const ForkIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={12} cy={5.5} r={2} />
+    <Path d="M12 7.5v3.2c0 1.6-1 2.6-2.6 3.4L7.5 15v3.5M12 10.7c0 1.6 1 2.6 2.6 3.4l1.9.9v3.5" />
+    <Path d="M5.5 18.5h4M14.5 18.5h4" />
+  </Line>
+);
+
+/** Rollo de pergamino: diferencias entre manuscritos. */
+export const ScrollIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7 4.5h10.5a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H16" />
+    <Path d="M7 4.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8.5" />
+    <Path d="M7 4.5a2 2 0 0 1 2 2v13" />
+    <Path d="M11.5 11.5h3.5M11.5 14.5h3.5" />
+  </Line>
+);

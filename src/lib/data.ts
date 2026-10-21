@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+import type { VerseVariants } from './diferencias';
 import { reportView } from './fums';
 import { OFFLINE_DAYS, OFFLINE_MAX_VERSES, licensedById } from './licenciadas';
 
@@ -174,6 +175,9 @@ export const getChapter = (book: string, chapter: number, version = 'rv1909') =>
     : load<Verse[]>(`text/${version}/${book}/${chapter}.json`);
 export const getInterlinear = (book: string, chapter: number) =>
   load<Record<string, Word[]>>(`interlinear/${book}/${chapter}.json`, true);
+/** Diferencias entre manuscritos griegos de un capítulo del NT, por versículo (src/lib/diferencias.ts). */
+export const getVariants = (book: string, chapter: number) =>
+  load<Record<string, VerseVariants>>(`variantes/${book}/${chapter}.json`, true);
 export const getCrossRefs = (book: string, chapter: number) =>
   load<Record<string, CrossRef[]>>(`xrefs/${book}/${chapter}.json`, true);
 
