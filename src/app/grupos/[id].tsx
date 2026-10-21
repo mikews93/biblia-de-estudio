@@ -9,6 +9,7 @@ import Notes from '@/components/comunidad/Notes';
 import Prayer from '@/components/comunidad/Prayer';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
+import EnVivoGrupo from '@/components/vivo/EnVivoGrupo';
 import { Avatar, Button, Card, Meter, SectionTitle, text } from '@/components/comunidad/ui';
 import { Grupo, Miembro, api, chapterHref, refreshGroups, tipoLabel, useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
@@ -178,6 +179,13 @@ export default function GroupScreen() {
               : `${readCount} de ${group.miembros.length} ya leyeron hoy.`}
         </Text>
       </Card>
+
+      {/* La lectura en vivo de la reunión: entrar si ya empezó, o empezarla */}
+      <EnVivoGrupo
+        group={group.id}
+        books={books}
+        passage={reading?.estado === 'activo' && firstChapter ? { book: reading.libro, chapter: firstChapter } : undefined}
+      />
 
       {/* Meta compartida de la semana: compañía, no competencia */}
       <SectionTitle>Semana en compañía</SectionTitle>

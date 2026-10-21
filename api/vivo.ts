@@ -8,9 +8,14 @@
 //
 // POST {"accion": "...", ...} con "Authorization: Bearer <llave>" (la sesión de /api/comunidades), solo para
 // quien publica: publicar (crea o actualiza el evento de un mensaje), mover (punto y estado), ver, mios, borrar.
+//
+// La lectura en vivo de la célula comparte la función para no gastar otra de Vercel: GET ?sala=CODIGO y sus
+// acciones (crearSala, moverSala, tocar…) están en api/_celula.ts.
 
 import { createHash, randomInt } from 'node:crypto';
 import postgres from 'postgres';
+
+import { celulaGET, celulaPOST, isCelulaAction } from './_celula';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -253,6 +258,9 @@ const actions: Record<string, Handler> = {
 };
 
 export async function GET(request: Request) {
+  // La lectura en vivo de la célula (api/_celula.ts) va con ?sala=.
+  const url = new URL(request.url);
+  if (url.searchParams.has('sala')) return celulaGET(url);
   try {
     const codigo = codigoDe(new URL(request.url).searchParams.get('codigo'));
     const evento = publico(await find(await db(), codigo));
@@ -281,6 +289,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'JSON no válido' }, { status: 400 });
   }
   const accion = typeof body.accion === 'string' ? body.accion : '';
+  if (isCelulaAction(accion)) return celulaPOST(body, request);
   if (!Object.hasOwn(actions, accion)) return Response.json({ error: 'Acción no válida' }, { status: 400 });
   try {
     const result = await actions[accion]({ sql: await db(), body, request });

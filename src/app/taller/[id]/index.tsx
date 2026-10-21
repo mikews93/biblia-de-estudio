@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View
 
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, Card, Chips, ErrorText, Field, IconText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, type IconProps, PlayIcon, SparkIcon } from '@/components/icons';
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, type IconProps, LiveIcon, PlayIcon, SparkIcon } from '@/components/icons';
 import PublicarEvento from '@/components/evento/Publicar';
 import { DinamicaCard, DinamicaPicker } from '@/components/taller/Dinamicas';
 import TallerIA, { Modo, Paso } from '@/components/taller/TallerIA';
@@ -552,6 +552,19 @@ function CompartirStep({ m, books }: { m: Mensaje; books: Book[] }) {
       <Text style={{ color: colors.muted, fontSize: 13 }}>
         Pantalla completa con letra grande, una parte a la vez, temporizador y el pasaje a un toque.
       </Text>
+      {encuentro && (
+        <>
+          <Button
+            label="Guiar en vivo con el grupo"
+            icon={LiveIcon}
+            kind="outline"
+            onPress={() => navigate(() => router.push(`/vivo?taller=${m.id}`), 'forward')}
+          />
+          <Text style={{ color: colors.muted, fontSize: 13 }}>
+            Cada uno sigue el pasaje en su teléfono y tú llevas cada parte, con su dinámica y su reloj, a la pantalla de todos.
+          </Text>
+        </>
+      )}
 
       <PublicarEvento m={m} books={books} />
 
