@@ -11,6 +11,17 @@ type Saved = { text: string; sources: Source[]; created: number };
 const key = (tool: Herramienta, book: string, chapter: number) => `herramienta.${tool}.${book}.${chapter}`;
 
 export function useHerramienta(tool: Herramienta, book: string, chapter: number) {
+  return useGuardado(key(tool, book, chapter), { book, chapter, herramienta: tool });
+}
+
+/** El relato o el guion del pódcast de «La historia de una palabra». */
+export function usePalabraIA(palabra: string, tool: 'relato' | 'podcast') {
+  return useGuardado(`palabra.${tool}.${palabra}`, { palabra, ...(tool === 'podcast' && { herramienta: 'podcast' as const }) });
+}
+
+type Pedido = { book?: string; chapter?: number; palabra?: string; herramienta?: Herramienta };
+
+function useGuardado(storageKey: string, pedido: Pedido) {
   const [text, setText] = useState('');
   const [sources, setSources] = useState<Source[]>([]);
   const [busy, setBusy] = useState(true);
@@ -29,7 +40,7 @@ export function useHerramienta(tool: Herramienta, book: string, chapter: number)
     setSources([]);
     try {
       const answer = await askStudy(
-        { book, chapter, herramienta: tool, messages: [], ...(nueva && { nueva }) },
+        { ...pedido, messages: [], ...(nueva && { nueva }) },
         (t, s) => {
           setText(t);
           setSources(s);
@@ -40,7 +51,7 @@ export function useHerramienta(tool: Herramienta, book: string, chapter: number)
       setSources(answer.sources);
       setDone(true);
       const saved: Saved = { ...answer, created: Date.now() };
-      AsyncStorage.setItem(key(tool, book, chapter), JSON.stringify(saved)).catch(() => {});
+      AsyncStorage.setItem(storageKey, JSON.stringify(saved)).catch(() => {});
     } catch (e) {
       if (controller.signal.aborted) return;
       setError(e instanceof Error ? e.message : 'No se pudo preparar.');
@@ -52,7 +63,7 @@ export function useHerramienta(tool: Herramienta, book: string, chapter: number)
   useEffect(() => {
     let cancelled = false;
     setBusy(true);
-    AsyncStorage.getItem(key(tool, book, chapter))
+    AsyncStorage.getItem(storageKey)
       .catch(() => null)
       .then((raw) => {
         if (cancelled) return;
@@ -71,7 +82,7 @@ export function useHerramienta(tool: Herramienta, book: string, chapter: number)
       abort.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tool, book, chapter]);
+  }, [storageKey]);
 
   return { text, sources, busy, done, error, retry: () => generate(), regenerate: () => generate(true) };
 }

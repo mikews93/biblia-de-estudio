@@ -382,3 +382,13 @@ export const ConcordanceIcon = (p: Props) => (
     <Rect x={6.5} y={16.3} width={4} height={3.4} rx={1.2} />
   </Line>
 );
+
+/** La historia de una palabra: un camino que serpentea entre tres pasajes. */
+export const WordJourneyIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M6 18.5c4.5 0 2.5-6.5 6-6.5s1.5-6.5 6-6.5" />
+    <Circle cx={5} cy={18.5} r={1.8} />
+    <Circle cx={12} cy={12} r={1.8} />
+    <Circle cx={19} cy={5.5} r={1.8} />
+  </Line>
+);

@@ -21,7 +21,7 @@ import GroupNotes from '@/components/comunidad/GroupNotes';
 import { CloseIcon } from '@/components/icons';
 import PlaceMap from '@/components/PlaceMap';
 import StudyPanel from '@/components/StudyPanel';
-import { ConcordanceButton, WhyButton } from '@/components/WordCard';
+import { ConcordanceButton, PalabraButton, WhyButton } from '@/components/WordCard';
 import { describeMorph } from '@/lib/morph';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
@@ -151,6 +151,7 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
             {describeMorph(w[7])} · Strong {w[6]}
           </Text>
           <ConcordanceButton strong={w[6]} from={`${book.id}.${chapter}.${verse}`} />
+          <PalabraButton strong={w[6]} />
           <WhyButton onPress={() => setWhy(true)} />
         </View>
       ) : (

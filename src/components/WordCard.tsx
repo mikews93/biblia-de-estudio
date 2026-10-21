@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { IconText } from '@/components/comunidad/ui';
-import { ChevronRightIcon, ConcordanceIcon, SparkIcon } from '@/components/icons';
+import { ChevronRightIcon, ConcordanceIcon, SparkIcon, WordJourneyIcon } from '@/components/icons';
 import StudyPanel from '@/components/StudyPanel';
 import { concordanceHref, normalizeStrong } from '@/lib/concordancia';
 import { Book, Word, getConcordance } from '@/lib/data';
 import { describeMorph } from '@/lib/morph';
+import { palabraDeStrong, palabraHref } from '@/lib/palabras';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -52,6 +53,7 @@ export default function WordCard({ word, reference, study, onClose }: Props) {
             Strong {strong} · {morph}
           </Text>
           <ConcordanceButton strong={strong} from={study && `${study.book.id}.${study.chapter}.${study.verse}`} />
+          <PalabraButton strong={strong} />
           {study && <WhyButton onPress={() => setWhy(true)} />}
         </Pressable>
       </Pressable>
@@ -102,6 +104,34 @@ export function ConcordanceButton({ strong, from, onOpen }: { strong: string; fr
   );
 }
 
+/** «La historia de esta palabra»: solo para las palabras del catálogo (jésed, ágape…). */
+export function PalabraButton({ strong, onOpen }: { strong: string; onOpen?: () => void }) {
+  const colors = useColors();
+  const palabra = palabraDeStrong(normalizeStrong(strong));
+  if (!palabra) return null;
+  return (
+    <Pressable
+      onPress={() => {
+        onOpen?.();
+        navigate(() => router.push(palabraHref(palabra.id) as never), 'forward');
+      }}
+      accessibilityRole="link"
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+        styles.concordance,
+        styles.palabra,
+        { backgroundColor: hovered || pressed ? colors.warmSoft : colors.surface, borderColor: colors.warm },
+      ]}
+    >
+      <WordJourneyIcon color={colors.warm} size={20} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14.5 }}>La historia de esta palabra</Text>
+        <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 1 }}>{`${palabra.nombre} por toda la Biblia, con pódcast`}</Text>
+      </View>
+      <ChevronRightIcon color={colors.muted} size={18} strokeWidth={2} />
+    </Pressable>
+  );
+}
+
 /** Botón «¿Por qué esta palabra?»: abre la explicación con IA de la palabra en su versículo. */
 export function WhyButton({ onPress }: { onPress: () => void }) {
   const colors = useColors();
@@ -139,5 +169,6 @@ const styles = StyleSheet.create({
   label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
   codes: { fontSize: 12, alignSelf: 'stretch' },
   concordance: { flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'stretch', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, marginTop: 14 },
+  palabra: { marginTop: 8, borderWidth: 1 },
   why: { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 9, marginTop: 16, alignSelf: 'center' },
 });
