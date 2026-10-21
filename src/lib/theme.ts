@@ -51,9 +51,11 @@ export type Settings = {
   version: string;
   /** Último modo elegido en el estudio con IA. */
   enfoque: 'devocional' | 'profundo';
+  /** Versiones elegidas para comparar (vacío: las de src/lib/comparar.ts). */
+  comparar: string[];
 };
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional' };
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [] };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };
