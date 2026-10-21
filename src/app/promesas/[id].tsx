@@ -1,6 +1,6 @@
 // /promesas/virgen: un hilo de promesa, paso a paso, del anuncio a su cumplimiento, con el texto de cada pasaje.
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
@@ -21,6 +21,7 @@ import {
   textoEspera,
 } from '@/lib/promesas';
 import { verseHref } from '@/lib/routes';
+import { huella } from '@/lib/sellos';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -31,6 +32,12 @@ export default function Promesa() {
   const colors = useColors();
   const hilo = hiloPorId(String(id));
   const [books, setBooks] = useState<Book[]>([]);
+  // Recorrer el hilo hasta el último paso deja su huella (Mis sellos)
+  const finHilo = useRef(Infinity);
+  const alto = useRef(0);
+  const verFin = (y: number) => {
+    if (hilo && y + alto.current >= finHilo.current - 40) huella('promesa', hilo.id);
+  };
 
   useEffect(() => {
     getBooks().then(setBooks, () => {});
@@ -50,7 +57,13 @@ export default function Promesa() {
   const otros = HILOS.filter((h) => h.tema === hilo.tema && h.id !== hilo.id).slice(0, 4);
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={styles.content}
+      onLayout={(e) => (alto.current = e.nativeEvent.layout.height)}
+      onScroll={(e) => verFin(e.nativeEvent.contentOffset.y)}
+      scrollEventThrottle={200}
+    >
       <Stack.Screen options={{ title: hilo.titulo }} />
       <Appear>
         <View style={styles.kickerFila}>
@@ -79,7 +92,13 @@ export default function Promesa() {
         </View>
       </Appear>
 
-      <View style={styles.hilo}>
+      <View
+        style={styles.hilo}
+        onLayout={(e) => {
+          finHilo.current = e.nativeEvent.layout.y + e.nativeEvent.layout.height;
+          verFin(0);
+        }}
+      >
         {hilo.pasos.map((p, i) => {
           const antes = hilo.pasos[i - 1];
           const salto = antes ? saltoEntre(antes, p) : undefined;

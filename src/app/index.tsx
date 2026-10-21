@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import PlanIcon from '@/components/PlanIcon';
+import Sello from '@/components/Sello';
 import {
   BellIcon,
   BooksIcon,
@@ -36,6 +37,7 @@ import { palabraDeLaSemana, palabraHref, palabrasHref } from '@/lib/palabras';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { seasonTint } from '@/lib/retos';
+import { ganadosRecientes, sellosPara, siguienteSello, useSellos } from '@/lib/sellos';
 import { diaDeHoy, semanaActiva, siguiente, useSemanas } from '@/lib/semanas';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { dueCards, useCards } from '@/lib/tarjetas';
@@ -309,6 +311,10 @@ export default function Today() {
         </View>
       </Appear>
 
+      <Appear delay={130}>
+        <SellosCard colors={colors} />
+      </Appear>
+
       <Appear delay={140}>
         <PalabraSemana colors={colors} />
       </Appear>
@@ -424,6 +430,44 @@ function SemanaCard({ semana, colors }: { semana: NonNullable<ReturnType<typeof 
   );
 }
 
+/** Mis sellos: los últimos ganados y el que está más cerca, sin presionar. */
+function SellosCard({ colors }: { colors: C }) {
+  const estado = useSellos();
+  const lista = sellosPara();
+  const ganados = ganadosRecientes(estado, lista);
+  const proximo = siguienteSello(estado, lista);
+  const muestra = ganados.length ? ganados.slice(0, 3) : lista.filter((s) => s.id === 'palabras-10');
+  return (
+    <Pressable
+      onPress={() => navigate(() => router.push('/sellos' as never), 'forward')}
+      style={({ pressed }) => [styles.card, styles.sellos, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+      accessibilityRole="button"
+      testID="tarjeta-sellos"
+    >
+      <View style={styles.sellosPila} aria-hidden>
+        {muestra.map((s, i) => (
+          <View key={s.id} style={{ marginLeft: i ? -30 : 0, zIndex: 3 - i, transform: [{ rotate: `${i * 9 - 4}deg` }] }}>
+            <Sello dibujo={s.dibujo} colors={colors} ganado={!!ganados.length} parte={ganados.length ? 1 : (proximo?.parte ?? 0)} size={i ? 50 : 60} />
+          </View>
+        ))}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.kicker, { color: ganados.length ? colors.warm : colors.accent }]}>Mis sellos</Text>
+        <Text style={{ color: colors.text, fontSize: 17, fontFamily: serif, marginTop: 4 }}>
+          {ganados.length ? `${ganados.length} de ${lista.length} · el último: ${ganados[0].titulo}` : 'Explora una palabra, un lugar o una promesa'}
+        </Text>
+        {proximo ? (
+          <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>
+            Más cerca: {proximo.sello.titulo} ({proximo.n} de {proximo.meta})
+          </Text>
+        ) : (
+          !ganados.length && <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>Cada sello celebra lo que vives con la Palabra.</Text>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
 /** La palabra de la semana de «La historia de una palabra»: la misma para todos de lunes a domingo. */
 function PalabraSemana({ colors }: { colors: C }) {
   const p = palabraDeLaSemana();
@@ -484,6 +528,8 @@ const styles = StyleSheet.create({
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20 },
   reto: { overflow: 'hidden' },
   palabra: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sellos: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  sellosPila: { flexDirection: 'row', alignItems: 'center', minWidth: 64 },
   palabraNombre: { fontSize: 24, fontStyle: 'italic', marginTop: 4 },
   palabraOriginal: { fontSize: 44, lineHeight: 58, maxWidth: '45%' },
   retoGlyph: { position: 'absolute', right: -14, top: -18, opacity: 0.12 },

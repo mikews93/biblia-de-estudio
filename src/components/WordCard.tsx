@@ -9,6 +9,7 @@ import { concordanceHref, normalizeStrong } from '@/lib/concordancia';
 import { Book, Word, getConcordance } from '@/lib/data';
 import { describeMorph } from '@/lib/morph';
 import { palabraDeStrong, palabraHref } from '@/lib/palabras';
+import { huellaPalabra } from '@/lib/sellos';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -28,6 +29,9 @@ export default function WordCard({ word, reference, study, onClose }: Props) {
   const focused = useIsFocused();
   const [why, setWhy] = useState(false);
   const [greek, translit, es, en, lemma, meaning, strong, morph] = word;
+  useEffect(() => {
+    huellaPalabra(strong);
+  }, [strong]);
 
   return (
     <Modal transparent animationType="fade" visible={focused} onRequestClose={onClose}>

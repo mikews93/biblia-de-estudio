@@ -22,6 +22,7 @@ import {
 } from '@/lib/concordancia';
 import { Book, getBooks, getChapter, getConcordance } from '@/lib/data';
 import { verseHref } from '@/lib/routes';
+import { huellaPalabra } from '@/lib/sellos';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -63,6 +64,7 @@ function Concordancia({ strong, from }: { strong: string | null; from: string | 
   }, []);
   useEffect(() => {
     if (!strong) return;
+    huellaPalabra(strong);
     getConcordance(strong)
       .then(setLoaded)
       .catch(() => setLoaded(null));

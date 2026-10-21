@@ -12,6 +12,7 @@ import WordCard from '@/components/WordCard';
 import { findVerse } from '@/lib/comparar';
 import { Version, Word, getInterlinear, getVariants } from '@/lib/data';
 import { Difference, VerseVariants, VersionText, explainDifferences, isEmptyVerse } from '@/lib/diferencias';
+import { huella } from '@/lib/sellos';
 import { Colors, isDark, serif } from '@/lib/theme';
 
 const HEBREW = /[֐-׿]/;
@@ -82,6 +83,10 @@ export function WhyDifferent({
   const [all, setAll] = useState(false);
   const [word, setWord] = useState<Word | null>(null);
   const hebrew = HEBREW.test(result?.words[0]?.[0] ?? '');
+  const hayDiferencias = !!result?.differences.length;
+  useEffect(() => {
+    if (hayDiferencias) huella('diferencia', reference);
+  }, [hayDiferencias, reference]);
 
   if (versions.length < 2) return null;
   if (result && !result.words.length && original) return null; // capítulo sin interlineal

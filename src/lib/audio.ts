@@ -13,6 +13,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { getBooks } from './data';
 import { Line, SPEAKERS, chunks, pickVoices } from './podcast';
 import { chapterHref } from './routes';
+import { huella } from './sellos';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const VERSION_KEY = 'audio-version';
@@ -255,6 +256,7 @@ type OriginalTimings = {
 
 /** El capítulo leído en hebreo o en griego, con los tiempos de cada palabra para resaltar el interlineal. */
 export function playOriginal(book: string, chapter: number, title: string) {
+  huella('original', `${book}.${chapter}`);
   const id = start('original', book, chapter, title);
   return playFile(id, async () => {
     const meta = await fetchJson<OriginalTimings>(`${API}/audio/original/${recordingId(book, chapter)}.json`);

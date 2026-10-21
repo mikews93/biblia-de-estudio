@@ -43,6 +43,14 @@ export async function markChapterRead(book: string, chapter: number) {
   markPlanReading(book, chapter);
 }
 
+/** Un día con la Palabra sin terminar un capítulo: explorar una palabra original, un lugar, una promesa… */
+export async function markStudyDay() {
+  await load();
+  if (state.days.includes(today())) return;
+  write({ ...state, days: [...state.days, today()].slice(-120) });
+  cambio();
+}
+
 function write(next: Progress) {
   state = next;
   AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});

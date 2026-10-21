@@ -15,7 +15,8 @@ import { Grupo, Miembro, api, chapterHref, refreshGroups, tipoLabel, useAccount 
 import { Book, getBooks } from '@/lib/data';
 import { planById } from '@/lib/planesCatalogo';
 import { seasonTint } from '@/lib/retos';
-import { parseRetoId } from '@/lib/temporadas';
+import { parseRetoId, todayKey } from '@/lib/temporadas';
+import { huella, semanasConMeta } from '@/lib/sellos';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -45,6 +46,12 @@ export default function GroupScreen() {
 
   // Al volver del lector (o de editar el grupo) se actualiza quién leyó.
   useFocusEffect(load);
+
+  // La meta de la semana cumplida entre todos es un sello de Mis sellos (uno por grupo y semana)
+  const metaCumplida = !!group && group.semana.meta > 0 && group.semana.dias >= group.semana.meta;
+  useEffect(() => {
+    if (metaCumplida) huella('grupo', `${id}.${semanasConMeta([todayKey()], 1)[0]}`);
+  }, [metaCumplida, id]);
 
   const leave = async (m?: Miembro) => {
     const self = !m || m.soyYo;
