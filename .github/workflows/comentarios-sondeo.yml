@@ -1,29 +1,27 @@
 name: Sondeo de comentarios (temporal)
 on:
   push:
-    paths: [.github/workflows/comentarios-sondeo.yml]
+    paths: [.github/workflows/comentarios-sondeo.yml, pipeline/build_comentarios.py]
 jobs:
   sondeo:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 pipeline/build_comentarios.py /tmp/out barnes calvin kd tdavid wesley scofield
       - run: |
-          for m in Barnes KD Wesley CalvinCommentaries TDavid Scofield PNT; do
-            curl -sSfL -o $m.zip https://crosswire.org/ftpmirror/pub/sword/packages/rawzip/$m.zip || { echo "== $m NO"; continue; }
-            echo "== $m $(sha256sum $m.zip | cut -c1-64)"; unzip -l $m.zip | tail -n +4 | head -10
-            unzip -p $m.zip 'mods.d/*' | grep -vE '^(About|History|TextSource|ShortPromo|ShortCopyright|Copyright|LCSH|SwordVersionDate)'
-            mkdir -p x/$m && (cd x/$m && unzip -q ../../$m.zip)
-          done
           python3 - <<'PY'
-          import os, struct, zlib, glob
-          for d in sorted(glob.glob('x/*')):
-              for zv in glob.glob(d + '/modules/comments/*/*/nt.?zv'):
-                  base = zv[:-3]; c = zv[-3]
-                  bzs = open(base + c + 'zs', 'rb').read(); bzz = open(base + c + 'zz', 'rb').read(); bzv = open(zv, 'rb').read()
-                  esz = 12 if 'zcom4' in zv else 10
-                  print('##', d, zv, 'entries', len(bzv) / esz, 'blocks', len(bzs) / 12)
-                  off, size, _ = struct.unpack_from('<III', bzs, 0)
-                  try:
-                      print(zlib.decompress(bzz[off:off + size])[:1500].decode('utf8', 'replace'))
-                  except Exception as e:
-                      print('no zlib', e)
+          import gzip, json, os
+          for src in ['barnes', 'calvin', 'kd', 'tdavid', 'wesley', 'scofield']:
+              for f in ['jhn/3', 'psa/23', 'gen/1', 'isa/53', 'rom/8']:
+                  p = f'/tmp/out/{src}/{f}.json.gz'
+                  if not os.path.exists(p):
+                      print('#####', src, f, 'NO'); continue
+                  d = json.loads(gzip.open(p).read())
+                  print('#####', src, f, [(s['desde'], s['hasta'], len(s['partes'])) for s in d][:15])
+                  for s in d[:2]:
+                      print('  [', s['titulo'], ']', s['partes'][0][:600].replace('\n', ' / '))
           PY
+          du -sh /tmp/out/*
