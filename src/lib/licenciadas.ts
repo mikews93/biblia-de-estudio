@@ -5,7 +5,7 @@
 // Condiciones de las licencias: se muestra siempre el aviso de derechos con los enlaces del editor, las notas al pie
 // de YouVersion se pueden leer al final del capítulo, el texto no se cambia, las lecturas de API.Bible se informan a
 // FUMS, no se guardan libros enteros (ni descargas sin conexión), y su texto no se pasa a la IA ni se convierte en
-// audio. Por eso la IA, el buscador, las comunidades y el audio siguen usando las versiones libres.
+// audio. Lo único que se guarda en el dispositivo son los últimos capítulos leídos de API.Bible (ver OFFLINE_DAYS). Por eso la IA, el buscador, las comunidades y el audio siguen usando las versiones libres.
 
 export type Licensed = {
   id: string;
@@ -76,6 +76,10 @@ export const LICENSED: Licensed[] = [
     links: [{ label: 'Biblica.com', url: 'https://www.biblica.com' }],
   },
 ];
+
+/** API.Bible deja guardar menos de 500 versículos y vaciar lo guardado cada 14 días como mucho. */
+export const OFFLINE_DAYS = 14;
+export const OFFLINE_MAX_VERSES = 499;
 
 export const licensedById = (id: string) => LICENSED.find((v) => v.id === id);
 

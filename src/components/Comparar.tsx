@@ -9,7 +9,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import Appear from '@/components/Appear';
 import { CheckIcon, ChevronRightIcon, GlobeIcon } from '@/components/icons';
 import { compareList, diffWords, findVerse, toggleCompare } from '@/lib/comparar';
-import { Book, Verse, Version, getChapter, getVersions } from '@/lib/data';
+import { Book, Verse, Version, getChapter, getChapterExtras, getVersions } from '@/lib/data';
 import { BOOK_SLUGS } from '@/lib/routes';
 import { Colors, isDark, serif, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -29,7 +29,9 @@ export function useCompareVersions() {
   return { all, chosen, toggle, reading: settings.version };
 }
 
-export type Loaded = { verses: Verse[] | null; error: string | null };
+/** extras: aviso del editor y notas al pie de las versiones con derechos. */
+export type Extras = { copyright: string | null; notes: Record<number, string[]> } | null;
+export type Loaded = { verses: Verse[] | null; error: string | null; extras?: Extras };
 
 /** Capítulo de cada versión elegida; cada una llega por su cuenta y puede fallar sola (las con derechos, sin red). */
 export function useChapters(book: string, chapter: number, versions: Version[]) {
@@ -39,7 +41,10 @@ export function useChapters(book: string, chapter: number, versions: Version[]) 
     let live = true;
     for (const v of versions) {
       getChapter(book, chapter, v.id).then(
-        (verses) => live && setState((s) => ({ ...s, [`${book}/${chapter}/${v.id}`]: { verses, error: null } })),
+        async (verses) => {
+          const extras = await getChapterExtras(book, chapter, v.id).catch(() => null);
+          if (live) setState((s) => ({ ...s, [`${book}/${chapter}/${v.id}`]: { verses, error: null, extras } }));
+        },
         (e) => live && setState((s) => ({ ...s, [`${book}/${chapter}/${v.id}`]: { verses: null, error: String(e.message ?? e) } })),
       );
     }
@@ -161,16 +166,54 @@ export function TextSkeleton({ colors, lines = 2 }: { colors: Colors; lines?: nu
   );
 }
 
-/** Aviso de derechos de una versión con permiso, con su enlace. */
-export function LicenseNote({ version, colors }: { version: Version; colors: Colors }) {
+/**
+ * Aviso de derechos de una versión con permiso (el que manda el editor), sus enlaces y sus notas al pie:
+ * las del versículo si se compara uno, o todas las del capítulo.
+ */
+export function LicenseNote({
+  version,
+  colors,
+  extras,
+  verse,
+}: {
+  version: Version;
+  colors: Colors;
+  extras?: Extras;
+  verse?: number;
+}) {
+  const notes = Object.entries(extras?.notes ?? {})
+    .map(([n, texts]) => [Number(n), texts] as const)
+    .filter(([n]) => verse === undefined || n === verse)
+    .sort(([a], [b]) => a - b);
   return (
-    <Text
-      style={[styles.license, { color: colors.muted }, version.link && { textDecorationLine: 'underline' }]}
-      onPress={version.link ? () => Linking.openURL(version.link!) : undefined}
-      accessibilityRole={version.link ? 'link' : undefined}
-    >
-      {version.credit}
-    </Text>
+    <View style={styles.licenseBox}>
+      {notes.map(([n, texts]) =>
+        texts.map((t, i) => (
+          <Text key={`${n}-${i}`} style={[styles.footnote, { color: colors.text }]}>
+            <Text style={{ color: colors.accent, fontWeight: '700' }}>
+              {verse === undefined ? `${version.abbr} ${n}` : 'Nota'}
+              {': '}
+            </Text>
+            {t}
+          </Text>
+        )),
+      )}
+      <Text style={[styles.license, { color: colors.muted }]}>{extras?.copyright ?? version.credit}</Text>
+      {version.links?.length ? (
+        <View style={styles.licenseLinks}>
+          {version.links.map((l) => (
+            <Text
+              key={l.url}
+              style={[styles.license, styles.licenseLink, { color: colors.accent }]}
+              onPress={() => Linking.openURL(l.url)}
+              accessibilityRole="link"
+            >
+              {l.label}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -208,7 +251,7 @@ export function CompareVerse({
 
       <View style={{ gap: 10 }}>
         {chosen.map((v, i) => {
-          const { verses, error } = chapters(v.id);
+          const { verses, error, extras } = chapters(v.id);
           const found = verses ? findVerse(verses, verse) : undefined;
           const isBase = v.id === reading;
           return (
@@ -257,7 +300,7 @@ export function CompareVerse({
                 ) : (
                   <Text style={[styles.missing, { color: colors.muted }]}>Esta versión no tiene este versículo.</Text>
                 )}
-                {v.licensed && <LicenseNote version={v} colors={colors} />}
+                {v.licensed && <LicenseNote version={v} colors={colors} extras={extras} verse={verse} />}
               </View>
             </Appear>
           );
@@ -316,7 +359,11 @@ const styles = StyleSheet.create({
   verseText: { fontFamily: serif, fontSize: 17, lineHeight: 26 },
   joined: { fontSize: 11.5, fontStyle: 'italic', marginBottom: 2 },
   missing: { fontSize: 13.5, fontStyle: 'italic', lineHeight: 20 },
-  license: { fontSize: 11, marginTop: 8, lineHeight: 15 },
+  licenseBox: { marginTop: 8, gap: 4 },
+  license: { fontSize: 11, lineHeight: 15 },
+  licenseLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  licenseLink: { fontWeight: '600', textDecorationLine: 'underline' },
+  footnote: { fontSize: 13, lineHeight: 18 },
   skeleton: { height: 11, borderRadius: 6, opacity: 0.6 },
   chapterLink: {
     flexDirection: 'row',

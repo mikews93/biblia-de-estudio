@@ -1,7 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 import { reportView } from './fums';
-import { licensedById } from './licenciadas';
+import { OFFLINE_DAYS, OFFLINE_MAX_VERSES, licensedById } from './licenciadas';
 
 // En web los datos se sirven desde public/data; en el teléfono, desde EXPO_PUBLIC_DATA_URL
 // (por ejemplo la web publicada) hasta que lleguen los paquetes descargables sin conexión.
@@ -29,6 +30,8 @@ export type Version = {
   credit: string;
   licensed?: boolean;
   links?: { label: string; url: string }[];
+  /** Con derechos, pero sus últimos capítulos leídos se guardan unos días para leerlos sin conexión. */
+  guardable?: boolean;
 };
 
 // [palabra original, transliteración, glosa española, glosa inglesa, lema, significado del lema, Strong, morfología]
@@ -88,8 +91,43 @@ function getLicensedVersions(): Promise<Version[]> {
 export const getVersions = () =>
   Promise.all([load<Version[]>('versions.json'), getLicensedVersions()]).then(([free, licensed]) => [...free, ...licensed]);
 
-type LicensedChapter = { verses: Verse[]; fums: string | null; copyright?: string; notes?: Record<number, string[]> };
+type LicensedChapter = {
+  verses: Verse[];
+  fums: string | null;
+  copyright?: string;
+  notes?: Record<number, string[]>;
+  /** Solo API.Bible: el capítulo se puede guardar en el dispositivo. */
+  guardable?: boolean;
+};
 const licensedChapters = new Map<string, Promise<LicensedChapter>>();
+
+// Capítulos de API.Bible ya leídos, guardados para leerlos sin conexión: su licencia deja guardar menos de 500
+// versículos durante 14 días como mucho. Las versiones de YouVersion no se guardan (en la web no se permite).
+const SAVED_KEY = 'licenciadas-guardadas';
+type Saved = Record<string, { at: number; chapter: LicensedChapter }>;
+
+async function readSaved(): Promise<Saved> {
+  try {
+    const saved: Saved = JSON.parse((await AsyncStorage.getItem(SAVED_KEY)) ?? '{}');
+    const limit = Date.now() - OFFLINE_DAYS * 86_400_000;
+    for (const [k, v] of Object.entries(saved)) if (v.at < limit) delete saved[k];
+    return saved;
+  } catch {
+    return {};
+  }
+}
+
+async function saveChapter(key: string, chapter: LicensedChapter) {
+  const saved = await readSaved();
+  saved[key] = { at: Date.now(), chapter };
+  // Del más reciente al más antiguo, hasta el tope de versículos
+  let total = 0;
+  for (const [k, v] of Object.entries(saved).sort(([, a], [, b]) => b.at - a.at)) {
+    total += v.chapter.verses.length;
+    if (total > OFFLINE_MAX_VERSES) delete saved[k];
+  }
+  await AsyncStorage.setItem(SAVED_KEY, JSON.stringify(saved)).catch(() => {});
+}
 
 function getLicensedChapter(book: string, chapter: number, version: string): Promise<Verse[]> {
   const key = `${version}/${book}/${chapter}`;
@@ -100,10 +138,17 @@ function getLicensedChapter(book: string, chapter: number, version: string): Pro
       async (res) => {
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error ?? `No se pudo cargar ${key} (${res.status})`);
-        return body as LicensedChapter;
+        const c = body as LicensedChapter;
+        if (c.guardable) saveChapter(key, c).catch(() => {});
+        return c;
       },
-      () => {
-        throw new Error('Sin conexión. Esta versión solo se puede leer con internet.');
+      async () => {
+        const saved = (await readSaved())[key];
+        if (saved) return saved.chapter;
+        const abbr = licensedById(version)?.abbr ?? 'esta versión';
+        throw new Error(
+          `Sin conexión. Este capítulo de la ${abbr} no está guardado: los que lees con internet se guardan ${OFFLINE_DAYS} días.`,
+        );
       },
     );
     p.catch(() => licensedChapters.delete(key));
