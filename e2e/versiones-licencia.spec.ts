@@ -22,7 +22,7 @@ async function simularApiBible(page: Page) {
       return route.fulfill({ json: { versions: [NBLA, NTV].map(({ bibleId: _, ...v }) => ({ ...v, licensed: true })) } });
     }
     const verses = Array.from({ length: 21 }, (_, i) => [i + 1, i === 15 ? JN316 : `Texto NBLA simulado del versículo ${i + 1}.`]);
-    return route.fulfill({ json: { verses, copyright: NBLA.credit, fums: `ficha-${q.get('book')}-${q.get('chapter')}` } });
+    return route.fulfill({ json: { verses, notes: { 16: ['O único'] }, copyright: NBLA.credit, fums: `ficha-${q.get('book')}-${q.get('chapter')}` } });
   });
   await page.route('https://fums.api.bible/**', (route) => {
     fums.push(new URL(route.request().url()).searchParams.get('t') ?? '');
@@ -44,11 +44,16 @@ test('la NBLA se elige en su grupo, se lee con su aviso de derechos y se informa
 
   await expect(texto(page, JN316)).toBeVisible();
   await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText('NBLA');
-  const aviso = visible(page.getByRole('link', { name: /The Lockman Foundation/ }));
+  await expect(texto(page, 'Copyright © 2005 by The Lockman Foundation')).toBeVisible();
+  // Las notas al pie de la versión se pueden leer al final del capítulo
+  await expect(texto(page, 'Notas de la NBLA')).toBeVisible();
+  await expect(texto(page, 'O único')).toBeVisible();
+  const aviso = visible(page.getByRole('link', { name: 'NuevaBiblia.com (Español)' }));
   await expect(aviso).toBeVisible();
+  await expect(visible(page.getByRole('link', { name: 'Lockman.org (English)' }))).toBeVisible();
   await expect.poll(() => fums).toContain('ficha-jhn-3');
 
-  // El aviso lleva a la página de la versión
+  // El enlace del aviso lleva a la página de la versión
   await page.context().route('https://www.nuevabiblia.com/**', (route) => route.fulfill({ body: 'NBLA' }));
   const popup = page.waitForEvent('popup');
   await aviso.click();
@@ -59,7 +64,7 @@ test('la NBLA se elige en su grupo, se lee con su aviso de derechos y se informa
   await expect(texto(page, JN316)).toBeVisible();
   await page.waitForTimeout(600);
   await page.screenshot({ path: `test-results/capturas/licencia-2-lectura-${test.info().project.name}.png` });
-  await visible(page.getByRole('link', { name: /The Lockman Foundation/ })).scrollIntoViewIfNeeded();
+  await visible(page.getByRole('link', { name: 'Lockman.org (English)' })).scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `test-results/capturas/licencia-3-aviso-${test.info().project.name}.png` });
 });

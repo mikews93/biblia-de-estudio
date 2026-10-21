@@ -353,3 +353,12 @@ export const StarIcon = ({ filled, ...p }: Props & { filled?: boolean }) => (
     <Path d="M18 16.5v4M16 18.5h4" />
   </Line>
 );
+
+/** Dos páginas lado a lado con renglones: comparar versiones. */
+export const CompareIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={3.5} y={4.5} width={7.5} height={15} rx={1.8} />
+    <Rect x={13} y={4.5} width={7.5} height={15} rx={1.8} />
+    <Path d="M5.8 8.5h3M5.8 11.5h3M5.8 14.5h2M15.3 8.5h3M15.3 11.5h2M15.3 14.5h3" />
+  </Line>
+);
