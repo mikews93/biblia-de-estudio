@@ -11,6 +11,8 @@ Fuentes (se descargan, no se guardan en el repositorio):
 - Español Sencillo y Palabra de Dios para ti, ya descargadas en pipeline/versions/ (ver fetch_versions.py)
 - Lugares bíblicos de OpenBible.info Bible Geocoding Data (CC BY 4.0), con el mapa de fondo de pipeline/geo/basemap.json
 - Medidas antiguas (pipeline/medidas.py) e imágenes libres de Wikimedia Commons (pipeline/imagenes.py)
+- Genealogías de Theographic (pipeline/genealogias.py) y fichas de personas y lugares de STEPBible TIPNR
+  (pipeline/fichas.py), que se generan al final
 """
 
 import difflib
@@ -499,3 +501,5 @@ if __name__ == "__main__":
     main()
     import genealogias  # módulo aparte: Theographic (CC BY-SA 4.0)
     genealogias.main()
+    import fichas  # personas y lugares de STEPBible TIPNR (CC BY 4.0), junto con las genealogías y los mapas
+    fichas.main()

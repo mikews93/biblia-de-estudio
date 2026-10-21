@@ -13,6 +13,8 @@ import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { Cita, citaLabel, parseCita } from '@/lib/cita';
 import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/lib/data';
+import { Icono } from '@/components/FichaChips';
+import { IndiceRow, buscarFichas, fichaHref, getIndice } from '@/lib/fichas';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -45,6 +47,7 @@ export default function Search() {
   const abort = useRef<AbortController | null>(null);
   const stopListening = useRef<(() => void) | null>(null);
   const canTalk = useMemo(voiceSupported, []);
+  const [indice, setIndice] = useState<IndiceRow[] | null>(null);
 
   const available = versions.map((v) => v.id);
   const read = (text: string) => (books.length ? parseCita(text, books, available) : null);
@@ -57,6 +60,13 @@ export default function Search() {
   // La cita no existe («Juan 30», «Salmo 119:200»): se queda el aviso y no se abre
   const blocked = !!cita && (!!cita.problem || (preview !== null && 'problem' in preview));
   const openVersionName = versions.find((v) => v.id === openVersion)?.abbr ?? 'RV1909';
+  // Personas y lugares con ficha cuyo nombre coincide (el índice se pide la primera vez que hace falta).
+  // Sin números también con una cita: «Juan» o «Daniel» son un libro y una persona.
+  const quiereFichas = settled.trim().length >= 2 && (!cita || !/\d/.test(settled));
+  useEffect(() => {
+    if (quiereFichas && !indice) getIndice().then(setIndice, () => {});
+  }, [quiereFichas, indice]);
+  const fichas = useMemo(() => (quiereFichas && indice ? buscarFichas(indice, settled, 5) : []), [quiereFichas, indice, settled]);
 
   useEffect(() => {
     getRecent().then(setRecent);
@@ -330,6 +340,35 @@ export default function Search() {
         </Appear>
       )}
 
+      {!listening && fichas.length > 0 && (
+        <Appear>
+          <Text style={[styles.section, { color: colors.muted }]}>Personas y lugares</Text>
+          <View style={[styles.fichas, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {fichas.map(([id, nombre, tipo, breve, menciones], i) => (
+              <Pressable
+                key={id}
+                onPress={() => navigate(() => router.push(fichaHref({ id, nombre }) as never), 'forward')}
+                style={({ pressed }) => [
+                  styles.fichaRow,
+                  i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="link"
+              >
+                <Icono tipo={tipo} nombre={nombre} colors={colors} size={34} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontFamily: serif, fontSize: 17 }}>{nombre}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 13 }} numberOfLines={1}>
+                    {breve || (tipo === 'l' ? 'Lugar' : 'Persona')} · {menciones} {menciones === 1 ? 'versículo' : 'versículos'}
+                  </Text>
+                </View>
+                <ChevronRightIcon color={colors.muted} size={16} />
+              </Pressable>
+            ))}
+          </View>
+        </Appear>
+      )}
+
       {idle && (
         <>
           {recent.length > 0 && (
@@ -595,6 +634,8 @@ function Searching({ colors, asked }: { colors: Colors; asked: string }) {
 }
 
 const styles = StyleSheet.create({
+  fichas: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, overflow: 'hidden' },
+  fichaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 },
   content: { padding: 20, paddingTop: 8, paddingBottom: 64, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
   overline: { fontSize: 14 },
   title: { fontSize: 32, lineHeight: 38, marginTop: 2 },

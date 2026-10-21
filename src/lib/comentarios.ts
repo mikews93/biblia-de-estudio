@@ -38,11 +38,22 @@ export async function traducirParte(
   onUpdate: (text: string) => void,
   signal?: AbortSignal,
 ): Promise<Parte> {
+  const { texto, estado } = await traducir(key, onUpdate, 'No se pudo traducir el comentario', signal);
+  return { parte: key.parte, texto, estado };
+}
+
+/** POST a /api/comentario que responde la traducción por partes (NDJSON). También la usan las fichas (fichas.ts). */
+export async function traducir(
+  body: object,
+  onUpdate: (text: string) => void,
+  fallback: string,
+  signal?: AbortSignal,
+): Promise<{ texto: string; estado: Estado }> {
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(`${API}/api/comentario`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(key),
+      body: JSON.stringify(body),
       signal,
     });
     // Otra persona la está traduciendo en este momento: se espera y se vuelve a pedir.
@@ -50,7 +61,7 @@ export async function traducirParte(
       await wait(4000);
       continue;
     }
-    if (!res.ok) await fail(res, `No se pudo traducir el comentario (${res.status})`);
+    if (!res.ok) await fail(res, `${fallback} (${res.status})`);
 
     let text = '';
     let estado: Estado = 'traducido';
@@ -82,7 +93,7 @@ export async function traducirParte(
     }
     if (failure) throw new Error(failure);
     onUpdate(text);
-    return { parte: key.parte, texto: text, estado };
+    return { texto: text, estado };
   }
 }
 

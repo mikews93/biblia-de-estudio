@@ -33,6 +33,7 @@ En el teléfono (Expo Go o una build de desarrollo) los datos se leen de una URL
 | Referencias cruzadas | [OpenBible.info](https://www.openbible.info/labs/cross-references/) | CC BY |
 | Fotos de lugares | [OpenBible.info Bible Geocoding Data](https://github.com/openbibleinfo/Bible-Geocoding-Data), fotos de Wikimedia Commons | Solo las de licencia libre (dominio público, CC0, CC BY, CC BY-SA), con autor y licencia |
 | Fotos de objetos y mapas históricos | Imagen principal de artículos de Wikipedia, alojada en Wikimedia Commons (`pipeline/imagenes.py`) | Solo libres; se comprueba la licencia en cada build |
+| Fichas de personas y lugares | [STEPBible TIPNR](https://github.com/STEPBible/STEPBible-Data/tree/master/Proper%20Nouns), Tyndale House (`pipeline/fichas.py`, commit fijado) | CC BY 4.0; con cambios: nombres de la RV1909 y descripción traducida con IA |
 | Medidas antiguas | Tabla propia (`pipeline/medidas.py`) con los valores aproximados habituales | — |
 
 El interlineal muestra las palabras del texto tradicional (Textus Receptus), que es el que traduce la RV1909, con la versificación de la KJV. Las glosas españolas de STEPBible vienen del proyecto Marvel Bible y usan términos de la Traducción del Nuevo Mundo («madero de ejecución», «bondad inmerecida»). El pipeline los sustituye por los de la tradición cristiana histórica (`fix_gloss` en `pipeline/build_data.py`), pero las glosas necesitan una revisión completa antes del lanzamiento.
@@ -82,6 +83,14 @@ El estudio de cada capítulo (o versículo) muestra arriba dos secciones fijas, 
 
 - **El mundo en …**: el periodo bíblico del capítulo con sus fechas y lo que pasaba en Egipto, Mesopotamia, Persia, Grecia, Roma, India, China o América en esos años, con enlaces a los pasajes relacionados. `/historia` es la línea de tiempo completa. Los datos están en `src/lib/historia.ts`: fechas bíblicas según la cronología conservadora habitual (éxodo c. 1446 a.C., reyes según Thiele, crucifixión c. 30 d.C., con la alternativa en la nota cuando hay una seria) y una selección propia de eventos con las fechas de la historia académica.
 - **Familias y genealogías**: las personas del pasaje con familia conocida. `/genealogia/994-david` dibuja el árbol (abuelos, padres, hermanos, cónyuges e hijos) y el linaje hasta Adán; `/genealogia` busca por nombre. `pipeline/genealogias.py` toma las relaciones de [Theographic Bible Metadata](https://github.com/robertrouse/theographic-bible-metadata) (CC BY-SA 4.0, commit fijado) y busca el nombre de cada persona en la RV1909. No usa las fechas de Theographic (cronología de Ussher/Jones) ni su diccionario.
+
+## Fichas de personas y lugares
+
+`/ficha/h1732-david` junta en una página lo que la app sabe de una persona o un lugar: quién fue, su familia (con enlace al árbol de las genealogías), cuándo vivió (periodos de la línea de tiempo y qué pasaba en el mundo), los lugares de su historia en el mapa, sus versículos clave y en qué libros aparece. Los lugares muestran su ubicación (OpenBible.info), la foto libre de la zona y la gente que vivió allí.
+
+- **Datos:** `pipeline/fichas.py` (al final de `build_data.py`) lee TIPNR de STEPBible, que distingue a cada persona o lugar en cada versículo (los varios Zacarías, las dos Belén), y lo junta con las genealogías de Theographic (por los versículos en común) y con OpenBible (por el nombre que da TIPNR). Los nombres en español son los de la RV1909, como en los mapas. Salida: `fichas/f/<id>.json`, `fichas/indice.json` (buscador) y `fichas/cap/<libro>/<cap>.json` (lector).
+- **Descripción:** el artículo de TIPNR está en inglés. `api/comentario.ts` (`?ficha=` y `{ ficha }`) lo traduce la primera vez que alguien abre la ficha, con un glosario de nombres de la RV1909, y lo guarda en `fichas_es` para todos. Tope diario de fichas nuevas: `FICHAS_DIA` (300). Va en la misma función que los comentarios porque el plan Hobby de Vercel admite 12 funciones.
+- **Cómo se llega:** al elegir un versículo, la barra muestra a las personas y lugares que nombra y, en la RV1909, sus nombres se pueden tocar; el buscador encuentra fichas por nombre; el mapa del versículo y la genealogía enlazan a la ficha.
 
 ## Rutas y Google
 

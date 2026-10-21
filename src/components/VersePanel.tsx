@@ -23,6 +23,7 @@ import PlaceMap from '@/components/PlaceMap';
 import StudyPanel from '@/components/StudyPanel';
 import { WhyButton } from '@/components/WordCard';
 import { describeMorph } from '@/lib/morph';
+import { fichaHref, getFichaDeLugar } from '@/lib/fichas';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
@@ -262,9 +263,11 @@ function Places({
   onNavigate: () => void;
 }) {
   const [places, setPlaces] = useState<Place[] | null>(null);
+  const [fichas, setFichas] = useState<Record<string, string>>({});
 
   useEffect(() => {
     getPlaces(book.id, chapter).then(setPlaces);
+    getFichaDeLugar().then(setFichas, () => {});
   }, [book, chapter]);
 
   if (!places) return <ActivityIndicator color={colors.accent} />;
@@ -285,6 +288,13 @@ function Places({
         onVerse={(v) => {
           onNavigate();
           navigate(() => router.push(verseHref(book.id, chapter, v)), 'forward');
+        }}
+        canOpen={(id) => !!fichas[id]}
+        onOpen={(id) => {
+          const p = places.find((x) => x.id === id);
+          if (!fichas[id] || !p) return;
+          onNavigate();
+          navigate(() => router.push(fichaHref({ id: fichas[id], nombre: p.name }) as never), 'forward');
         }}
       />
     </View>
