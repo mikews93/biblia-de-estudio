@@ -87,61 +87,64 @@ export default function VerseImage({ verse, onClose }: Props) {
   return (
     <Modal transparent animationType="slide" visible onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar" />
-      <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.handleRow}>
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
+      {/* Este contenedor centra la hoja: con position absolute, alignSelf no la centraba en pantallas anchas. */}
+      <View style={styles.sheetWrap} pointerEvents="box-none">
+        <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.handleRow}>
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
+          </View>
+          <ScrollView contentContainerStyle={styles.body}>
+            <Text style={[styles.title, { color: colors.text }]}>Compartir {verse.reference}</Text>
+
+            <VerseArt viewRef={preview} text={verse.text} caption={caption} format={format} look={style} width={previewWidth} />
+
+            <View style={styles.row}>
+              {chip('Publicación', format === 'cuadrado', () => setFormat('cuadrado'))}
+              {chip('Historia', format === 'historia', () => setFormat('historia'))}
+            </View>
+            <View style={styles.row}>
+              {IMAGE_STYLES.map((s, i) => (
+                <Pressable
+                  key={s.name}
+                  onPress={() => setStyleIndex(i)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={s.name}
+                  accessibilityState={{ checked: i === styleIndex }}
+                  style={[styles.swatch, { backgroundColor: s.background, borderColor: i === styleIndex ? colors.accent : colors.border }]}
+                >
+                  <Text style={{ color: s.accent, fontFamily: serif, fontSize: 18 }}>A</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={() => share()}
+              disabled={busy}
+              style={[styles.primary, { backgroundColor: colors.accent }, busy && { opacity: 0.6 }]}
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>
+                {busy ? 'Preparando…' : 'Compartir imagen'}
+              </Text>
+            </Pressable>
+            <View style={styles.row}>
+              {Platform.OS === 'web' && (
+                <Pressable onPress={() => share(true)} disabled={busy} hitSlop={8}>
+                  <Text style={{ color: colors.accent, fontWeight: '600' }}>Descargar</Text>
+                </Pressable>
+              )}
+              <Pressable onPress={() => shareVerse(verse)} hitSlop={8}>
+                <Text style={{ color: colors.accent, fontWeight: '600' }}>Compartir como texto</Text>
+              </Pressable>
+              <Pressable onPress={copy} hitSlop={8}>
+                <Text style={{ color: colors.accent, fontWeight: '600' }}>Copiar</Text>
+              </Pressable>
+            </View>
+            {note && <Text style={{ color: colors.muted, textAlign: 'center' }}>{note}</Text>}
+
+            <PublishToCommunity verse={verse} format={format} styleName={style.name} onClose={onClose} />
+          </ScrollView>
         </View>
-        <ScrollView contentContainerStyle={styles.body}>
-          <Text style={[styles.title, { color: colors.text }]}>Compartir {verse.reference}</Text>
-
-          <VerseArt viewRef={preview} text={verse.text} caption={caption} format={format} look={style} width={previewWidth} />
-
-          <View style={styles.row}>
-            {chip('Publicación', format === 'cuadrado', () => setFormat('cuadrado'))}
-            {chip('Historia', format === 'historia', () => setFormat('historia'))}
-          </View>
-          <View style={styles.row}>
-            {IMAGE_STYLES.map((s, i) => (
-              <Pressable
-                key={s.name}
-                onPress={() => setStyleIndex(i)}
-                accessibilityRole="radio"
-                accessibilityLabel={s.name}
-                accessibilityState={{ checked: i === styleIndex }}
-                style={[styles.swatch, { backgroundColor: s.background, borderColor: i === styleIndex ? colors.accent : colors.border }]}
-              >
-                <Text style={{ color: s.accent, fontFamily: serif, fontSize: 18 }}>A</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Pressable
-            onPress={() => share()}
-            disabled={busy}
-            style={[styles.primary, { backgroundColor: colors.accent }, busy && { opacity: 0.6 }]}
-            accessibilityRole="button"
-          >
-            <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>
-              {busy ? 'Preparando…' : 'Compartir imagen'}
-            </Text>
-          </Pressable>
-          <View style={styles.row}>
-            {Platform.OS === 'web' && (
-              <Pressable onPress={() => share(true)} disabled={busy} hitSlop={8}>
-                <Text style={{ color: colors.accent, fontWeight: '600' }}>Descargar</Text>
-              </Pressable>
-            )}
-            <Pressable onPress={() => shareVerse(verse)} hitSlop={8}>
-              <Text style={{ color: colors.accent, fontWeight: '600' }}>Compartir como texto</Text>
-            </Pressable>
-            <Pressable onPress={copy} hitSlop={8}>
-              <Text style={{ color: colors.accent, fontWeight: '600' }}>Copiar</Text>
-            </Pressable>
-          </View>
-          {note && <Text style={{ color: colors.muted, textAlign: 'center' }}>{note}</Text>}
-
-          <PublishToCommunity verse={verse} format={format} styleName={style.name} onClose={onClose} />
-        </ScrollView>
       </View>
     </Modal>
   );
@@ -267,11 +270,8 @@ function PublishToCommunity({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, alignItems: 'center', justifyContent: 'flex-end' },
   sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     maxHeight: '92%',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
