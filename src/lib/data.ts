@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 import { readDownloaded, refreshDownloaded } from './almacen';
+import { parseConcordance } from './concordancia';
 import { isOnline } from './conexion';
 import { reportView } from './fums';
 import { OFFLINE_DAYS, OFFLINE_MAX_VERSES, licensedById } from './licenciadas';
@@ -200,6 +201,12 @@ export const getInterlinear = (book: string, chapter: number) =>
   load<Record<string, Word[]>>(`interlinear/${book}/${chapter}.json`, true);
 export const getCrossRefs = (book: string, chapter: number) =>
   load<Record<string, CrossRef[]>>(`xrefs/${book}/${chapter}.json`, true);
+
+/** Todas las apariciones de un número de Strong (src/lib/concordancia.ts); null si no existe. */
+export const getConcordance = (strong: string) =>
+  load<unknown>(`concordance/${strong}.json`, true).then((d) =>
+    d && !Array.isArray(d) && !Object.keys(d as object).length ? null : parseConcordance(d),
+  );
 
 export { formatRef, parseRef } from './refs';
 export type { RefTarget } from './refs';

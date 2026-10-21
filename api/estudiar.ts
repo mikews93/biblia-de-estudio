@@ -340,7 +340,8 @@ async function refText(ref: string): Promise<string> {
 
 /** Otras apariciones de la palabra en su testamento, repartidas por todo el texto para que no salgan solo del mismo libro. */
 async function wordUses(word: Word, here: string, books: Book[]) {
-  const uses = (await load<Use[]>(`concordance/${word[6]}.json`, [])).filter(([ref]) => ref !== here);
+  const entry = await load<{ uses: Use[] } | Use[]>(`concordance/${word[6]}.json`, []);
+  const uses = (Array.isArray(entry) ? entry : entry.uses).filter(([ref]) => ref !== here);
   const step = Math.max(1, uses.length / MAX_USES);
   const picked = Array.from({ length: Math.min(MAX_USES, uses.length) }, (_, i) => uses[Math.floor(i * step)]);
   const blocks = await Promise.all(
