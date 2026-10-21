@@ -174,6 +174,7 @@ def build_interlinear(out):
     paragraph_ends = defaultdict(set)
     concordance = defaultdict(list)
     meta = {}
+    variants = defaultdict(dict)
     for name in ("tagnt1.txt", "tagnt2.txt"):
         with fetch(name).open(encoding="utf-8-sig") as f:
             for line in f:
@@ -182,12 +183,22 @@ def build_interlinear(out):
                 if not m:
                     continue
                 book, ch, v, kch, kv, kind = m.groups()
-                # Solo palabras del texto tradicional (K/k): la RV1909 se tradujo del Textus Receptus
-                if "K" not in kind.upper():
-                    continue
                 if kch:
                     ch, v = kch, kv
                 greek, _, translit = cols[1].partition(" (")
+                # Solo palabras del texto tradicional (K/k): la RV1909 se tradujo del Textus Receptus. Las que solo
+                # tiene el texto crítico (N mayúscula, sin K: cambian la traducción) se guardan aparte como variantes.
+                if "K" not in kind.upper():
+                    if "N" in kind:
+                        verse = variants[(STEP_TO_ID[book], ch)].setdefault(v, {"tr": [], "na": []})
+                        after = len(by_chapter[(STEP_TO_ID[book], ch)][v]) - 1
+                        gloss = fix_gloss(cols[8].strip(), cols[3].partition("=")[0].strip())
+                        verse["na"].append([greek.replace("¶", "").strip(), translit.rstrip(")").strip(), gloss, after])
+                    continue
+                if "K" in kind and "N" not in kind.upper():
+                    # Palabra del texto tradicional que el texto crítico (Nestle-Aland) no tiene
+                    verse = variants[(STEP_TO_ID[book], ch)].setdefault(v, {"tr": [], "na": []})
+                    verse["tr"].append(len(by_chapter[(STEP_TO_ID[book], ch)][v]))
                 # ¶ marca el final de un párrafo en el griego: lo usamos para dividir el texto en párrafos
                 if "¶" in greek:
                     paragraph_ends[(STEP_TO_ID[book], ch)].add(int(v))
@@ -213,6 +224,11 @@ def build_interlinear(out):
         write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
     # La concordancia la usan la pantalla /concordancia y «¿Por qué esta palabra?»
     write_concordance(out, concordance, meta, "G")
+    # Diferencias entre manuscritos, para «¿Por qué difieren las versiones?» (src/lib/diferencias.ts):
+    # {versículo: {"tr": [posiciones en el interlineal solo del texto tradicional],
+    #              "na": [[griego, transliteración, glosa, posición tras la que va], …] solo del texto crítico}}
+    for (bid, ch), verses in variants.items():
+        write(out, f"variantes/{bid}/{ch}.json", verses)
 
 
 # "Gen.1.1#01=L" o "Psa.3.1(3.2)#01=Q(K)": referencia de las Biblias españolas e inglesas (la de la RV1909),
@@ -508,7 +524,7 @@ def build_downloads(out, books):
     {"text/rv1909": {"gen": [bytes]}, "paragraphs": {"gen": [bytes, [1, 3, …]]}}: la lista de capítulos
     solo aparece cuando al libro le faltan archivos, para no pedirlos y recibir 404.
     """
-    resources = [f"text/{v['id']}" for v in VERSIONS] + ["interlinear", "paragraphs", "xrefs"]
+    resources = [f"text/{v['id']}" for v in VERSIONS] + ["interlinear", "variantes", "paragraphs", "xrefs"]
     sizes = {}
     for res in resources:
         sizes[res] = {}

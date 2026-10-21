@@ -10,7 +10,8 @@ import { Book, dataUrl, getBooks, load } from './data';
 // archivo está guardado. En el teléfono se guarda en archivos (almacen.native.ts) y data.ts los lee primero.
 // Los tamaños salen de data/descargas.json, que escribe pipeline/build_data.py.
 //
-// Paquetes: «texto:<versión>» (el texto y los párrafos), «original» (interlineal griego y hebreo) y
+// Paquetes: «texto:<versión>» (el texto y los párrafos), «original» (interlineal griego y hebreo, y las
+// diferencias entre manuscritos) y
 // «referencias» (referencias cruzadas).
 
 export const DOWNLOADS_CACHE = 'biblia-descargas';
@@ -32,7 +33,7 @@ export const BASE_FILES = ['books.json', 'versions.json', 'words.json', 'descarg
 
 export function resources(pack: string): string[] {
   if (pack.startsWith('texto:')) return [`text/${pack.slice(6)}`, 'paragraphs'];
-  if (pack === ORIGINAL) return ['interlinear'];
+  if (pack === ORIGINAL) return ['interlinear', 'variantes'];
   if (pack === REFERENCIAS) return ['xrefs'];
   return [];
 }

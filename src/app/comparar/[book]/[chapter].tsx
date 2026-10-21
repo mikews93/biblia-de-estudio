@@ -15,6 +15,7 @@ import {
   useChapters,
   useCompareVersions,
 } from '@/components/Comparar';
+import { WhyToggle, useOriginal } from '@/components/Diferencias';
 import { ChevronLeftIcon, ChevronRightIcon, CompareIcon, GlobeIcon } from '@/components/icons';
 import { findVerse } from '@/lib/comparar';
 import { Book, Verse, Version, getBooks } from '@/lib/data';
@@ -35,6 +36,7 @@ export default function Comparar() {
   const [marks, setMarks] = useState(true);
   const { all, chosen, toggle, reading } = useCompareVersions();
   const chapters = useChapters(bookId, chapter, chosen);
+  const original = useOriginal(bookId, chapter);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const scrolled = useRef(false);
 
@@ -83,6 +85,19 @@ export default function Comparar() {
     scroll.current?.scrollTo({ y: Math.max(0, y - (wide ? 96 : 24)), animated: false });
   };
   const open = (n: number) => navigate(() => router.push(verseHref(bookId, chapter, n)), 'forward');
+  const why = (n: number, selected: boolean) =>
+    chosen.length > 1 && (
+      <WhyToggle
+        key={`${bookId}/${chapter}/${n}`}
+        verse={n}
+        reference={`${title}:${n}`}
+        original={original}
+        versions={chosen}
+        chapters={chapters}
+        colors={colors}
+        initiallyOpen={selected}
+      />
+    );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -141,12 +156,15 @@ export default function Comparar() {
               onLayout={(e) => onRow(n, e.nativeEvent.layout.y)}
               style={[styles.row, { borderColor: colors.border }, selected && { backgroundColor: colors.accentSoft, borderColor: 'transparent' }]}
             >
-              <VerseNumber n={n} colors={colors} onPress={() => open(n)} />
-              {chosen.map((v, i) => (
-                <View key={v.id} style={styles.cell}>
-                  <Cell n={n} first={n === numbers[0]} version={v} loaded={loaded[i]} base={v.id === reading ? null : baseText} marks={marks} colors={colors} />
-                </View>
-              ))}
+              <View style={styles.rowInner}>
+                <VerseNumber n={n} colors={colors} onPress={() => open(n)} />
+                {chosen.map((v, i) => (
+                  <View key={v.id} style={styles.cell}>
+                    <Cell n={n} first={n === numbers[0]} version={v} loaded={loaded[i]} base={v.id === reading ? null : baseText} marks={marks} colors={colors} />
+                  </View>
+                ))}
+              </View>
+              <View style={styles.whyWide}>{why(n, selected)}</View>
             </View>
           ) : (
             <View
@@ -165,6 +183,7 @@ export default function Comparar() {
                     <Cell n={n} first={n === numbers[0]} version={v} loaded={loaded[i]} base={v.id === reading ? null : baseText} marks={marks} colors={colors} />
                   </View>
                 ))}
+                {why(n, selected)}
               </View>
             </View>
           );
@@ -297,7 +316,9 @@ const styles = StyleSheet.create({
   tag: { borderRadius: 10, paddingHorizontal: 8, height: 20, justifyContent: 'center' },
   tagText: { fontSize: 10.5, fontWeight: '700', letterSpacing: 0.2 },
   gutter: { width: 34 },
-  row: { flexDirection: 'row', gap: 20, paddingVertical: 12, paddingHorizontal: 10, marginHorizontal: -10, borderBottomWidth: StyleSheet.hairlineWidth, borderRadius: 8 },
+  row: { paddingVertical: 12, paddingHorizontal: 10, marginHorizontal: -10, borderBottomWidth: StyleSheet.hairlineWidth, borderRadius: 8 },
+  rowInner: { flexDirection: 'row', gap: 20 },
+  whyWide: { paddingLeft: 54, maxWidth: 760 },
   cell: { flex: 1, minWidth: 0 },
   block: { flexDirection: 'row', gap: 10, paddingVertical: 16, paddingHorizontal: 10, marginHorizontal: -10, borderBottomWidth: StyleSheet.hairlineWidth, borderRadius: 10 },
   number: { height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 2 },
