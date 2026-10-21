@@ -401,3 +401,12 @@ export const ScrollIcon = (p: Props) => (
     <Path d="M11.5 11.5h3.5M11.5 14.5h3.5" />
   </Line>
 );
+
+/** Un arco de una promesa (círculo abierto) a su cumplimiento (círculo lleno): promesa y cumplimiento. */
+export const PromiseIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M5.5 16.5C6.5 9 9 6 12 6s5.5 3 6.5 10.5" />
+    <Circle cx={5.5} cy={18} r={2} />
+    <Circle cx={18.5} cy={18} r={2} fill={p.color} />
+  </Line>
+);

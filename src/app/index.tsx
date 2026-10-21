@@ -15,6 +15,7 @@ import {
   PeopleIcon,
   PersonIcon,
   PlansIcon,
+  PromiseIcon,
   SearchIcon,
   SparkIcon,
   type IconProps,
@@ -320,6 +321,12 @@ export default function Today() {
           label="Estudiar con IA"
           colors={colors}
           onPress={() => navigate(() => router.push(chapterHref(continueTo.book, continueTo.chapter)), 'forward')}
+        />
+        <Tile
+          icon={PromiseIcon}
+          label="Promesas"
+          colors={colors}
+          onPress={() => navigate(() => router.push('/promesas' as never), 'forward')}
         />
         <Tile
           icon={PeopleIcon}
