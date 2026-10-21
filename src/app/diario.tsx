@@ -1,22 +1,39 @@
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
-import { CheckIcon, HeartIcon, LockIcon, PrayIcon } from '@/components/icons';
+import { CheckIcon, ClockIcon, HeartIcon, LockIcon, PrayIcon } from '@/components/icons';
+import MiCamino from '@/components/MiCamino';
+import { OracionEditor, OracionesVista } from '@/components/Oraciones';
 import StudyPanel from '@/components/StudyPanel';
 import { IconText, text } from '@/components/comunidad/ui';
 import { Book, getBooks } from '@/lib/data';
 import { verseOfTheDay } from '@/lib/daily';
 import { Entrada, deleteEntrada, toggleHecho, useDiario } from '@/lib/diario';
+import { useOraciones } from '@/lib/oraciones';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-/** «Mi diario devocional»: lo que la persona escribió al terminar cada devocional, lo más reciente primero. */
+type Vista = 'devocionales' | 'oraciones' | 'camino';
+const VISTAS: { key: Vista; label: string; icon: typeof HeartIcon }[] = [
+  { key: 'devocionales', label: 'Devocionales', icon: HeartIcon },
+  { key: 'oraciones', label: 'Oraciones', icon: PrayIcon },
+  { key: 'camino', label: 'Mi camino', icon: ClockIcon },
+];
+
+/**
+ * «Mi diario»: los devocionales (lo que la persona escribió al terminar cada uno), sus oraciones (con los versículos
+ * que la acompañan y lo que Dios respondió) y «Mi camino», todo junto a lo largo de los años.
+ */
 export default function Diario() {
   const colors = useColors();
+  const params = useLocalSearchParams<{ vista?: string }>();
+  const [vista, setVista] = useState<Vista>(VISTAS.some((v) => v.key === params.vista) ? (params.vista as Vista) : 'devocionales');
   const entradas = useDiario();
+  const oraciones = useOraciones();
+  const [orarPor, setOrarPor] = useState<Entrada | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [today, setToday] = useState(false);
   const daily = verseOfTheDay();
@@ -32,15 +49,42 @@ export default function Diario() {
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
-      <Stack.Screen options={{ title: 'Mi diario devocional' }} />
+      <Stack.Screen options={{ title: 'Mi diario' }} />
 
-      {entradas.length === 0 ? (
+      <View style={[styles.tabs, { backgroundColor: colors.accentSoft }]} accessibilityRole="tablist">
+        {VISTAS.map(({ key, label, icon: Icon }) => {
+          const on = vista === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => {
+                setVista(key);
+                router.setParams({ vista: key === 'devocionales' ? undefined : key });
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              style={[styles.tab, on && [styles.tabOn, { backgroundColor: colors.surface }]]}
+            >
+              <Icon color={on ? colors.text : colors.muted} size={16} strokeWidth={on ? 2.1 : 1.8} />
+              <Text style={{ color: on ? colors.text : colors.muted, fontWeight: on ? '700' : '600', fontSize: 13 }} numberOfLines={1}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {vista === 'oraciones' ? (
+        <OracionesVista />
+      ) : vista === 'camino' ? (
+        <MiCamino entradas={entradas} oraciones={oraciones} />
+      ) : entradas.length === 0 ? (
         <Appear style={[styles.empty, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <HeartIcon color={colors.accent} size={40} strokeWidth={1.5} />
           <Text style={[text.title, { color: colors.text, textAlign: 'center', marginTop: 6 }]}>Tu diario está esperando</Text>
           <Text style={[text.body, { color: colors.muted, textAlign: 'center', marginTop: 8 }]}>
             Al terminar un devocional, lo que escribas (la frase que te detuvo, tu oración y tu paso para hoy) se guarda
-            aquí, solo en este dispositivo.
+            aquí. Es privado: solo tú lo ves.
           </Text>
           {dailyBook && (
             <Pressable onPress={() => setToday(true)} style={[styles.cta, { backgroundColor: colors.accent }]}>
@@ -71,13 +115,32 @@ export default function Diario() {
           </Appear>
           {entradas.map((e, i) => (
             <Appear key={e.id} delay={Math.min(i, 6) * 40}>
-              <EntryCard entrada={e} colors={colors} />
+              <EntryCard entrada={e} colors={colors} onOrar={() => setOrarPor(e)} />
             </Appear>
           ))}
           <IconText icon={LockIcon} color={colors.muted} size={13} style={{ marginTop: 8, justifyContent: 'center' }}>
-            <Text style={[text.small, { color: colors.muted, flexShrink: 1 }]}>Tu diario se guarda solo en este dispositivo.</Text>
+            <Text style={[text.small, { color: colors.muted, flexShrink: 1 }]}>Tu diario es privado: solo tú lo ves.</Text>
           </IconText>
         </>
+      )}
+
+      {orarPor && (
+        <OracionEditor
+          inicial={{
+            detalle: orarPor.oracion,
+            versiculo: orarPor.llevar
+              ? {
+                  book: orarPor.book,
+                  chapter: orarPor.chapter,
+                  verse: orarPor.llevar.verse,
+                  reference: `${orarPor.reference.replace(/:\d+(-\d+)?$/, '')}:${orarPor.llevar.verse}`,
+                  text: orarPor.llevar.text,
+                }
+              : undefined,
+          }}
+          onClose={() => setOrarPor(null)}
+          onGuardada={() => setVista('oraciones')}
+        />
       )}
 
       {today && dailyBook && (
@@ -139,7 +202,7 @@ function Stat({ value, label, colors }: { value: number | string; label: string;
   );
 }
 
-function EntryCard({ entrada: e, colors }: { entrada: Entrada; colors: Colors }) {
+function EntryCard({ entrada: e, colors, onOrar }: { entrada: Entrada; colors: Colors; onOrar: () => void }) {
   const [prayer, setPrayer] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const created = new Date(e.created);
@@ -211,16 +274,22 @@ function EntryCard({ entrada: e, colors }: { entrada: Entrada; colors: Colors })
 
       </View>
       </View>
+      <View style={styles.cardFoot}>
+      <Pressable onPress={onOrar} hitSlop={6} accessibilityRole="button">
+        <IconText icon={PrayIcon} color={colors.muted} size={14}>
+          <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '600' }}>Seguir orando por esto</Text>
+        </IconText>
+      </Pressable>
       <Pressable
         onPress={() => (confirm ? deleteEntrada(e.id) : setConfirm(true))}
         onBlur={() => setConfirm(false)}
-        style={styles.delete}
         hitSlop={6}
       >
         <Text style={{ color: confirm ? '#B3261E' : colors.muted, fontSize: 12, fontWeight: confirm ? '700' : '500' }}>
           {confirm ? 'Toca otra vez para borrar' : 'Borrar'}
         </Text>
       </Pressable>
+      </View>
     </View>
   );
 }
@@ -258,5 +327,8 @@ const styles = StyleSheet.create({
   stepLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.1, marginBottom: 2 },
   prayer: { fontFamily: serif, fontSize: 16, lineHeight: 24 },
   carry: { fontSize: 13, lineHeight: 19, marginTop: 12 },
-  delete: { alignSelf: 'flex-end', marginTop: 10 },
+  cardFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
+  tabs: { flexDirection: 'row', borderRadius: 14, padding: 4, marginBottom: 18 },
+  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 10 },
+  tabOn: { boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
 });
