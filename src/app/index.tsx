@@ -18,6 +18,7 @@ import {
   type IconProps,
 } from '@/components/icons';
 import PlanCard from '@/components/PlanCard';
+import { InvitacionCuenta, NubeEstado } from '@/components/Sincronia';
 import StudyPanel from '@/components/StudyPanel';
 import VerseImage from '@/components/VerseImage';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
@@ -28,7 +29,7 @@ import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { seasonTint } from '@/lib/retos';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { dueCards, useCards } from '@/lib/tarjetas';
-import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
+import { serif, useColors, useLastRead, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { voiceSupported } from '@/lib/voz';
 
@@ -41,7 +42,7 @@ export default function Today() {
   const words = useWords();
   const due = dueCards(useCards()).length;
   const [books, setBooks] = useState<Book[]>([]);
-  const [last, setLast] = useState<{ book: string; chapter: number } | null>(null);
+  const last = useLastRead();
   const [verseText, setVerseText] = useState<string | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [sharing, setSharing] = useState(false);
@@ -52,7 +53,6 @@ export default function Today() {
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
-    getLastRead().then(setLast);
     getVersions().then(setVersions).catch(() => {});
     const s = soporte();
     setCanNotify(s === 'si' || s === 'ios-instalar');
@@ -93,6 +93,7 @@ export default function Today() {
             </Text>
             <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>{greeting()}</Text>
           </View>
+          <NubeEstado />
           {canNotify && (
             <Pressable
               onPress={() => navigate(() => router.push('/notificaciones' as never), 'forward')}
@@ -229,6 +230,10 @@ export default function Today() {
           </Pressable>
         </Appear>
       )}
+
+      <Appear delay={112}>
+        <InvitacionCuenta chapters={chaptersRead} />
+      </Appear>
 
       {canNotify && avisos.ready && !avisos.endpoint && !avisos.invitacionVista && (
         <Appear delay={115}>

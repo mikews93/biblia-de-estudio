@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, createElement, ReactNode, useContext, useEffect, useState } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
+import { cambio, registrar } from './sincronia';
+
 const light = {
   background: '#FBF8F3',
   surface: '#FFFFFF',
@@ -71,21 +73,52 @@ function initialSettings(): Settings {
   }
 }
 
+// Los ajustes viven fuera de React para que la sincronía con la cuenta (sincronia.ts) los lea y los cambie.
+let current: Settings = initialSettings();
+let loaded: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function load() {
+  loaded ??= AsyncStorage.getItem(KEY)
+    .then((raw) => {
+      if (raw) current = { ...current, ...JSON.parse(raw) };
+    })
+    .catch(() => {})
+    .then(() => listeners.forEach((l) => l()));
+  return loaded;
+}
+
+function write(next: Settings) {
+  current = next;
+  AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+  listeners.forEach((l) => l());
+}
+
+// En la cuenta cada ajuste es una entrada: cambiar la letra en el teléfono no pisa el tema elegido en el computador.
+registrar<Settings>({
+  nombre: 'ajustes',
+  leer: () => load().then(() => current),
+  escribir: write,
+  partir: (s) => s,
+  unir: (entradas) => ({ ...DEFAULTS, ...(entradas as Partial<Settings>) }),
+});
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState(initialSettings);
+  const [settings, setSettings] = useState(current);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then((raw) => raw && setSettings((s) => ({ ...s, ...JSON.parse(raw) })))
-      .catch(() => {});
+    const l = () => setSettings(current);
+    listeners.add(l);
+    load();
+    return () => {
+      listeners.delete(l);
+    };
   }, []);
 
-  const update = (patch: Partial<Settings>) =>
-    setSettings((s) => {
-      const next = { ...s, ...patch };
-      AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
-      return next;
-    });
+  const update = (patch: Partial<Settings>) => {
+    write({ ...current, ...patch });
+    cambio();
+  };
 
   return createElement(SettingsContext.Provider, { value: { settings, update } }, children);
 }
@@ -122,8 +155,25 @@ export const themeSwatches: { name: ThemeName; label: string; colors: Colors | n
 
 const LAST = 'ultima-lectura';
 
-export const saveLastRead = (book: string, chapter: number) =>
-  AsyncStorage.setItem(LAST, JSON.stringify({ book, chapter })).catch(() => {});
+const lastListeners = new Set<(last: { book: string; chapter: number } | null) => void>();
+
+export function saveLastRead(book: string, chapter: number) {
+  cambio();
+  return AsyncStorage.setItem(LAST, JSON.stringify({ book, chapter })).catch(() => {});
+}
+
+/** La última lectura; cambia si llega una más nueva de otro dispositivo. */
+export function useLastRead() {
+  const [last, setLast] = useState<{ book: string; chapter: number } | null>(null);
+  useEffect(() => {
+    getLastRead().then(setLast);
+    lastListeners.add(setLast);
+    return () => {
+      lastListeners.delete(setLast);
+    };
+  }, []);
+  return last;
+}
 
 export async function getLastRead(): Promise<{ book: string; chapter: number } | null> {
   try {
@@ -133,3 +183,15 @@ export async function getLastRead(): Promise<{ book: string; chapter: number } |
     return null;
   }
 }
+
+registrar<{ book: string; chapter: number } | null>({
+  nombre: 'ultima-lectura',
+  leer: getLastRead,
+  escribir: (last) => {
+    if (last) AsyncStorage.setItem(LAST, JSON.stringify(last)).catch(() => {});
+    else AsyncStorage.removeItem(LAST).catch(() => {});
+    lastListeners.forEach((l) => l(last));
+  },
+  partir: (last) => (last ? { ultima: last } : {}),
+  unir: (entradas) => (entradas.ultima as { book: string; chapter: number } | undefined) ?? null,
+});

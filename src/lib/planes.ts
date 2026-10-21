@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 
 import { Book, getWords } from './data';
 import { PLANS, PlanDef } from './planesCatalogo';
+import { cambio, Entradas, registrar } from './sincronia';
 import { addDays, dateKey, nextSeason, parseDate, seasonDates, todayKey } from './temporadas';
 
-// Planes de lectura personales, guardados en el dispositivo. El avance se cuenta por capítulos leídos,
+// Planes de lectura personales, guardados en el dispositivo (y en la cuenta, si hay una). El avance se cuenta por capítulos leídos,
 // no por fechas: si un día no se puede, el plan espera. Los de temporada tienen una fecha sugerida por día.
 
 export { PLANS } from './planesCatalogo';
@@ -55,11 +56,52 @@ function load() {
   return loaded;
 }
 
-function save(plans: MyPlan[]) {
+function write(plans: MyPlan[]) {
   state = { plans };
   AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
   listeners.forEach((l) => l());
 }
+
+function save(plans: MyPlan[]) {
+  write(plans);
+  cambio();
+}
+
+// En la cuenta cada plan es una entrada, y cada lectura hecha y cada respuesta de un reto, otra
+// («adviento-2026/d/3», «adviento-2026/r/3»): lo leído en dos dispositivos se suma en vez de pisarse.
+registrar<MyPlan[]>({
+  nombre: 'planes',
+  leer: () => load().then(() => state.plans),
+  escribir: write,
+  partir: (plans) => {
+    const out: Entradas = {};
+    for (const { done, reflections, finished: _, ...base } of plans) {
+      out[base.id] = base;
+      for (const [i, date] of Object.entries(done)) out[`${base.id}/d/${i}`] = date;
+      for (const [i, text] of Object.entries(reflections ?? {})) out[`${base.id}/r/${i}`] = text;
+    }
+    return out;
+  },
+  unir: (entradas, antes) => {
+    const plans = new Map<string, MyPlan>();
+    for (const [k, v] of Object.entries(entradas)) if (!k.includes('/')) plans.set(k, { ...(v as MyPlan), done: {} });
+    for (const [k, v] of Object.entries(entradas)) {
+      const [id, kind, i] = k.split('/');
+      const plan = plans.get(id);
+      if (!plan || !i) continue;
+      if (kind === 'd') plan.done[Number(i)] = v as string;
+      if (kind === 'r') (plan.reflections ??= {})[Number(i)] = v as string;
+    }
+    for (const plan of plans.values()) {
+      const dates = Object.values(plan.done);
+      if (dates.length >= plan.readings.length) plan.finished = dates.sort().at(-1);
+    }
+    // Se conserva el orden que tenía el dispositivo; los planes que llegan de otro van primero.
+    const order = antes.map((p) => p.id);
+    return [...plans.values()].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  },
+  hora: (v) => (typeof v === 'string' && /^\d{4}-\d\d-\d\d$/.test(v) ? Date.parse(v) : undefined),
+});
 
 // ——— Fechas: viven en temporadas.ts para que el servidor también las use ———
 

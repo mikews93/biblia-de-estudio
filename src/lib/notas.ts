@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
-// Notas personales en los versículos, guardadas solo en el dispositivo: nadie más las ve.
+import { cambio, registrar } from './sincronia';
+
+// Notas personales en los versículos: nadie más las ve. Se guardan en el dispositivo y, si hay cuenta, en ella.
 // (Las notas que se comparten con un grupo viven en Comunidades.) Clave «libro.capítulo.versículo».
 
 export type MyNote = { text: string; created: number; updated: number };
@@ -37,10 +39,24 @@ export async function setNote(book: string, chapter: number, verse: number, text
   const clean = text.trim();
   if (clean) next[k] = { text: clean, created: state[k]?.created ?? Date.now(), updated: Date.now() };
   else delete next[k];
+  write(next);
+  cambio();
+}
+
+function write(next: Record<string, MyNote>) {
   state = next;
   AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
   listeners.forEach((l) => l());
 }
+
+registrar<Record<string, MyNote>>({
+  nombre: 'notas',
+  leer: () => load().then(() => state),
+  escribir: write,
+  partir: (s) => s,
+  unir: (entradas) => entradas as Record<string, MyNote>,
+  hora: (v) => (v as MyNote).updated,
+});
 
 export function useNotes(): Record<string, MyNote> {
   const [, setTick] = useState(0);
