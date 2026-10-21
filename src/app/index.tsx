@@ -21,9 +21,11 @@ import {
   SearchIcon,
   SparkIcon,
   WordJourneyIcon,
+  StarIcon,
   type IconProps,
 } from '@/components/icons';
 import PlanCard from '@/components/PlanCard';
+import HoyJovenes from '@/components/jovenes/HoyJovenes';
 import { Avatar } from '@/components/comunidad/ui';
 import { InvitacionCuenta, NubeEstado, useEstadoNube } from '@/components/Sincronia';
 import StudyPanel from '@/components/StudyPanel';
@@ -45,8 +47,14 @@ import { serif, useColors, useLastRead, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { voiceSupported } from '@/lib/voz';
 
-/** Inicio («Hoy»): seguir leyendo, el versículo del día, la semana y accesos. */
-export default function Today() {
+/** Inicio («Hoy»). En el Modo Jóvenes, su propio Hoy con la misión del día (src/components/jovenes/HoyJovenes.tsx). */
+export default function Hoy() {
+  const { settings } = useSettings();
+  return settings.modo === 'jovenes' ? <HoyJovenes /> : <Today />;
+}
+
+/** Inicio para todos: seguir leyendo, el versículo del día, la semana y accesos. */
+function Today() {
   const colors = useColors();
   const { usuario } = useAccount();
   const { settings } = useSettings();
@@ -356,6 +364,7 @@ export default function Today() {
         <Tile icon={RouteIcon} label="Recorridos" colors={colors} onPress={() => navigate(() => router.push('/recorridos' as never), 'forward')} />
         <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
         <Tile icon={WordJourneyIcon} label="Palabras" colors={colors} onPress={() => navigate(() => router.push(palabrasHref() as never), 'forward')} />
+        <Tile icon={(p) => <StarIcon {...p} />} label="Jóvenes" colors={colors} onPress={() => navigate(() => router.push('/modo' as never), 'forward')} />
       </Appear>
       {devotional && books.find((b) => b.id === daily.book) && (
         <StudyPanel

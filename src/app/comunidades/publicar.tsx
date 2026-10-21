@@ -6,7 +6,7 @@ import Welcome from '@/components/comunidad/Welcome';
 import { Button, Chips, ErrorText, Field, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { useAccount } from '@/lib/comunidad';
 import { Audiencia, publish } from '@/lib/social';
-import { useColors } from '@/lib/theme';
+import { useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 type Kind = 'pregunta' | 'reflexion';
@@ -16,13 +16,15 @@ export default function Publicar() {
   const colors = useColors();
   const { ready, usuario } = useAccount();
   const [kind, setKind] = useState<Kind>('pregunta');
-  const [audience, setAudience] = useState<Audiencia>('todos');
+  // En el Modo Jóvenes solo se publica para los amigos: nada queda a la vista de desconocidos.
+  const jovenes = useSettings().settings.modo === 'jovenes';
+  const [audience, setAudience] = useState<Audiencia>(jovenes ? 'amigos' : 'todos');
   const [draft, setDraft] = useState('');
   const { busy, error, run } = useAction();
 
   const send = () =>
     run(async () => {
-      const { id } = await publish({ tipo: kind, audiencia: audience, texto: draft });
+      const { id } = await publish({ tipo: kind, audiencia: jovenes ? 'amigos' : audience, texto: draft });
       navigate(() => router.replace(`/comunidades/publicacion/${id}`), 'forward');
     });
 
@@ -55,14 +57,18 @@ export default function Publicar() {
             style={{ minHeight: 140 }}
           />
           <SectionTitle>¿Quién lo ve?</SectionTitle>
-          <Chips
-            options={[
-              { value: 'todos', label: 'Toda la comunidad' },
-              { value: 'amigos', label: 'Mis amigos' },
-            ]}
-            value={audience}
-            onChange={setAudience}
-          />
+          {jovenes ? (
+            <Text style={[text.small, { color: colors.muted }]}>Solo tus amigos. En el Modo Jóvenes nada se publica para toda la comunidad.</Text>
+          ) : (
+            <Chips
+              options={[
+                { value: 'todos', label: 'Toda la comunidad' },
+                { value: 'amigos', label: 'Mis amigos' },
+              ]}
+              value={audience}
+              onChange={setAudience}
+            />
+          )}
           <Button label="Publicar" onPress={send} busy={busy} disabled={!draft.trim()} style={{ marginTop: 10 }} />
           <ErrorText>{error}</ErrorText>
           <Text style={[text.small, { color: colors.muted }]}>

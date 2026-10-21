@@ -2,6 +2,7 @@
 
 import { aiDenied, aiHeaders, sessionKey } from './comunidad';
 import { requireConnection } from './conexion';
+import { getSettings } from './theme';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
@@ -64,7 +65,12 @@ export async function askStudy(
   const res = await fetch(`${API}/api/estudiar`, {
     method: 'POST',
     headers: req.palabra ? await palabraHeaders() : await aiHeaders(),
-    body: JSON.stringify({ ...req, messages: req.messages.map(({ role, text }) => ({ role, text })) }),
+    // En el Modo Jóvenes la IA escribe para su edad (ver JOVENES_SYSTEM en api/estudiar.ts).
+    body: JSON.stringify({
+      ...req,
+      messages: req.messages.map(({ role, text }) => ({ role, text })),
+      ...(getSettings().modo === 'jovenes' ? { publico: 'jovenes' } : {}),
+    }),
     signal,
   });
   if (res.status === 401) aiDenied();

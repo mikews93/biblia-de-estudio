@@ -19,7 +19,8 @@ import {
   type Estado,
   type Sello as SelloDef,
 } from '@/lib/sellos';
-import { Colors, serif, useColors } from '@/lib/theme';
+import '@/lib/jovenes';
+import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 export default function MisSellos() {
@@ -29,7 +30,8 @@ export default function MisSellos() {
   const { width } = useWindowDimensions();
   const [abierto, setAbierto] = useState<string | null>(params.sello ?? null);
 
-  const lista = sellosPara();
+  // En el Modo Jóvenes se suman los sellos de las misiones (src/lib/jovenes.ts).
+  const lista = sellosPara(useSettings().settings.modo === 'jovenes' ? 'jovenes' : 'todos');
   const ganados = ganadosRecientes(estado, lista);
   const proximo = siguienteSello(estado, lista);
   const porFila = width >= 900 ? 5 : width >= 560 ? 4 : 3;
