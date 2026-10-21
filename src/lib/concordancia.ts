@@ -40,13 +40,21 @@ export function parseConcordance(data: unknown): Concordance {
   return { lemma: d.lemma ?? '', meaning: d.meaning ?? '', translit: d.translit ?? '', related: d.related ?? [], uses: d.uses ?? [] };
 }
 
-// Palabras que la glosa lleva delante por los prefijos y sufijos del original («y», «tu», «conforme a la»…):
-// se quitan para contar juntas «misericordia», «su misericordia» y «y misericordia».
+// Palabras que la glosa lleva delante por los prefijos y sufijos del original («y», «tu», «conforme a la»…) y los
+// auxiliares con que se traducen los tiempos griegos («estando amando», «habiendo amado»): se quitan para contar
+// juntas «misericordia», «su misericordia» y «y misericordia», o «estén amando» y «está amando».
 const LEADING = new Set(
-  'y e o ni el la los las lo un una unos unas de del a al en con por para sin sobre desde hasta entre contra como conforme según mi mis tu tus su sus nuestro nuestra nuestros nuestras vuestro vuestra vuestros vuestras este esta estos estas ese esa esos esas aquel aquella que'.split(
-    ' ',
-  ),
+  (
+    'y e o ni el la los las lo un una unos unas de del a al en con por para sin sobre desde hasta entre contra como ' +
+    'conforme según mi mis tu tus su sus nuestro nuestra nuestros nuestras vuestro vuestra vuestros vuestras este esta ' +
+    'estos estas ese esa esos esas aquel aquella que estar estando estoy estás está estamos están esté estés estemos ' +
+    'estén estaba estabas estábamos estaban estuvo estuvieron estaré estará estarán estuviera estuviese ' +
+    'haber habiendo he has ha hemos han había habías habíamos habían hubo habrá habrán haya hayan hubiera hubiese ' +
+    'ser siendo sido es son era eran fue fueron sea sean será serán'
+  ).split(' '),
 );
+// Y las que lleva detrás por el estado constructo hebreo («misericordia de»)
+const TRAILING = new Set(['de', 'del', 'a', 'al']);
 
 /** La palabra principal de una glosa, en minúsculas: «Y su misericordia» → «misericordia». */
 export function glossKey(gloss: string): string {
@@ -57,7 +65,9 @@ export function glossKey(gloss: string): string {
     .filter(Boolean);
   let i = 0;
   while (i < words.length - 1 && LEADING.has(words[i])) i++;
-  return words.slice(i).join(' ') || gloss.trim().toLowerCase();
+  let j = words.length;
+  while (j > i + 1 && TRAILING.has(words[j - 1])) j--;
+  return words.slice(i, j).join(' ') || gloss.trim().toLowerCase();
 }
 
 export type Summary = {

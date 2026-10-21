@@ -73,7 +73,8 @@ function Concordancia({ strong, from }: { strong: string | null; from: string | 
 
   const hebrew = strong ? isHebrew(strong) : false;
   const names = useMemo(() => new Map(books.map((b) => [b.id, b])), [books]);
-  const title = data?.lemma ? `${data.lemma} · Concordancia` : 'Concordancia';
+  // El lema va aislado (U+2068…U+2069) para que el hebreo, de derecha a izquierda, no dé la vuelta al título
+  const title = data?.lemma ? `\u2068${data.lemma}\u2069 · Concordancia` : 'Concordancia';
 
   if (data === null)
     return (
@@ -389,8 +390,15 @@ function Results({
 
   const visible = list.slice(0, shown);
   const filtered = book || gloss;
+  // El versículo del que se vino, arriba: es el que se estaba leyendo
+  const here = from ? list.find((o) => o.ref === from) : undefined;
   return (
     <View style={styles.results}>
+      {here && (
+        <View style={styles.hereBox}>
+          <Row o={here} name={names.get(here.book)?.name ?? here.book} here hebrew={hebrew} colors={colors} />
+        </View>
+      )}
       <View style={[styles.resultsHead, { borderColor: colors.border }]}>
         <Text style={[styles.resultsTitle, { color: colors.text, fontFamily: serif }]}>
           {list.length} {list.length === 1 ? 'versículo' : 'versículos'}
@@ -420,7 +428,7 @@ function Results({
             {newBook && (
               <Text style={[styles.bookHead, { color: colors.muted }]}>{(names.get(o.book)?.name ?? o.book).toUpperCase()}</Text>
             )}
-            <Row o={o} name={names.get(o.book)?.name ?? o.book} here={o.ref === from} hebrew={hebrew} colors={colors} />
+            <Row o={o} name={names.get(o.book)?.name ?? o.book} here={false} hebrew={hebrew} colors={colors} />
           </View>
         );
       })}
@@ -587,6 +595,7 @@ const styles = StyleSheet.create({
   bar: { height: 8, borderRadius: 4 },
   bookCount: { width: 38, textAlign: 'right', fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
   results: { marginTop: 28 },
+  hereBox: { marginBottom: 18 },
   resultsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   resultsTitle: { fontSize: 22, fontWeight: '600' },
   filterPill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 14, paddingLeft: 12, paddingRight: 9, height: 28, flexShrink: 1 },

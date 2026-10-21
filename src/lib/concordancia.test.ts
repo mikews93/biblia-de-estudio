@@ -48,6 +48,10 @@ describe('concordancia', () => {
     expect(glossKey('conforme a la lealtad')).toBe('lealtad');
     expect(glossKey('(obj.)')).toBe('obj');
     expect(glossKey('de')).toBe('de');
+    expect(glossKey('estén amando')).toBe('amando');
+    expect(glossKey('habiendo amado')).toBe('amado');
+    expect(glossKey('sido amados')).toBe('amados');
+    expect(glossKey('misericordia de')).toBe('misericordia');
   });
 
   it('cuenta por libro en el orden de la Biblia y por traducción', () => {
