@@ -31,6 +31,14 @@ type Props = {
   onCite?: (source: Source) => void;
   /** Al cambiar de paso, para volver arriba. */
   onStep?: () => void;
+  /** Último versículo de un pasaje (con `verse` como el primero): se lee entero en vez del versículo y su contexto. */
+  hasta?: number;
+  /** Dónde se recuerda el paso y lo escrito, si no es el estudio del pasaje (un día de la semana del sermón). */
+  keepKey?: string;
+  /** Al guardar en el diario, con el id de la entrada. */
+  onSaved?: (entrada: string) => void;
+  /** Lo que se muestra al final, debajo del resumen (por ejemplo, el día siguiente). */
+  after?: ReactNode;
 };
 
 const STEPS = [
@@ -57,10 +65,10 @@ const native = Platform.OS !== 'web';
  * para hoy y orar con pistas del texto. La IA abre el texto y pregunta; lo que la persona escribe es suyo
  * y se guarda en su diario.
  */
-export default function Devotional({ book, chapter, verse, text, sources, busy, problem, onOpen, onCite, onStep }: Props) {
+export default function Devotional({ book, chapter, verse, text, sources, busy, problem, onOpen, onCite, onStep, hasta, keepKey, onSaved, after }: Props) {
   const colors = useColors();
   // El paso y lo escrito sobreviven a seguir un enlace y volver atrás (src/lib/recordado.ts).
-  const keep = `${studyKeep(book.id, chapter, verse)}devocional.`;
+  const keep = keepKey ?? `${studyKeep(book.id, chapter, verse)}devocional.`;
   const [step, setStepState] = useKept(`${keep}paso`, 0);
   const [verses, setVerses] = useState<Verse[]>([]);
   const [palabra, setPalabra] = useKept(`${keep}palabra`, '');
@@ -71,7 +79,8 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
   const [marked, setMarked] = useKept<number | null>(`${keep}marcado`, null);
   const [id] = useKept(`${keep}id`, () => `${Date.now()}`);
   const d = useMemo(() => parseDevocional(text), [text]);
-  const passage = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+  const range = !!verse && !!hasta && hasta > verse;
+  const passage = verse ? `${book.name} ${chapter}:${verse}${range ? `-${hasta}` : ''}` : `${book.name} ${chapter}`;
 
   const setStep = (i: number) => {
     setStepState(i);
@@ -82,7 +91,11 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
     getChapter(book.id, chapter).then(setVerses, () => {});
   }, [book.id, chapter]);
 
-  const reading = verse ? verses.filter(([n]) => Math.abs(n - verse) <= AROUND) : verses;
+  const reading = range
+    ? verses.filter(([n]) => n >= verse && n <= hasta)
+    : verse
+      ? verses.filter(([n]) => Math.abs(n - verse) <= AROUND)
+      : verses;
   const readingRef = verse && reading.length
     ? `${book.name} ${chapter}:${reading[0][0]}-${reading[reading.length - 1][0]}`
     : passage;
@@ -119,6 +132,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
       created: Date.now(),
     });
     setSaved(true);
+    onSaved?.(id);
     onStep?.();
   };
 
@@ -177,7 +191,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                     key={n}
                     onPress={() => mark(n, t)}
                     style={[
-                      verse && n !== verse && marked !== n ? { color: colors.muted } : undefined,
+                      verse && !range && n !== verse && marked !== n ? { color: colors.muted } : undefined,
                       marked === n && { backgroundColor: colors.highlight, color: colors.text },
                     ]}
                   >
@@ -351,6 +365,11 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
           {llevarVerse && (
             <Appear delay={360} style={{ alignSelf: 'stretch' }}>
               <Carry colors={colors} book={book} chapter={chapter} verse={llevarVerse} onShare={() => setSharing(true)} />
+            </Appear>
+          )}
+          {after && (
+            <Appear delay={420} style={{ alignSelf: 'stretch' }}>
+              {after}
             </Appear>
           )}
           <Appear delay={440}>
