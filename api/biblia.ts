@@ -10,6 +10,7 @@ const KEY = process.env.API_BIBLE_KEY;
 const YV_API = 'https://api.youversion.com/v1';
 const YV_KEY = process.env.YVP_APP_KEY;
 const LIST_TTL = 6 * 60 * 60 * 1000;
+const YV_LIST_TTL = 30 * 60 * 1000;
 
 class HttpError extends Error {
   status: number;
@@ -57,8 +58,9 @@ let yvCache: { at: number; bibles: Promise<YvBible[]> } | null = null;
 const yvLog: string[] = [];
 
 /** Biblias en español e inglés cuya licencia aceptó la app de YouVersion. */
-function yvAccessible(): Promise<YvBible[]> {
-  if (!yvCache || Date.now() - yvCache.at > LIST_TTL) {
+function yvAccessible(fresh = false): Promise<YvBible[]> {
+  // Las licencias se aceptan en el portal en cualquier momento: la lista se renueva cada media hora.
+  if (fresh || !yvCache || Date.now() - yvCache.at > YV_LIST_TTL) {
     yvLog.length = 0;
     // Con varios idiomas a la vez solo devuelve los del primero que tenga Biblias: se pide cada uno por separado.
     // El código puede ir en ISO 639-1 (es) o 639-3 (spa): se prueban los dos.
@@ -141,7 +143,7 @@ export async function GET(request: Request) {
               .then((ids) => LICENSED.filter((v) => v.bibleId && ids.has(v.bibleId)).map((v) => v.abbr))
               .catch((e) => String(e))
           : 'sin API_BIBLE_KEY',
-        YV_KEY ? yvAccessible() : ([] as YvBible[]),
+        YV_KEY ? yvAccessible(true) : ([] as YvBible[]),
       ]);
       return json({
         apiBible: api,
