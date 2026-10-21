@@ -177,7 +177,17 @@ def download(item: str, name: str) -> Path:
     path = CACHE / item / name
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(archive_url(item, name), path)
+        # archive.org a veces responde 500 o corta la descarga: se reintenta con espera creciente.
+        for attempt in range(5):
+            try:
+                urllib.request.urlretrieve(archive_url(item, name), path.with_suffix('.part'))
+                path.with_suffix('.part').rename(path)
+                break
+            except OSError as e:
+                if attempt == 4:
+                    raise
+                print(f'  reintento de la descarga ({e})', flush=True)
+                time.sleep(5 * 2**attempt)
     return path
 
 
@@ -197,6 +207,8 @@ class Aligner:
         bundle = torchaudio.pipelines.MMS_FA
         self.rate = bundle.sample_rate
         self.model = bundle.get_model(with_star=True).eval()
+        # Con las capas lineales en int8 el modelo va el doble de rápido en CPU (los minutos de Actions cuentan).
+        self.model = torch.ao.quantization.quantize_dynamic(self.model, {torch.nn.Linear}, dtype=torch.qint8)
         self.dict = bundle.get_dict(star='*')
         print('Modelo MMS listo', flush=True)
         torch.set_num_threads(max(1, torch.get_num_threads()))
