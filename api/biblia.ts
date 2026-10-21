@@ -3,7 +3,7 @@
 //   GET /api/biblia?versiones=1               versiones a las que alguna clave tiene acceso
 //   GET /api/biblia?v=nbla&book=jhn&chapter=3 versículos del capítulo, aviso de derechos y ficha FUMS (API.Bible)
 
-import { LICENSED, chapterVerses, chapterVersesHtml, licensedById, type ApiNode, type Licensed } from '../src/lib/licenciadas';
+import { LICENSED, chapterHtml, chapterVerses, licensedById, type ApiNode, type Licensed } from '../src/lib/licenciadas';
 
 const API = 'https://rest.api.bible/v1';
 const KEY = process.env.API_BIBLE_KEY;
@@ -145,19 +145,28 @@ export async function GET(request: Request) {
           : 'sin API_BIBLE_KEY',
         YV_KEY ? yvAccessible(true) : ([] as YvBible[]),
       ]);
+      // ?muestra=nvi: el comienzo del HTML de Juan 3 tal como llega, para revisar cómo vienen las notas al pie
+      const sample = licensedById(query.get('muestra') ?? '');
+      const yvId = sample && YV_KEY ? yvIdOf(sample, yv) : undefined;
+      const muestra = yvId
+        ? await youversion<{ content: string }>(`bibles/${yvId}/passages/JHN.3?format=html&include_headings=false&include_notes=true`)
+            .then((r) => r.content.slice(0, 1500))
+            .catch((e) => String(e))
+        : undefined;
       return json({
+        muestra,
         apiBible: api,
         youversion: YV_KEY ? { respuestas: yvLog, biblias: yv.map((b) => `${b.id} ${b.abbreviation ?? ''} ${b.title ?? ''}`) } : 'sin YVP_APP_KEY',
       });
     }
     if (query.get('versiones')) {
       const sources = await Promise.all(LICENSED.map((v) => sourceOf(v).catch(() => null)));
-      const versions = LICENSED.filter((_, i) => sources[i]).map(({ id, abbr, name, credit, link }) => ({
+      const versions = LICENSED.filter((_, i) => sources[i]).map(({ id, abbr, name, credit, links }) => ({
         id,
         abbr,
         name,
         credit,
-        link,
+        links,
         licensed: true,
       }));
       return json({ versions }, 200, 'public, s-maxage=3600, stale-while-revalidate=86400');
@@ -176,13 +185,14 @@ export async function GET(request: Request) {
     if ('yv' in source) {
       const [res, copyright] = await Promise.all([
         youversion<{ content: string }>(
-          `bibles/${source.yv}/passages/${book.toUpperCase()}.${chapter}?format=html&include_headings=false&include_notes=false`,
+          // Las notas al pie van con el texto: Bíblica pide que se puedan leer.
+          `bibles/${source.yv}/passages/${book.toUpperCase()}.${chapter}?format=html&include_headings=false&include_notes=true`,
         ),
         yvCopyrightOf(source.yv),
       ]);
-      const verses = chapterVersesHtml(res.content);
+      const { verses, notes } = chapterHtml(res.content);
       if (!verses.length) throw new HttpError(404, 'Este capítulo no está en esta versión.');
-      return json({ verses, copyright: copyright ?? version.credit, fums: null }, 200, cache);
+      return json({ verses, notes, copyright: copyright ?? version.credit, fums: null }, 200, cache);
     }
     const params = new URLSearchParams({
       'content-type': 'json',

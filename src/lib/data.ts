@@ -21,8 +21,15 @@ export type Book = {
 /** [número, texto, etiqueta si la versión une versículos («9-20»)] */
 export type Verse = [number, string, string?];
 
-/** licensed: versión con derechos leída por API.Bible (solo en línea, sin IA ni audio); link: página que el aviso enlaza. */
-export type Version = { id: string; name: string; abbr: string; credit: string; licensed?: boolean; link?: string };
+/** licensed: versión con derechos leída por API.Bible (solo en línea, sin IA ni audio); links: páginas que van con el aviso. */
+export type Version = {
+  id: string;
+  name: string;
+  abbr: string;
+  credit: string;
+  licensed?: boolean;
+  links?: { label: string; url: string }[];
+};
 
 // [palabra original, transliteración, glosa española, glosa inglesa, lema, significado del lema, Strong, morfología]
 export type Word = [string, string, string, string, string, string, string, string];
@@ -81,7 +88,8 @@ function getLicensedVersions(): Promise<Version[]> {
 export const getVersions = () =>
   Promise.all([load<Version[]>('versions.json'), getLicensedVersions()]).then(([free, licensed]) => [...free, ...licensed]);
 
-const licensedChapters = new Map<string, Promise<{ verses: Verse[]; fums: string | null }>>();
+type LicensedChapter = { verses: Verse[]; fums: string | null; copyright?: string; notes?: Record<number, string[]> };
+const licensedChapters = new Map<string, Promise<LicensedChapter>>();
 
 function getLicensedChapter(book: string, chapter: number, version: string): Promise<Verse[]> {
   const key = `${version}/${book}/${chapter}`;
@@ -92,7 +100,7 @@ function getLicensedChapter(book: string, chapter: number, version: string): Pro
       async (res) => {
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error ?? `No se pudo cargar ${key} (${res.status})`);
-        return body as { verses: Verse[]; fums: string | null };
+        return body as LicensedChapter;
       },
       () => {
         throw new Error('Sin conexión. Esta versión solo se puede leer con internet.');
@@ -106,6 +114,14 @@ function getLicensedChapter(book: string, chapter: number, version: string): Pro
     return verses;
   });
 }
+
+/** Aviso de derechos que manda el editor y notas al pie de un capítulo con derechos; null en las versiones libres. */
+export const getChapterExtras = (book: string, chapter: number, version: string) =>
+  licensedById(version)
+    ? (licensedChapters.get(`${version}/${book}/${chapter}`) ?? Promise.resolve(null)).then((c) =>
+        c ? { copyright: c.copyright ?? null, notes: c.notes ?? {} } : null,
+      )
+    : Promise.resolve(null);
 
 export const getChapter = (book: string, chapter: number, version = 'rv1909') =>
   licensedById(version)

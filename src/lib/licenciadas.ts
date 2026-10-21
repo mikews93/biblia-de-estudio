@@ -2,7 +2,8 @@
 // - API.Bible (American Bible Society), con API_BIBLE_KEY. El plan gratuito (Starter) da hasta tres Biblias.
 // - YouVersion Platform, con YVP_APP_KEY, para las licencias que se aceptan en su portal.
 // api/biblia.ts usa la primera vía en la que la clave tiene la versión, y solo se muestran las que alguna tiene.
-// Condiciones de las licencias: se muestra siempre el aviso de derechos, las lecturas de API.Bible se informan a
+// Condiciones de las licencias: se muestra siempre el aviso de derechos con los enlaces del editor, las notas al pie
+// de YouVersion se pueden leer al final del capítulo, el texto no se cambia, las lecturas de API.Bible se informan a
 // FUMS, no se guardan libros enteros (ni descargas sin conexión), y su texto no se pasa a la IA ni se convierte en
 // audio. Por eso la IA, el buscador, las comunidades y el audio siguen usando las versiones libres.
 
@@ -16,9 +17,14 @@ export type Licensed = {
   yvIds?: number[];
   /** Aviso de derechos que piden los editores; el primer tramo antes de « · » es el nombre. */
   credit: string;
-  /** Página de la versión, que el aviso enlaza (Lockman lo pide en apps y webs). */
-  link: string;
+  /** Enlaces que van con el aviso: los editores piden que se vean junto al texto (Lockman y Bíblica, su página). */
+  links: { label: string; url: string }[];
 };
+
+const LOCKMAN_LINKS = [
+  { label: 'NuevaBiblia.com (Español)', url: 'https://www.nuevabiblia.com' },
+  { label: 'Lockman.org (English)', url: 'https://www.lockman.org' },
+];
 
 export const LICENSED: Licensed[] = [
   {
@@ -28,8 +34,8 @@ export const LICENSED: Licensed[] = [
     bibleId: 'ce11b813f9a27e20-01',
     yvIds: [103],
     credit:
-      'Nueva Biblia de las Américas · Copyright © 2005 by The Lockman Foundation · Usada con permiso · NuevaBiblia.com',
-    link: 'https://www.nuevabiblia.com',
+      'Nueva Biblia de las Américas · Copyright © 2005 by The Lockman Foundation · Used by permission. Derechos Reservados - All Rights Reserved',
+    links: LOCKMAN_LINKS,
   },
   {
     id: 'lbla',
@@ -38,8 +44,8 @@ export const LICENSED: Licensed[] = [
     bibleId: 'e3f420b9665abaeb-01',
     yvIds: [89],
     credit:
-      'La Biblia de las Américas · Copyright © 1986, 1995, 1997 by The Lockman Foundation · Usada con permiso · LBLA.com',
-    link: 'https://www.lbla.com',
+      'La Biblia de las Américas · Copyright © 1986, 1995, 1997 by The Lockman Foundation · Used by permission. Derechos Reservados - All Rights Reserved',
+    links: LOCKMAN_LINKS,
   },
   {
     id: 'nvi',
@@ -48,7 +54,7 @@ export const LICENSED: Licensed[] = [
     yvIds: [128, 2664],
     credit:
       'Nueva Versión Internacional · NVI® © 1999, 2015, 2022 por Biblica, Inc.® · Usado con permiso de Biblica, Inc.®',
-    link: 'https://www.biblica.com',
+    links: [{ label: 'Biblica.com', url: 'https://www.biblica.com' }],
   },
   {
     id: 'ntv',
@@ -58,7 +64,7 @@ export const LICENSED: Licensed[] = [
     yvIds: [127],
     credit:
       'Nueva Traducción Viviente · © Tyndale House Foundation, 2010 · Usada con permiso de Tyndale House Publishers',
-    link: 'https://www.nuevatraduccionviviente.com',
+    links: [{ label: 'NuevaTraduccionViviente.com', url: 'https://www.nuevatraduccionviviente.com' }],
   },
   {
     id: 'niv',
@@ -67,7 +73,7 @@ export const LICENSED: Licensed[] = [
     bibleId: '78a9f6124f344018-01',
     yvIds: [111],
     credit: 'New International Version · Copyright © 1973, 1978, 1984, 2011 by Biblica, Inc.® · Used by permission',
-    link: 'https://www.biblica.com',
+    links: [{ label: 'Biblica.com', url: 'https://www.biblica.com' }],
   },
 ];
 
@@ -131,38 +137,91 @@ const decode = (s: string) =>
       : (ENTITIES[e.toLowerCase()] ?? m),
   );
 
+/** Notas al pie de un capítulo: por versículo, en el orden en que aparecen. */
+export type Footnotes = Record<number, string[]>;
+
+// Elementos que son notas (al pie o referencias): su texto va a las notas y no al versículo.
+const NOTE_CLASS = /(^|\s)(yv-n|note|f|fe|x|footnote)(\s|$)/;
+// Dentro de una nota: la marca que se ve en el texto y la referencia «3:16» que repite el versículo.
+const NOTE_SKIP_CLASS = /(^|\s)(yv-n-label|label|fr|xo|fq-label)(\s|$)/;
+// Fuera de las notas: el número visible del versículo y los títulos de sección.
+const TEXT_SKIP_CLASS = /(^|\s)(yv-vlbl|vlbl|yv-h|heading|s\d?|ms\d?|mr|r|d)(\s|$)/;
+
 /**
- * Convierte el HTML de un capítulo de YouVersion (format=html, sin títulos ni notas) en [número, texto, etiqueta].
- * Cada versículo empieza en un elemento con clase yv-v y atributo v="16"; su número visible va en yv-vlbl.
+ * Convierte el HTML de un capítulo de YouVersion en versículos [número, texto, etiqueta] y sus notas al pie.
+ * Cada versículo empieza en un elemento con clase yv-v y atributo v="16" (o v="2-3" si van unidos).
  */
-export function chapterVersesHtml(html: string): [number, string, string?][] {
-  const MARK = '\u0001';
-  const marked = html
-    // Números visibles, notas y títulos que se hayan colado: fuera, con su contenido
-    .replace(/<(\w+)[^>]*class="[^"]*\b(yv-vlbl|yv-n|yv-h|note|heading|s\d?)\b[^"]*"[^>]*>[\s\S]*?<\/\1>/g, '')
-    .replace(/<\w+[^>]*>/g, (tag) => {
-      if (!/class="[^"]*\byv-v\b/.test(tag)) return /^<(div|p|br)\b/i.test(tag) ? ' ' : '';
-      const v = tag.match(/\bv="([\d,-]+)"/)?.[1];
-      return v ? `${MARK}${v}${MARK}` : '';
-    })
-    .replace(/<\/\w+>/g, '');
-  const parts = decode(marked).split(MARK);
+export function chapterHtml(html: string): { verses: [number, string, string?][]; notes: Footnotes } {
   const verses = new Map<number, { text: string; label?: string }>();
-  for (let i = 1; i + 1 < parts.length; i += 2) {
-    const nums = parts[i].split(/[,-]/).map(Number).filter(Number.isFinite);
-    if (!nums.length) continue;
-    const n = nums[0];
-    const last = nums[nums.length - 1];
-    const v = verses.get(n) ?? { text: '' };
-    if (last !== n) v.label = `${n}-${last}`;
-    v.text += ` ${parts[i + 1]}`;
-    verses.set(n, v);
+  const notes: Footnotes = {};
+  let current: number | null = null;
+  // Pila de elementos abiertos: qué hace cada uno con el texto que contiene
+  const stack: ('text' | 'skip' | 'note' | 'noteSkip')[] = [];
+  let note: string | null = null;
+  const mode = () => stack[stack.length - 1] ?? 'text';
+
+  const add = (raw: string) => {
+    const t = decode(raw);
+    const m = mode();
+    if (m === 'note') note = (note ?? '') + t;
+    else if (m === 'text' && current !== null) verses.get(current)!.text += t;
+  };
+
+  const re = /<(\/?)(\w+)([^>]*?)(\/?)>|([^<]+)/g;
+  let tok: RegExpExecArray | null;
+  while ((tok = re.exec(html))) {
+    const [, closing, tag, attrs, selfClosing, text] = tok;
+    if (text !== undefined) {
+      add(text);
+      continue;
+    }
+    const name = tag.toLowerCase();
+    if (closing) {
+      const was = stack.pop();
+      if (was === 'note' && mode() !== 'note') {
+        const t = (note ?? '').replace(/\s+/g, ' ').trim();
+        if (t && current !== null) (notes[current] ??= []).push(t);
+        note = null;
+      }
+      if (/^(div|p)$/.test(name)) add(' ');
+      continue;
+    }
+    if (name === 'br') {
+      add(' ');
+      continue;
+    }
+    const cls = attrs.match(/\bclass="([^"]*)"/)?.[1] ?? '';
+    const v = /(^|\s)yv-v(\s|$)/.test(cls) ? attrs.match(/\bv="([\d,-]+)"/)?.[1] : undefined;
+    if (v) {
+      const nums = v.split(/[,-]/).map(Number).filter(Number.isFinite);
+      if (nums.length) {
+        current = nums[0];
+        const entry = verses.get(current) ?? { text: '' };
+        if (nums[nums.length - 1] !== current) entry.label = `${current}-${nums[nums.length - 1]}`;
+        entry.text += ' ';
+        verses.set(current, entry);
+      }
+    }
+    const inNote = mode() === 'note' || mode() === 'noteSkip';
+    const next = inNote
+      ? NOTE_SKIP_CLASS.test(cls) || mode() === 'noteSkip' ? 'noteSkip' : 'note'
+      : NOTE_CLASS.test(cls)
+        ? 'note'
+        : TEXT_SKIP_CLASS.test(cls) || mode() === 'skip'
+          ? 'skip'
+          : 'text';
+    if (/^(div|p)$/.test(name)) add(' ');
+    if (!selfClosing) stack.push(next);
   }
-  return [...verses.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([n, v]) => {
-      const text = v.text.replace(/\s+/g, ' ').replace(/\s+([,.;:!?»)])/g, '$1').trim();
-      return v.label ? [n, text, v.label] : [n, text];
-    })
-    .filter(([, text]) => text) as [number, string, string?][];
+
+  const clean = (t: string) => t.replace(/\s+/g, ' ').replace(/\s+([,.;:!?»)])/g, '$1').trim();
+  return {
+    verses: [...verses.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([n, v]): [number, string, string?] => (v.label ? [n, clean(v.text), v.label] : [n, clean(v.text)]))
+      .filter(([, text]) => text),
+    notes,
+  };
 }
+
+export const chapterVersesHtml = (html: string) => chapterHtml(html).verses;
