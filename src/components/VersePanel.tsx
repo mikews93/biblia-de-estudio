@@ -288,14 +288,16 @@ function RefRow({
       }}
       style={[styles.refRow, { borderColor: colors.border }]}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <Text style={{ color: colors.accent, fontWeight: '600' }}>{formatRef(refId, books)}</Text>
-        {promesa && (
+      {promesa ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Text style={{ color: colors.accent, fontWeight: '600' }}>{formatRef(refId, books)}</Text>
           <View style={[styles.promesaBadge, { backgroundColor: colors.warmSoft }]}>
             <Text style={{ color: colors.warm, fontSize: 10.5, fontWeight: '700' }}>{ROLES[promesa.paso.rol].toUpperCase()}</Text>
           </View>
-        )}
-      </View>
+        </View>
+      ) : (
+        <Text style={{ color: colors.accent, fontWeight: '600' }}>{formatRef(refId, books)}</Text>
+      )}
       <Text style={{ color: colors.text, marginTop: 2, fontFamily: serif }} numberOfLines={2}>
         {preview}
       </Text>
