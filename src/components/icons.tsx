@@ -445,3 +445,13 @@ export const HourglassIcon = (p: Props) => (
     <Path d="M10 18.5h4" />
   </Line>
 );
+
+/** La historia de una palabra: un camino que serpentea entre tres pasajes. */
+export const WordJourneyIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M6 18.5c4.5 0 2.5-6.5 6-6.5s1.5-6.5 6-6.5" />
+    <Circle cx={5} cy={18.5} r={1.8} />
+    <Circle cx={12} cy={12} r={1.8} />
+    <Circle cx={19} cy={5.5} r={1.8} />
+  </Line>
+);

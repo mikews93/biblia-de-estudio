@@ -3,6 +3,8 @@
 // Con «semana» convierte las notas de un sermón en cinco días de devocional sobre su pasaje («Del sermón a tu semana»).
 // Con «herramienta» prepara, para un capítulo, el guion de un resumen en audio a dos voces («podcast»),
 // tarjetas de repaso («tarjetas») o un mapa mental («mapa»), con el formato que la app sabe leer.
+// Con «palabra» (una del catálogo de src/lib/palabras.ts) cuenta la historia de esa palabra por toda la Biblia, o con
+// «herramienta: 'podcast'» escribe el guion del pódcast de esa historia. Ya preparados, se leen sin cuenta.
 // Lo que sale bien se guarda en la base de datos por capítulo: la siguiente persona lo recibe al instante, sin
 // volver a llamar a la IA. Con «nueva: true» («Preparar otra versión») se genera otra y sustituye a la guardada.
 // Solo usa las fuentes de la app (RV1909, hebreo y griego de STEPBible, referencias de OpenBible.info y los
@@ -23,6 +25,7 @@ import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { original } from '../src/lib/original';
+import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabras';
 import { formatRef, parseRef } from '../src/lib/refs';
 
 const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
@@ -41,6 +44,8 @@ type Verse = [number, string];
 type Word = [string, string, string, string, string, string, string, string];
 type Turn = { role: 'user' | 'assistant'; text: string };
 type Herramienta = 'podcast' | 'tarjetas' | 'mapa';
+/** Lo que se guarda en herramientas_ia: las herramientas de un capítulo y las de una palabra (con capítulo 0). */
+type Guardada = Herramienta | 'palabra' | 'palabra-podcast';
 type Body = {
   book?: string;
   chapter?: number;
@@ -53,6 +58,8 @@ type Body = {
   enfoque?: 'devocional' | 'profundo';
   nueva?: boolean;
   semana?: Semana;
+  /** Id de una palabra del catálogo (src/lib/palabras.ts): su historia por toda la Biblia. */
+  palabra?: string;
 };
 // Del sermón a tu semana: lo que la persona anotó del sermón del domingo, para cinco días de devocional.
 type Semana = { notas: string; desde?: number; hasta?: number; predicador?: string };
@@ -266,7 +273,7 @@ async function db() {
 }
 
 // Si la base de datos falla, la herramienta se genera igual: guardar es una ayuda, no un requisito.
-async function savedTool(herramienta: Herramienta, libro: string, capitulo: number): Promise<Saved | null> {
+async function savedTool(herramienta: Guardada, libro: string, capitulo: number): Promise<Saved | null> {
   try {
     const s = await db();
     if (!s) return null;
@@ -279,7 +286,7 @@ async function savedTool(herramienta: Herramienta, libro: string, capitulo: numb
   }
 }
 
-async function saveTool(herramienta: Herramienta, libro: string, capitulo: number, saved: Saved) {
+async function saveTool(herramienta: Guardada, libro: string, capitulo: number, saved: Saved) {
   try {
     const s = await db();
     if (!s) return;
@@ -626,11 +633,202 @@ function validSemana(t: unknown): t is Semana {
   );
 }
 
+// ---------------------------------------------------------------- La historia de una palabra
+
+const PALABRA_USES = 70;
+const PAREJA_USES = 14;
+type Lexico = { strong: string; lema: string; glosa: string; definicion: string };
+
+const PALABRA_SYSTEM = `
+
+Ahora cuentas «la historia de una palabra»: cómo una palabra del texto original recorre la Biblia. Recibes la entrada del léxico breve de STEPBible (Tyndale House, en inglés), cuántas veces y dónde aparece según la concordancia de la app, y una selección de pasajes con la forma original, su glosa y el texto de la Reina-Valera 1909.
+
+Reglas de la historia:
+- Cuenta lo que muestran los pasajes y cítalos; cada momento se apoya en versículos concretos de la lista.
+- El significado sale del léxico y de cómo se usa la palabra en los pasajes: nada de etimologías, cifras ni datos que no estén en los documentos.
+- Es un relato para descubrir, no un sermón: explica, no prediques ni des consejos largos.
+- Cuando escribas la palabra original, usa la transliteración que te doy (por ejemplo «jésed»), en cursiva con *asteriscos*.`;
+
+async function palabraUses(strongs: string[], order: Map<string, number>): Promise<Use[]> {
+  const lists = await Promise.all(
+    strongs.map(async (s) => {
+      const entry = await load<{ uses: Use[] } | Use[]>(`concordance/${s}.json`, []);
+      return Array.isArray(entry) ? entry : entry.uses;
+    }),
+  );
+  return unirApariciones(lists, order);
+}
+
+/** Apariciones repartidas por toda la Biblia: la primera de cada libro donde está y el resto a intervalos iguales. Un versículo, una vez. */
+export function repartir(uses: Use[], max: number): Use[] {
+  const firsts = new Map<string, number>();
+  const verses = new Map<string, number>();
+  uses.forEach(([ref], i) => {
+    if (!verses.has(ref)) verses.set(ref, i);
+    const book = ref.split('.')[0];
+    if (!firsts.has(book)) firsts.set(book, i);
+  });
+  const unique = [...verses.values()];
+  if (unique.length <= max) return unique.map((i) => uses[i]);
+  const picked = new Set([...firsts.values()].slice(0, max));
+  // Los que faltan, a intervalos iguales; si alguno ya estaba, se prueba a intervalos más finos
+  for (let parts = max; picked.size < max; parts *= 2) {
+    for (let k = 0; k < parts && picked.size < max; k++) picked.add(unique[Math.floor(((k + 0.5) * unique.length) / parts)]);
+  }
+  return [...picked].sort((a, b) => a - b).map((i) => uses[i]);
+}
+
+async function usesDoc(title: string, uses: Use[], books: Book[]) {
+  const blocks = await Promise.all(
+    uses.map(async ([ref, form, gloss]) => {
+      const label = formatRef(ref, books);
+      return { text: `${label}: ${form} «${gloss}». RV1909: ${await refText(ref)}`, meta: { label, ref } };
+    }),
+  );
+  return doc(title, blocks);
+}
+
+async function palabraSources(p: PalabraEnTema, books: Book[]) {
+  const order = new Map(books.map((b, i) => [b.id, i]));
+  const name = new Map(books.map((b) => [b.id, b.name]));
+  const [{ lexico }, uses, pareja] = await Promise.all([
+    load<{ lexico: Lexico[] }>(`palabras/${p.id}.json`, { lexico: [] }),
+    palabraUses(p.strongs, order),
+    p.pareja ? palabraUses(p.pareja.strongs, order) : Promise.resolve([] as Use[]),
+  ]);
+  const docs: Doc[] = [];
+  if (lexico.length) {
+    docs.push(
+      doc(
+        `Léxico breve de STEPBible (Tyndale House): ${p.original}`,
+        lexico.map((l) => ({
+          text: `${l.lema} (${l.strong}), «${l.glosa}»: ${l.definicion}`,
+          meta: { label: `Léxico de STEPBible: ${l.lema} (${l.strong})` },
+        })),
+      ),
+    );
+  }
+  const byBook = new Map<string, number>();
+  for (const [ref] of uses) byBook.set(ref.split('.')[0], (byBook.get(ref.split('.')[0]) ?? 0) + 1);
+  const top = [...byBook].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const lengua = p.hebreo ? 'hebreo del Antiguo Testamento' : 'griego del Nuevo Testamento';
+  docs.push(
+    doc(`Concordancia de la app: ${p.nombre} (${p.original})`, [
+      {
+        text: `${p.nombre} (${p.original}, ${p.strongs.join(', ')}) aparece ${uses.length} veces en el ${lengua}, en ${byBook.size} libros. Donde más aparece: ${top
+          .map(([b, n]) => `${name.get(b) ?? b} (${n})`)
+          .join(', ')}.`,
+        meta: { label: `Concordancia de la app (STEPBible): ${p.nombre}` },
+      },
+    ]),
+  );
+  docs.push(await usesDoc(`Pasajes con ${p.nombre} (${p.original}), con la forma original, su glosa y la RV1909`, repartir(uses, PALABRA_USES), books));
+  if (p.pareja && pareja.length) {
+    const otro = p.hebreo ? 'griego del Nuevo Testamento' : 'hebreo del Antiguo Testamento';
+    docs.push(
+      await usesDoc(
+        `La misma idea en el ${otro}: pasajes con ${p.pareja.nombre} (${p.pareja.original}), que aparece ${pareja.length} veces`,
+        repartir(pareja, PAREJA_USES),
+        books,
+      ),
+    );
+  }
+  return docs;
+}
+
+function palabraTask(p: PalabraEnTema) {
+  const donde = p.hebreo ? 'el Antiguo Testamento' : 'el Nuevo Testamento';
+  return `Cuenta la historia de la palabra *${p.nombre}* (${p.original}), del ${p.hebreo ? 'hebreo' : 'griego'}, a lo largo de ${donde}. Que se lea como un relato breve y fiel, no como un diccionario: la persona descubre cómo la palabra va mostrando algo nuevo de un pasaje a otro.
+
+Formato estricto, sin texto antes del primer título:
+
+## Qué significa
+Un párrafo de 50 a 90 palabras: el sentido de la palabra según el léxico, cuántas veces aparece y cómo se suele traducir en los pasajes.
+
+## Un título de 2 a 6 palabras para el primer momento
+De 4 a 6 momentos, cada uno con su título "## ", en el orden de la Biblia. Cada momento es un pasaje (o dos del mismo libro) de la lista: un párrafo de 60 a 110 palabras con qué pasa ahí, quién habla y qué muestra la palabra en ese lugar, con su cita.
+
+## El hilo
+Un párrafo de 50 a 90 palabras: qué une a los momentos y cómo crece la palabra.${
+    p.pareja ? ` Si ayuda, cuenta cómo la idea sigue en *${p.pareja.nombre}* (${p.pareja.original}), con los pasajes de esa lista.` : ''
+  } Relaciónalo con Cristo solo si los pasajes lo sostienen, sin forzarlo.
+
+## Para pensar
+- Dos preguntas abiertas, una por línea, que lleven de vuelta a los pasajes.
+
+Elige momentos de libros distintos que muestren matices diferentes. Extensión total: 550 a 850 palabras.`;
+}
+
+function palabraPodcastTask(p: PalabraEnTema) {
+  return `Escribe el guion de un pódcast sobre la historia de la palabra ${p.nombre} (${p.original}) por la Biblia, como una conversación entre dos personas que estudian juntas: Ana y Tomás. Se escuchará con voz sintetizada, de 5 a 7 minutos.
+
+Formato estricto: cada intervención en su propia línea, empezando por «ANA:» o «TOMÁS:», sin títulos, sin listas, sin markdown, sin acotaciones entre paréntesis ni efectos de sonido.
+
+Contenido:
+- Abran con una pregunta o una escena que despierte interés por la palabra; no se presenten ni saluden con fórmulas de radio.
+- Digan la palabra como se lee en español («${p.nombre}») y expliquen qué significa según el léxico.
+- Recorran de 4 a 6 pasajes de la lista en el orden de la Biblia: qué pasa en cada uno y qué muestra ahí la palabra.${
+    p.pareja ? `\n- Hacia el final, cuenten cómo sigue la idea en ${p.pareja.nombre}, con uno o dos pasajes de esa lista.` : ''
+  }
+- Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
+- No es un sermón: expliquen el texto, no prediquen ni den consejos largos.
+- Cierren con una o dos preguntas para que quien escucha siga pensando, sin respuesta.
+- Las citas bíblicas, con palabras («Rut tres, diez»).
+
+Extensión: 800 a 1000 palabras. Empieza directamente por la primera línea del diálogo.`;
+}
+
+async function palabraPost(request: Request, body: Body) {
+  const palabra = typeof body.palabra === 'string' ? palabraPorId(body.palabra) : null;
+  if (!palabra) return badRequest('Palabra no válida');
+  if (body.herramienta !== undefined && body.herramienta !== 'podcast') return badRequest('Herramienta no válida');
+  if (
+    (body.nueva !== undefined && typeof body.nueva !== 'boolean') ||
+    body.book !== undefined ||
+    body.chapter !== undefined ||
+    body.verse !== undefined ||
+    body.word !== undefined ||
+    body.taller !== undefined ||
+    body.enfoque !== undefined ||
+    (Array.isArray(body.messages) ? body.messages.length > 0 : body.messages !== undefined)
+  ) {
+    return badRequest('Pedido no válido');
+  }
+  const tool = body.herramienta === 'podcast' ? 'palabra-podcast' : 'palabra';
+  if (!body.nueva) {
+    const saved = await savedTool(tool, palabra.id, 0);
+    if (saved) {
+      return ndjson([...saved.fuentes.map((f) => ({ type: 'source', ...f })), { type: 'text', text: saved.texto }, { type: 'done' }]);
+    }
+  }
+  const denied = await needsAccount(request);
+  if (denied) return denied;
+
+  const books = await load<Book[]>('books.json');
+  const docs = await palabraSources(palabra, books);
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
+    {
+      role: 'user',
+      content: [
+        ...docs.map((d) => d.param),
+        { type: 'text', text: tool === 'palabra' ? palabraTask(palabra) : palabraPodcastTask(palabra) },
+      ],
+    },
+  ];
+  return streamAnswer(request, docs, messages, SYSTEM + PALABRA_SYSTEM, (saved) => saveTool(tool, palabra.id, 0, saved));
+}
+
 function badRequest(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
 
 export async function POST(request: Request) {
+  // La historia de una palabra ya preparada se lee sin cuenta: se mira el pedido antes que la sesión.
+  const peek: unknown = await request
+    .clone()
+    .json()
+    .catch(() => null);
+  if (peek && typeof peek === 'object' && 'palabra' in peek) return palabraPost(request, peek as Body);
   const denied = await needsAccount(request);
   if (denied) return denied;
   let body: Body;
@@ -731,6 +929,23 @@ export async function POST(request: Request) {
     ...turns.map((t) => ({ role: t.role, content: t.text })),
   ];
 
+  const system = semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM;
+  return streamAnswer(request, docs, messages, system, async (saved) => {
+    if (herramienta) await saveTool(herramienta, book.id, chapter, saved);
+    else if (clave) await saveStudy(clave, saved);
+  });
+}
+
+type Doc = ReturnType<typeof doc>;
+
+/** Pide la respuesta a Claude y la envía por partes; «save» guarda la respuesta completa. */
+function streamAnswer(
+  request: Request,
+  docs: Doc[],
+  messages: Anthropic.Beta.BetaMessageParam[],
+  system: string,
+  save: (saved: Saved) => Promise<void>,
+) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -745,13 +960,7 @@ export async function POST(request: Request) {
           {
             model: MODEL,
             max_tokens: 16000,
-            system: semana
-              ? SYSTEM + SEMANA_SYSTEM
-              : taller
-                ? SYSTEM + TALLER_SYSTEM
-                : devocional
-                  ? SYSTEM + DEVOCIONAL_SYSTEM
-                  : SYSTEM,
+            system,
             messages,
             cache_control: { type: 'ephemeral' },
             output_config: { effort: 'medium' },
@@ -795,8 +1004,7 @@ export async function POST(request: Request) {
         } else {
           // Solo se guarda una respuesta completa
           if (final.stop_reason === 'end_turn' && texto.trim()) {
-            if (herramienta) await saveTool(herramienta, book.id, chapter, { texto, fuentes });
-            else if (clave) await saveStudy(clave, { texto, fuentes });
+            await save({ texto, fuentes });
           }
           send({ type: 'done' });
         }

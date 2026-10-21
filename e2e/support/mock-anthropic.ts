@@ -4,7 +4,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
-type Block = { type: string; text?: string };
+type Block = { type: string; text?: string; title?: string; source?: { content?: { text: string }[] } };
 type Msg = { role: string; content: string | Block[] };
 type Body = {
   stream?: boolean;
@@ -55,8 +55,31 @@ ${llevar}`,
   ),
 ].join('\n\n');
 
+/**
+ * Un relato con citas a pasajes concretos (la de jésed, la palabra de la semana en las pruebas): cada tramo cita el
+ * bloque de los documentos que empieza por «cita» («Génesis 24:27:», «Léxico…»).
+ */
+type Segment = { text: string; cite?: string };
+const RELATO: Segment[] = [
+  { text: '## Qué significa\n\nEl léxico explica *jésed* como bondad, amabilidad y fidelidad: un amor que cumple lo prometido.', cite: '' },
+  { text: ' Aparece 245 veces en el Antiguo Testamento, sobre todo en los Salmos, y la Reina-Valera casi siempre la traduce «misericordia».', cite: 'jésed (' },
+  { text: '\n\n## Una oración respondida\n\nEl siervo de Abraham busca esposa para Isaac y, al encontrar a Rebeca, bendice a Dios porque «no apartó su misericordia y su verdad» de su amo.', cite: 'Génesis 24:27:' },
+  { text: ' La primera vez que la palabra suena en boca de alguien que ora, describe a un Dios que cumple paso a paso lo que había prometido.' },
+  { text: '\n\n## El Dios que guarda el pacto\n\nMoisés recuerda al pueblo que Jehová es «Dios fiel, que guarda el pacto y la misericordia» a los que le aman.', cite: 'Deuteronomio 7:9:' },
+  { text: ' Aquí *jésed* va unida al pacto: no es un sentimiento pasajero, sino una lealtad que Dios se compromete a mantener.' },
+  { text: '\n\n## La bondad de un pariente\n\nEn Rut, Noemí descubre que Booz es pariente suyo y bendice a Dios, que «no ha rehusado a los vivos la benevolencia que tuvo con los finados».', cite: 'Rut 2:20:' },
+  { text: ' La lealtad de Dios se deja ver en la de una persona que cuida a dos viudas sin estar obligada.' },
+  { text: '\n\n## Para siempre es su misericordia\n\nEl Salmo 136 repite en cada verso «porque para siempre es su misericordia», mientras recorre la creación y la historia de Israel.', cite: 'Salmos 136:4:' },
+  { text: ' La palabra se vuelve canto: el pueblo aprende a leer toda su historia a la luz de ese amor fiel.' },
+  { text: '\n\n## Nuevas cada mañana\n\nEntre las ruinas de Jerusalén, Lamentaciones confiesa: «Es por la misericordia de Jehová que no somos consumidos».', cite: 'Lamentaciones 3:22:' },
+  { text: ' Aun cuando todo se ha perdido, *jésed* es lo único que no ha decaído.' },
+  { text: '\n\n## El hilo\n\nDe la oración de un siervo al lamento de una ciudad destruida, *jésed* es la lealtad de Dios que sostiene el pacto cuando las personas fallan.', cite: 'Deuteronomio 7:9:' },
+  { text: ' Por eso Miqueas pide al pueblo «amar misericordia»: quien la recibe aprende a vivirla con otros.', cite: 'Miqueas 6:8:' },
+  { text: '\n\n## Para pensar\n\n- ¿En qué momento de tu historia podrías decir, como el siervo de Abraham, que Dios no apartó su misericordia?\n- ¿A quién podrías mostrar hoy una lealtad como la de Booz?' },
+];
+
 /** Texto de la respuesta y, si corresponde, una cita al primer documento. */
-function answer(body: Body): { text: string; cite: boolean } {
+function answer(body: Body): { text: string; cite: boolean; segments?: Segment[] } {
   const system = systemText(body.system);
   const first = text(body.messages[0].content);
   const last = body.messages[body.messages.length - 1];
@@ -74,6 +97,19 @@ function answer(body: Body): { text: string; cite: boolean } {
   if (system.startsWith('Preparas preguntas')) {
     return { text: '1. ¿Qué nos enseña este pasaje sobre Dios?\n2. ¿Cómo lo viviremos esta semana?', cite: false };
   }
+  if (first.includes('guion de un pódcast sobre la historia de la palabra')) {
+    return {
+      text: [
+        'ANA: ¿Te has fijado en cuántas veces dice la Biblia que la misericordia de Dios es para siempre?',
+        'TOMÁS: Muchísimas. Detrás de esa frase hay una palabra hebrea: jésed.',
+        'ANA: El léxico la explica como bondad, amabilidad y fidelidad. Un amor que no se suelta.',
+        'TOMÁS: Y el primero en usarla así es el siervo de Abraham, en Génesis veinticuatro, veintisiete.',
+        'ANA: ¿Qué pregunta te deja a ti?',
+      ].join('\n'),
+      cite: false,
+    };
+  }
+  if (first.includes('Cuenta la historia de la palabra')) return { text: '', cite: false, segments: RELATO };
   if (first.includes('guion de un resumen en audio')) {
     return {
       text: 'ANA: Este capítulo empieza con una sorpresa.\nTOMÁS: Sí, y el versículo dieciséis lo resume todo.\nANA: ¿Qué pregunta te deja a ti?',
@@ -146,8 +182,9 @@ const message = (content: unknown[]) => ({
 function sse(res: ServerResponse, body: Body) {
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
   const send = (event: Record<string, unknown>) => res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-  const { text: out, cite } = answer(body);
+  const { text: out, cite, segments } = answer(body);
   send({ type: 'message_start', message: { ...message([]), stop_reason: null } });
+  if (segments) return sendSegments(res, send, body, segments);
   send({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '', citations: cite ? [] : null } });
   // Por partes, como la API real
   for (const piece of out.match(/.{1,20}/gs) ?? []) {
@@ -171,6 +208,40 @@ function sse(res: ServerResponse, body: Body) {
     });
   }
   send({ type: 'content_block_stop', index: 0 });
+  send({ type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: 10 } });
+  send({ type: 'message_stop' });
+  res.end();
+}
+
+/** Busca en los documentos del pedido el bloque que empieza por «prefix»: [documento, bloque]. */
+function findBlock(body: Body, prefix: string): [number, number] | null {
+  const docs = (typeof body.messages[0].content === 'string' ? [] : body.messages[0].content).filter((b) => b.type === 'document');
+  for (let d = 0; d < docs.length; d++) {
+    const blocks = docs[d].source?.content ?? [];
+    const i = blocks.findIndex((b) => b.text.startsWith(prefix));
+    if (i >= 0) return [d, i];
+  }
+  return null;
+}
+
+/** Un bloque de texto por tramo, cada uno con su cita, como responde la API con citas activadas. */
+function sendSegments(res: ServerResponse, send: (event: Record<string, unknown>) => void, body: Body, segments: Segment[]) {
+  segments.forEach((seg, index) => {
+    const at = seg.cite !== undefined ? findBlock(body, seg.cite) : null;
+    send({ type: 'content_block_start', index, content_block: { type: 'text', text: '', citations: at ? [] : null } });
+    send({ type: 'content_block_delta', index, delta: { type: 'text_delta', text: seg.text } });
+    if (at) {
+      send({
+        type: 'content_block_delta',
+        index,
+        delta: {
+          type: 'citations_delta',
+          citation: { type: 'content_block_location', cited_text: '', document_index: at[0], document_title: null, start_block_index: at[1], end_block_index: at[1] + 1 },
+        },
+      });
+    }
+    send({ type: 'content_block_stop', index });
+  });
   send({ type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: 10 } });
   send({ type: 'message_stop' });
   res.end();

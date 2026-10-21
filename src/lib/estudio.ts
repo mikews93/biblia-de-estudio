@@ -1,6 +1,7 @@
 // Cliente de /api/estudiar: pide el estudio de un pasaje o la respuesta a una pregunta y lo va recibiendo por partes.
 
-import { aiDenied, aiHeaders } from './comunidad';
+import { aiDenied, aiHeaders, sessionKey } from './comunidad';
+import { requireConnection } from './conexion';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
@@ -28,8 +29,10 @@ export type TallerRequest = {
 export type Herramienta = 'podcast' | 'tarjetas' | 'mapa';
 
 type Request = {
-  book: string;
-  chapter: number;
+  book?: string;
+  chapter?: number;
+  /** La historia de una palabra del catálogo (src/lib/palabras.ts), en lugar de un pasaje */
+  palabra?: string;
   verse?: number;
   word?: number;
   messages: Turn[];
@@ -45,6 +48,13 @@ type Request = {
 /** Los dos modos de la pestaña de estudio: un devocional guiado o el estudio profundo del texto. */
 export type Enfoque = 'devocional' | 'profundo';
 
+/** La historia de una palabra ya preparada se lee sin cuenta: la llave va solo si hay sesión (el servidor la pide si hay que prepararla). */
+async function palabraHeaders(): Promise<Record<string, string>> {
+  requireConnection();
+  const llave = await sessionKey();
+  return { 'Content-Type': 'application/json', ...(llave && { Authorization: `Bearer ${llave}` }) };
+}
+
 /** Llama a onUpdate con el texto y las fuentes acumulados cada vez que llega algo nuevo. */
 export async function askStudy(
   req: Request,
@@ -53,7 +63,7 @@ export async function askStudy(
 ): Promise<{ text: string; sources: Source[] }> {
   const res = await fetch(`${API}/api/estudiar`, {
     method: 'POST',
-    headers: await aiHeaders(),
+    headers: req.palabra ? await palabraHeaders() : await aiHeaders(),
     body: JSON.stringify({ ...req, messages: req.messages.map(({ role, text }) => ({ role, text })) }),
     signal,
   });

@@ -18,6 +18,7 @@ import {
   PromiseIcon,
   SearchIcon,
   SparkIcon,
+  WordJourneyIcon,
   type IconProps,
 } from '@/components/icons';
 import PlanCard from '@/components/PlanCard';
@@ -30,6 +31,7 @@ import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
 import { Ruta } from '@/components/SemanaSermon';
+import { palabraDeLaSemana, palabraHref, palabrasHref } from '@/lib/palabras';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { seasonTint } from '@/lib/retos';
@@ -306,6 +308,10 @@ export default function Today() {
         </View>
       </Appear>
 
+      <Appear delay={140}>
+        <PalabraSemana colors={colors} />
+      </Appear>
+
       <Appear delay={160} style={styles.grid}>
         <Tile icon={BooksIcon} label="Libros" colors={colors} onPress={() => navigate(() => router.push('/libros'))} />
         <Tile
@@ -341,6 +347,7 @@ export default function Today() {
           onPress={() => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward')}
         />
         <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
+        <Tile icon={WordJourneyIcon} label="Palabras" colors={colors} onPress={() => navigate(() => router.push(palabrasHref() as never), 'forward')} />
       </Appear>
       {devotional && books.find((b) => b.id === daily.book) && (
         <StudyPanel
@@ -415,6 +422,29 @@ function SemanaCard({ semana, colors }: { semana: NonNullable<ReturnType<typeof 
   );
 }
 
+/** La palabra de la semana de «La historia de una palabra»: la misma para todos de lunes a domingo. */
+function PalabraSemana({ colors }: { colors: C }) {
+  const p = palabraDeLaSemana();
+  return (
+    <Pressable
+      onPress={() => navigate(() => router.push(palabraHref(p.id) as never), 'forward')}
+      style={({ pressed }) => [styles.card, styles.palabra, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+      accessibilityRole="link"
+      accessibilityLabel={`Palabra de la semana: ${p.nombre}. ${p.resumen}`}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.kicker, { color: colors.accent }]}>Palabra de la semana</Text>
+        <Text style={[styles.palabraNombre, { color: colors.text, fontFamily: serif }]}>{p.nombre}</Text>
+        <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>{p.resumen}</Text>
+        <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 10 }}>Seguir su historia ›</Text>
+      </View>
+      <Text style={[styles.palabraOriginal, { color: colors.greek, fontFamily: serif }]} numberOfLines={1}>
+        {p.original}
+      </Text>
+    </Pressable>
+  );
+}
+
 function Tile({ icon: Icon, label, colors, onPress }: { icon: (p: IconProps) => React.ReactNode; label: string; colors: C; onPress: () => void }) {
   return (
     <Pressable
@@ -451,6 +481,9 @@ const styles = StyleSheet.create({
   continueTitle: { fontSize: 28, marginTop: 6 },
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20 },
   reto: { overflow: 'hidden' },
+  palabra: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  palabraNombre: { fontSize: 24, fontStyle: 'italic', marginTop: 4 },
+  palabraOriginal: { fontSize: 44, lineHeight: 58, maxWidth: '45%' },
   retoGlyph: { position: 'absolute', right: -14, top: -18, opacity: 0.12 },
   retoButton: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 9, marginTop: 14 },
   verse: { fontSize: 21, lineHeight: 31, marginTop: 10 },

@@ -238,6 +238,38 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(aiRequests.length).toBe(before + 2);
   });
 
+  it('la historia de una palabra: pide cuenta para prepararla, cita los pasajes y luego se lee sin cuenta', async () => {
+    const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
+    await sql`delete from herramientas_ia where libro = 'jesed'`.catch(() => {});
+    await sql.end();
+    expect(await bad({ palabra: 'inventada' })).toBe('Palabra no válida');
+    expect(await bad({ palabra: 'jesed', book: 'jhn', chapter: 3 })).toBe('Pedido no válido');
+    expect(await bad({ palabra: 'jesed', herramienta: 'mapa' })).toBe('Herramienta no válida');
+    // Sin nada guardado y sin cuenta no se llama a la IA
+    expect((await estudiar(request('/api/estudiar', { palabra: 'jesed' }))).status).toBe(401);
+
+    const before = aiRequests.length;
+    const first = await events(await ask({ palabra: 'jesed' }));
+    expect(aiRequests.length).toBe(before + 1);
+    const sent = lastAiText();
+    expect(sent).toContain('Léxico breve de STEPBible');
+    expect(sent).toContain('aparece 245 veces');
+    expect(sent).toContain('éleos (ἔλεος)');
+    expect(sent).toContain('Cuenta la historia de la palabra *jésed*');
+    const sources = first.filter((e) => e.type === 'source');
+    expect(sources).toContainEqual(expect.objectContaining({ label: 'Génesis 24:27', ref: 'gen.24.27' }));
+    expect(textOf(first)).toContain('## Una oración respondida');
+
+    // Ya guardada, se lee sin cuenta y sin otra llamada
+    const anon = await events(await estudiar(request('/api/estudiar', { palabra: 'jesed' })));
+    expect(aiRequests.length).toBe(before + 1);
+    expect(textOf(anon)).toBe(textOf(first));
+    // El guion del pódcast es otra cosa guardada aparte
+    await events(await ask({ palabra: 'jesed', herramienta: 'podcast' }));
+    expect(aiRequests.length).toBe(before + 2);
+    expect(lastAiText()).toContain('guion de un pódcast sobre la historia de la palabra jésed');
+  });
+
   it('el primer estudio y el devocional de un pasaje se guardan para todos; las preguntas no', async () => {
     const base = { book: 'jhn', chapter: 5, verse: 24 };
     const before = aiRequests.length;

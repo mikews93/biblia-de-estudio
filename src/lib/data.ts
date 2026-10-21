@@ -212,6 +212,17 @@ export const getConcordance = (strong: string) =>
     d && !Array.isArray(d) && !Object.keys(d as object).length ? null : parseConcordance(d),
   );
 
+/** Cuántas veces aparece cada palabra de «La historia de una palabra»: [total, AT, NT] (pipeline/build_data.py). */
+export const getPalabrasIndex = () =>
+  load<Record<string, [number, number, number]>>('palabras/index.json', true).then((r) => r ?? {});
+
+/** Las apariciones de todos los números de Strong de una palabra, en una sola concordancia. */
+export async function getPalabraConcordance(strongs: string[]) {
+  const all = await Promise.all(strongs.map((s) => getConcordance(s)));
+  const first = all.find((c) => c);
+  return first ? { ...first, uses: all.flatMap((c) => c?.uses ?? []) } : null;
+}
+
 export { formatRef, parseRef } from './refs';
 export type { RefTarget } from './refs';
 

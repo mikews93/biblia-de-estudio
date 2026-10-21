@@ -67,6 +67,13 @@ Debajo de los botones de la cabecera del capítulo, con las mismas fuentes y cit
 - **Mapa mental** (`/mapa-mental/juan/3`): idea central, partes del capítulo e ideas con su versículo. Se dibuja en SVG (a los dos lados en pantallas anchas, en columna en el teléfono) y también se puede ver como lista.
 - **Tarjetas** (`/tarjetas/juan/3`): la IA propone preguntas de repaso y la persona elige cuáles guardar. «Memorizar» en la barra del versículo crea una tarjeta del versículo. `/repaso` las muestra con repetición espaciada (una versión de SM-2) y Hoy avisa cuando hay tarjetas pendientes. Todo queda en el dispositivo.
 
+### La historia de una palabra
+
+`/palabras` sigue una palabra del hebreo o del griego por toda la Biblia. El catálogo (`src/lib/palabras.json`) tiene 17 temas, cada uno con su palabra hebrea y su palabra griega (jésed y éleos, ahavá y ágape, shalóm y eiréne…), y cada palabra con sus números de Strong de la concordancia. `/palabras/jesed` muestra cuántas veces aparece, su recorrido de Génesis a Apocalipsis y cómo se lee en la RV1909; Hoy propone una palabra cada semana y la ficha de una palabra del interlineal lleva a su historia.
+
+- **El relato:** `api/estudiar.ts` con `palabra` pasa a Claude la entrada del léxico breve de STEPBible (TBESH/TBESG, CC BY 4.0, que `build_data.py` guarda en `palabras/<id>.json`), el resumen de la concordancia y unos 70 pasajes repartidos por todos los libros con su RV1909, más los de la palabra hermana. Responde con «Qué significa», de 4 a 6 momentos en el orden de la Biblia, «El hilo» y «Para pensar», todo con citas. Se guarda en `herramientas_ia` (`palabra`, capítulo 0) y, ya preparado, se lee sin cuenta.
+- **Pódcast:** `/palabras/jesed/podcast`, con el guion de Ana y Tomás (`palabra-podcast`) y la grabación con voces naturales de `api/podcast-grabado.ts` (`palabra`), con los mismos límites diarios que los capítulos.
+
 ## Versiones
 
 Además de la RV1909 hay cinco versiones libres. `pipeline/fetch_versions.py` las descarga una vez y las guarda en `pipeline/versions/`, así la compilación no depende de miles de descargas. El griego, el hebreo, las referencias y el estudio con IA siguen la numeración de la RV1909.

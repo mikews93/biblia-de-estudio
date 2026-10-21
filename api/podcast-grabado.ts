@@ -2,6 +2,8 @@
 // lo graba a partir del guion guardado por /api/estudiar, y desde ahí queda listo para todos.
 //   GET  ?book=jhn&chapter=3  → {estado: 'listo', url, duracion, credito} | {estado: 'grabando'} | {estado: 'ninguno'}
 //   POST {book, chapter}      → lo graba (necesita cuenta) y responde como GET. Tarda uno o dos minutos.
+// Con ?palabra=jesed (o {palabra} en el POST) es el pódcast de «La historia de una palabra»: se guarda con el libro
+// «palabra:jesed» y el capítulo 0, y cuenta en los mismos límites diarios.
 // El MP3 se guarda en Vercel Blob y su ficha en Neon (tabla podcast_grabado). Hay un límite diario por cuenta y
 // otro para toda la app, para que nadie gaste los créditos de ElevenLabs abriendo capítulos.
 
@@ -10,6 +12,8 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import postgres from 'postgres';
+
+import { palabraAudioId, palabraPorId } from '../src/lib/palabras';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const ELEVEN_URL = process.env.ELEVENLABS_BASE_URL ?? 'https://api.elevenlabs.io';
@@ -68,10 +72,18 @@ async function db() {
 const json = (body: object, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
-function place(book: unknown, chapter: unknown): { book: string; chapter: number } | null {
+/** Dónde se guarda la grabación (libro y capítulo) y de dónde sale su guion (la fila de herramientas_ia). */
+type Target = { book: string; chapter: number; guion: { herramienta: string; libro: string; capitulo: number } };
+
+function place(book: unknown, chapter: unknown, palabra?: unknown): Target | null {
+  if (palabra !== undefined && palabra !== null) {
+    const p = typeof palabra === 'string' ? palabraPorId(palabra) : null;
+    if (!p || book !== undefined || chapter !== undefined) return null;
+    return { book: palabraAudioId(p.id), chapter: 0, guion: { herramienta: 'palabra-podcast', libro: p.id, capitulo: 0 } };
+  }
   const ch = Number(chapter);
   if (typeof book !== 'string' || !/^[0-9a-z]{3}$/.test(book) || !Number.isInteger(ch) || ch < 1 || ch > 150) return null;
-  return { book, chapter: ch };
+  return { book, chapter: ch, guion: { herramienta: 'podcast', libro: book, capitulo: ch } };
 }
 
 function answer(row: Row | undefined) {
@@ -82,7 +94,7 @@ function answer(row: Row | undefined) {
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const where = place(params.get('book'), params.get('chapter'));
+  const where = place(params.get('book') ?? undefined, params.get('chapter') ?? undefined, params.get('palabra'));
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const s = await db().catch(() => null);
   if (!s) return json({ estado: 'ninguno' });
@@ -175,13 +187,13 @@ export async function POST(request: Request) {
   const user = await account(s, request);
   if (!user) return json({ error: 'Necesitas una cuenta', cuenta: true }, 401);
 
-  let body: { book?: unknown; chapter?: unknown };
+  let body: { book?: unknown; chapter?: unknown; palabra?: unknown };
   try {
     body = await request.json();
   } catch {
     return json({ error: 'Pedido no válido' }, 400);
   }
-  const where = place(body.book, body.chapter);
+  const where = place(body.book, body.chapter, body.palabra);
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const { book, chapter } = where;
 
@@ -195,7 +207,9 @@ export async function POST(request: Request) {
   }
 
   const [guion] = await s<{ texto: string }[]>`select texto from herramientas_ia
-    where herramienta = 'podcast' and libro = ${book} and capitulo = ${chapter}`.catch(() => []);
+    where herramienta = ${where.guion.herramienta} and libro = ${where.guion.libro} and capitulo = ${where.guion.capitulo}`.catch(
+    () => [],
+  );
   const lines = guion ? scriptLines(guion.texto) : [];
   if (!lines.length) return json({ error: 'Primero hay que preparar el guion del pódcast.' }, 409);
 
@@ -222,7 +236,7 @@ export async function POST(request: Request) {
   try {
     const audio = await record(lines);
     const tag = createHash('sha256').update(guion.texto).digest('hex').slice(0, 10);
-    const url = await store(`${book}-${chapter}-${tag}.mp3`, audio);
+    const url = await store(`${chapter ? `${book}-${chapter}` : book.replace(':', '-')}-${tag}.mp3`, audio);
     const duracion = Math.round((audio.length * 8) / (KBPS * 1000));
     await s`update podcast_grabado set estado = 'listo', url = ${url}, duracion = ${duracion}, credito = ${CREDIT},
       actualizado = now() where libro = ${book} and capitulo = ${chapter}`;

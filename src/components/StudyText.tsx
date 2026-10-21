@@ -22,7 +22,7 @@ export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors
   );
 }
 
-/** Markdown mínimo: títulos ##, listas con -, **negritas** y marcas de cita ⟦n⟧. */
+/** Markdown mínimo: títulos ##, listas con -, **negritas**, *cursivas* y marcas de cita ⟦n⟧. */
 // Iconos de las secciones del estudio profundo, por la palabra con que empieza el título.
 // La letra griega se queda como letra: es la misma marca del texto original en el lector.
 const SECTION_ICONS: [RegExp, ((p: IconProps) => ReactNode) | string][] = [
@@ -92,11 +92,19 @@ export function Markdown({ text, colors, ornate, sources, onCite }: { text: stri
 }
 
 function inline(text: string, colors: Colors, { sources, onCite }: Cites = {}): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|⟦\d+⟧)/).map((part, i) => {
+  return text.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|⟦\d+⟧)/).map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
         <Text key={i} style={{ fontWeight: '700' }}>
           {part.slice(2, -2)}
+        </Text>
+      );
+    }
+    // *cursiva*: las palabras del original transliteradas («*jésed*»)
+    if (part.length > 2 && part.startsWith('*') && part.endsWith('*')) {
+      return (
+        <Text key={i} style={{ fontStyle: 'italic' }}>
+          {part.slice(1, -1)}
         </Text>
       );
     }

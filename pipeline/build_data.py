@@ -40,6 +40,11 @@ SOURCES = {
     "tagnt2.txt": STEP + "TAGNT%20Act-Rev%20-%20Translators%20Amalgamated%20Greek%20NT%20-%20STEPBible.org%20CC-BY.txt",
     **{f"tahot{i}.txt": STEP + f"TAHOT%20{part}%20-%20Translators%20Amalgamated%20Hebrew%20OT%20-%20STEPBible.org%20CC%20BY.txt"
        for i, part in enumerate(["Gen-Deu", "Jos-Est", "Job-Sng", "Isa-Mal"], 1)},
+    # Léxicos breves de STEPBible (CC BY 4.0): la definición de cada palabra de «La historia de una palabra»
+    "tbesh.txt": "https://raw.githubusercontent.com/STEPBible/STEPBible-Data/master/Lexicons/"
+                 "TBESH%20-%20Translators%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Hebrew%20-%20STEPBible.org%20CC%20BY.txt",
+    "tbesg.txt": "https://raw.githubusercontent.com/STEPBible/STEPBible-Data/master/Lexicons/"
+                 "TBESG%20-%20Translators%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Greek%20-%20STEPBible.org%20CC%20BY.txt",
     "ancient.jsonl": "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/"
                      "7eb18a5ee62f27b9b93bd6689ea272d76dd23b8f/data/ancient.jsonl",
     "image.jsonl": "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/"
@@ -316,6 +321,58 @@ def build_hebrew(out):
     write_concordance(out, concordance, meta, "H")
 
 
+# Palabras de «La historia de una palabra»: el catálogo es el de la app (src/lib/palabras.ts)
+PALABRAS = ROOT.parent / "src" / "lib" / "palabras.json"
+LEXICON_CHARS = 1800
+HTML_TAG = re.compile(r"<[^>]+>")
+
+
+def lexicon_text(raw):
+    """La definición del léxico sin HTML: <br> y <BR /> son saltos de línea; las referencias quedan como texto."""
+    text = re.sub(r"<br\s*/?>", "\n", raw, flags=re.I).replace("__", "")
+    text = HTML_TAG.sub("", text)
+    lines = [re.sub(r"\s+", " ", l).strip() for l in text.split("\n")]
+    text = "\n".join(l for l in lines if l).strip(": \n")
+    if len(text) > LEXICON_CHARS:
+        text = text[:LEXICON_CHARS].rsplit(" ", 1)[0] + "…"
+    return text
+
+
+def build_palabras(out):
+    """palabras/<id>.json con la entrada del léxico de cada número de Strong, que lee la IA del relato, y
+    palabras/index.json con cuántas veces aparece cada palabra (total, AT, NT) para las tarjetas de la app."""
+    wanted = {s for tema in json.loads(PALABRAS.read_text(encoding="utf-8")) for p in tema["palabras"] for s in p["strongs"]}
+    lexicon = {}
+    for name in ("tbesh.txt", "tbesg.txt"):
+        with fetch(name).open(encoding="utf-8-sig") as f:
+            for line in f:
+                cols = line.rstrip("\n").split("\t")
+                if len(cols) < 8:
+                    continue
+                strong = cols[1].split(" ")[0]
+                if strong in wanted and strong not in lexicon:
+                    lexicon[strong] = {"strong": strong, "lema": cols[3].strip(), "glosa": cols[6].strip(),
+                                       "definicion": lexicon_text(cols[7])}
+    index = {}
+    for tema in json.loads(PALABRAS.read_text(encoding="utf-8")):
+        for p in tema["palabras"]:
+            total = ot = 0
+            for s in p["strongs"]:
+                path = out / "concordance" / f"{s}.json"
+                if not path.exists():
+                    print(f"Aviso: la palabra {p['id']} pide {s}, que no está en la concordancia")
+                    continue
+                for ref, _, _ in json.loads(path.read_text(encoding="utf-8"))["uses"]:
+                    total += 1
+                    ot += ref.split(".")[0] in OT
+            missing = [s for s in p["strongs"] if s not in lexicon]
+            if missing:
+                print(f"Aviso: sin entrada de léxico para {missing}")
+            index[p["id"]] = [total, ot, total - ot]
+            write(out, f"palabras/{p['id']}.json", {"lexico": [lexicon[s] for s in p["strongs"] if s in lexicon]})
+    write(out, "palabras/index.json", index)
+
+
 VERSIONS = [
     {"id": "rv1909", "name": "Reina-Valera 1909", "abbr": "RV1909", "credit": "Reina-Valera 1909 · dominio público"},
     {"id": "rv1865", "name": "Reina-Valera 1865", "abbr": "RV1865", "credit": "Reina-Valera 1865 · dominio público"},
@@ -507,6 +564,7 @@ def main():
     build_xrefs(out)
     build_interlinear(out)
     build_hebrew(out)
+    build_palabras(out)
     build_versions(out)
     place_pictures = build_places(out, text)
     build_context(out, place_pictures)

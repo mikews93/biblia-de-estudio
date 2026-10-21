@@ -22,7 +22,7 @@ import { ChevronRightIcon, CloseIcon, PromiseIcon } from '@/components/icons';
 import PlaceMap from '@/components/PlaceMap';
 import { PromesasDelPasaje, abrirHilo } from '@/components/Promesas';
 import StudyPanel from '@/components/StudyPanel';
-import { ConcordanceButton, WhyButton } from '@/components/WordCard';
+import { ConcordanceButton, PalabraButton, WhyButton } from '@/components/WordCard';
 import { describeMorph } from '@/lib/morph';
 import { fichaHref, getFichaDeLugar } from '@/lib/fichas';
 import { Encontrado, ROLES, hilosEn, pasoEnRef } from '@/lib/promesas';
@@ -174,6 +174,7 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
             {describeMorph(w[7])} · Strong {w[6]}
           </Text>
           <ConcordanceButton strong={w[6]} from={`${book.id}.${chapter}.${verse}`} />
+          <PalabraButton strong={w[6]} />
           <WhyButton onPress={() => setWhy(true)} />
         </View>
       ) : (
