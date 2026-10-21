@@ -3,7 +3,7 @@
     "name": "Biblia de estudio",
     "slug": "biblia-de-estudio",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
