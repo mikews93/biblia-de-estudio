@@ -55,10 +55,13 @@ import {
   ListenIcon,
   MindMapIcon,
   PencilIcon,
+  PromiseIcon,
   ShareIcon,
   SparkIcon,
   TalkIcon,
 } from '@/components/icons';
+import { abrirHilo } from '@/components/Promesas';
+import { hilosEn } from '@/lib/promesas';
 import { chrome, setChromeHidden, useAutoHide } from '@/lib/chrome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -271,6 +274,7 @@ export default function Reader() {
     },
   ];
 
+  const promesas = selected === null ? [] : hilosEn(bookId, chapter, selected);
   const verseActions =
     selected === null || !book
       ? []
@@ -299,6 +303,18 @@ export default function Reader() {
             icon: (c: string) => <LinkIcon color={c} size={21} />,
             onPress: () => setPanelTab('referencias'),
           },
+          // Un hilo de promesa que pasa por este versículo: se abre; con varios, la pestaña de referencias los lista
+          ...(promesas.length
+            ? [
+                {
+                  key: 'promesa',
+                  label: 'Promesa',
+                  badge: promesas.length > 1 ? promesas.length : undefined,
+                  icon: (c: string) => <PromiseIcon color={c} size={21} />,
+                  onPress: () => (promesas.length > 1 ? setPanelTab('referencias') : abrirHilo(promesas[0].hilo)),
+                },
+              ]
+            : []),
           { key: 'comentario', label: 'Comentario', icon: (c: string) => <CommentaryIcon color={c} size={21} />, onPress: () => setPanelTab('comentario') },
           { key: 'nota', label: notes[selected] ? 'Mi nota' : 'Nota', icon: (c: string) => <PencilIcon color={c} size={21} />, onPress: () => setWriting(true) },
           { key: 'compartir', label: 'Compartir', icon: (c: string) => <ShareIcon color={c} size={21} />, onPress: () => setSharing(true) },

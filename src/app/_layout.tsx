@@ -70,6 +70,8 @@ function AppStack() {
           <Stack.Screen name="genealogia/index" options={{ title: 'Genealogías' }} />
           <Stack.Screen name="genealogia/[id]" options={{ title: '' }} />
           <Stack.Screen name="historia" options={{ title: 'Línea de tiempo' }} />
+          <Stack.Screen name="promesas/index" options={{ title: 'Promesa y cumplimiento' }} />
+          <Stack.Screen name="promesas/[id]" options={{ title: '' }} />
           <Stack.Screen name="comunidades/index" options={{ title: 'Comunidad' }} />
           <Stack.Screen name="comunidades/amigos" options={{ title: 'Amigos' }} />
           <Stack.Screen name="comunidades/publicar" options={{ title: 'Publicar' }} />

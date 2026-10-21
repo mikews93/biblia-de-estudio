@@ -372,3 +372,12 @@ export const CompareIcon = (p: Props) => (
     <Path d="M5.8 8.5h3M5.8 11.5h3M5.8 14.5h2M15.3 8.5h3M15.3 11.5h2M15.3 14.5h3" />
   </Line>
 );
+
+/** Un arco de una promesa (círculo abierto) a su cumplimiento (círculo lleno): promesa y cumplimiento. */
+export const PromiseIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M5.5 16.5C6.5 9 9 6 12 6s5.5 3 6.5 10.5" />
+    <Circle cx={5.5} cy={18} r={2} />
+    <Circle cx={18.5} cy={18} r={2} fill={p.color} />
+  </Line>
+);
