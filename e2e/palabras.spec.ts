@@ -64,6 +64,12 @@ test('el relato se prepara una vez y después se lee sin cuenta', async ({ page,
 });
 
 test('el pódcast de la palabra: Ana y Tomás, con la opción de grabarlo con voces naturales', async ({ page, request }) => {
+  // Las pruebas de la API (misma base de datos en CI) pueden haber grabado ya este pódcast: aquí nadie lo ha grabado.
+  const consultas: string[] = [];
+  await page.route('**/api/podcast-grabado**', (r) => {
+    consultas.push(r.request().url());
+    return r.fulfill({ json: { estado: 'ninguno' } });
+  });
   await conSesion(page, await cuentaNueva(request, 'Oyente'));
   await page.goto('/palabras/jesed');
   await v(page.getByRole('link', { name: /Escúchala como pódcast/ })).click();
@@ -72,6 +78,7 @@ test('el pódcast de la palabra: Ana y Tomás, con la opción de grabarlo con vo
   await expect(v(page.getByText('Muchísimas. Detrás de esa frase hay una palabra hebrea: jésed.'))).toBeVisible();
   await expect(v(page.getByText('Escuchar con voces naturales'))).toBeVisible();
   await expect(v(page.getByText('1 de 5 · voz del dispositivo'))).toBeVisible();
+  expect(consultas.some((u) => u.includes('palabra=jesed'))).toBe(true);
 });
 
 test('desde el interlineal, una palabra del catálogo abre su historia', async ({ page, request }) => {
