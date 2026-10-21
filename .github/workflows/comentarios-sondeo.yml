@@ -7,17 +7,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          mkdir m && cd m
-          curl -sSL -o mods.tar.gz https://crosswire.org/ftpmirror/pub/sword/raw/mods.d.tar.gz
-          tar xzf mods.tar.gz
-          for f in mods.d/*.conf; do
-            if grep -qiE '^Category=Commentaries|^ModDrv=(zCom|zCom4|RawCom|RawCom4|HREFCom)' "$f"; then
-              echo "== $f"; grep -E '^(\[|Description|ModDrv|SourceType|Versification|DistributionLicense|Lang|DataPath|Version)' "$f"
-            fi
+          for m in Barnes KD Wesley CalvinCommentaries TDavid Scofield PNT; do
+            curl -sSfL -o $m.zip https://crosswire.org/ftpmirror/pub/sword/packages/rawzip/$m.zip || { echo "== $m NO"; continue; }
+            echo "== $m $(sha256sum $m.zip | cut -c1-64)"; unzip -l $m.zip | tail -n +4 | head -10
+            unzip -p $m.zip 'mods.d/*' | grep -vE '^(About|History|TextSource|ShortPromo|ShortCopyright|Copyright|LCSH|SwordVersionDate)'
+            mkdir -p x/$m && (cd x/$m && unzip -q ../../$m.zip)
           done
-      - run: |
-          for m in Barnes Gill KD RWP Vincent Wesley CalvinCommentaries TFG Clarke JFB MHC TSK Spurgeon TreasuryOfDavid Poole Lightfoot Darby; do
-            if curl -sSfL -o $m.zip https://crosswire.org/ftpmirror/pub/sword/packages/rawzip/$m.zip; then
-              echo "== $m $(sha256sum $m.zip | cut -c1-64) $(stat -c%s $m.zip)"; unzip -l $m.zip | tail -n +4 | head -12
-            else echo "== $m NO"; fi
-          done
+          python3 - <<'PY'
+          import os, struct, zlib, glob
+          for d in sorted(glob.glob('x/*')):
+              for zv in glob.glob(d + '/modules/comments/*/*/nt.?zv'):
+                  base = zv[:-3]; c = zv[-3]
+                  bzs = open(base + c + 'zs', 'rb').read(); bzz = open(base + c + 'zz', 'rb').read(); bzv = open(zv, 'rb').read()
+                  esz = 12 if 'zcom4' in zv else 10
+                  print('##', d, zv, 'entries', len(bzv) / esz, 'blocks', len(bzs) / 12)
+                  off, size, _ = struct.unpack_from('<III', bzs, 0)
+                  try:
+                      print(zlib.decompress(bzz[off:off + size])[:1500].decode('utf8', 'replace'))
+                  except Exception as e:
+                      print('no zlib', e)
+          PY
