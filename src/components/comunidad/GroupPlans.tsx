@@ -57,7 +57,7 @@ export default function GroupPlans() {
             <Field
               value={code}
               onChangeText={setCode}
-              placeholder="Código del grupo o de la lectura en vivo"
+              placeholder="Código de invitación"
               autoCapitalize="characters"
               autoFocus
               onSubmitEditing={join}

@@ -39,7 +39,7 @@ async function ver(codigo: string) {
   return { status: res.status, headers: res.headers, json: (await res.json()) as Record<string, any> };
 }
 
-describe('/api/vivo', () => {
+describe('/api/vivo (célula)', () => {
   it('rechaza acciones desconocidas y JSON roto', async () => {
     expect((await vivo.POST(request('/api/vivo', '{roto'))).status).toBe(400);
     expect((await act('borrarTodo', {})).status).toBe(400);

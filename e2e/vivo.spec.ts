@@ -67,7 +67,7 @@ test('la célula lee en vivo: pasar la hoja, iluminar, señalar, una dinámica y
   await pa.getByRole('tab', { name: 'Dinámicas' }).click();
   await pa.getByRole('button', { name: /Termómetro con la mano/ }).click();
   await expect(pb.getByText('Termómetro con la mano')).toBeVisible();
-  await expect(pb.getByText(/DINÁMICA · PARA CONECTAR/)).toBeVisible();
+  await expect(pb.getByText('PARA CONECTAR', { exact: true })).toBeVisible();
   await expect(pb.getByLabel(/Quedan [45]:\d\d/)).toBeVisible();
   await pa.getByRole('button', { name: 'Paso siguiente' }).click();
   await expect(pb.getByLabel('Paso 2, el de ahora')).toBeVisible();

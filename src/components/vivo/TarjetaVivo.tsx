@@ -21,8 +21,9 @@ type Props = {
 function kickerOf(t: Tarjeta) {
   if (t.tipo === 'pregunta') return 'PARA CONVERSAR';
   if (t.tipo === 'parte') return 'DEL ENCUENTRO';
+  // Corto para que quepa junto al reloj en el teléfono: «PARA CONECTAR», «PARA ENTRAR AL TEXTO»…
   const momento = MOMENTOS.find((m) => m.momento === dinamica(t.dinamica ?? undefined)?.momento);
-  return `DINÁMICA${momento ? ` · ${momento.label.toUpperCase()}` : ''}`;
+  return momento ? momento.label.toUpperCase() : 'DINÁMICA';
 }
 
 /**
