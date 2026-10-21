@@ -7,6 +7,7 @@ import { SectionTitle, text } from '@/components/comunidad/ui';
 import { CheckIcon, CommentaryIcon, DownloadIcon, OfflineIcon, PeopleIcon, SearchIcon, SparkIcon } from '@/components/icons';
 import { useOnline } from '@/lib/conexion';
 import { Book, Version, getVersions } from '@/lib/data';
+import { OFFLINE_DAYS } from '@/lib/licenciadas';
 import {
   ORIGINAL,
   REFERENCIAS,
@@ -42,7 +43,7 @@ export default function Descargas() {
   const saved = downloadedBytes(d);
   const anything = Object.keys(d.index).length > 0;
   // La versión que se lee va primero
-  // Las versiones con derechos (API.Bible) no se pueden descargar: su licencia solo deja leerlas en línea.
+  // Las versiones con derechos no se pueden descargar enteras: como mucho se guardan los últimos capítulos leídos.
   const licensed = versions.filter((v) => v.licensed);
   const ordered = versions.filter((v) => !v.licensed).sort((a, b) => Number(b.id === settings.version) - Number(a.id === settings.version));
 
@@ -110,7 +111,12 @@ export default function Descargas() {
             ))}
           {d.ready && licensed.length > 0 && (
             <Text style={[styles.licensedNote, { color: colors.muted }]}>
-              {licensed.map((v) => v.abbr).join(', ')}: sus editores solo permiten leerlas con conexión.
+              {licensed.map((v) => v.abbr).join(', ')}: sus editores no permiten descargarlas enteras.
+              {licensed.some((v) => v.guardable) &&
+                ` De ${licensed
+                  .filter((v) => v.guardable)
+                  .map((v) => v.abbr)
+                  .join(', ')} se guardan solos los últimos capítulos que leas, durante ${OFFLINE_DAYS} días.`}
             </Text>
           )}
 

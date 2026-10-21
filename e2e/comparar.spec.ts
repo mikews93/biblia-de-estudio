@@ -20,7 +20,7 @@ async function simularApiBible(page: Page) {
     const q = new URL(route.request().url()).searchParams;
     if (q.get('versiones')) return route.fulfill({ json: { versions: [{ ...NBLA, bibleId: undefined, licensed: true }] } });
     const verses = Array.from({ length: 36 }, (_, i) => [i + 1, i === 15 ? JN316 : `Texto NBLA simulado del versículo ${i + 1}.`]);
-    return route.fulfill({ json: { verses, fums: null } });
+    return route.fulfill({ json: { verses, notes: { 16: ['O único'] }, fums: null } });
   });
 }
 
@@ -40,7 +40,9 @@ test('el versículo se compara en varias versiones desde su panel', async ({ pag
   // Se añade la NBLA (con derechos): aparece con su aviso
   await visible(page.getByRole('checkbox', { name: 'Nueva Biblia de las Américas' })).click();
   await expect(texto(page, JN316)).toBeVisible();
-  await expect(visible(page.getByRole('link', { name: /The Lockman Foundation/ })).first()).toBeVisible();
+  await expect(texto(page, 'Copyright © 2005 by The Lockman Foundation')).toBeVisible();
+  await expect(visible(page.getByRole('link', { name: 'Lockman.org (English)' })).first()).toBeVisible();
+  await expect(texto(page, 'O único')).toBeVisible(); // su nota al pie
   await page.waitForTimeout(500);
   await captura(page, '1-versiculo');
 

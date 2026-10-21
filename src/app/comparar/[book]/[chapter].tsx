@@ -173,9 +173,9 @@ export default function Comparar() {
         {numbers.length > 0 && (
           <Appear style={[styles.credits, { borderColor: colors.border }]}>
             <Text style={[styles.creditsTitle, { color: colors.muted }]}>Versiones</Text>
-            {chosen.map((v) =>
+            {chosen.map((v, i) =>
               v.licensed ? (
-                <LicenseNote key={v.id} version={v} colors={colors} />
+                <LicenseNote key={v.id} version={v} colors={colors} extras={loaded[i].extras} />
               ) : (
                 <Text key={v.id} style={[styles.credit, { color: colors.muted }]}>
                   {v.credit}
@@ -184,7 +184,7 @@ export default function Comparar() {
             )}
             {chosen.some((v) => v.licensed) && (
               <Text style={[styles.credit, { color: colors.muted, marginTop: 6 }]}>
-                Las versiones con permiso de sus editores solo se leen con conexión y no se usan en la IA ni en el audio.
+                Las versiones con permiso de sus editores se leen con conexión y no se usan en la IA ni en el audio.
               </Text>
             )}
           </Appear>

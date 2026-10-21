@@ -161,14 +161,11 @@ export async function GET(request: Request) {
     }
     if (query.get('versiones')) {
       const sources = await Promise.all(LICENSED.map((v) => sourceOf(v).catch(() => null)));
-      const versions = LICENSED.filter((_, i) => sources[i]).map(({ id, abbr, name, credit, links }) => ({
-        id,
-        abbr,
-        name,
-        credit,
-        links,
-        licensed: true,
-      }));
+      const versions = LICENSED.flatMap(({ id, abbr, name, credit, links }, i) => {
+        const source = sources[i];
+        // guardable: por API.Bible, los últimos capítulos leídos se pueden guardar unos días en el dispositivo
+        return source ? [{ id, abbr, name, credit, links, licensed: true, guardable: 'apiBible' in source }] : [];
+      });
       return json({ versions }, 200, 'public, s-maxage=3600, stale-while-revalidate=86400');
     }
     const version = licensedById(query.get('v') ?? '');
@@ -209,7 +206,12 @@ export async function GET(request: Request) {
     const verses = chapterVerses(res.data.content);
     if (!verses.length) throw new HttpError(404, 'Este capítulo no está en esta versión.');
     return json(
-      { verses, copyright: res.data.copyright?.trim() || version.credit, fums: res.meta?.fumsToken ?? null },
+      {
+        verses,
+        copyright: res.data.copyright?.trim() || version.credit,
+        fums: res.meta?.fumsToken ?? null,
+        guardable: true, // API.Bible deja guardar capítulos sueltos unos días en el dispositivo
+      },
       200,
       cache,
     );

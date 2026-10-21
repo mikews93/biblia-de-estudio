@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import Appear from '@/components/Appear';
 import { CheckIcon } from '@/components/icons';
 import { Version } from '@/lib/data';
+import { OFFLINE_DAYS } from '@/lib/licenciadas';
 import { serif, useColors, useSettings } from '@/lib/theme';
 
 type Props = { versions: Version[]; onClose: () => void };
@@ -55,8 +56,13 @@ export default function VersionPicker({ versions, onClose }: Props) {
         </ScrollView>
         <Text style={[styles.note, { color: colors.muted }]}>
           El hebreo, el griego, las referencias y el estudio con IA siguen la numeración de la Reina-Valera 1909.
-          {versions.some((v) => v.licensed) &&
-            ' Las versiones con permiso solo se leen con conexión; la IA y el audio usan siempre las libres.'}
+          {versions.some((v) => v.licensed) && ' Las versiones con permiso se leen con conexión'}
+          {versions.some((v) => v.guardable) &&
+            ` (los últimos capítulos que leas de ${versions
+              .filter((v) => v.guardable)
+              .map((v) => v.abbr)
+              .join(', ')} quedan guardados ${OFFLINE_DAYS} días)`}
+          {versions.some((v) => v.licensed) && '; la IA y el audio usan siempre las libres.'}
         </Text>
       </Appear>
     </Modal>
