@@ -45,7 +45,7 @@ export async function saveConversation(key: string, turns: Turn[]) {
   await load();
   const next = { ...state };
   if (asked(turns)) {
-    next[key] = { turns: turns.map(({ role, text, sources }) => ({ role, text, ...(sources?.length ? { sources } : {}) })), updated: (stamp = Math.max(Date.now(), stamp + 1)) };
+    next[key] = { turns: turns.map(({ role, text, sources, pasos }) => ({ role, text, ...(sources?.length ? { sources } : {}), ...(pasos?.length ? { pasos } : {}) })), updated: (stamp = Math.max(Date.now(), stamp + 1)) };
   } else delete next[key];
   const keys = Object.keys(next);
   if (keys.length > LIMIT) {

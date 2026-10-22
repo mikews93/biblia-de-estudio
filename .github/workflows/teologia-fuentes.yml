@@ -1,0 +1,40 @@
+name: Fuentes de teología
+
+# Descarga las obras de teología de dominio público (CCEL, Internet Archive, Project Gutenberg,
+# biblicalstudies.org.uk) y las deja como
+# archivos de la versión «teologia-fuentes-v1» de este repositorio, para que pipeline/build_teologia.py las lea aunque
+# esos sitios no se puedan abrir desde el entorno de desarrollo. Se lanza al cambiar la lista o a mano.
+
+on:
+  push:
+    paths:
+      - pipeline/teologia_fuentes.txt
+      - .github/workflows/teologia-fuentes.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  descargar:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: teologia-fuentes-v1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar
+        run: |
+          mkdir -p fuentes
+          grep -v '^#' pipeline/teologia_fuentes.txt | while read -r name url; do
+            [ -z "$name" ] && continue
+            code=$(curl -sL --retry 3 --retry-all-errors -A 'Mozilla/5.0 (biblia-de-estudio)' -o "fuentes/$name" -w '%{http_code}' "$url")
+            echo "$code $(stat -c %s "fuentes/$name") $name $url"
+            [ "$code" = 200 ] || rm -f "fuentes/$name"
+          done
+          cd fuentes && sha256sum * | tee ../sha256.txt
+      - name: Publicar los archivos
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Fuentes de teología (dominio público)" \
+            --notes "Copias de obras de dominio público para pipeline/build_teologia.py." --prerelease
+          gh release upload "$TAG" fuentes/* sha256.txt --clobber

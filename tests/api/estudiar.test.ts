@@ -10,7 +10,7 @@ import { parseScript } from '../../src/lib/podcast';
 import { parseCards } from '../../src/lib/tarjetas';
 import { client, DATA_DIR, DB_URL, ensureSchema, HAS_DATA, Post, prepareEnv, request } from './helpers';
 
-type Event = { type: string; text?: string; n?: number; label?: string; ref?: string; message?: string };
+type Event = { type: string; text?: string; n?: number; label?: string; ref?: string; url?: string; nota?: string; message?: string };
 
 let estudiar: Post;
 let comunidades: Post;
@@ -21,6 +21,8 @@ beforeAll(async () => {
   ({ requests: aiRequests } = await prepareEnv({ ai: true }));
   // Dos comentarios de muestra (Tyndale y Matthew Henry); los demás no están y se dejan fuera.
   process.env.COMENTARIOS_DIR = path.resolve(import.meta.dirname, '../fixtures/comentarios');
+  // Las obras de teología ya divididas, tal como van en el repositorio
+  process.env.TEOLOGIA_DIR = path.resolve(import.meta.dirname, '../../pipeline/teologia');
   ({ POST: estudiar } = await import('../../api/estudiar'));
   ({ POST: comunidades } = await import('../../api/comunidades'));
   if (DB_URL && HAS_DATA) {
@@ -161,6 +163,81 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     ]);
     const henry = docs.find((d: { title: string }) => d.title.startsWith('Comentario de toda la Biblia'));
     expect(henry.source.content).toEqual([{ type: 'text', text: 'The love of God\nHere is the great gospel truth.' }]);
+  });
+
+  it('las preguntas pueden investigar: lee, busca y consulta teología, envía los pasos y cita lo que encontró', async () => {
+    const messages = [
+      { role: 'assistant', text: 'Estudio anterior' },
+      { role: 'user', text: '¿Cómo se definió el canon?' },
+    ];
+    const before = aiRequests.length;
+    const evs = await events(await ask({ book: 'jhn', chapter: 3, verse: 16, messages }));
+    expect(evs.filter((e) => e.type === 'paso')).toEqual([
+      { type: 'paso', tipo: 'leer', texto: '2 Timoteo 3:14-17' },
+      { type: 'paso', tipo: 'buscar', texto: '«escritur»' },
+      { type: 'paso', tipo: 'teologia', texto: 'el canon del Nuevo Testamento' },
+    ]);
+    // La cita del resultado de la herramienta se convierte en una fuente que se puede abrir
+    const sources = evs.filter((e) => e.type === 'source');
+    expect(sources[0]).toEqual({ type: 'source', n: 1, label: '2 Timoteo 3:16', ref: '2ti.3.16' });
+    // Una obra de teología no se abre en la app: lleva su enlace y de quién es
+    expect(sources[1]).toMatchObject({ type: 'source', n: 2, url: expect.stringMatching(/^https:\/\//), nota: expect.stringContaining('dominio público') });
+    expect(sources[1].ref).toBeUndefined();
+    expect(textOf(evs)).toBe('Pablo dice que toda Escritura es inspirada por Dios.⟦1⟧ Eusebio distingue los libros aceptados de los discutidos.⟦2⟧');
+    expect(evs.at(-1)).toEqual({ type: 'done' });
+
+    // Dos llamadas a la IA: la que pide las herramientas y la que responde con sus resultados
+    const [first, second] = aiRequests.slice(before);
+    expect(first.tools.map((t: { name: string }) => t.name)).toContain('leer_pasaje');
+    expect(JSON.stringify(first.system)).toContain('Herramientas: puedes investigar');
+    const results = second.messages.at(-1).content;
+    expect(results.map((r: { tool_use_id: string }) => r.tool_use_id)).toEqual(['toolu_0', 'toolu_1', 'toolu_2']);
+    const leido = results[0].content[0];
+    expect(leido.type).toBe('search_result');
+    expect(leido.title).toBe('2 Timoteo 3:14-17 · Reina-Valera 1909');
+    expect(leido.content[2].text).toMatch(/^3:16 Toda Escritura/);
+    // La búsqueda dice cuántos versículos hay y en qué libros, con una muestra
+    expect(results[1].content[0].text).toMatch(/^«escritur» aparece en \d+ versículos de la RV1909 \(Nuevo Testamento\)/);
+    expect(results[1].content[1].type).toBe('search_result');
+    // Teología: el aviso de que son obras humanas en inglés y hasta tres secciones, una por obra, del área pedida
+    const teologia = results[2].content;
+    expect(teologia[0].text).toMatch(/^Obras humanas de dominio público/);
+    const titles = teologia.slice(1).map((r: { title: string }) => r.title);
+    expect(titles.length).toBeGreaterThan(0);
+    expect(titles.length).toBeLessThanOrEqual(3);
+    expect(titles.some((t: string) => /Eusebio|Westcott|Atanasio|Muratori|Anónimo/.test(t))).toBe(true);
+    expect(titles.every((t: string) => !/Hodge|Strong|Calvino/.test(t))).toBe(true);
+  });
+
+  it('el primer estudio no investiga: se basta con el pasaje', async () => {
+    await events(await ask({ book: 'jhn', chapter: 2 }));
+    expect(aiRequests.at(-1)!.tools).toBeUndefined();
+  });
+
+  it('con otra versión libre, la IA lee y cita esa versión', async () => {
+    const before = aiRequests.length;
+    await events(await ask({ book: 'jhn', chapter: 3, version: 'bes' }));
+    const sent = aiRequests.at(-1)!;
+    expect(aiRequests.length).toBe(before + 1); // no es el estudio guardado de la RV1909
+    const pasaje = sent.messages[0].content[0];
+    expect(pasaje.title).toBe('Juan 3 · La Biblia en Español Sencillo');
+    expect(JSON.stringify(sent.system)).toContain('la persona lee la Biblia en la versión «La Biblia en Español Sencillo» (BES)');
+  });
+
+  it('con una versión con derechos, la IA trabaja con la RV1909 y no recibe ese texto', async () => {
+    const messages = [
+      { role: 'assistant', text: 'Estudio anterior' },
+      { role: 'user', text: '¿Qué significa nacer otra vez?' },
+    ];
+    await events(await ask({ book: 'jhn', chapter: 3, version: 'nbla', messages }));
+    const sent = aiRequests.at(-1)!;
+    expect(sent.messages[0].content[0].title).toBe('Juan 3 · Reina-Valera 1909');
+    expect(JSON.stringify(sent.system)).toContain('«Nueva Biblia de las Américas» (NBLA), que tiene derechos de autor: su texto no lo recibes');
+  });
+
+  it('rechaza versiones que no existen', async () => {
+    expect(await bad({ book: 'jhn', chapter: 3, version: 'inventada' })).toBe('Versión no válida');
+    expect(await bad({ book: 'jhn', chapter: 3, version: 7 })).toBe('Versión no válida');
   });
 
   it('«¿Por qué esta palabra?» añade otros pasajes con la misma palabra', async () => {

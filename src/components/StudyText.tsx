@@ -1,9 +1,22 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ArrowRightIcon, BooksIcon, ChevronRightIcon, CloseIcon, CompassIcon, CrossIcon, EyeIcon, type IconProps, LampIcon, LinkIcon } from '@/components/icons';
+import {
+  ArrowRightIcon,
+  BooksIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  CompassIcon,
+  CrossIcon,
+  ExternalIcon,
+  EyeIcon,
+  type IconProps,
+  LampIcon,
+  LinkIcon,
+} from '@/components/icons';
 import Appear from '@/components/Appear';
-import { getChapter, parseRef } from '@/lib/data';
+import { getChapter, getChapterExtras, parseRef } from '@/lib/data';
+import { licensedById } from '@/lib/licenciadas';
 import { Source } from '@/lib/estudio';
 import { Colors, serif } from '@/lib/theme';
 
@@ -12,10 +25,15 @@ export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors
     <View style={[styles.sources, { borderColor: colors.border }]}>
       <Text style={[styles.sourcesTitle, { color: colors.muted }]}>FUENTES</Text>
       {sources.map((s) => (
-        <Pressable key={s.n} onPress={() => s.ref && onOpen(s.ref)} style={styles.sourceRow} disabled={!s.ref}>
+        <Pressable
+          key={s.n}
+          onPress={() => (s.ref ? onOpen(s.ref) : s.url && Linking.openURL(s.url))}
+          style={styles.sourceRow}
+          disabled={!s.ref && !s.url}
+        >
           <Text style={[styles.sourceNumber, { color: colors.accent }]}>{s.n}</Text>
           <Text style={{ color: colors.text, flex: 1 }}>{s.label}</Text>
-          {s.ref && <ChevronRightIcon color={colors.muted} size={16} />}
+          {s.ref ? <ChevronRightIcon color={colors.muted} size={16} /> : s.url ? <ExternalIcon color={colors.muted} size={15} /> : null}
         </Pressable>
       ))}
     </View>
@@ -141,24 +159,44 @@ function inline(text: string, colors: Colors, { sources, onCite }: Cites = {}): 
 
 /**
  * Lo que dice una fuente sin salir del estudio: al tocar un número aparece encima de la caja de preguntas
- * con el texto del pasaje y un botón para leerlo en su capítulo.
+ * con el texto del pasaje y un botón para leerlo en su capítulo. Con «version», el texto sale en la versión que
+ * lee la persona, también si es una con derechos (con el aviso que piden sus editores), aunque la IA no la recibe.
  */
-export function SourcePeek({ source, colors, onOpen, onClose }: { source: Source; colors: Colors; onOpen: (ref: string) => void; onClose: () => void }) {
-  const [text, setText] = useState<{ ref: string; verses: [number, string][] } | null>(null);
+export function SourcePeek({
+  source,
+  colors,
+  onOpen,
+  onClose,
+  version = 'rv1909',
+}: {
+  source: Source;
+  colors: Colors;
+  onOpen: (ref: string) => void;
+  onClose: () => void;
+  version?: string;
+}) {
+  const [text, setText] = useState<{ ref: string; verses: [number, string][]; copyright?: string | null; licensed?: boolean } | null>(null);
   const ref = source.ref;
+  const licensed = licensedById(version);
 
   useEffect(() => {
     if (!ref) return;
     let alive = true;
     const { start, end } = parseRef(ref);
     const last = end.chapter === start.chapter ? end.verse : start.verse + 2;
-    getChapter(start.book, start.chapter)
-      .then((vs) => alive && setText({ ref, verses: vs.filter(([n]) => n >= start.verse && n <= Math.min(last, start.verse + 2)).map(([n, t]) => [n, t]) }))
+    const pick = (vs: [number, string, string?][]) => vs.filter(([n]) => n >= start.verse && n <= Math.min(last, start.verse + 2)).map(([n, t]): [number, string] => [n, t]);
+    getChapter(start.book, start.chapter, version)
+      .then(async (vs) => {
+        const extras = licensed ? await getChapterExtras(start.book, start.chapter, version).catch(() => null) : null;
+        if (alive) setText({ ref, verses: pick(vs), copyright: extras?.copyright, licensed: !!licensed });
+      })
+      // Sin la versión con derechos (sin conexión), la RV1909
+      .catch(() => (licensed ? getChapter(start.book, start.chapter).then((vs) => alive && setText({ ref, verses: pick(vs) })) : Promise.reject()))
       .catch(() => alive && setText({ ref, verses: [] }));
     return () => {
       alive = false;
     };
-  }, [ref]);
+  }, [ref, version, licensed]);
 
   const shown = text?.ref === ref ? text : null;
   const { start, end } = ref ? parseRef(ref) : { start: null, end: null };
@@ -195,12 +233,44 @@ export function SourcePeek({ source, colors, onOpen, onClose }: { source: Source
           ) : (
             <ActivityIndicator color={colors.accent} style={{ marginVertical: 10 }} />
           )}
+          {/* Los editores piden su aviso de derechos y sus enlaces cada vez que se muestra su texto. */}
+          {licensed && shown?.licensed && !!shown.verses.length && (
+            <Text style={[styles.peekCredit, { color: colors.muted }]}>
+              {shown.copyright || licensed.credit}
+              {licensed.links.map((l) => (
+                <Text key={l.url} onPress={() => Linking.openURL(l.url)} role="link" style={{ color: colors.accent }}>
+                  {` · ${l.label}`}
+                </Text>
+              ))}
+            </Text>
+          )}
           <Pressable
             onPress={() => onOpen(ref)}
             accessibilityRole="link"
             style={({ pressed }) => [styles.peekOpen, { borderColor: colors.accent }, pressed && { opacity: 0.7 }]}
           >
             <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>Leer en su capítulo ›</Text>
+          </Pressable>
+        </>
+      ) : source.url ? (
+        // Una obra clásica (teología, historia del canon): no se muestra su inglés, solo de quién es y dónde leerla.
+        <>
+          {!!source.nota && (
+            <View style={styles.peekObra}>
+              <BooksIcon color={colors.accent} size={14} strokeWidth={2} />
+              <Text style={[styles.peekObraText, { color: colors.muted }]}>{source.nota}</Text>
+            </View>
+          )}
+          <Text style={[styles.peekHint, { color: colors.muted }]}>
+            Una obra humana, no la Escritura. La IA la leyó en su inglés original y la explica con sus palabras.
+          </Text>
+          <Pressable
+            onPress={() => Linking.openURL(source.url!)}
+            accessibilityRole="link"
+            style={({ pressed }) => [styles.peekOpen, styles.peekOpenRow, { borderColor: colors.accent }, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>Leer la obra original</Text>
+            <ExternalIcon color={colors.accent} size={14} strokeWidth={2.2} />
           </Pressable>
         </>
       ) : (
@@ -234,6 +304,10 @@ const styles = StyleSheet.create({
   peekText: { fontFamily: serif, fontSize: 16, lineHeight: 24, marginTop: 10 },
   peekVerse: { fontSize: 11, fontWeight: '700' },
   peekHint: { fontSize: 13, lineHeight: 18, marginTop: 8 },
+  peekCredit: { fontSize: 11, lineHeight: 15, marginTop: 8 },
+  peekObra: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10 },
+  peekObraText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  peekOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   peekOpen: { alignSelf: 'flex-start', marginTop: 12, borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 7 },
   citeTap: { borderRadius: 8, overflow: 'hidden' },
   ornate: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 6 },

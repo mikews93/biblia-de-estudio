@@ -17,10 +17,13 @@ import Appear from '@/components/Appear';
 import { IconText } from '@/components/comunidad/ui';
 import AskBar from '@/components/AskBar';
 import Devotional from '@/components/Devotional';
-import { ArrowDownIcon, CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
+import { ArrowDownIcon, ChevronDownIcon, CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
+import Investigacion from '@/components/Investigacion';
 import StudyContext from '@/components/StudyContext';
 import StudySignals from '@/components/StudySignals';
-import { Book, original, parseRef } from '@/lib/data';
+import VersionPicker from '@/components/VersionPicker';
+import { Book, Version, getVersions, original, parseRef } from '@/lib/data';
+import { licensedById } from '@/lib/licenciadas';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
 import { slide, useAutoHide } from '@/lib/chrome';
@@ -74,13 +77,24 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const passage = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
   const title = word ? `${word.greek} en ${passage}` : passage;
-  const passageKey = `${book.id}.${chapter}.${verse ?? ''}.${word?.index ?? ''}`;
-  const storeKey = (e: Enfoque) => conversationKey(e, book.id, chapter, verse, word?.index);
+  // La IA cita la versión que se lee. Con una versión con derechos, la RV1909: su texto no se puede pasar a la IA.
+  const version = settings.version;
+  const licensed = licensedById(version);
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [picking, setPicking] = useState(false);
+  useEffect(() => {
+    getVersions().then(setVersions, () => {});
+  }, []);
+  const current = versions.find((v) => v.id === version);
+  const aiVersion = licensed || !current ? { id: 'rv1909', abbr: 'RV1909', name: 'Reina-Valera 1909' } : current;
+  const passageKey = `${book.id}.${chapter}.${verse ?? ''}.${word?.index ?? ''}.${version}`;
+  // Las preguntas de la RV1909 conservan la clave de siempre; las de otra versión van aparte.
+  const storeKey = (e: Enfoque) => conversationKey(e, book.id, chapter, verse, word?.index) + (version === 'rv1909' ? '' : `:${version}`);
 
   // Una conversación por modo: cambiar de Devocional a Profundo no vuelve a pedir nada ni detiene al otro.
   const convs = useConversations<Enfoque>(
     (enfoque, history, onUpdate, signal) =>
-      askStudy({ book: book.id, chapter, verse, word: word?.index, messages: history, enfoque }, onUpdate, signal),
+      askStudy({ book: book.id, chapter, verse, word: word?.index, messages: history, enfoque, version }, onUpdate, signal),
     (enfoque, done) => {
       if (done.some((t) => t.role === 'user')) saveConversation(storeKey(enfoque), done);
     },
@@ -293,13 +307,16 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
           </Appear>
         ) : (
           <View key={i}>
+            {!!turn.pasos?.length && <Investigacion pasos={turn.pasos} working={!turn.text && busy && i === turns.length - 1} colors={colors} />}
             {turn.text ? (
               <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} />
             ) : (
-              <View style={styles.waiting}>
-                <ActivityIndicator color={colors.accent} />
-                <Text style={{ color: colors.muted, marginTop: 10, textAlign: 'center' }}>Buscando en las fuentes…</Text>
-              </View>
+              !turn.pasos?.length && (
+                <View style={styles.waiting}>
+                  <ActivityIndicator color={colors.accent} />
+                  <Text style={{ color: colors.muted, marginTop: 10, textAlign: 'center' }}>Pensando por dónde buscar…</Text>
+                </View>
+              )
             )}
             {!!turn.sources?.length && (busy ? i < turns.length - 1 : true) && (
               <Appear>
@@ -341,6 +358,19 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                       </Text>
                     </IconText>
                     <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+                    <Pressable
+                      onPress={() => setPicking(true)}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Versión del estudio: ${aiVersion.name}. Cambiar versión`}
+                      style={({ pressed }) => [styles.versionChip, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.6 }]}
+                    >
+                      <Text style={[styles.versionAbbr, { color: colors.accent }]}>{licensed ? licensed.abbr : aiVersion.abbr}</Text>
+                      <Text style={[styles.versionText, { color: colors.muted }]} numberOfLines={1}>
+                        {licensed ? 'La IA cita la RV1909' : 'Cambiar versión'}
+                      </Text>
+                      <ChevronDownIcon color={colors.muted} size={13} />
+                    </Pressable>
                   </View>
                   <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar estudio">
                     <CloseIcon color={colors.muted} size={22} />
@@ -378,6 +408,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                   verse={verse}
                   text={first?.text ?? ''}
                   sources={first?.sources ?? []}
+                  version={aiVersion}
                   busy={busy && turns.length <= 1}
                   problem={turns.length <= 1 ? problem : null}
                   onOpen={open}
@@ -453,8 +484,10 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
 
               {mode === 'profundo' && (
               <Text style={[styles.disclaimer, { color: colors.muted }]}>
-                Generado con IA solo a partir de la Reina-Valera 1909, el {original(book).name} de STEPBible y las referencias de
-                OpenBible.info. Toca los números para ver de dónde sale cada idea.
+                Generado con IA solo a partir de la {aiVersion.name}, el {original(book).name} de STEPBible, las referencias de
+                OpenBible.info y los comentarios de la app; al responder preguntas también consulta teologías clásicas de dominio
+                público (Hodge, Strong, Calvino…). Toca los números para ver de dónde sale cada idea.
+                {licensed && ` La ${licensed.abbr} tiene derechos de autor y no se le pasa a la IA: al tocar una cita ves el versículo en tu ${licensed.abbr}.`}
               </Text>
               )}
             </ScrollView>
@@ -476,7 +509,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
             )}
             </View>
 
-            {peek && <SourcePeek source={peek} colors={colors} onOpen={open} onClose={() => setPeek(null)} />}
+            {peek && <SourcePeek source={peek} version={version} colors={colors} onOpen={open} onClose={() => setPeek(null)} />}
 
             {settings.modo === 'general' && !!first?.text && turns.length <= 1 && (
               <View style={[styles.shareRow, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
@@ -519,6 +552,13 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
           </KeyboardAvoidingView>
         </View>
       </View>
+      {picking && (
+        <VersionPicker
+          versions={versions}
+          estudio
+          onClose={() => setPicking(false)}
+        />
+      )}
     </Modal>
   );
 }
@@ -603,6 +643,21 @@ const styles = StyleSheet.create({
   modeHint: { fontSize: 12, textAlign: 'center', marginTop: 8 },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   title: { fontSize: 22, fontFamily: serif, marginTop: 2 },
+  versionChip: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    paddingLeft: 9,
+    paddingRight: 8,
+    paddingVertical: 4,
+    maxWidth: '100%',
+  },
+  versionAbbr: { fontFamily: serif, fontSize: 13, fontWeight: '700' },
+  versionText: { fontSize: 12, flexShrink: 1 },
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 },
   question: {
     alignSelf: 'flex-end',

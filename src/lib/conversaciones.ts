@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { Source, Turn } from './estudio';
+import type { Paso, Source, Turn } from './estudio';
 
 export type Conversation = { turns: Turn[]; busy: boolean; error: string | null };
 
@@ -9,9 +9,9 @@ const EMPTY: Conversation = { turns: [], busy: false, error: null };
 type Ask<K> = (
   key: K,
   history: Turn[],
-  onUpdate: (text: string, sources: Source[]) => void,
+  onUpdate: (text: string, sources: Source[], pasos: Paso[]) => void,
   signal: AbortSignal,
-) => Promise<{ text: string; sources: Source[] }>;
+) => Promise<{ text: string; sources: Source[]; pasos?: Paso[] }>;
 
 /**
  * Varias conversaciones con la IA a la vez, una por pestaña (Devocional y Profundo, Pregúntame y
@@ -44,7 +44,9 @@ export function useConversations<K extends string>(ask: Ask<K>, onDone?: (key: K
       const answer = await latest.current.ask(
         key,
         history,
-        (text, sources) => !controller.signal.aborted && patch(key, () => ({ turns: [...history, { role: 'assistant', text, sources }] })),
+        (text, sources, pasos) =>
+          !controller.signal.aborted &&
+          patch(key, () => ({ turns: [...history, { role: 'assistant', text, sources, ...(pasos.length && { pasos }) }] })),
         controller.signal,
       );
       if (controller.signal.aborted) return;

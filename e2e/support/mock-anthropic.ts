@@ -4,13 +4,20 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
-type Block = { type: string; text?: string; title?: string; source?: { content?: { text: string }[] } };
+type Block = {
+  type: string;
+  text?: string;
+  title?: string;
+  source?: { content?: { text: string }[] } | string;
+  content?: string | Block[];
+};
 type Msg = { role: string; content: string | Block[] };
 type Body = {
   stream?: boolean;
   system?: string | Block[];
   messages: Msg[];
   output_config?: { format?: { type: string; schema?: { properties?: Record<string, unknown> } } };
+  tools?: { name: string }[];
 };
 
 export const requests: Body[] = [];
@@ -193,11 +200,69 @@ const message = (content: unknown[]) => ({
   usage,
 });
 
+/**
+ * Preguntas con herramientas (api/_investigar.ts): si la pregunta habla del canon, primero pide leer un pasaje, buscar
+ * en la Biblia y consultar las obras de teología; con los resultados, responde citando el segundo versículo del primer
+ * resultado y la primera sección de teología (el tercer resultado).
+ */
+function investigates(body: Body) {
+  const last = body.messages[body.messages.length - 1];
+  if (!body.tools?.length || typeof last.content === 'string' && !last.content.includes('canon')) return null;
+  const results = typeof last.content === 'string' ? [] : last.content.filter((b) => b.type === 'tool_result');
+  if (typeof last.content !== 'string' && !results.length) return null;
+  return { done: results.length > 0 };
+}
+
+function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) => void) {
+  const calls = [
+    { name: 'leer_pasaje', input: { cita: '2 Timoteo 3:14-17' } },
+    { name: 'buscar_en_la_biblia', input: { palabras: 'escritur', testamento: 'NT' } },
+    { name: 'teologia', input: { tema: 'el canon del Nuevo Testamento', busqueda: 'canon New Testament books accepted disputed', area: 'canon' } },
+  ];
+  calls.forEach((c, index) => {
+    send({ type: 'content_block_start', index, content_block: { type: 'tool_use', id: `toolu_${index}`, name: c.name, input: {} } });
+    send({ type: 'content_block_delta', index, delta: { type: 'input_json_delta', partial_json: JSON.stringify(c.input) } });
+    send({ type: 'content_block_stop', index });
+  });
+  send({ type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { output_tokens: 10 } });
+  send({ type: 'message_stop' });
+  res.end();
+}
+
 async function sse(res: ServerResponse, body: Body) {
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
   const send = (event: Record<string, unknown>) => res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-  const { text: out, cite, segments, slow } = answer(body);
   send({ type: 'message_start', message: { ...message([]), stop_reason: null } });
+  const tools = investigates(body);
+  if (tools && !tools.done) return sendTools(res, send);
+  if (tools?.done) {
+    send({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '', citations: [] } });
+    send({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Pablo dice que toda Escritura es inspirada por Dios.' } });
+    send({
+      type: 'content_block_delta',
+      index: 0,
+      delta: {
+        type: 'citations_delta',
+        citation: { type: 'search_result_location', cited_text: '', search_result_index: 0, source: '', title: null, start_block_index: 2, end_block_index: 3 },
+      },
+    });
+    send({ type: 'content_block_stop', index: 0 });
+    send({ type: 'content_block_start', index: 1, content_block: { type: 'text', text: '', citations: [] } });
+    send({ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: ' Eusebio distingue los libros aceptados de los discutidos.' } });
+    send({
+      type: 'content_block_delta',
+      index: 1,
+      delta: {
+        type: 'citations_delta',
+        citation: { type: 'search_result_location', cited_text: '', search_result_index: 2, source: '', title: null, start_block_index: 0, end_block_index: 1 },
+      },
+    });
+    send({ type: 'content_block_stop', index: 1 });
+    send({ type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: 10 } });
+    send({ type: 'message_stop' });
+    return res.end();
+  }
+  const { text: out, cite, segments, slow } = answer(body);
   if (segments) return sendSegments(res, send, body, segments);
   send({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '', citations: cite ? [] : null } });
   // Por partes, como la API real
@@ -232,7 +297,8 @@ async function sse(res: ServerResponse, body: Body) {
 function findBlock(body: Body, prefix: string): [number, number] | null {
   const docs = (typeof body.messages[0].content === 'string' ? [] : body.messages[0].content).filter((b) => b.type === 'document');
   for (let d = 0; d < docs.length; d++) {
-    const blocks = docs[d].source?.content ?? [];
+    const src = docs[d].source;
+    const blocks: { text: string }[] = typeof src === 'object' && src.content ? src.content : [];
     const i = blocks.findIndex((b) => b.text.startsWith(prefix));
     if (i >= 0) return [d, i];
   }
