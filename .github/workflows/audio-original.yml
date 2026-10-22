@@ -42,19 +42,31 @@ jobs:
       - name: Alinear
         timeout-minutes: 330
         run: python3 -u pipeline/audio_original/alinear.py ${{ github.event.inputs.capitulos }}
+      # Varias tandas pueden publicar a la vez: cada intento parte de lo último de la rama, copia encima los tiempos
+      # de esta tanda y rehace el catálogo, así index.json nunca choca al unir.
       - name: Publicar en la app
         if: always()
         run: |
-          python3 - <<'PY'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          tmp=$(mktemp -d)
+          cp public/audio/original/*.json "$tmp"/ 2>/dev/null || exit 0
+          for i in 1 2 3 4 5 6; do
+            git fetch -q origin "$GITHUB_REF_NAME"
+            git reset -q --hard "origin/$GITHUB_REF_NAME"
+            mkdir -p public/audio/original
+            cp -n "$tmp"/*.json public/audio/original/
+            python3 - <<'PY'
           import json, pathlib
           root = pathlib.Path('public/audio')
           catalog = json.loads((root / 'index.json').read_text())
           catalog['original'] = sorted(p.stem for p in (root / 'original').glob('*.json'))
           (root / 'index.json').write_text(json.dumps(catalog, indent=2) + '\n')
           PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add public/audio
-          git diff --cached --quiet && exit 0
-          git commit -m "chore(audio): publish Hebrew and Greek word timings"
-          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done
+            git add public/audio
+            git diff --cached --quiet && exit 0
+            git commit -q -m "chore(audio): publish Hebrew and Greek word timings"
+            git push -q origin "HEAD:$GITHUB_REF_NAME" && exit 0
+            sleep $((RANDOM % 10 + 5))
+          done
+          exit 1
