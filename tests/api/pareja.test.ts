@@ -110,6 +110,31 @@ describe.skipIf(!DB_URL)('/api/comunidades: en pareja', () => {
     expect((await call('parejaDia', { plan: 'cordon', dia: 1 }, a.llave)).json.suya).toBeNull();
   });
 
+  it('adivinar lo que respondió el otro y marcar si acertó', async () => {
+    const { a, b } = await pareja('novios');
+    await call('parejaPlan', { plan: 'antes-del-si' }, a.llave);
+    expect((await call('parejaResponder', { plan: 'antes-del-si', dia: 1, texto: 'Fe, risa, amistad', adivino: ' Su fe ' }, a.llave)).status).toBe(200);
+    expect((await call('parejaAcierto', { plan: 'antes-del-si', dia: 1, valor: 2 }, b.llave)).status).toBe(409);
+    await call('parejaResponder', { plan: 'antes-del-si', dia: 1, texto: 'Su fe y su paciencia' }, b.llave);
+
+    const deB = await call('parejaDia', { plan: 'antes-del-si', dia: 1 }, b.llave);
+    expect(deB.json.suya).toMatchObject({ texto: 'Fe, risa, amistad', adivino: 'Su fe', acierto: null });
+    expect(deB.json.mia.adivino).toBeNull();
+    expect((await call('parejaAcierto', { plan: 'antes-del-si', dia: 1, valor: 5 }, b.llave)).status).toBe(400);
+    // Nadie adivinó lo de Ana: no hay nada que marcar
+    expect((await call('parejaAcierto', { plan: 'antes-del-si', dia: 1, valor: 2 }, a.llave)).status).toBe(404);
+    expect((await call('parejaAcierto', { plan: 'antes-del-si', dia: 1, valor: 2 }, b.llave)).status).toBe(200);
+    expect((await call('parejaDia', { plan: 'antes-del-si', dia: 1 }, a.llave)).json.mia.acierto).toBe(2);
+    expect((await call('parejaEstado', {}, a.llave)).json.pareja.adivinanzas).toEqual({ marcadas: 1, aciertos: 1 });
+    expect((await call('parejaEstado', {}, b.llave)).json.pareja.adivinanzas).toEqual({ marcadas: 1, aciertos: 1 });
+
+    // Cambiar la adivinanza borra la marca; cambiar solo la respuesta la deja
+    await call('parejaResponder', { plan: 'antes-del-si', dia: 1, texto: 'Fe, risa y amistad', adivino: 'Su fe' }, a.llave);
+    expect((await call('parejaDia', { plan: 'antes-del-si', dia: 1 }, a.llave)).json.mia.acierto).toBe(2);
+    await call('parejaResponder', { plan: 'antes-del-si', dia: 1, texto: 'Fe, risa y amistad', adivino: 'Su paciencia' }, a.llave);
+    expect((await call('parejaDia', { plan: 'antes-del-si', dia: 1 }, a.llave)).json.mia.acierto).toBeNull();
+  });
+
   it('nadie de afuera ve lo de la pareja', async () => {
     const { a } = await pareja();
     await call('parejaResponder', { plan: 'cordon', dia: 1, texto: 'privado' }, a.llave);

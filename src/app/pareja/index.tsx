@@ -248,6 +248,15 @@ function Juntos({ pareja, colors }: { pareja: Pareja; colors: Colors }) {
                 ? 'Una semana floja no rompe el cordón: la racha sigue.'
                 : `Una semana cuenta con ${DIAS_SEMANA} días respondidos por los dos.`}
           </Text>
+          {!!pareja.adivinanzas?.marcadas && (
+            <View style={[styles.conocen, { borderTopColor: colors.border }]}>
+              <Text style={[styles.kicker, { color: colors.warm }]}>SE CONOCEN</Text>
+              <Text style={[text.small, { color: colors.text, flex: 1, textAlign: 'right' }]}>
+                {pareja.adivinanzas.aciertos} {pareja.adivinanzas.aciertos === 1 ? 'acierto' : 'aciertos'} de {pareja.adivinanzas.marcadas}{' '}
+                {pareja.adivinanzas.marcadas === 1 ? 'adivinanza' : 'adivinanzas'}
+              </Text>
+            </View>
+          )}
         </Card>
       </Appear>
 
@@ -495,6 +504,7 @@ const styles = StyleSheet.create({
   estado: { flexDirection: 'row', gap: 8, alignItems: 'center', borderRadius: 12, padding: 12, marginTop: 14 },
   cordonHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' },
   stats: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, marginTop: 6 },
+  conocen: { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, marginTop: 12 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4 },
   pedido: { fontFamily: serif, fontSize: 17, lineHeight: 25, marginTop: 4 },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 16 },

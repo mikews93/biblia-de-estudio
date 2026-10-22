@@ -25,6 +25,10 @@ export type DiaPareja = {
   practica: string;
   /** Una pista para orar el uno por el otro (no una oración escrita para rezarla). */
   ora: string;
+  /** Si el día invita a adivinar lo que respondió el otro: qué se adivina («sus tres razones»). */
+  adivina?: string;
+  /** Temas que en una relación con abuso podrían leerse como «aguanta»: muestran el aviso con la ayuda. */
+  cuidado?: boolean;
 };
 
 export type Encuentro = {
@@ -93,6 +97,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿De qué manera te gustaría que tu pareja te honrara (que te pusiera primero) esta semana?',
         practica: 'Di en voz alta una cualidad de tu pareja con un ejemplo de hoy.',
         ora: 'Pide un corazón que prefiera a tu pareja en algo concreto de mañana.',
+        adivina: 'lo que te va a pedir',
       },
       {
         titulo: 'Con paciencia, soportándose',
@@ -113,6 +118,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Hay algo pequeño que necesites pedir perdón o perdonar? Si prefieres, escribe solo «sí» y conversenlo en persona.',
         practica: 'Cambien una queja de hoy por una palabra que edifique.',
         ora: 'Agradece el perdón que has recibido de Dios y pide que se note en cómo tratas a tu pareja.',
+        cuidado: true,
       },
       {
         titulo: 'Anímense unos a otros',
@@ -156,6 +162,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Cuándo te sentiste más amado por tu pareja? Describe qué hizo o dijo.',
         practica: 'Fíjate hoy en cómo tu pareja suele demostrar cariño: muchas veces da amor como le gusta recibirlo.',
         ora: 'Pide que Dios te enseñe a amar a tu pareja como ella o él lo necesita, no como a ti te sale.',
+        adivina: 'el momento que va a contar',
       },
       {
         titulo: 'Palabras que sanan',
@@ -184,6 +191,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Qué tarea pequeña, si tu pareja la hiciera por ti, te haría sentir amado esta semana?',
         practica: 'Haz hoy una tarea que normalmente hace tu pareja, sin anunciarlo.',
         ora: 'Pide un corazón que sirva con alegría y sin llevar la cuenta.',
+        adivina: 'la tarea que va a nombrar',
       },
       {
         titulo: 'Un detalle que dice «pensé en ti»',
@@ -204,6 +212,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Qué gesto de cercanía (tomarse de la mano, un abrazo, sentarse juntos) te da más paz? Responde según su etapa.',
         practica: 'Tómense de la mano al orar hoy, aunque sea por un momento.',
         ora: 'Pide que la cercanía entre los dos sea siempre segura, respetuosa y llena de ternura.',
+        adivina: 'el gesto que va a elegir',
       },
     ],
     encuentro: {
@@ -234,6 +243,100 @@ export const PLANES_PAREJA: PlanPareja[] = [
     ],
   },
   {
+    id: 'asi-es-el-amor',
+    titulo: 'Así es el amor',
+    subtitulo: '1 Corintios 13 en la vida de todos los días',
+    para: 'ambos',
+    dias: [
+      {
+        titulo: 'Sin amor, nada',
+        pasaje: p('1co', 13, 1, 3),
+        referencia: '1 Corintios 13:1-3',
+        idea:
+          'La RV1909 dice «caridad»: es el amor que se da (ágape). Pablo pone a un lado los dones más admirados y dice que sin amor no valen. Se puede hacer mucho por la pareja y que le llegue como ruido.',
+        pregunta: '¿Qué cosa buena haces por tu pareja que a veces haces por obligación más que por amor?',
+        practica: 'Hoy haz algo que ya haces siempre, pero piensa en tu pareja mientras lo haces y díselo.',
+        ora: 'Pide que lo que hagas por tu pareja nazca del amor y no solo del deber.',
+      },
+      {
+        titulo: 'Paciente y bondadoso',
+        pasaje: p('1co', 13, 4),
+        referencia: '1 Corintios 13:4',
+        idea: '«Sufrida» y «benigna»: el amor aguanta sin pasar factura y además es amable. La paciencia no es callarse con rabia; es dar tiempo con buen corazón.',
+        pregunta: '¿En qué momento del día te cuesta más la paciencia con tu pareja?',
+        practica: 'En ese momento del día, hoy, haz una pausa de tres respiraciones antes de responder.',
+        ora: 'Pide paciencia para ese momento concreto.',
+        adivina: 'el momento que va a nombrar',
+      },
+      {
+        titulo: 'No busca lo suyo',
+        pasaje: p('1co', 13, 4, 5),
+        referencia: '1 Corintios 13:4-5',
+        idea: 'El amor no compite, no presume y no lleva la cuenta de lo que da. «No busca lo suyo» es la frase más difícil de todas, porque buscamos lo nuestro sin darnos cuenta.',
+        pregunta: '¿En qué buscas lo tuyo sin darte cuenta: el control remoto, la última palabra, tener la razón, tu horario?',
+        practica: 'Cede hoy en algo pequeño que sueles defender, y no lo menciones.',
+        ora: 'Pide un corazón que disfrute dar sin llevar la cuenta.',
+        adivina: 'lo que va a reconocer',
+      },
+      {
+        titulo: 'No guarda rencor',
+        pasaje: p('1co', 13, 5, 6),
+        referencia: '1 Corintios 13:5-6',
+        idea:
+          '«No piensa el mal»: el amor no archiva las ofensas para sacarlas en la próxima pelea. Perdonar no es fingir que no pasó ni aceptar que se repita; es soltar la deuda.',
+        pregunta: '¿Hay algo pequeño que todavía guardas? Si prefieres, escribe solo «sí» y conversenlo en persona.',
+        practica: 'Si hay algo, búsquense hoy y digan: «Te perdono por…» o «Perdóname por…». Sin explicaciones largas.',
+        ora: 'Pide gracia para soltar lo que estás guardando.',
+        cuidado: true,
+      },
+      {
+        titulo: 'Adivina cómo cuidarme',
+        pasaje: p('gal', 6, 2),
+        referencia: 'Gálatas 6:2',
+        idea:
+          'Sobrellevar las cargas del otro empieza por saber cuáles son. Muchas parejas se quieren y se cuidan, pero adivinando mal: cada uno da lo que a él le gustaría recibir.',
+        pregunta: 'Escribe algo concreto que te ayudaría esta semana en cada área: tu cuerpo (descanso, salud), tu corazón, tu fe y tu vida con otros.',
+        practica: 'Elijan una de las cuatro necesidades del otro y háganla realidad antes del fin de semana.',
+        ora: 'Ora por las cuatro áreas de tu pareja, una por una.',
+        adivina: 'lo que va a necesitar en cada área',
+      },
+      {
+        titulo: 'Todo lo espera',
+        pasaje: p('1co', 13, 7, 8),
+        referencia: '1 Corintios 13:7-8',
+        idea:
+          '«Todo lo sufre, todo lo cree, todo lo espera, todo lo soporta». No es aguantar cualquier cosa: es la terquedad de la esperanza, que apuesta por el otro aun en los días grises.',
+        pregunta: '¿Qué esperanza tienes para los dos en los próximos años?',
+        practica: 'Cuéntense un momento difícil que ya superaron juntos y qué los sostuvo.',
+        ora: 'Da gracias por lo que ya superaron, y pide esperanza para lo que viene.',
+        adivina: 'la esperanza que va a escribir',
+        cuidado: true,
+      },
+    ],
+    encuentro: {
+      titulo: '¿Qué haríamos si…?',
+      pasaje: p('1co', 13, 13),
+      referencia: '1 Corintios 13:13',
+      idea: 'La fe, la esperanza y el amor permanecen cuando lo demás cambia. Este encuentro es para ensayar juntos, con calma, lo que todavía no ha pasado.',
+      minutos: 25,
+      pasos: [
+        {
+          titulo: 'Lean con su nombre',
+          texto: 'Lean 1 Corintios 13:4-7 en voz alta, cada uno poniendo su propio nombre donde dice «la caridad». Luego digan en qué frase se quedaron cortos.',
+        },
+        {
+          titulo: 'Escenarios',
+          texto:
+            'Elijan tres y conversen qué harían: perder el trabajo; una enfermedad larga; uno quiere mudarse de ciudad; un padre que necesita vivir con ustedes; alguien se siente atraído por otra persona; uno se enfría en la fe.',
+        },
+        { titulo: 'Un acuerdo', texto: 'De lo conversado, acuerden una regla para los días difíciles (por ejemplo, «nunca decidimos algo grande enojados»).' },
+        { titulo: 'Oren', texto: 'Oren por lo que no saben que vendrá, poniéndolo en manos de Dios.' },
+      ],
+      conversen: ['¿Cuál de los escenarios nos da más miedo, y por qué?', '¿Qué frase de 1 Corintios 13 queremos que se note en nosotros?'],
+      cierre: 'Escribe el acuerdo al que llegaron.',
+    },
+  },
+  {
     id: 'honra',
     titulo: 'Amor y honra',
     subtitulo: 'Efesios 5 leído desde el versículo 21',
@@ -248,6 +351,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿En qué área de su matrimonio sientes que hoy más necesitan «sujetarse el uno al otro», es decir, ceder por amor?',
         practica: 'Cede hoy en una decisión pequeña que normalmente defenderías.',
         ora: 'Pide ser lleno del Espíritu en tu manera de tratar a tu cónyuge.',
+        cuidado: true,
       },
       {
         titulo: 'Amar como Cristo amó',
@@ -258,6 +362,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Cómo se ve, en un martes cualquiera, un amor que se entrega por el otro?',
         practica: 'Pregúntale a tu cónyuge: «¿Qué puedo hacer hoy para que tu día sea más liviano?», y hazlo.',
         ora: 'Agradece el amor de Cristo que se entregó por ti, y pide que se refleje en tu casa.',
+        cuidado: true,
       },
       {
         titulo: 'Honra que se nota',
@@ -268,6 +373,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Qué te hace sentir respetado y tomado en serio por tu cónyuge? Da un ejemplo.',
         practica: 'Delante de otra persona, di algo bueno de tu cónyuge.',
         ora: 'Pide que nada en tu trato estorbe las oraciones de los dos.',
+        adivina: 'el ejemplo que va a dar',
       },
       {
         titulo: 'La mente de Cristo',
@@ -275,7 +381,8 @@ export const PLANES_PAREJA: PlanPareja[] = [
         referencia: 'Filipenses 2:3-8',
         idea: 'Nada por contienda ni por vanagloria. Cristo, siendo igual a Dios, se humilló. En el matrimonio la humildad no es perder: es parecerse a Él.',
         pregunta: '¿En qué discusión frecuente les ayudaría más «estimar al otro como superior»?',
-        practica: 'Cuando hoy hablen de un tema delicado, uno resume lo que entendió del otro antes de responder.',
+        practica:
+          'Recuerden una discusión reciente. Cada uno diga qué creía que el otro le pedía de fondo (sentirse amado, sentirse tomado en serio), sin defenderse.',
         ora: 'Pide humildad para escuchar antes de defenderte.',
       },
       {
@@ -285,7 +392,8 @@ export const PLANES_PAREJA: PlanPareja[] = [
         idea:
           'La paz de Cristo «gobierne» en sus corazones: la palabra habla de un árbitro. Pablo pide a los esposos que no sean ásperos y a todos que vivan agradecidos.',
         pregunta: '¿Qué suele quitarles la paz como pareja, y qué la devuelve?',
-        practica: 'Hagan un rato de veinte minutos para que uno se desahogue de algo de afuera mientras el otro solo escucha.',
+        practica:
+          'Si hoy algo te molesta, antes de responder supón buena voluntad y pregunta: «¿Qué me estás pidiendo en realidad?». Si la herida es grande, esperen un día antes de hablarlo.',
         ora: 'Pide que la paz de Cristo sea el árbitro de su próxima conversación difícil.',
       },
       {
@@ -296,6 +404,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Qué cualidad de tu cónyuge te gustaría que más gente conociera?',
         practica: 'Mándale un mensaje con algo que admiras de su carácter, no de lo que hace.',
         ora: 'Da gracias por tu cónyuge, nombrando dos cualidades.',
+        adivina: 'la cualidad tuya que va a nombrar',
       },
     ],
     encuentro: {
@@ -312,7 +421,14 @@ export const PLANES_PAREJA: PlanPareja[] = [
           texto:
             'Elijan un solo tema pendiente. Uno habla y el otro escucha y resume; luego al revés. No hace falta resolverlo hoy: basta con entenderse.',
         },
-        { titulo: 'La semana que viene', texto: 'Miren juntos la agenda: ¿cuándo tendrán tiempo para los dos?' },
+        {
+          titulo: 'Seis maneras',
+          texto: 'Cada uno escriba tres maneras en que el otro le hace sentir amado y tres en que le hace sentir respetado. Léanlas en voz alta.',
+        },
+        {
+          titulo: 'La semana que viene',
+          texto: 'Miren juntos la agenda y aparten dos ratos: uno cara a cara, para conversar, y otro hombro a hombro, haciendo algo juntos.',
+        },
         { titulo: 'Oren', texto: 'Oren el uno por el otro, con una frase basta.' },
       ],
       conversen: ['¿Cuándo me sentí más amado esta semana?', '¿Cuándo me sentí más respetado esta semana?'],
@@ -322,7 +438,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
       {
         titulo: 'Amor y respeto',
         autor: 'Emerson Eggerichs',
-        nota: 'Este plan toma la idea de Efesios 5:33 que el libro popularizó, leída como necesidad de los dos y desde el versículo 21.',
+        nota: 'Este plan toma ideas del libro (Efesios 5:33, suponer buena voluntad, descifrar qué pide el otro detrás del enojo, tiempo cara a cara y hombro a hombro), leídas como necesidad de los dos y desde el versículo 21.',
       },
     ],
   },
@@ -338,10 +454,11 @@ export const PLANES_PAREJA: PlanPareja[] = [
         referencia: 'Malaquías 2:14-15',
         idea:
           'Malaquías llama a la esposa «tu compañera, y la mujer de tu pacto», y dice que Dios es testigo. El matrimonio no es un contrato que se cumple mientras convenga: es una promesa delante de Dios.',
-        pregunta: 'Escribe tres razones por las que quieres casarte con tu pareja. Debajo, las tres que crees que escribirá ella o él.',
+        pregunta: 'Escribe tres razones por las que quieres casarte con tu pareja.',
         practica:
           'Al ver las respuestas, miren si alguna razón suena a escapar (de casa, de la soledad, de una presión). Si aparece, no es un fracaso: es algo para hablar con un mentor.',
         ora: 'Da gracias por tu pareja y pide que su «sí» sea un pacto y no solo un sentimiento.',
+        adivina: 'sus tres razones',
       },
       {
         titulo: 'Distintos a propósito',
@@ -352,6 +469,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Qué diferencia entre los dos te atrajo al principio, y cuál ya te cuesta un poco?',
         practica: 'Cada uno anote tres cosas en que se parecen y tres en que son distintos. Comparen las listas y den gracias por una de las diferencias.',
         ora: 'Pide paciencia para no querer cambiar a tu pareja a tu medida.',
+        adivina: 'la diferencia que va a nombrar',
       },
       {
         titulo: 'Lo que traemos de casa',
@@ -372,6 +490,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         practica:
           'Al leer las expectativas del otro, marquen cada una en voz alta: «fácil», «difícil pero posible» o «no creo poder». Las difíciles no son un problema; las escondidas sí.',
         ora: 'Pide que no queden expectativas escondidas entre los dos.',
+        adivina: 'una de las cosas que va a esperar de ti',
       },
       {
         titulo: 'Pronto para oír',
@@ -382,6 +501,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: 'Cuando no están de acuerdo, ¿qué haces tú: te alejas, insistes hasta ganar, cedes para no pelear, negocian o lo hablan hasta resolverlo? ¿Y qué hace tu pareja?',
         practica: 'En la próxima conversación difícil, antes de responder, repite con tus palabras lo que entendiste y pregunta: «¿Es eso lo que sientes?».',
         ora: 'Pide oídos atentos y una lengua lenta para los dos.',
+        cuidado: true,
       },
       {
         titulo: 'Para lo bueno y lo difícil',
@@ -392,6 +512,8 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: 'Si mañana llegara algo difícil (perder el trabajo, una enfermedad, un hijo que no llega), ¿qué necesitarías de tu pareja?',
         practica: 'Elijan juntos una situación difícil de las que viven otros matrimonios que conocen, y conversen cómo la enfrentarían ustedes dos.',
         ora: 'Pide que Cristo sea el que los sostiene cuando las cosas no salgan como esperaban.',
+        adivina: 'lo que va a necesitar de ti',
+        cuidado: true,
       },
     ],
     encuentro: {
@@ -453,6 +575,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Cómo se vivía el dinero en tu casa cuando crecías, y cómo te marcó?',
         practica: 'Juego: cada uno adivine cuánto cuestan cinco cosas que el otro paga en un mes (el transporte, un corte de pelo, el mercado de la semana). Ríanse de los errores y aprendan.',
         ora: 'Pide un corazón libre del amor al dinero y del miedo a que falte.',
+        adivina: 'cómo se vivía el dinero en su casa',
       },
       {
         titulo: 'Un presupuesto de dos',
@@ -463,6 +586,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: 'Si les regalaran una suma grande de dinero, ¿en qué la usarías? Escribe tus tres primeras ideas.',
         practica: 'Esta semana, cada uno anote todo lo que gasta. Al final, piensen juntos en un presupuesto sencillo, con una parte para dar y otra para cuidar su relación.',
         ora: 'Da gracias por lo que tienen y pide sabiduría para administrarlo juntos.',
+        adivina: 'en qué lo usaría',
       },
       {
         titulo: 'Tu pueblo será mi pueblo',
@@ -493,6 +617,7 @@ export const PLANES_PAREJA: PlanPareja[] = [
         pregunta: '¿Cómo llegaste a la fe y quién te marcó en el camino? Si hoy pudieras hacerle una pregunta a Dios, ¿cuál sería?',
         practica: 'Decidan cómo quieren orar y leer la Biblia juntos cuando estén casados: cuándo, cuánto tiempo y dónde.',
         ora: 'Pide que el hogar que van a formar tenga a Dios en lo de todos los días.',
+        adivina: 'la pregunta que le haría a Dios',
       },
     ],
     encuentro: {
@@ -525,6 +650,9 @@ export const PLANES_PAREJA: PlanPareja[] = [
 ];
 
 export const planPareja = (id: string) => PLANES_PAREJA.find((x) => x.id === id);
+
+/** Uno de los seis días cortos (el séptimo es el encuentro, sin adivinanza). */
+export const diaDePlan = (plan: PlanPareja, dia: number): DiaPareja | undefined => (dia >= 1 && dia < DIAS_PLAN ? plan.dias[dia - 1] : undefined);
 
 /** Los planes que ve una pareja según su etapa. */
 export const planesPara = (etapa: Etapa) => PLANES_PAREJA.filter((x) => x.para === 'ambos' || x.para === etapa);
