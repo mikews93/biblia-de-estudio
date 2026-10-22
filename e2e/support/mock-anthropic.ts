@@ -269,7 +269,8 @@ function sse(res: ServerResponse, body: Body) {
 function findBlock(body: Body, prefix: string): [number, number] | null {
   const docs = (typeof body.messages[0].content === 'string' ? [] : body.messages[0].content).filter((b) => b.type === 'document');
   for (let d = 0; d < docs.length; d++) {
-    const blocks = docs[d].source?.content ?? [];
+    const src = docs[d].source;
+    const blocks: { text: string }[] = typeof src === 'object' && src.content ? src.content : [];
     const i = blocks.findIndex((b) => b.text.startsWith(prefix));
     if (i >= 0) return [d, i];
   }
