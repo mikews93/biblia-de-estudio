@@ -1,6 +1,8 @@
-// Las ilustraciones del Espacio Niños: una escena plana por historia, dibujada con formas simples y colores suaves
-// (como un libro de cuentos). En el tema oscuro se les pone un velo para que no encandilen.
-import { View, type ViewStyle } from 'react-native';
+// Las ilustraciones del Espacio Niños. Cada historia tiene su ilustración en acuarela (public/ninos/<id>.webp,
+// generadas con pipeline/ilustraciones/) y, debajo, una escena plana dibujada aquí con formas simples: se ve mientras
+// carga la imagen o si no llega (sin conexión). En el tema oscuro se les pone un velo para que no encandilen.
+import { useState } from 'react';
+import { Image, View, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, G, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import type { Colors } from '@/lib/theme';
@@ -10,16 +12,31 @@ const ANCHO = 320;
 const ALTO = 200;
 export const PROPORCION = ANCHO / ALTO;
 
+const API = process.env.EXPO_PUBLIC_API_URL ?? '';
+/** Las historias que ya tienen ilustración en public/ninos/. */
+export const ILUSTRADAS = new Set<string>([]);
+
 type Props = { id: string; colors: Colors; style?: ViewStyle; titulo?: string };
 
 export default function Escena({ id, colors, style, titulo }: Props) {
   const Dibujo = ESCENAS[id] ?? Creacion;
+  const [fallo, setFallo] = useState(false);
+  const imagen = ILUSTRADAS.has(id) && !fallo;
   return (
     <View style={[{ width: '100%', aspectRatio: PROPORCION, overflow: 'hidden' }, style]} accessibilityRole="image" accessibilityLabel={titulo}>
       <Svg width="100%" height="100%" viewBox={`0 0 ${ANCHO} ${ALTO}`} preserveAspectRatio="xMidYMid slice">
         <Dibujo />
-        {isDark(colors) && <Rect width={ANCHO} height={ALTO} fill="#0b0d14" opacity={0.24} />}
       </Svg>
+      {imagen && (
+        <Image
+          source={{ uri: `${API}/ninos/${id}.webp` }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          resizeMode="cover"
+          onError={() => setFallo(true)}
+          accessibilityIgnoresInvertColors
+        />
+      )}
+      {isDark(colors) && <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0b0d14', opacity: 0.2 }} />}
     </View>
   );
 }
