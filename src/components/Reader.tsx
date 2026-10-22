@@ -46,6 +46,7 @@ import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import ReaderHeader, { HEADER_HEIGHT } from '@/components/ReaderHeader';
 import ToolButton from '@/components/ToolButton';
+import ChapterTools, { type ChapterTool, type ToolGroup, type Variant } from '@/components/ChapterTools';
 import {
   CardsIcon,
   CheckIcon,
@@ -56,6 +57,7 @@ import {
   CommentaryIcon,
   CompareIcon,
   DramaIcon,
+  InterlinearIcon,
   LecternIcon,
   LinkIcon,
   ListenIcon,
@@ -305,36 +307,61 @@ export default function Reader() {
   const title = book ? `${book.name} ${chapter}` : '';
   const version = versions.find((v) => v.id === settings.version);
 
-  const chapterTools = [
+  const listenTools: ChapterTool[] = [
     {
       key: 'escuchar',
-      label: 'Escuchar',
+      label: 'Lectura',
       hint: 'Escuchar la lectura del capítulo',
-      icon: (c: string) => <ListenIcon color={c} size={22} />,
+      icon: (c: string) => <ListenIcon color={c} size={20} />,
       onPress: () => playChapter(bookId, chapter, title),
     },
-    ...(catalog.original.includes(recordingId(bookId, chapter)) && book
-      ? [
-          {
-            key: 'original',
-            label: original(book).rtl ? 'Hebreo' : 'Griego',
-            hint: `Escuchar el capítulo en ${original(book).name}, con cada palabra iluminada en el interlineal`,
-            icon: (c: string) => <OriginalIcon color={c} size={22} letter={original(book).icon} />,
-            onPress: () => playOriginal(bookId, chapter, title),
-          },
-        ]
-      : []),
     ...(catalog.dramatizado.includes(recordingId(bookId, chapter))
       ? [
           {
             key: 'dramatizado',
             label: 'Dramatizado',
             hint: 'Escuchar el capítulo dramatizado, con voces, efectos y música',
-            icon: (c: string) => <DramaIcon color={c} size={22} />,
+            icon: (c: string) => <DramaIcon color={c} size={20} />,
             onPress: () => playDramatized(bookId, chapter, title),
           },
         ]
       : []),
+    {
+      key: 'podcast',
+      label: 'Pódcast',
+      hint: 'Resumen del capítulo en audio, como una conversación',
+      icon: (c: string) => <TalkIcon color={c} size={20} />,
+      onPress: () => tool('podcast'),
+    },
+  ];
+  const originalTools: ChapterTool[] = book
+    ? [
+        ...(book.interlinear
+          ? [
+              {
+                key: 'interlineal',
+                label: 'Interlineal',
+                hint: `Ver cada palabra en ${original(book).name} debajo del texto, con su significado`,
+                icon: (c: string) => <InterlinearIcon color={c} size={20} />,
+                onPress: () => update({ study: !settings.study }),
+                on: settings.study,
+              },
+            ]
+          : []),
+        ...(catalog.original.includes(recordingId(bookId, chapter))
+          ? [
+              {
+                key: 'original',
+                label: `Oír en ${original(book).rtl ? 'hebreo' : 'griego'}`,
+                hint: `Escuchar el capítulo en ${original(book).name}, con cada palabra iluminada en el interlineal`,
+                icon: (c: string) => <OriginalIcon color={c} size={20} letter={original(book).icon} />,
+                onPress: () => playOriginal(bookId, chapter, title),
+              },
+            ]
+          : []),
+      ]
+    : [];
+  const exploreTools: ChapterTool[] = [
     ...(placeCount || journeysFor(bookId, chapter).length
       ? [
           {
@@ -343,32 +370,33 @@ export default function Reader() {
             hint: journeysFor(bookId, chapter).length
               ? `Seguir en el mapa: ${journeysFor(bookId, chapter)[0].title}`
               : 'Seguir en el mapa los lugares del capítulo mientras lees o escuchas',
-            icon: (c: string) => <RouteIcon color={c} size={22} />,
+            icon: (c: string) => <RouteIcon color={c} size={20} />,
             onPress: () => navigate(() => router.push(recorridoHref(bookId, chapter) as never), 'forward'),
           },
         ]
       : []),
     {
-      key: 'podcast',
-      label: 'Pódcast',
-      hint: 'Resumen del capítulo en audio, como una conversación',
-      icon: (c: string) => <TalkIcon color={c} size={22} />,
-      onPress: () => tool('podcast'),
-    },
-    {
       key: 'mapa',
       label: 'Mapa mental',
-      hint: 'Mapa mental del capítulo',
-      icon: (c: string) => <MindMapIcon color={c} size={22} />,
+      hint: 'Las ideas del capítulo en un mapa',
+      icon: (c: string) => <MindMapIcon color={c} size={20} />,
       onPress: () => tool('mapa-mental'),
     },
     {
       key: 'tarjetas',
       label: 'Tarjetas',
       hint: 'Tarjetas de repaso del capítulo',
-      icon: (c: string) => <CardsIcon color={c} size={22} />,
+      icon: (c: string) => <CardsIcon color={c} size={20} />,
       onPress: () => tool('tarjetas'),
     },
+  ];
+  // Prototipo: ?herramientas=pestanas|puertas|mesa
+  const toolVariant: Variant =
+    (Platform.OS === 'web' && (new URLSearchParams(globalThis.location?.search).get('herramientas') as Variant)) || 'mesa';
+  const toolGroups: ToolGroup[] = [
+    { key: 'escuchar', title: 'Escuchar', tools: listenTools },
+    { key: 'original', title: book ? (original(book).rtl ? 'Hebreo' : 'Griego') : 'Original', tools: originalTools },
+    { key: 'explorar', title: 'Explorar', tools: exploreTools },
   ];
 
   const promesas = selected === null ? [] : hilosEn(bookId, chapter, selected);
@@ -511,17 +539,7 @@ export default function Reader() {
               </Pressable>
             </Appear>
 
-            {/* Escuchar y las herramientas del capítulo en una sola fila; en un teléfono estrecho se desliza */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.toolsScroll}
-              contentContainerStyle={styles.tools}
-            >
-              {chapterTools.map((t, i) => (
-                <ToolButton key={t.key} index={i + 2} label={t.label} hint={t.hint} icon={t.icon} colors={colors} onPress={t.onPress} />
-              ))}
-            </ScrollView>
+            <ChapterTools groups={toolGroups} colors={colors} variant={toolVariant} />
             {interlinearOn && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
                 {listening

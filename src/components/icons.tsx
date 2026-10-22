@@ -481,3 +481,23 @@ export const RingsIcon = (p: Props) => (
     <Path d="M10.6 4.6 12 6l1.4-1.4" />
   </Line>
 );
+
+/** Dos renglones con una palabra sobre otra: el interlineal (el original arriba, su traducción debajo). */
+export const InterlinearIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M3.5 6.5h7M13.5 6.5h7" />
+    <Path d="M4.5 10h5M14.5 10h5" strokeWidth={1.2} />
+    <Path d="M3.5 14.5h7M13.5 14.5h7" />
+    <Path d="M4.5 18h5M14.5 18h5" strokeWidth={1.2} />
+  </Line>
+);
+
+/** Cuatro cuadros: todas las herramientas. */
+export const GridIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={4} y={4} width={6.5} height={6.5} rx={1.8} />
+    <Rect x={13.5} y={4} width={6.5} height={6.5} rx={1.8} />
+    <Rect x={4} y={13.5} width={6.5} height={6.5} rx={1.8} />
+    <Rect x={13.5} y={13.5} width={6.5} height={6.5} rx={1.8} />
+  </Line>
+);

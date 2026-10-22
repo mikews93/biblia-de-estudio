@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDownIcon, ChevronLeftIcon } from '@/components/icons';
 import SearchIcon from '@/components/SearchIcon';
 import { chrome } from '@/lib/chrome';
-import { serif, useColors, useSettings } from '@/lib/theme';
+import { serif, useColors } from '@/lib/theme';
 import { fixedInTransition, navigate } from '@/lib/transition';
 
 export const HEADER_HEIGHT = 52;
@@ -13,12 +13,11 @@ export const HEADER_HEIGHT = 52;
 type Props = { title: string; progress: number; onSettings: () => void };
 
 /**
- * Cabecera del lector: libro y capítulo, buscar, modo estudio y ajustes. Se aparta hacia arriba al bajar
+ * Cabecera del lector: libro y capítulo, buscar y ajustes. Se aparta hacia arriba al bajar
  * leyendo (src/lib/chrome.ts) y deja a la vista la línea de avance del capítulo.
  */
 export default function ReaderHeader({ title, progress, onSettings }: Props) {
   const colors = useColors();
-  const { settings, update } = useSettings();
   const insets = useSafeAreaInsets();
   const translateY = chrome.interpolate({ inputRange: [0, 1], outputRange: [0, -HEADER_HEIGHT] });
   const fade = chrome.interpolate({ inputRange: [0, 0.6], outputRange: [1, 0], extrapolate: 'clamp' });
@@ -61,20 +60,6 @@ export default function ReaderHeader({ title, progress, onSettings }: Props) {
               <SearchIcon color={colors.text} size={20} />
             </Pressable>
             <Pressable
-              onPress={() => update({ study: !settings.study })}
-              style={({ pressed }) => [
-                styles.studyToggle,
-                { borderColor: colors.accent },
-                settings.study && { backgroundColor: colors.accent },
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: settings.study }}
-              accessibilityLabel="Modo estudio"
-            >
-              <Text style={[styles.studyText, { color: settings.study ? colors.surface : colors.accent }]}>Estudio</Text>
-            </Pressable>
-            <Pressable
               onPress={onSettings}
               accessibilityRole="button"
               accessibilityLabel="Ajustes de lectura"
@@ -102,8 +87,6 @@ const styles = StyleSheet.create({
   titleText: { fontSize: 19, fontWeight: '600', flexShrink: 1 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 'auto' },
   iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  studyToggle: { height: 30, borderWidth: 1.5, borderRadius: 15, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', marginHorizontal: 4 },
-  studyText: { fontWeight: '700', fontSize: 13, lineHeight: 16 },
   aa: { fontSize: 18, lineHeight: 22 },
   track: { height: 2 },
   bar: { height: 2 },
