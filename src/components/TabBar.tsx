@@ -3,13 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HomeIcon, LecternIcon, OpenBookIcon, PeopleIcon, PlansIcon } from '@/components/icons';
+import { HomeIcon, LecternIcon, OpenBookIcon, PeopleIcon, PlansIcon, StarIcon } from '@/components/icons';
 import { chrome, setChromeHidden } from '@/lib/chrome';
 import { chapterHref } from '@/lib/routes';
-import { Colors, getLastRead, useColors } from '@/lib/theme';
+import { Colors, getLastRead, useColors, useSettings } from '@/lib/theme';
 import { fixedInTransition, navigate } from '@/lib/transition';
 
-type Tab = { key: 'hoy' | 'leer' | 'planes' | 'taller' | 'comunidad'; label: string; icon: typeof HomeIcon };
+type Tab = { key: 'hoy' | 'leer' | 'planes' | 'taller' | 'misiones' | 'comunidad'; label: string; icon: typeof HomeIcon };
 
 const TABS: Tab[] = [
   { key: 'hoy', label: 'Hoy', icon: HomeIcon },
@@ -19,11 +19,15 @@ const TABS: Tab[] = [
   { key: 'comunidad', label: 'Comunidad', icon: PeopleIcon },
 ];
 
+// En el Modo Jóvenes el Taller (preparar mensajes) deja su lugar a las misiones.
+const TABS_JOVENES: Tab[] = TABS.map((t) => (t.key === 'taller' ? { key: 'misiones', label: 'Misiones', icon: (p) => <StarIcon {...p} /> } : t));
+
 function current(path: string): Tab['key'] {
-  if (path === '/' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas' || path.startsWith('/semana')) return 'hoy';
+  if (path === '/' || path === '/modo' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas' || path.startsWith('/semana')) return 'hoy';
   if (/^\/(planes|grupos|unirse|vivo)(\/|$)/.test(path)) return 'planes';
   if (/^\/(comunidades|amigo|cuenta|eventos?)(\/|$)/.test(path)) return 'comunidad';
   if (path.startsWith('/taller')) return 'taller';
+  if (path.startsWith('/jovenes')) return 'misiones';
   return 'leer';
 }
 
@@ -32,6 +36,7 @@ export default function TabBar() {
   const colors = useColors();
   const path = usePathname();
   const insets = useSafeAreaInsets();
+  const { modo } = useSettings().settings;
   const active = current(path);
   const [height, setHeight] = useState(0);
 
@@ -49,6 +54,7 @@ export default function TabBar() {
     if (key === 'planes') navigate(() => router.push('/planes'), 'fade');
     if (key === 'comunidad') navigate(() => router.push('/comunidades' as never), 'fade');
     if (key === 'taller') navigate(() => router.push('/taller'), 'fade');
+    if (key === 'misiones') navigate(() => router.push('/jovenes' as never), 'fade');
     if (key === 'leer') {
       if (active === 'leer') return;
       const last = await getLastRead();
@@ -77,7 +83,7 @@ export default function TabBar() {
         ]}
         accessibilityRole="tablist"
       >
-        {TABS.map((t) => (
+        {(modo === 'jovenes' ? TABS_JOVENES : TABS).map((t) => (
           <TabButton key={t.key} tab={t} on={t.key === active} colors={colors} onPress={() => go(t.key)} />
         ))}
       </Animated.View>

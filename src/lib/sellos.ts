@@ -28,7 +28,11 @@ export type Tipo =
   | 'evento' // un evento de la iglesia seguido en vivo
   | 'grupo' // la meta semanal de un grupo cumplida entre todos
   | 'dia' // un día con la Palabra
-  | 'meta'; // una semana con la meta de 5 de 7 días
+  | 'meta' // una semana con la meta de 5 de 7 días
+  | 'mision' // una misión del Modo Jóvenes (src/lib/jovenes.ts)
+  | 'profunda' // una misión con sus tres estrellas: entendida, pensada y vivida
+  | 'ruta' // una ruta de misiones terminada
+  | `ruta-${string}`; // una misión de esa ruta
 
 const DE_ESTUDIO: Tipo[] = ['palabra', 'historia', 'original', 'lugar', 'persona', 'viaje', 'promesa', 'diferencia'];
 
@@ -68,7 +72,15 @@ export type Dibujo =
   | 'templo'
   | 'pulpito'
   | 'lampara'
-  | 'sol';
+  | 'sol'
+  // Los del Modo Jóvenes: el dibujo de cada ruta y dos más
+  | 'cruz'
+  | 'huella'
+  | 'escudo'
+  | 'ola'
+  | 'amigos'
+  | 'ancla'
+  | 'chispa';
 
 export type Sello = {
   id: string;

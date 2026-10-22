@@ -60,6 +60,8 @@ type Body = {
   semana?: Semana;
   /** Id de una palabra del catálogo (src/lib/palabras.ts): su historia por toda la Biblia. */
   palabra?: string;
+  /** «jovenes»: la app está en el Modo Jóvenes (12 a 17 años). */
+  publico?: 'jovenes';
 };
 // Del sermón a tu semana: lo que la persona anotó del sermón del domingo, para cinco días de devocional.
 type Semana = { notas: string; desde?: number; hasta?: number; predicador?: string };
@@ -126,6 +128,16 @@ Reglas de la semana:
 - Nunca escribas una oración para que la persona la rece, ni frases como «Dios te dice hoy…». Ofrece preguntas y pistas para que ella ore y decida con sus palabras.
 - Las preguntas son abiertas, personales y vuelven al texto; ninguna se responde con sí o no.
 - Tono cálido y sobrio, en segunda persona («tú»). Sé breve: cada día se hace en 10 minutos.`;
+const JOVENES_SYSTEM = `
+
+Quien pregunta está usando el Modo Jóvenes de la app: tiene entre 12 y 17 años.
+
+Reglas para jóvenes:
+- Escribe corto y claro, como le hablarías a alguien de secundaria: frases simples, sin palabras técnicas sin explicar (si usas una palabra griega o hebrea, explícala en una línea). Nada de tono infantil ni de sermón.
+- Tu papel es ayudar a entender y hacer buenas preguntas, no decirle qué sentir ni qué hacer. Termina con una o dos preguntas abiertas para que piense por su cuenta.
+- No des consejos sobre temas de adultos (relaciones de pareja, sexualidad, drogas, dinero) más allá de lo que dice el texto; anímale a conversarlo con sus padres, su líder o su pastor.
+- Si menciona que alguien le hace daño, que quiere hacerse daño, que no quiere vivir o algo parecido, deja el estudio a un lado: dile con calidez que no está solo, que hable hoy mismo con un adulto de confianza (sus padres, su líder, un maestro) y que si está en peligro llame a emergencias. No minimices lo que siente ni respondas solo con un versículo.
+- Nunca pidas ni comentes datos personales (nombre completo, escuela, dirección, redes).`;
 
 const PASOS = {
   pasaje: 'observar el pasaje (quién, qué, dónde, cuándo, por qué; palabras repetidas; conectores como «pero», «por tanto», «para que»)',
@@ -869,6 +881,9 @@ export async function POST(request: Request) {
   const herramienta = body.herramienta;
   if (body.enfoque !== undefined && !['devocional', 'profundo'].includes(body.enfoque)) return badRequest('Enfoque no válido');
   const devocional = body.enfoque === 'devocional' && !taller && !herramienta && word === undefined;
+  if (body.publico !== undefined && body.publico !== 'jovenes') return badRequest('Público no válido');
+  // El Taller es para preparar mensajes: no cambia con el modo.
+  const jovenes = body.publico === 'jovenes' && !taller;
   if (
     herramienta !== undefined &&
     (!Object.hasOwn(HERRAMIENTAS, herramienta) || verse !== undefined || taller || semana || turns.length > 0)
@@ -880,7 +895,7 @@ export async function POST(request: Request) {
   // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos. La semana es de cada persona.
   const clave =
     !herramienta && !taller && !semana && turns.length === 0
-      ? [STUDY_VERSION, devocional ? 'devocional' : 'profundo', book.id, chapter, verse ?? '', word ?? ''].join(':')
+      ? [STUDY_VERSION, (devocional ? 'devocional' : 'profundo') + (jovenes ? '-jovenes' : ''), book.id, chapter, verse ?? '', word ?? ''].join(':')
       : null;
 
   if ((herramienta || clave) && !body.nueva) {
@@ -929,7 +944,8 @@ export async function POST(request: Request) {
     ...turns.map((t) => ({ role: t.role, content: t.text })),
   ];
 
-  const system = semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM;
+  const system =
+    (semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) + (jovenes ? JOVENES_SYSTEM : '');
   return streamAnswer(request, docs, messages, system, async (saved) => {
     if (herramienta) await saveTool(herramienta, book.id, chapter, saved);
     else if (clave) await saveStudy(clave, saved);

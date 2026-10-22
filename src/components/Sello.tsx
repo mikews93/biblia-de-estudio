@@ -252,6 +252,56 @@ export function SelloIcono({ dibujo, color }: { dibujo: Dibujo; color: string })
           <Path d="M12 6.5v3M5.5 9.5l2 2M18.5 9.5l-2 2M2.5 13.5h2M19.5 13.5h2" />
         </>
       );
+    case 'cruz': // ¿Quién es Jesús?
+      return <Path d="M12 3v18M7 8h10" />;
+    case 'huella': // huella digital: ¿quién soy?
+      return (
+        <>
+          <Path d="M7.5 18.5c-1-1.8-1.5-3.8-1.5-6a6 6 0 0 1 9.5-4.9" />
+          <Path d="M18 10.5c.3.7.4 1.4.4 2.2 0 2.5-.4 4.6-1.2 6.3" />
+          <Path d="M10 20c-.8-2-1.2-4.3-1.2-7.2a3.2 3.2 0 0 1 6.4 0c0 2.2-.3 4.3-.9 6.2" />
+          <Path d="M12 12.8c0 2.6.3 5 1 7.2" />
+        </>
+      );
+    case 'escudo': // valientes
+      return (
+        <>
+          <Path d="M12 3.5 5 6v5.5c0 4.3 2.9 7.8 7 9 4.1-1.2 7-4.7 7-9V6z" />
+          <Path d="m9 12 2.2 2.2L15.5 10" />
+        </>
+      );
+    case 'ola': // agua tranquila bajo el sol: paz
+      return (
+        <>
+          <Path d="M7.5 11a4.5 4.5 0 0 1 9 0" />
+          <Path d="M12 3.5v1.6M5.6 6.1l1.1 1.1M18.4 6.1l-1.1 1.1" />
+          <Path d="M3 14.5c1.5 0 1.5 1 3 1s1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1" />
+          <Path d="M5 18.5c1.4 0 1.4.9 2.8.9s1.4-.9 2.8-.9 1.4.9 2.8.9 1.4-.9 2.8-.9 1.4.9 2.8.9" />
+        </>
+      );
+    case 'amigos': // amigos y familia
+      return (
+        <>
+          <Circle cx={9} cy={8.5} r={3} />
+          <Path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8" />
+          <Circle cx={16.5} cy={9.5} r={2.4} />
+          <Path d="M15.8 14.3c2.3.1 4 1.6 4.7 4.2" />
+        </>
+      );
+    case 'ancla': // a fondo
+      return (
+        <>
+          <Circle cx={12} cy={5.5} r={2} />
+          <Path d="M12 7.5v13M8.5 11h7M4.5 13.5c0 3.8 3.4 7 7.5 7s7.5-3.2 7.5-7" />
+        </>
+      );
+    case 'chispa': // estrella: el primer paso
+      return (
+        <>
+          <Path d="M12 3.5c.6 4.3 2.2 5.9 6.5 6.5-4.3.6-5.9 2.2-6.5 6.5-.6-4.3-2.2-5.9-6.5-6.5 4.3-.6 5.9-2.2 6.5-6.5z" fill={color} />
+          <Path d="M18 16.5v4M16 18.5h4" />
+        </>
+      );
     default:
       return <Rect x={6} y={6} width={12} height={12} rx={3} />;
   }

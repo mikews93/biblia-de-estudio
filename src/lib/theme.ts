@@ -62,9 +62,13 @@ export type Settings = {
   enfoque: 'devocional' | 'profundo';
   /** Versiones elegidas para comparar (vacío: las de src/lib/comparar.ts). */
   comparar: string[];
+  /** Para quién se ve la app: para todos o el Modo Jóvenes (src/lib/jovenes.ts). */
+  modo: Modo;
 };
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [] };
+export type Modo = 'general' | 'jovenes';
+
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general' };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };
@@ -133,6 +137,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 }
 
 export const useSettings = () => useContext(SettingsContext);
+
+/** Los ajustes fuera de React (por ejemplo, para saber el modo al pedir un estudio a la IA). */
+export const getSettings = () => current;
 
 export function useColors(): Colors {
   const scheme = useColorScheme();
