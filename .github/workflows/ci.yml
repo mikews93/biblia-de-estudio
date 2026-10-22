@@ -1,13 +1,34 @@
 name: CI
 
+# Para no gastar minutos: no corre si solo cambian textos o lo que graban las acciones de audio e ilustraciones,
+# y un push nuevo al mismo PR cancela la ejecución anterior.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - public/audio/**
+      - pipeline/audio_dramatizado/**
+      - pipeline/audio_original/**
+      - pipeline/podcast/**
+      - pipeline/ilustraciones/**
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - public/audio/**
+      - pipeline/audio_dramatizado/**
+      - pipeline/audio_original/**
+      - pipeline/podcast/**
+      - pipeline/ilustraciones/**
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       # Base de datos para las pruebas de api/comunidades.ts y los flujos e2e con cuenta
       postgres:
