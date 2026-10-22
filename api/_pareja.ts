@@ -1,6 +1,8 @@
 // «En pareja»: dos cuentas se unen con un código de invitación y hacen juntas los planes de src/lib/parejaPlanes.ts.
 // Cada uno responde la pregunta del día por su cuenta y la respuesta del otro se ve cuando los dos respondieron;
-// cada uno deja un pedido de oración y el otro marca «oré por ti». Todo es privado para los dos.
+// algunos días cada uno también adivina lo que respondió el otro, y el otro marca si acertó (los aciertos se
+// cuentan para los dos, sin competir); cada uno deja un pedido de oración y el otro marca «oré por ti». Todo es
+// privado para los dos.
 //
 // El guion bajo hace que Vercel no la publique como función: sus acciones (las que empiezan por «pareja») van por
 // /api/comunidades, con la misma cuenta y la misma base de Neon.
@@ -11,13 +13,16 @@ import { randomInt } from 'node:crypto';
 import type postgres from 'postgres';
 
 import { cordon, progreso } from '../src/lib/pareja';
-import { DIAS_PLAN, type Etapa, planPareja, planesPara } from '../src/lib/parejaPlanes';
+import { DIAS_PLAN, type Etapa, diaDePlan, planPareja, planesPara } from '../src/lib/parejaPlanes';
 import { notifyUser } from './_push';
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
 const MAX_RESPUESTA = 1500;
 const MAX_PEDIDO = 300;
+const MAX_ADIVINO = 800;
+/** Lo que el otro marca sobre mi adivinanza. */
+const ACIERTOS = [0, 1, 2] as const; // no, casi, ¡acertaste!
 const ETAPAS: Etapa[] = ['novios', 'casados'];
 
 export const PAREJA_SCHEMA = `
@@ -42,6 +47,8 @@ create table if not exists pareja_respuestas (
   creado timestamptz not null default now(),
   primary key (pareja_id, plan, dia, usuario_id)
 );
+alter table pareja_respuestas add column if not exists adivino text;
+alter table pareja_respuestas add column if not exists acierto smallint;
 create table if not exists pareja_pedidos (
   pareja_id uuid not null references parejas on delete cascade,
   usuario_id uuid not null references usuarios on delete cascade,
@@ -136,6 +143,9 @@ export function parejaActions({ auth, fail }: Helpers): Record<string, (ctx: Ctx
       select usuario_id, texto from pareja_pedidos where pareja_id = ${fila.id}`;
     const orado = await sql<{ usuario_id: string }[]>`
       select usuario_id from pareja_orado where pareja_id = ${fila.id} and fecha = ${hoy}`;
+    const [adivinanzas] = await sql<{ marcadas: number; aciertos: number }[]>`
+      select count(acierto)::int as marcadas, count(*) filter (where acierto = 2)::int as aciertos
+      from pareja_respuestas where pareja_id = ${fila.id}`;
     return {
       pareja: {
         ...base,
@@ -156,6 +166,7 @@ export function parejaActions({ auth, fail }: Helpers): Record<string, (ctx: Ctx
         },
         oreHoy: orado.some((o) => o.usuario_id === yo.id),
         oroHoy: orado.some((o) => o.usuario_id === otroId),
+        adivinanzas,
       },
     };
   }
@@ -246,8 +257,8 @@ export function parejaActions({ auth, fail }: Helpers): Record<string, (ctx: Ctx
       const { fila, otro } = await unida(sql, yo);
       const plan = planDe(fila, body.plan);
       const dia = diaDe(body.dia);
-      const rows = await sql<{ usuario_id: string; texto: string; fecha: string }[]>`
-        select usuario_id, texto, to_char(fecha, 'YYYY-MM-DD') as fecha from pareja_respuestas
+      const rows = await sql<{ usuario_id: string; texto: string; fecha: string; adivino: string | null; acierto: number | null }[]>`
+        select usuario_id, texto, to_char(fecha, 'YYYY-MM-DD') as fecha, adivino, acierto from pareja_respuestas
         where pareja_id = ${fila.id} and plan = ${plan.id} and dia = ${dia}`;
       const mia_ = rows.find((r) => r.usuario_id === yo.id);
       const suya = rows.find((r) => r.usuario_id === otro);
@@ -256,9 +267,9 @@ export function parejaActions({ auth, fail }: Helpers): Record<string, (ctx: Ctx
       const p = progreso(delPlan, hoyDe(body));
       return {
         abierto: !!delPlan[dia] || !!mia_ || (dia === p.dia && p.abierto),
-        mia: mia_ ? { texto: mia_.texto, fecha: mia_.fecha } : null,
-        // La respuesta del otro solo se manda a quien ya respondió.
-        suya: suya && mia_ ? { texto: suya.texto, fecha: suya.fecha } : null,
+        mia: mia_ ? { texto: mia_.texto, fecha: mia_.fecha, adivino: mia_.adivino, acierto: mia_.acierto } : null,
+        // La respuesta del otro (y lo que adivinó de mí) solo se manda a quien ya respondió.
+        suya: suya && mia_ ? { texto: suya.texto, fecha: suya.fecha, adivino: suya.adivino, acierto: suya.acierto } : null,
         suyaEspera: !!suya && !mia_,
       };
     },
@@ -270,15 +281,20 @@ export function parejaActions({ auth, fail }: Helpers): Record<string, (ctx: Ctx
       const dia = diaDe(body.dia);
       const hoy = hoyDe(body);
       const t = texto(body.texto, MAX_RESPUESTA, 'tu respuesta');
+      // La adivinanza es opcional, y solo en los días que la piden.
+      const crudo = typeof body.adivino === 'string' ? body.adivino.trim() : '';
+      const adivino = crudo && diaDePlan(plan, dia)?.adivina ? texto(crudo, MAX_ADIVINO, 'lo que crees') : null;
       const delPlan: Record<number, string> = {};
       for (const r of await hechos(sql, fila.id, plan.id)) delPlan[r.dia] = r.fecha;
       const p = progreso(delPlan, hoy);
       const [ya] = await sql`select 1 from pareja_respuestas where pareja_id = ${fila.id} and plan = ${plan.id} and dia = ${dia} and usuario_id = ${yo.id}`;
       if (!ya && !(dia === p.dia && p.abierto)) throw fail('Este día todavía no se abre.', 409);
       await sql`
-        insert into pareja_respuestas (pareja_id, plan, dia, usuario_id, texto, fecha)
-        values (${fila.id}, ${plan.id}, ${dia}, ${yo.id}, ${t}, ${hoy})
-        on conflict (pareja_id, plan, dia, usuario_id) do update set texto = excluded.texto`;
+        insert into pareja_respuestas (pareja_id, plan, dia, usuario_id, texto, fecha, adivino)
+        values (${fila.id}, ${plan.id}, ${dia}, ${yo.id}, ${t}, ${hoy}, ${adivino})
+        on conflict (pareja_id, plan, dia, usuario_id) do update
+        set texto = excluded.texto, adivino = excluded.adivino,
+          acierto = case when pareja_respuestas.adivino is not distinct from excluded.adivino then pareja_respuestas.acierto end`;
       // Al responder el segundo, se avisa al primero que ya pueden ver los dos. Nunca «tu pareja respondió y tú no».
       if (!ya) {
         const [suya] = await sql`select 1 from pareja_respuestas where pareja_id = ${fila.id} and plan = ${plan.id} and dia = ${dia} and usuario_id = ${otro}`;
@@ -300,6 +316,24 @@ export function parejaActions({ auth, fail }: Helpers): Record<string, (ctx: Ctx
       const plan = planDe(fila, body.plan);
       const dia = diaDe(body.dia);
       await sql`delete from pareja_respuestas where pareja_id = ${fila.id} and plan = ${plan.id} and dia = ${dia} and usuario_id = ${yo.id}`;
+      return {};
+    },
+
+    /** Marco si mi pareja acertó lo que adivinó de mí (0 no, 1 casi, 2 sí). Solo con los dos respondidos. */
+    async parejaAcierto({ sql, body, request }) {
+      const yo = await auth(sql, request);
+      const { fila, otro } = await unida(sql, yo);
+      const plan = planDe(fila, body.plan);
+      const dia = diaDe(body.dia);
+      const valor = Number(body.valor);
+      if (!ACIERTOS.includes(valor as 0 | 1 | 2)) throw fail('Valor no válido');
+      const [mia_] = await sql`select 1 from pareja_respuestas where pareja_id = ${fila.id} and plan = ${plan.id} and dia = ${dia} and usuario_id = ${yo.id}`;
+      if (!mia_) throw fail('Responde primero.', 409);
+      const hecho = await sql`
+        update pareja_respuestas set acierto = ${valor}
+        where pareja_id = ${fila.id} and plan = ${plan.id} and dia = ${dia} and usuario_id = ${otro} and adivino is not null
+        returning 1`;
+      if (!hecho.length) throw fail('No hay nada que marcar.', 404);
       return {};
     },
 

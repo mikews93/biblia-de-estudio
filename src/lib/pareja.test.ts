@@ -100,9 +100,17 @@ describe('planes en pareja', () => {
     }
   });
 
+  it('las adivinanzas se leen después de «¿Qué crees que va a escribir…?»', () => {
+    const adivinas = PLANES_PAREJA.flatMap((p) => p.dias.map((d) => d.adivina).filter(Boolean)) as string[];
+    expect(adivinas.length).toBeGreaterThan(10);
+    // Empiezan en minúscula y sin punto final: la pantalla les pone mayúscula y punto
+    for (const a of adivinas) expect(a, a).toMatch(/^[a-záéíóúñ].*[^.]$/);
+  });
+
   it('novios y casados tienen planes propios y compartidos', () => {
     expect(planesPara('novios').map((p) => p.id)).toContain('antes-del-si');
     expect(planesPara('novios').map((p) => p.id)).toContain('hacia-el-hogar');
+    expect(planesPara('novios').map((p) => p.id)).toContain('asi-es-el-amor');
     expect(planesPara('novios').map((p) => p.id)).not.toContain('honra');
     expect(planesPara('casados').map((p) => p.id)).toContain('honra');
     expect(planesPara('casados')[0].para).toBe('ambos');

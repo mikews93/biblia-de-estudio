@@ -26,9 +26,13 @@ export type Pareja = {
   pedidos?: { mio: string | null; suyo: string | null };
   oreHoy?: boolean;
   oroHoy?: boolean;
+  /** Las adivinanzas que el otro ya marcó, y cuántas acertaron (de los dos juntos). */
+  adivinanzas?: { marcadas: number; aciertos: number };
 };
 
-export type Respuesta = { texto: string; fecha: string };
+/** 0 no, 1 casi, 2 ¡acertaste! (lo marca quien fue adivinado). */
+export type Acierto = 0 | 1 | 2;
+export type Respuesta = { texto: string; fecha: string; adivino: string | null; acierto: Acierto | null };
 export type DiaRespuestas = { abierto: boolean; mia: Respuesta | null; suya: Respuesta | null; suyaEspera: boolean };
 
 let current: Pareja | null | undefined;
@@ -68,13 +72,18 @@ export const verCodigo = (codigo: string) =>
 
 export const leerDia = (plan: string, dia: number) => api<DiaRespuestas>('parejaDia', { plan, dia });
 
-export async function responder(plan: string, dia: number, texto: string) {
-  await api('parejaResponder', { plan, dia, texto });
+export async function responder(plan: string, dia: number, texto: string, adivino?: string) {
+  await api('parejaResponder', { plan, dia, texto, adivino });
   await refreshPareja().catch(() => {});
 }
 
 export async function borrarRespuesta(plan: string, dia: number) {
   await api('parejaBorrarRespuesta', { plan, dia });
+  await refreshPareja().catch(() => {});
+}
+
+export async function marcarAcierto(plan: string, dia: number, valor: Acierto) {
+  await api('parejaAcierto', { plan, dia, valor });
   await refreshPareja().catch(() => {});
 }
 

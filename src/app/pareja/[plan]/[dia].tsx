@@ -7,10 +7,10 @@ import StudyPanel from '@/components/StudyPanel';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, Field, text } from '@/components/comunidad/ui';
-import { CheckIcon, LockIcon, PrayIcon, SparkIcon } from '@/components/icons';
+import { CheckIcon, HeartIcon, LockIcon, PrayIcon, SparkIcon } from '@/components/icons';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
-import { type DiaRespuestas, borrarRespuesta, leerDia, ore, responder, usePareja } from '@/lib/parejaApi';
+import { type Acierto, type DiaRespuestas, borrarRespuesta, leerDia, marcarAcierto, ore, responder, usePareja } from '@/lib/parejaApi';
 import { DIAS_PLAN, type PasajePareja, planPareja } from '@/lib/parejaPlanes';
 import { verseHref } from '@/lib/routes';
 import { Colors, serif, useColors } from '@/lib/theme';
@@ -125,6 +125,7 @@ export default function DiaParejaScreen() {
       ) : (
         <Paso numero={2} titulo="Para hoy" colors={colors}>
           <Text style={[text.body, { color: colors.text }]}>{dia!.practica}</Text>
+          {dia!.cuidado && <Cuidado colors={colors} />}
         </Paso>
       )}
 
@@ -135,7 +136,17 @@ export default function DiaParejaScreen() {
         ) : !r ? (
           <ActivityIndicator color={colors.accent} style={{ marginVertical: 20 }} />
         ) : (
-          <Respuestas key={r.mia?.texto ?? ''} plan={plan.id} dia={n} r={r} nombre={nombre} foto={pareja?.otro?.foto ?? null} colors={colors} onCambio={cargar} />
+          <Respuestas
+            key={`${r.mia?.texto ?? ''}|${r.mia?.adivino ?? ''}`}
+            plan={plan.id}
+            dia={n}
+            r={r}
+            adivina={dia?.adivina}
+            nombre={nombre}
+            foto={pareja?.otro?.foto ?? null}
+            colors={colors}
+            onCambio={cargar}
+          />
         )}
       </Paso>
 
@@ -244,6 +255,25 @@ function Pasos({ pasos, colors }: { pasos: { titulo: string; texto: string }[]; 
 }
 
 /**
+ * Para los temas que en una relación con abuso podrían leerse como «aguanta»: el amor no pide soportar miedo ni
+ * violencia, y la ayuda está a un toque (la misma pantalla privada de /pareja/ayuda).
+ */
+function Cuidado({ colors }: { colors: Colors }) {
+  return (
+    <Pressable
+      onPress={() => navigate(() => router.push('/pareja/ayuda' as never), 'forward')}
+      accessibilityRole="link"
+      style={({ pressed }) => [styles.cuidado, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+    >
+      <Text style={[text.small, { color: colors.muted, lineHeight: 19 }]}>
+        Esto es para parejas donde los dos están seguros. Si en tu relación hay miedo, control, amenazas o golpes, Dios no te pide
+        aguantarlo. <Text style={{ color: colors.accent, fontWeight: '600' }}>Busca ayuda ›</Text>
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
  * Lo que escribió cada uno. La respuesta del otro llega del servidor solo cuando yo ya respondí; antes se ve
  * un candado (y, si ya respondió, la invitación a responder para verla).
  */
@@ -251,6 +281,7 @@ function Respuestas({
   plan,
   dia,
   r,
+  adivina,
   nombre,
   foto,
   colors,
@@ -259,6 +290,8 @@ function Respuestas({
   plan: string;
   dia: number;
   r: DiaRespuestas;
+  /** Qué se adivina este día, si se adivina. */
+  adivina?: string;
   nombre: string;
   foto: string | null;
   colors: Colors;
@@ -266,6 +299,7 @@ function Respuestas({
 }) {
   const { usuario } = useAccount();
   const [borrador, setBorrador] = useState(r.mia?.texto ?? '');
+  const [adivino, setAdivino] = useState(r.mia?.adivino ?? '');
   const [editando, setEditando] = useState(!r.mia);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -278,7 +312,7 @@ function Respuestas({
     setBusy(true);
     setError(null);
     try {
-      await responder(plan, dia, borrador);
+      await responder(plan, dia, borrador, adivina ? adivino : undefined);
       onCambio();
     } catch (e) {
       setError((e as Error).message);
@@ -311,6 +345,22 @@ function Respuestas({
             placeholder="Escribe con calma. Solo lo verán ustedes dos."
             style={{ minHeight: 110, fontFamily: serif, fontSize: 16, lineHeight: 24 }}
           />
+          {adivina && (
+            <View style={[styles.adivinaBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.kicker, { color: colors.warm }]}>Y AHORA, ADIVINA</Text>
+              <Text style={[text.body, { color: colors.text, marginTop: 4, marginBottom: 10 }]}>
+                ¿Qué crees que va a escribir {nombre}? {adivina[0].toUpperCase() + adivina.slice(1)}.
+              </Text>
+              <Field
+                value={adivino}
+                onChangeText={setAdivino}
+                multiline
+                maxLength={800}
+                placeholder="Opcional. Cuando respondan los dos, verán cuánto se conocen."
+                style={{ minHeight: 70, fontFamily: serif, fontSize: 16, lineHeight: 24 }}
+              />
+            </View>
+          )}
           {error && <Text style={[text.small, { color: colors.warm }]}>{error}</Text>}
           <View style={styles.row}>
             <Button label={r.mia ? 'Guardar cambios' : 'Guardar mi respuesta'} onPress={guardar} busy={busy} disabled={!borrador.trim()} style={{ flex: 1 }} />
@@ -320,6 +370,16 @@ function Respuestas({
       ) : (
         r.mia && (
           <Burbuja autor="Tú" nombre={usuario?.nombre ?? 'Tú'} foto={usuario?.foto ?? null} texto={r.mia.texto} colors={colors}>
+            {r.mia.adivino && (
+              <Adivinanza
+                titulo={`Lo que creíste de ${nombre}`}
+                texto={r.mia.adivino}
+                // Lo que marcó el otro solo existe cuando ya respondió
+                acierto={r.suya ? r.mia.acierto : null}
+                espera={r.suya ? `${nombre} todavía no marca si acertaste.` : undefined}
+                colors={colors}
+              />
+            )}
             <View style={[styles.row, { marginTop: 8 }]}>
               <Pressable onPress={() => setEditando(true)} hitSlop={6}>
                 <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>Editar</Text>
@@ -335,7 +395,20 @@ function Respuestas({
       {r.mia &&
         (r.suya ? (
           <Appear from={14}>
-            <Burbuja autor={nombre} nombre={nombre} foto={foto} texto={r.suya.texto} colors={colors} suya />
+            <Burbuja autor={nombre} nombre={nombre} foto={foto} texto={r.suya.texto} colors={colors} suya>
+              {r.suya.adivino && (
+                <Adivinanza
+                  titulo={`Lo que ${nombre} creyó de ti`}
+                  texto={r.suya.adivino}
+                  acierto={r.suya.acierto}
+                  marcar={async (v) => {
+                    await marcarAcierto(plan, dia, v).catch(() => {});
+                    onCambio();
+                  }}
+                  colors={colors}
+                />
+              )}
+            </Burbuja>
           </Appear>
         ) : (
           <View style={[styles.cerrada, { borderColor: colors.border }]}>
@@ -345,6 +418,76 @@ function Respuestas({
             </Text>
           </View>
         ))}
+    </View>
+  );
+}
+
+const MARCAS: { valor: Acierto; label: string }[] = [
+  { valor: 2, label: '¡Acertó!' },
+  { valor: 1, label: 'Casi' },
+  { valor: 0, label: 'No tanto' },
+];
+const RESULTADO = ['No tanto, pero ya lo saben', 'Casi', '¡Acertó!'];
+
+/**
+ * Una adivinanza dentro de la burbuja. Quien fue adivinado la marca (con `marcar`); los aciertos se suman para
+ * los dos, así que no hay nada que ganarle al otro.
+ */
+function Adivinanza({
+  titulo,
+  texto,
+  acierto,
+  marcar,
+  espera,
+  colors,
+}: {
+  titulo: string;
+  texto: string;
+  acierto: Acierto | null;
+  marcar?: (v: Acierto) => Promise<void>;
+  espera?: string;
+  colors: Colors;
+}) {
+  const [busy, setBusy] = useState<Acierto | null>(null);
+  return (
+    <View style={[styles.adivinanza, { borderTopColor: colors.border }]}>
+      <Text style={[styles.kicker, { color: colors.muted }]}>{titulo.toUpperCase()}</Text>
+      <Text style={[styles.respuesta, { color: colors.text, fontSize: 16, marginTop: 4 }]}>{texto}</Text>
+      {marcar ? (
+        <View style={[styles.row, { marginTop: 10, flexWrap: 'wrap', gap: 8 }]}>
+          {MARCAS.map((m) => {
+            const on = acierto === m.valor;
+            return (
+              <Pressable
+                key={m.valor}
+                disabled={busy !== null}
+                onPress={async () => {
+                  setBusy(m.valor);
+                  await marcar(m.valor);
+                  setBusy(null);
+                }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: on }}
+                style={({ pressed }) => [
+                  styles.marca,
+                  { borderColor: on ? colors.warm : colors.border, backgroundColor: on ? colors.warm : 'transparent' },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                {on && m.valor === 2 && <HeartIcon filled color={colors.surface} size={13} />}
+                <Text style={{ color: on ? colors.surface : colors.text, fontSize: 13, fontWeight: '600' }}>{busy === m.valor ? '…' : m.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : acierto !== null ? (
+        <View style={[styles.row, { marginTop: 8, gap: 6 }]}>
+          {acierto === 2 && <HeartIcon filled color={colors.warm} size={14} />}
+          <Text style={{ color: acierto === 2 ? colors.warm : colors.muted, fontSize: 13, fontWeight: '700' }}>{RESULTADO[acierto]}</Text>
+        </View>
+      ) : (
+        espera && <Text style={[text.small, { color: colors.muted, marginTop: 6 }]}>{espera}</Text>
+      )}
     </View>
   );
 }
@@ -405,5 +548,9 @@ const styles = StyleSheet.create({
   respuesta: { fontFamily: serif, fontSize: 17, lineHeight: 25 },
   encPaso: { flexDirection: 'row', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14 },
   check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  cuidado: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 12, paddingTop: 10 },
+  adivinaBox: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14 },
+  adivinanza: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 12, paddingTop: 10 },
+  marca: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   next: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 18, marginTop: 8 },
 });
