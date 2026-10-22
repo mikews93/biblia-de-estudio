@@ -55,7 +55,7 @@ jobs:
             git fetch -q origin "$GITHUB_REF_NAME"
             git reset -q --hard "origin/$GITHUB_REF_NAME"
             mkdir -p public/audio/original
-            cp -n "$tmp"/*.json public/audio/original/
+            cp "$tmp"/*.json public/audio/original/
             python3 - <<'PY'
           import json, pathlib
           root = pathlib.Path('public/audio')
