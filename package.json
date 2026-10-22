@@ -55,5 +55,6 @@
     "iconos": "node pipeline/iconos.mjs",
     "lint": "expo lint"
   },
-  "private": true
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE"
 }
