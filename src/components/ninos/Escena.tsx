@@ -14,7 +14,7 @@ export const PROPORCION = ANCHO / ALTO;
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 /** Las historias que ya tienen ilustración en public/ninos/. */
-export const ILUSTRADAS = new Set<string>([]);
+export const ILUSTRADAS = new Set<string>(['creacion', 'arcoiris', 'mar', 'david', 'daniel', 'jonas', 'navidad', 'tormenta', 'panes', 'zaqueo', 'oveja', 'resucito']);
 
 type Props = { id: string; colors: Colors; style?: ViewStyle; titulo?: string };
 

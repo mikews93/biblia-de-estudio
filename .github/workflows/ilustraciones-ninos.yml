@@ -4,12 +4,9 @@ name: Ilustraciones del Espacio Niños
 # (pipeline/ilustraciones/) y las sube a la misma rama. Las ya generadas no se vuelven a pedir.
 # Necesita los secretos CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_AI_API_TOKEN (los mismos del audio dramatizado).
 
+# Se lanza a mano (Actions › Run workflow) para no fallar en cada push mientras los secretos no estén.
 on:
-  push:
-    paths:
-      - pipeline/ilustraciones/escenas.json
-      - pipeline/ilustraciones/generar.py
-      - .github/workflows/ilustraciones-ninos.yml
+  workflow_dispatch:
 
 permissions:
   contents: write
