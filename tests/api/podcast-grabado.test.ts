@@ -69,6 +69,12 @@ beforeAll(async () => {
 
 afterAll(async () => {
   eleven.close();
+  // Las e2e usan la misma base de datos en CI: no dejar grabado ni guardado lo que estas pruebas prepararon.
+  if (sql) {
+    await sql`delete from podcast_grabado where libro in ('oba', 'phm', 'jud', '2jn', '3jn', 'palabra:jesed')`;
+    await sql`delete from herramientas_ia where (herramienta = 'palabra-podcast' and libro in ('jesed', 'agape'))
+      or (herramienta = 'podcast' and libro in ('oba', 'phm', 'jud', '2jn', '3jn'))`;
+  }
   await sql?.end();
 });
 
