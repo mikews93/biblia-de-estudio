@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import type { ReactNode } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,17 +10,19 @@ import { serif, useColors } from '@/lib/theme';
 import { fixedInTransition, navigate } from '@/lib/transition';
 
 export const HEADER_HEIGHT = 52;
+/** Alto de la barra de herramientas del capítulo, bajo la fila del título. */
+export const TOOLBAR_HEIGHT = 62;
 
-type Props = { title: string; progress: number; onSettings: () => void };
+type Props = { title: string; progress: number; onSettings: () => void; toolbar?: ReactNode };
 
 /**
  * Cabecera del lector: libro y capítulo, buscar y ajustes. Se aparta hacia arriba al bajar
  * leyendo (src/lib/chrome.ts) y deja a la vista la línea de avance del capítulo.
  */
-export default function ReaderHeader({ title, progress, onSettings }: Props) {
+export default function ReaderHeader({ title, progress, onSettings, toolbar }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const translateY = chrome.interpolate({ inputRange: [0, 1], outputRange: [0, -HEADER_HEIGHT] });
+  const translateY = chrome.interpolate({ inputRange: [0, 1], outputRange: [0, -(HEADER_HEIGHT + (toolbar ? TOOLBAR_HEIGHT : 0))] });
   const fade = chrome.interpolate({ inputRange: [0, 0.6], outputRange: [1, 0], extrapolate: 'clamp' });
   const back = Platform.OS !== 'web' && router.canGoBack();
 
@@ -69,6 +72,7 @@ export default function ReaderHeader({ title, progress, onSettings }: Props) {
             </Pressable>
           </View>
         </Animated.View>
+        {toolbar && <Animated.View style={[styles.toolbar, { opacity: fade }]}>{toolbar}</Animated.View>}
         <View style={[styles.track, { backgroundColor: colors.border }, fixedInTransition('progreso')]}>
           <View style={[styles.bar, { backgroundColor: colors.accent, width: `${progress * 100}%` }]} />
         </View>
@@ -88,6 +92,7 @@ const styles = StyleSheet.create({
   right: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 'auto' },
   iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   aa: { fontSize: 18, lineHeight: 22 },
+  toolbar: { height: TOOLBAR_HEIGHT, justifyContent: 'center', paddingBottom: 6 },
   track: { height: 2 },
   bar: { height: 2 },
   notch: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 11 },

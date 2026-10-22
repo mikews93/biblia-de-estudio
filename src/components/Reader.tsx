@@ -44,7 +44,7 @@ import { CapituloRow, fichaHref, fichasDelVersiculo, getFichasCapitulo, marcarNo
 import FichaChips from '@/components/FichaChips';
 import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
-import ReaderHeader, { HEADER_HEIGHT } from '@/components/ReaderHeader';
+import ReaderHeader, { HEADER_HEIGHT, TOOLBAR_HEIGHT } from '@/components/ReaderHeader';
 import ToolButton from '@/components/ToolButton';
 import ChapterTools, { type ChapterTool, type ToolGroup, type Variant } from '@/components/ChapterTools';
 import {
@@ -169,7 +169,7 @@ export default function Reader() {
   useEffect(() => {
     const y = verseY.current[spokenVerse];
     if (!listening || !spokenVerse || y === undefined || !getPlayer().playing) return;
-    scroll.current?.scrollTo({ y: Math.max(0, y - insets.top - HEADER_HEIGHT - 24), animated: true });
+    scroll.current?.scrollTo({ y: Math.max(0, y - insets.top - HEADER_HEIGHT - TOOLBAR_HEIGHT - 24), animated: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar de versículo
   }, [listening, spokenVerse]);
 
@@ -392,7 +392,7 @@ export default function Reader() {
   ];
   // Prototipo: ?herramientas=pestanas|puertas|mesa
   const toolVariant: Variant =
-    (Platform.OS === 'web' && (new URLSearchParams(globalThis.location?.search).get('herramientas') as Variant)) || 'mesa';
+    (Platform.OS === 'web' && (new URLSearchParams(globalThis.location?.search).get('herramientas') as Variant)) || 'barra';
   const toolGroups: ToolGroup[] = [
     { key: 'escuchar', title: 'Escuchar', tools: listenTools },
     { key: 'original', title: book ? (original(book).rtl ? 'Hebreo' : 'Griego') : 'Original', tools: originalTools },
@@ -462,13 +462,18 @@ export default function Reader() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title, headerShown: false }} />
-      <ReaderHeader title={title} progress={progress} onSettings={() => setShowSettings(true)} />
+      <ReaderHeader
+        title={title}
+        progress={progress}
+        onSettings={() => setShowSettings(true)}
+        toolbar={toolVariant === 'barra' && book ? <ChapterTools groups={toolGroups} onStudy={() => setStudy({})} colors={colors} variant="barra" /> : undefined}
+      />
 
       <ScrollView
         ref={scroll}
         // En la web el gesto horizontal es para pasar la hoja (usePageSwipe): el navegador solo desplaza en vertical.
         style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : undefined}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + 10 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + (toolVariant === 'barra' ? TOOLBAR_HEIGHT : 0) + 10 }]}
         scrollEventThrottle={16}
         onContentSizeChange={(_, height) => {
           // De vuelta al capítulo de antes, en cuanto el texto ocupa lo bastante se deja donde estaba.
@@ -515,31 +520,7 @@ export default function Reader() {
               </Pressable>
             </View>
 
-            <Appear delay={40} style={styles.studyWrap}>
-              <Pressable
-                onPress={() => setStudy({})}
-                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                  styles.study,
-                  { backgroundColor: colors.accentSoft, borderColor: hovered ? colors.accent : colors.accentSoft },
-                  pressed && styles.pressedSoft,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Estudiar este capítulo"
-              >
-                <View style={[styles.studyIcon, { backgroundColor: colors.accent }]}>
-                  <SparkIcon color={colors.surface} size={20} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.studyTitle, { color: colors.accent }]}>Estudiar este capítulo</Text>
-                  <Text style={[styles.studySub, { color: colors.muted }]} numberOfLines={1}>
-                    Contexto, preguntas y fuentes
-                  </Text>
-                </View>
-                <ChevronRightIcon color={colors.accent} size={20} />
-              </Pressable>
-            </Appear>
-
-            <ChapterTools groups={toolGroups} colors={colors} variant={toolVariant} />
+            {toolVariant === 'dock' && <ChapterTools groups={toolGroups} onStudy={() => setStudy({})} colors={colors} variant="dock" />}
             {interlinearOn && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
                 {listening
