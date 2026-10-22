@@ -44,8 +44,9 @@ import { CapituloRow, fichaHref, fichasDelVersiculo, getFichasCapitulo, marcarNo
 import FichaChips from '@/components/FichaChips';
 import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
-import ReaderHeader, { HEADER_HEIGHT } from '@/components/ReaderHeader';
+import ReaderHeader, { HEADER_HEIGHT, TOOLBAR_HEIGHT } from '@/components/ReaderHeader';
 import ToolButton from '@/components/ToolButton';
+import ChapterTools, { type ChapterTool, type ToolGroup } from '@/components/ChapterTools';
 import {
   CardsIcon,
   CheckIcon,
@@ -56,6 +57,7 @@ import {
   CommentaryIcon,
   CompareIcon,
   DramaIcon,
+  InterlinearIcon,
   LecternIcon,
   LinkIcon,
   ListenIcon,
@@ -167,7 +169,7 @@ export default function Reader() {
   useEffect(() => {
     const y = verseY.current[spokenVerse];
     if (!listening || !spokenVerse || y === undefined || !getPlayer().playing) return;
-    scroll.current?.scrollTo({ y: Math.max(0, y - insets.top - HEADER_HEIGHT - 24), animated: true });
+    scroll.current?.scrollTo({ y: Math.max(0, y - insets.top - HEADER_HEIGHT - TOOLBAR_HEIGHT - 24), animated: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar de versículo
   }, [listening, spokenVerse]);
 
@@ -305,36 +307,61 @@ export default function Reader() {
   const title = book ? `${book.name} ${chapter}` : '';
   const version = versions.find((v) => v.id === settings.version);
 
-  const chapterTools = [
+  const listenTools: ChapterTool[] = [
     {
       key: 'escuchar',
-      label: 'Escuchar',
+      label: 'Lectura',
       hint: 'Escuchar la lectura del capítulo',
-      icon: (c: string) => <ListenIcon color={c} size={22} />,
+      icon: (c: string) => <ListenIcon color={c} size={20} />,
       onPress: () => playChapter(bookId, chapter, title),
     },
-    ...(catalog.original.includes(recordingId(bookId, chapter)) && book
-      ? [
-          {
-            key: 'original',
-            label: original(book).rtl ? 'Hebreo' : 'Griego',
-            hint: `Escuchar el capítulo en ${original(book).name}, con cada palabra iluminada en el interlineal`,
-            icon: (c: string) => <OriginalIcon color={c} size={22} letter={original(book).icon} />,
-            onPress: () => playOriginal(bookId, chapter, title),
-          },
-        ]
-      : []),
     ...(catalog.dramatizado.includes(recordingId(bookId, chapter))
       ? [
           {
             key: 'dramatizado',
             label: 'Dramatizado',
             hint: 'Escuchar el capítulo dramatizado, con voces, efectos y música',
-            icon: (c: string) => <DramaIcon color={c} size={22} />,
+            icon: (c: string) => <DramaIcon color={c} size={20} />,
             onPress: () => playDramatized(bookId, chapter, title),
           },
         ]
       : []),
+    {
+      key: 'podcast',
+      label: 'Pódcast',
+      hint: 'Resumen del capítulo en audio, como una conversación',
+      icon: (c: string) => <TalkIcon color={c} size={20} />,
+      onPress: () => tool('podcast'),
+    },
+  ];
+  const originalTools: ChapterTool[] = book
+    ? [
+        ...(book.interlinear
+          ? [
+              {
+                key: 'interlineal',
+                label: 'Interlineal',
+                hint: `Ver cada palabra en ${original(book).name} debajo del texto, con su significado`,
+                icon: (c: string) => <InterlinearIcon color={c} size={22} letter={original(book).icon} />,
+                onPress: () => update({ study: !settings.study }),
+                on: settings.study,
+              },
+            ]
+          : []),
+        ...(catalog.original.includes(recordingId(bookId, chapter))
+          ? [
+              {
+                key: 'original',
+                label: `Oír en ${original(book).rtl ? 'hebreo' : 'griego'}`,
+                hint: `Escuchar el capítulo en ${original(book).name}, con cada palabra iluminada en el interlineal`,
+                icon: (c: string) => <OriginalIcon color={c} size={20} letter={original(book).icon} />,
+                onPress: () => playOriginal(bookId, chapter, title),
+              },
+            ]
+          : []),
+      ]
+    : [];
+  const exploreTools: ChapterTool[] = [
     ...(placeCount || journeysFor(bookId, chapter).length
       ? [
           {
@@ -343,32 +370,30 @@ export default function Reader() {
             hint: journeysFor(bookId, chapter).length
               ? `Seguir en el mapa: ${journeysFor(bookId, chapter)[0].title}`
               : 'Seguir en el mapa los lugares del capítulo mientras lees o escuchas',
-            icon: (c: string) => <RouteIcon color={c} size={22} />,
+            icon: (c: string) => <RouteIcon color={c} size={20} />,
             onPress: () => navigate(() => router.push(recorridoHref(bookId, chapter) as never), 'forward'),
           },
         ]
       : []),
     {
-      key: 'podcast',
-      label: 'Pódcast',
-      hint: 'Resumen del capítulo en audio, como una conversación',
-      icon: (c: string) => <TalkIcon color={c} size={22} />,
-      onPress: () => tool('podcast'),
-    },
-    {
       key: 'mapa',
       label: 'Mapa mental',
-      hint: 'Mapa mental del capítulo',
-      icon: (c: string) => <MindMapIcon color={c} size={22} />,
+      hint: 'Las ideas del capítulo en un mapa',
+      icon: (c: string) => <MindMapIcon color={c} size={20} />,
       onPress: () => tool('mapa-mental'),
     },
     {
       key: 'tarjetas',
       label: 'Tarjetas',
       hint: 'Tarjetas de repaso del capítulo',
-      icon: (c: string) => <CardsIcon color={c} size={22} />,
+      icon: (c: string) => <CardsIcon color={c} size={20} />,
       onPress: () => tool('tarjetas'),
     },
+  ];
+  const toolGroups: ToolGroup[] = [
+    { key: 'escuchar', title: 'Escuchar', tools: listenTools },
+    { key: 'original', title: book ? (original(book).rtl ? 'Hebreo' : 'Griego') : 'Original', tools: originalTools },
+    { key: 'explorar', title: 'Explorar', tools: exploreTools },
   ];
 
   const promesas = selected === null ? [] : hilosEn(bookId, chapter, selected);
@@ -434,13 +459,18 @@ export default function Reader() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title, headerShown: false }} />
-      <ReaderHeader title={title} progress={progress} onSettings={() => setShowSettings(true)} />
+      <ReaderHeader
+        title={title}
+        progress={progress}
+        onSettings={() => setShowSettings(true)}
+        toolbar={book ? <ChapterTools groups={toolGroups} onStudy={() => setStudy({})} colors={colors} /> : undefined}
+      />
 
       <ScrollView
         ref={scroll}
         // En la web el gesto horizontal es para pasar la hoja (usePageSwipe): el navegador solo desplaza en vertical.
         style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : undefined}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + 10 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + TOOLBAR_HEIGHT + 10 }]}
         scrollEventThrottle={16}
         onContentSizeChange={(_, height) => {
           // De vuelta al capítulo de antes, en cuanto el texto ocupa lo bastante se deja donde estaba.
@@ -487,41 +517,6 @@ export default function Reader() {
               </Pressable>
             </View>
 
-            <Appear delay={40} style={styles.studyWrap}>
-              <Pressable
-                onPress={() => setStudy({})}
-                style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                  styles.study,
-                  { backgroundColor: colors.accentSoft, borderColor: hovered ? colors.accent : colors.accentSoft },
-                  pressed && styles.pressedSoft,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Estudiar este capítulo"
-              >
-                <View style={[styles.studyIcon, { backgroundColor: colors.accent }]}>
-                  <SparkIcon color={colors.surface} size={20} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.studyTitle, { color: colors.accent }]}>Estudiar este capítulo</Text>
-                  <Text style={[styles.studySub, { color: colors.muted }]} numberOfLines={1}>
-                    Contexto, preguntas y fuentes
-                  </Text>
-                </View>
-                <ChevronRightIcon color={colors.accent} size={20} />
-              </Pressable>
-            </Appear>
-
-            {/* Escuchar y las herramientas del capítulo en una sola fila; en un teléfono estrecho se desliza */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.toolsScroll}
-              contentContainerStyle={styles.tools}
-            >
-              {chapterTools.map((t, i) => (
-                <ToolButton key={t.key} index={i + 2} label={t.label} hint={t.hint} icon={t.icon} colors={colors} onPress={t.onPress} />
-              ))}
-            </ScrollView>
             {interlinearOn && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
                 {listening
@@ -848,22 +843,6 @@ const styles = StyleSheet.create({
   versionRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   compare: { paddingLeft: 10, paddingRight: 12, gap: 5 },
   versionText: { fontSize: 12.5, fontWeight: '700', letterSpacing: 0.4, lineHeight: 16 },
-  studyWrap: { width: '100%', maxWidth: 420, marginTop: 18 },
-  study: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingLeft: 10,
-    paddingRight: 14,
-  },
-  studyIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  studyTitle: { fontSize: 15, fontWeight: '700' },
-  studySub: { fontSize: 12.5, marginTop: 1 },
-  toolsScroll: { alignSelf: 'stretch', marginHorizontal: -24, marginTop: 16, flexGrow: 0 },
-  tools: { flexGrow: 1, flexDirection: 'row', justifyContent: 'center', gap: 2, paddingHorizontal: 16 },
   studyHint: { fontSize: 13, textAlign: 'center', marginTop: 12, maxWidth: 360 },
   verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
   creditBox: { marginTop: 24, gap: 8, alignItems: 'center' },

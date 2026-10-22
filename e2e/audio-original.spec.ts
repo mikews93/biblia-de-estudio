@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import type { Locator, Page } from '@playwright/test';
 
-import { expect, test } from './support/fixtures';
+import { abrirHoja, expect, test } from './support/fixtures';
 
 // Lectura en la lengua original: el capítulo suena en griego (o hebreo) y cada palabra del interlineal se ilumina
 // mientras se lee, con su glosa en la barra del reproductor.
@@ -37,6 +37,7 @@ test.describe('Audio en hebreo y griego', () => {
   test('el capítulo suena en griego, ilumina la palabra que se lee y salta a la palabra tocada', async ({ page }) => {
     await conGriego(page);
     await page.goto('/juan/3');
+    await abrirHoja(page, 'escuchar');
     await v(page.getByRole('button', { name: /Escuchar el capítulo en griego/ })).click();
 
     await expect(v(page.getByText('En griego · Marilyn Phemister'))).toBeVisible();

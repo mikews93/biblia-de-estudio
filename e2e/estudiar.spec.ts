@@ -146,7 +146,7 @@ test('una pregunta de seguimiento lleva la conversación anterior a la IA', asyn
 test('«¿Por qué esta palabra?» desde el interlineal estudia la palabra griega', async ({ page, request }) => {
   await conSesion(page, await cuentaNueva(request, 'Griego'));
   await page.goto('/juan/3/16');
-  await page.getByRole('switch', { name: 'Modo estudio' }).click();
+  await page.getByRole('switch', { name: /^Ver cada palabra en griego/ }).click();
 
   // Toca «amó» bajo Juan 3:16 y abre su ficha
   await page.getByLabel(`${AMO}, amó`).click();
