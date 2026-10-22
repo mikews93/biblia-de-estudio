@@ -13,6 +13,10 @@
 //   {"type":"text","text":"…"}  fragmento de texto en markdown; las citas llegan como ⟦n⟧
 //   {"type":"source","n":1,"label":"Juan 3:16","ref":"jhn.3.16"}  fuente de la cita n
 //   {"type":"done"} | {"type":"error","message":"…"}
+//
+// Con «frecuente» (id de una pregunta frecuente aprobada en /cuidar) responde esa pregunta del pasaje; la respuesta
+// también se guarda para todos. Con «senales» devuelve las señales de un estudio guardado y sus preguntas frecuentes,
+// y con «senal» marca «Me ayudó» o «Algo suena raro» (api/_senales.ts). Esas dos responden JSON, no NDJSON.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
@@ -20,8 +24,9 @@ import path from 'node:path';
 import postgres from 'postgres';
 
 import { Section, sections } from './_comentarios';
-import { gastarLampara, needsAccount } from './_cuenta';
+import { gastarLampara, needsAccount, usuarioDe } from './_cuenta';
 import { guardarPregunta } from './_preguntas';
+import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
@@ -68,6 +73,12 @@ type Body = {
   publico?: 'jovenes';
   /** La persona deja que su pregunta se guarde limpia y sin su nombre para las preguntas frecuentes (api/_preguntas.ts). */
   compartir?: boolean;
+  /** Id de una pregunta frecuente del pasaje: su respuesta, guardada para todos. */
+  frecuente?: number;
+  /** Pide las señales del estudio de este pasaje (api/_senales.ts). */
+  senales?: true;
+  /** Marca o quita «Me ayudó» («ayudo») o «Algo suena raro» («raro», con motivo y nota) en el estudio de este pasaje. */
+  senal?: { tipo?: unknown; quitar?: unknown; motivo?: unknown; nota?: unknown };
 };
 // Del sermón a tu semana: lo que la persona anotó del sermón del domingo, para cinco días de devocional.
 type Semana = { notas: string; desde?: number; hasta?: number; predicador?: string };
@@ -288,6 +299,46 @@ async function db() {
   });
   await ready;
   return sql;
+}
+
+let senalesLista: Promise<unknown> | null = null;
+
+/** La base con las tablas de señales y preguntas frecuentes (api/_senales.ts). */
+async function dbSenales() {
+  const s = await db();
+  if (!s) return null;
+  senalesLista ??= s.unsafe(SENALES_SCHEMA).catch((err) => {
+    senalesLista = null;
+    throw err;
+  });
+  await senalesLista;
+  return s;
+}
+
+/** «senales» y «senal»: las señales de un estudio guardado. */
+async function senalesPost(request: Request, body: Body, clave: string, book: Book, chapter: number, verse?: number) {
+  const s = await dbSenales().catch((err) => {
+    console.error('estudiar: señales', err);
+    return null;
+  });
+  const usuario = await usuarioDe(request);
+  if (!s || !usuario) return badRequest('No se pudieron leer las señales. Inténtalo de nuevo.', 503);
+  if (body.senal !== undefined) {
+    if (!body.senal || typeof body.senal !== 'object') return badRequest('Señal no válida');
+    const pasaje = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+    const problema = await marcar(s, usuario, clave, pasaje, body.senal);
+    if (problema) return badRequest(problema);
+  }
+  return Response.json(await senalesDe(s, usuario, clave, book.id, chapter, verse), { headers: { 'Cache-Control': 'no-store' } });
+}
+
+/** La pregunta frecuente aprobada, si es de este capítulo. */
+async function frecuenteDe(id: number, libro: string, capitulo: number) {
+  const s = await dbSenales();
+  if (!s) return null;
+  const [row] = await s<{ texto: string; versiculo: number | null }[]>`
+    select texto, versiculo from preguntas_frecuentes where id = ${id} and libro = ${libro} and capitulo = ${capitulo}`;
+  return row ?? null;
 }
 
 // Si la base de datos falla, la herramienta se genera igual: guardar es una ayuda, no un requisito.
@@ -568,6 +619,13 @@ function studyTask(book: Book, chapter: number, verse: number | undefined, hasGr
   return `Prepara un estudio de ${target} con estas secciones:\n${sections.filter(Boolean).join('\n')}\n\nExtensión: ${
     verse ? '450 a 650' : '600 a 850'
   } palabras. Empieza directamente por la primera sección.`;
+}
+
+function frecuenteTask(book: Book, chapter: number, verse: number | null, pregunta: string) {
+  const target = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+  return `Varias personas que estudiaron ${target} hicieron esta pregunta: «${pregunta}»
+
+Respóndela para todas, con citas: primero lo que dice el texto en su contexto, después lo que aportan el original, las referencias o los comentarios si ayudan. Si las tradiciones cristianas históricas la responden distinto, muéstralo sin tomar partido. Termina con una pregunta breve para seguir pensando. Extensión: 150 a 300 palabras. Empieza directamente por la respuesta, sin títulos.`;
 }
 
 function devotionalTask(book: Book, chapter: number, verse: number | undefined) {
@@ -898,11 +956,32 @@ export async function POST(request: Request) {
   }
   if (body.nueva !== undefined && (typeof body.nueva !== 'boolean' || !herramienta)) return badRequest('Pedido no válido');
 
+  // Una pregunta frecuente del capítulo: la respuesta es la misma para todos y se guarda como el estudio.
+  let frecuente: { texto: string; versiculo: number | null } | null = null;
+  if (body.frecuente !== undefined) {
+    const id = Number(body.frecuente);
+    if (!Number.isInteger(id) || herramienta || taller || semana || word !== undefined || turns.length > 0 || jovenes) {
+      return badRequest('Pregunta no válida');
+    }
+    frecuente = await frecuenteDe(id, book.id, chapter).catch((err) => {
+      console.error('estudiar: pregunta frecuente', err);
+      return null;
+    });
+    if (!frecuente) return badRequest('Esa pregunta ya no está', 404);
+  }
+  const focusVerse = frecuente ? (frecuente.versiculo ?? undefined) : verse;
+
   // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos. La semana es de cada persona.
-  const clave =
-    !herramienta && !taller && !semana && turns.length === 0
+  const clave = frecuente
+    ? `faq:${Number(body.frecuente)}`
+    : !herramienta && !taller && !semana && turns.length === 0
       ? [STUDY_VERSION, (devocional ? 'devocional' : 'profundo') + (jovenes ? '-jovenes' : ''), book.id, chapter, verse ?? '', word ?? ''].join(':')
       : null;
+
+  if (body.senales !== undefined || body.senal !== undefined) {
+    if (!clave || frecuente) return badRequest('Pedido no válido');
+    return senalesPost(request, body, clave, book, chapter, verse);
+  }
 
   if ((herramienta || clave) && !body.nueva) {
     const saved = herramienta ? await savedTool(herramienta, book.id, chapter) : await savedStudy(clave!);
@@ -930,7 +1009,7 @@ export async function POST(request: Request) {
   let focus;
   let hasOriginal = false;
   try {
-    ({ docs, focus, hasOriginal } = await buildSources(request, book, chapter, verse, books, word));
+    ({ docs, focus, hasOriginal } = await buildSources(request, book, chapter, focusVerse, books, word));
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
@@ -944,7 +1023,9 @@ export async function POST(request: Request) {
         ...docs.map((d) => d.param),
         {
           type: 'text',
-          text: semana
+          text: frecuente
+            ? frecuenteTask(book, chapter, frecuente.versiculo, frecuente.texto)
+            : semana
             ? semanaTask(book, chapter, semana)
             : taller
             ? tallerTask(book, chapter, verse, taller)
@@ -962,7 +1043,7 @@ export async function POST(request: Request) {
   ];
 
   const system =
-    (semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) + (jovenes ? JOVENES_SYSTEM : '');
+    (frecuente ? SYSTEM : semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) + (jovenes ? JOVENES_SYSTEM : '');
   return streamAnswer(request, docs, messages, system, compartido ? MODEL : MODEL_PROPIO, async (saved) => {
     if (herramienta) await saveTool(herramienta, book.id, chapter, saved);
     else if (clave) await saveStudy(clave, saved);

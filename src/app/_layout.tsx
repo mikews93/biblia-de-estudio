@@ -25,7 +25,7 @@ const fixedHeader = {
 };
 
 // En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
-const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja)(\/|$)/;
+const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|iglesia|cuidar)(\/|$)/;
 
 function GuardaNinos() {
   const path = usePathname();
@@ -118,6 +118,9 @@ function AppStack() {
           <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
           <Stack.Screen name="privacidad" options={{ title: 'Privacidad' }} />
           <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
+          <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
+          <Stack.Screen name="iglesia/[codigo]" options={{ title: 'Iglesia anfitriona' }} />
+          <Stack.Screen name="cuidar" options={{ title: 'Cuidar Zarza' }} />
           <Stack.Screen name="modo" options={{ title: '' }} />
           <Stack.Screen name="jovenes/index" options={{ title: 'Misiones' }} />
           <Stack.Screen name="jovenes/[ruta]/index" options={{ title: '' }} />

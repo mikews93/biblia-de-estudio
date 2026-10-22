@@ -44,6 +44,8 @@ type Request = {
   nueva?: boolean;
   /** Del sermón a tu semana: las notas del sermón para preparar cinco días (src/lib/semanas.ts). */
   semana?: { notas: string; desde?: number; hasta?: number; predicador?: string };
+  /** Una pregunta frecuente del pasaje (src/lib/senales.ts): su respuesta es la misma para todos. */
+  frecuente?: number;
 };
 
 /** Los dos modos de la pestaña de estudio: un devocional guiado o el estudio profundo del texto. */

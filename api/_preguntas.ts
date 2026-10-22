@@ -16,6 +16,18 @@ const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const SAL = process.env.PREGUNTAS_SAL ?? createHash('sha256').update(`preguntas:${DB_URL ?? ''}`).digest('hex');
 const MAX = 400;
 
+export const PREGUNTAS_SCHEMA = `
+create table if not exists preguntas_anonimas (
+  id bigserial primary key,
+  libro text not null,
+  capitulo int not null,
+  versiculo int,
+  texto text not null,
+  quien text not null,
+  dia date not null default current_date
+);
+create index if not exists preguntas_anonimas_pasaje on preguntas_anonimas (libro, capitulo);`;
+
 let sql: ReturnType<typeof postgres> | null = null;
 let ready: Promise<unknown> | null = null;
 
@@ -40,21 +52,10 @@ export async function guardarPregunta(request: Request, libro: string, capitulo:
   if (!limpio || !key || !DB_URL) return;
   try {
     sql ??= postgres(DB_URL, { max: 1, idle_timeout: 20, onnotice: () => {} });
-    ready ??= sql`
-      create table if not exists preguntas_anonimas (
-        id bigserial primary key,
-        libro text not null,
-        capitulo int not null,
-        versiculo int,
-        texto text not null,
-        quien text not null,
-        dia date not null default current_date
-      )`
-      .then(() => sql!`create index if not exists preguntas_anonimas_pasaje on preguntas_anonimas (libro, capitulo)`)
-      .catch((err) => {
-        ready = null;
-        throw err;
-      });
+    ready ??= sql.unsafe(PREGUNTAS_SCHEMA).catch((err) => {
+      ready = null;
+      throw err;
+    });
     await ready;
     const hash = createHash('sha256').update(key).digest('hex');
     const [s] = await sql<{ usuario_id: string }[]>`select usuario_id from sesiones where llave_hash = ${hash}`;

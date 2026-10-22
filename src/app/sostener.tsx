@@ -1,4 +1,4 @@
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, router } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
@@ -14,6 +14,8 @@ type Forma = {
   puntos: string[];
   boton: string;
   enlace: string | null;
+  /** Un enlace dentro de la app debajo del botón. */
+  extra?: { texto: string; accion: string; ruta: string };
 };
 
 const FORMAS: Forma[] = [
@@ -36,6 +38,7 @@ const FORMAS: Forma[] = [
     ],
     boton: 'Quiero que mi iglesia sea anfitriona',
     enlace: ENLACE_IGLESIAS,
+    extra: { texto: '¿Tu iglesia ya es anfitriona?', accion: 'Entra con su código', ruta: '/iglesia' },
   },
   {
     icon: ListenIcon,
@@ -114,6 +117,13 @@ export default function Sostener() {
                 {f.enlace ? f.boton : 'Muy pronto'}
               </Text>
             </Pressable>
+            {f.extra && (
+              <Pressable onPress={() => router.push(f.extra!.ruta as never)} accessibilityRole="link" style={styles.extra}>
+                <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>
+                  {f.extra.texto} <Text style={{ color: colors.accent, fontWeight: '700' }}>{f.extra.accion}</Text>
+                </Text>
+              </Pressable>
+            )}
           </View>
         </Appear>
       ))}
@@ -151,5 +161,6 @@ const styles = StyleSheet.create({
   point: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   dot: { width: 5, height: 5, borderRadius: 3, marginTop: 7 },
   button: { marginTop: 16, borderRadius: 24, paddingVertical: 12, alignItems: 'center' },
+  extra: { marginTop: 10, paddingVertical: 4 },
   note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14 },
 });

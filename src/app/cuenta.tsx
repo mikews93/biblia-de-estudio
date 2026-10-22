@@ -7,7 +7,7 @@ import { ProgresoCuenta } from '@/components/Sincronia';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, FlagIcon, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
 import {
   disconnectFacebook,
@@ -27,7 +27,7 @@ import { navigate } from '@/lib/transition';
 /** Tu perfil: la foto, cómo te ven los demás, las cuentas conectadas, cómo entrar y la sesión. */
 export default function AccountScreen() {
   const colors = useColors();
-  const { ready, usuario } = useAccount();
+  const { ready, usuario, iglesia: anfitriona, cuidador } = useAccount();
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [church, setChurch] = useState('');
@@ -305,6 +305,46 @@ export default function AccountScreen() {
           <ChevronRightIcon color={colors.muted} size={20} />
         </Pressable>
       </Appear>
+
+      <Appear delay={195}>
+        <Pressable
+          onPress={() => go('/iglesia')}
+          accessibilityRole="link"
+          style={[styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <View style={[styles.rowIcon, { backgroundColor: colors.accentSoft }]}>
+            <ChurchIcon color={colors.accent} size={20} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{anfitriona ? anfitriona.nombre : 'Iglesia anfitriona'}</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
+              {anfitriona
+                ? `Tu iglesia anfitriona · ${anfitriona.lampara} preguntas al día`
+                : 'Si tu iglesia sostiene Zarza, entra con su código'}
+            </Text>
+          </View>
+          <ChevronRightIcon color={colors.muted} size={20} />
+        </Pressable>
+      </Appear>
+
+      {cuidador && (
+        <Appear delay={198}>
+          <Pressable
+            onPress={() => go('/cuidar')}
+            accessibilityRole="link"
+            style={[styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: colors.border }]}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: colors.accentSoft }]}>
+              <FlagIcon color={colors.accent} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Cuidar Zarza</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Avisos, preguntas frecuentes e iglesias anfitrionas</Text>
+            </View>
+            <ChevronRightIcon color={colors.muted} size={20} />
+          </Pressable>
+        </Appear>
+      )}
 
       {HAY_SOSTENER && (
         <Appear delay={200}>

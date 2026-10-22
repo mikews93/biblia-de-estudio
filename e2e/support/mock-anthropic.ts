@@ -158,6 +158,15 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
 function structured(body: Body) {
   const props = body.output_config?.format?.schema?.properties ?? {};
   if ('candidates' in props) return { candidates: ['php.4.6', 'mat.6.34', 'gen.99.1', 'jhn.3.16'] };
+  // Preguntas frecuentes de /cuidar (api/_cuidar.ts): una que hicieron cinco personas y otra de una sola.
+  if ('propuestas' in props) {
+    return {
+      propuestas: [
+        { texto: '¿Por qué Abdías anuncia juicio contra Edom?', versiculo: null, personas: ['P1', 'P2', 'P3', 'P4', 'P5', 'P5'] },
+        { texto: '¿Quién era Abdías?', versiculo: 1, personas: ['P1', 'P99'] },
+      ],
+    };
+  }
   return {
     keep: [
       { n: 1, reason: 'Pide no estar afanosos y presentar todo a Dios en oración.' },

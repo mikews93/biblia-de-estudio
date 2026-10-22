@@ -23,8 +23,11 @@ import { promisify } from 'node:util';
 import postgres from 'postgres';
 
 import { downloadPhoto, facebookDialog, facebookPage, facebookProfile, facebookReady, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
+import { CUIDAR_SCHEMA, cuidarActions } from './_cuidar';
+import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
 import { notifyUser, PUSH_SCHEMA } from './_push';
+import { esCuidador } from './_senales';
 import { planById } from '../src/lib/planesCatalogo';
 import { parseRetoId, seasonRun } from '../src/lib/temporadas';
 
@@ -278,7 +281,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -749,7 +752,14 @@ const actions: Record<string, Handler> = {
        where m.usuario_id = $1 order by m.unido`,
       [user.id],
     );
-    return { usuario: user, grupos: await Promise.all(groups.map((g) => summary(sql, g, today))) };
+    const anfitriona = await iglesiaDe(sql, user.id);
+    return {
+      usuario: user,
+      grupos: await Promise.all(groups.map((g) => summary(sql, g, today))),
+      // La iglesia anfitriona (api/_iglesias.ts) y si la persona cuida Zarza (/cuidar).
+      iglesia: anfitriona?.activa ? { nombre: anfitriona.nombre, codigo: anfitriona.codigo, lampara: anfitriona.lampara } : null,
+      cuidador: esCuidador(user.correo),
+    };
   },
 
   async renombrarme({ sql, body, request }) {
@@ -1339,6 +1349,9 @@ const actions: Record<string, Handler> = {
 
 // «En pareja» (api/_pareja.ts): sus acciones empiezan por «pareja» y usan la misma cuenta.
 Object.assign(actions, parejaActions({ auth, fail: (message, status) => new Fail(message, status) }));
+// «Zarza para Iglesias» (api/_iglesias.ts) y «Cuidar Zarza» (api/_cuidar.ts), con la misma cuenta.
+Object.assign(actions, iglesiaActions({ auth, fail: (message, status) => new Fail(message, status) }));
+Object.assign(actions, cuidarActions({ auth, fail: (message, status) => new Fail(message, status), books }));
 
 // --- Avisos push de la comunidad (api/_push.ts). Solo llegan a quien los activó en la pantalla de notificaciones. ---
 

@@ -67,6 +67,8 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       expect(yo.json).toEqual({
         usuario: { id: ana.id, nombre: ana.nombre, correo: null, foto: null, bio: null, iglesia: null, ciudad: null, conClave: false, facebook: null },
         grupos: [],
+        iglesia: null,
+        cuidador: false,
       });
     });
 

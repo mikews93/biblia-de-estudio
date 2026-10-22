@@ -19,6 +19,7 @@ import AskBar from '@/components/AskBar';
 import Devotional from '@/components/Devotional';
 import { CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
 import StudyContext from '@/components/StudyContext';
+import StudySignals from '@/components/StudySignals';
 import { Book, original, parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
@@ -194,6 +195,17 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   );
   const first = turns[0];
   const retry = () => convs.retry(mode);
+  // «Me ayudó», «Algo suena raro» y las preguntas que otros hicieron, cuando el estudio de todos ya está completo.
+  const signals = !!first?.text && (busy ? turns.length > 1 : true) && (
+    <StudySignals
+      key={mode}
+      pasaje={{ book: book.id, chapter, verse, word: word?.index, enfoque: mode }}
+      frecuentes={settings.modo === 'general' && !word}
+      colors={colors}
+      onOpen={open}
+      onCite={setPeek}
+    />
+  );
   const problem =
     error === NEEDS_CONNECTION ? (
                 <View style={styles.waiting}>
@@ -348,6 +360,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                   onStep={() => scroll.current?.scrollTo({ y: 0, animated: true })}
                 />
               ) : null}
+              {mode === 'devocional' && signals}
               {mode === 'devocional' && mine}
               {mode === 'devocional' && turns.length > 1 && problem}
               {mode === 'devocional' ? null : (
@@ -364,6 +377,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                     </Appear>
                   )}
                   {(busy ? turns.length > 1 : true) && context}
+                  {signals}
                 </View>
               ) : null}
 
