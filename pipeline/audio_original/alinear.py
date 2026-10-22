@@ -161,14 +161,18 @@ def hebrew_file(book: str, chapter: int, files: list[str]) -> str:
         wanted = [('ezra', 'a'), ('ezra', '')]
     elif book == 'neh':
         wanted = [('nehe', ''), ('ezra', 'b')]
+    elif book == 'sng':
+        # El título del archivo varía (Song of Songs, Shir HaShirim, Canticles): basta el número 30 del Tanaj
+        wanted = [('song', ''), ('shir', ''), ('cant', ''), ('30', '')]
     parsed = []
     for name in files:
-        m = re.fullmatch(r'\d\d-(.+?) ([ab]?)(\d+)\.mp3', name)
+        m = re.fullmatch(r'(\d\d)-(.+?) ([ab]?)(\d+)\.mp3', name)
         if m:
-            parsed.append((re.sub(r'[^a-z]', '', m.group(1).lower()), m.group(2), int(m.group(3)), name))
+            title = m.group(1) + re.sub(r'[^a-z]', '', m.group(2).lower())
+            parsed.append((title, m.group(3), int(m.group(4)), name))
     for prefix, letter in wanted:
         for title, l, ch, name in parsed:
-            if title.startswith(prefix) and l == letter and ch == chapter:
+            if (title.startswith(prefix) or title[2:].startswith(prefix)) and l == letter and ch == chapter:
                 return name
     raise SystemExit(f'No encuentro la lectura hebrea de {book} {chapter}')
 
