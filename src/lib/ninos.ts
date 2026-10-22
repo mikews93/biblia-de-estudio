@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import { HISTORIAS, MEMORIA, type Historia, type Memoria } from './ninosHistorias';
+import { lanzarConfeti } from './confeti';
 import { markStudyDay } from './progress';
 import { definirSellos, huellasDe, type Sello, type Tipo } from './sellos';
 import { cambio, registrar } from './sincronia';
@@ -214,6 +215,7 @@ export async function terminarHistoria(id: string) {
   write({ ...state, historias: { ...state.historias, [id]: { fecha: todayKey() } } });
   cambio();
   markStudyDay();
+  lanzarConfeti('confeti');
 }
 
 export async function conversada(id: string, si: boolean) {
@@ -231,6 +233,7 @@ export async function memorizado(id: string) {
   write({ ...state, memoria: { ...state.memoria, [id]: todayKey() } });
   cambio();
   markStudyDay();
+  lanzarConfeti('fuegos');
 }
 
 export function useNinos() {

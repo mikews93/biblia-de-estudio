@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import { RUTAS, type Mision, type Ruta, type RutaId } from './jovenesRutas';
+import { lanzarConfeti } from './confeti';
 import { markStudyDay } from './progress';
 import { definirSellos, huellasDe, type Dibujo, type Sello, type Tipo } from './sellos';
 import { cambio, registrar } from './sincronia';
@@ -254,6 +255,7 @@ export async function completar(ruta: RutaId, mision: string) {
     write({ ...state, [k]: { fecha: todayKey() } });
     cambio();
     markStudyDay();
+    lanzarConfeti('confeti');
   }
 }
 

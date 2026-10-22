@@ -9,6 +9,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Sello from './Sello';
+import { lanzarConfeti } from '@/lib/confeti';
 import { CloseIcon } from './icons';
 import { hechos, DIAS, useSemanas } from '@/lib/semanas';
 import { useOraciones } from '@/lib/oraciones';
@@ -71,6 +72,7 @@ export default function Celebracion() {
           Animated.spring(giro, { toValue: 1, friction: 4, tension: 50, delay: 120, useNativeDriver: native }),
         ]).start();
       });
+    lanzarConfeti('confeti');
     AccessibilityInfo.announceForAccessibility?.(`Nuevo sello: ${sello.titulo}. ${sello.logro}`);
     // Se va sola: celebra sin interrumpir la lectura ni el audio
     const id = setTimeout(() => cerrar(sello.id), DURA);
