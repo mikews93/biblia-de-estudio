@@ -36,6 +36,8 @@ La licencia de [LICENSE](LICENSE) (todos los derechos reservados) cubre solo la 
 | --- | --- | --- |
 | Nuevo Testamento griego (Westcott-Hort), leído por Marilyn Phemister | archive.org | [CC BY-NC 3.0](https://creativecommons.org/licenses/by-nc/3.0/). No se guarda: la app lo reproduce desde archive.org |
 | Tanaj hebreo, leído por Abraham Shmuelof | archive.org | [CC BY-NC-ND 3.0](https://creativecommons.org/licenses/by-nc-nd/3.0/). No se guarda ni se modifica: la app lo reproduce desde archive.org |
+| Reina-Valera 1909, leída por Samuel Montoya | archive.org (item `BibliaEnAudioRVA1909`) | Marcada como dominio público (Public Domain Mark 1.0) por quien la subió. No se guarda: la app la reproduce desde archive.org |
+| Reina-Valera 1909, leída por voluntarios de LibriVox | librivox.org / archive.org | Dominio público. No se guarda: la app la reproduce desde archive.org |
 | Tiempos palabra por palabra de esas lecturas (`public/audio/original/`) | Generados con `pipeline/audio_original/alinear.py` | Se usan solo sin fines comerciales, como las grabaciones de las que dependen |
 | Audio dramatizado y pódcast (`public/audio/`) | Grabaciones propias hechas con ElevenLabs sobre la RV1909 | Cubiertas por LICENSE |
 
