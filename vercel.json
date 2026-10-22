@@ -46,5 +46,10 @@
       "source": "/((?!api/|data/|_expo/|assets/|audio/).*)",
       "destination": "/app.html"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "claude/project-thread-u5ttns": false
+    }
+  }
 }
