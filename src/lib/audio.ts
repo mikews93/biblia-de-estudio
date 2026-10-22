@@ -160,7 +160,7 @@ function showOnLockScreen(p: AudioPlayer) {
   try {
     p.setActiveForLockScreen(
       true,
-      { title: state.title, artist: state.audio?.label ?? '', albumTitle: 'Biblia de estudio' },
+      { title: state.title, artist: state.audio?.label ?? '', albumTitle: 'Zarza' },
       { showSeekBackward: true, showSeekForward: true },
     );
   } catch {

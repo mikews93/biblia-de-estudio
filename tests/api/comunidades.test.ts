@@ -292,6 +292,38 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       expect(await visibleFor(ana.llave)).toBe(true);
     });
 
+    it('bloquear: dejan de verse los dos, se quita la amistad y desbloquear lo deshace', async () => {
+      const ana = await persona('Ana');
+      const beto = await persona('Beto');
+      const carla = await persona('Carla');
+      await amigos(ana, beto);
+      await amigos(ana, carla);
+      const deAna = (await call('publicar', { tipo: 'reflexion', audiencia: 'todos', texto: 'Hoy leí Rut' }, ana.llave)).json.id;
+      const deBeto = (await call('publicar', { tipo: 'reflexion', audiencia: 'todos', texto: 'Y yo Ester' }, beto.llave)).json.id;
+      await call('comentar', { id: deAna, texto: 'Qué bueno' }, beto.llave);
+      await call('comentar', { id: deAna, texto: 'Amén' }, carla.llave);
+
+      expect((await call('bloquear', { usuario: ana.id }, ana.llave)).json.error).toBe('No puedes bloquearte a ti mismo');
+      expect((await call('bloquear', { usuario: beto.id }, ana.llave)).json.relacion).toBe('bloqueada');
+
+      const ids = async (llave: string) =>
+        (await call('muro', { filtro: 'todos' }, llave)).json.publicaciones.map((p: { id: string }) => p.id);
+      expect(await ids(ana.llave)).not.toContain(deBeto);
+      expect(await ids(beto.llave)).not.toContain(deAna);
+      expect((await call('publicacion', { id: deAna }, beto.llave)).status).toBe(404);
+      expect((await call('publicacion', { id: deAna }, ana.llave)).json.comentarios.map((c: { texto: string }) => c.texto)).toEqual(['Amén']);
+      expect((await call('persona', { usuario: beto.id }, ana.llave)).json.persona.relacion).toBe('bloqueada');
+      expect((await call('persona', { usuario: ana.id }, beto.llave)).status).toBe(404);
+      expect((await call('pedirAmistad', { usuario: ana.id }, beto.llave)).status).toBe(404);
+      const red = (await call('amigos', {}, ana.llave)).json;
+      expect(red.amigos.map((p: { id: string }) => p.id)).toEqual([carla.id]);
+      expect(red.bloqueadas.map((p: { id: string }) => p.id)).toEqual([beto.id]);
+
+      expect((await call('desbloquear', { usuario: beto.id }, ana.llave)).json.relacion).toBe(null);
+      expect(await ids(ana.llave)).toContain(deBeto);
+      expect((await call('amigos', {}, ana.llave)).json.bloqueadas).toEqual([]);
+    });
+
     it('lo que se lee hoy aparece en el muro de los amigos, una publicación por libro que suma capítulos', async () => {
       const ana = await persona('Ana');
       const beto = await persona('Beto');

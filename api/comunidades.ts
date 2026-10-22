@@ -205,6 +205,12 @@ create table if not exists reportes (
   usuario_id uuid not null references usuarios on delete cascade,
   creado timestamptz not null default now(),
   primary key (publicacion_id, usuario_id)
+);
+create table if not exists bloqueos (
+  de uuid not null references usuarios on delete cascade,
+  a uuid not null references usuarios on delete cascade,
+  creado timestamptz not null default now(),
+  primary key (de, a)
 );`;
 
 const QUESTIONS_SYSTEM = `Preparas preguntas para la reunión de un grupo pequeño cristiano (una célula, una familia o un grupo de la iglesia) que lee la Biblia en una app gratuita en español.
@@ -583,7 +589,11 @@ async function suggestQuestions(book: Book, chapter: number) {
 
 // --- Comunidad: amigos y publicaciones ---
 
-type Relation = 'yo' | 'amigos' | 'enviada' | 'recibida' | null;
+type Relation = 'yo' | 'amigos' | 'enviada' | 'recibida' | 'bloqueada' | null;
+
+/** Hay un bloqueo entre las dos personas, en cualquier dirección (`other` es un id o una columna de la consulta). */
+const blocked = (sql: Sql, me: string, other: Fragment | string) => sql`
+  exists (select 1 from bloqueos b where (b.de = ${me} and b.a = ${other}) or (b.de = ${other} and b.a = ${me}))`;
 
 /** Ids de los amigos de la persona (amistades aceptadas, en cualquier dirección). */
 const friendIds = (sql: Sql, me: string) => sql`
@@ -594,7 +604,8 @@ const visible = (sql: Sql, me: string) => sql`
   (p.usuario_id = ${me}
     or p.usuario_id in (${friendIds(sql, me)})
     or (p.audiencia = 'todos' and (select count(*) from reportes r where r.publicacion_id = p.id) < ${REPORTS_TO_HIDE}))
-  and not exists (select 1 from reportes r where r.publicacion_id = p.id and r.usuario_id = ${me})`;
+  and not exists (select 1 from reportes r where r.publicacion_id = p.id and r.usuario_id = ${me})
+  and not ${blocked(sql, me, sql`p.usuario_id`)}`;
 
 type PostRow = { id: string; libro: string | null; mia: boolean } & Json;
 type Fragment = postgres.PendingQuery<postgres.Row[]>;
@@ -621,6 +632,8 @@ async function visiblePost(sql: Sql, me: string, id: unknown) {
 
 async function relation(sql: Sql, me: string, other: string): Promise<Relation> {
   if (me === other) return 'yo';
+  const [block] = await sql`select 1 from bloqueos where de = ${me} and a = ${other}`;
+  if (block) return 'bloqueada';
   const rows = await sql<{ de: string; aceptada: boolean }[]>`
     select de, aceptada from amistades where (de = ${me} and para = ${other}) or (de = ${other} and para = ${me})`;
   if (rows.some((r) => r.aceptada)) return 'amigos';
@@ -1115,7 +1128,8 @@ const actions: Record<string, Handler> = {
     const comentarios = await sql`
       select c.id, c.texto, c.creado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", c.usuario_id = ${user.id} as mio
       from comentarios c join usuarios u on u.id = c.usuario_id
-      where c.publicacion_id = ${post.id} order by c.creado limit 200`;
+      where c.publicacion_id = ${post.id} and not ${blocked(sql, user.id, sql`c.usuario_id`)}
+      order by c.creado limit 200`;
     return { publicacion: post, comentarios };
   },
 
@@ -1219,12 +1233,15 @@ const actions: Record<string, Handler> = {
       select distinct on (u.id) u.id, u.nombre, u.foto, g.nombre as grupo
       from miembros mine join miembros other on other.grupo_id = mine.grupo_id and other.usuario_id <> ${user.id}
       join usuarios u on u.id = other.usuario_id join grupos g on g.id = mine.grupo_id
-      where mine.usuario_id = ${user.id}
+      where mine.usuario_id = ${user.id} and not ${blocked(sql, user.id, sql`u.id`)}
         and not exists (select 1 from amistades a where (a.de = ${user.id} and a.para = u.id) or (a.de = u.id and a.para = ${user.id}))
       order by u.id limit 30`;
+    const bloqueadas = await sql`
+      select u.id, u.nombre, u.foto from bloqueos b join usuarios u on u.id = b.a where b.de = ${user.id} order by u.nombre`;
     const pick = (estado: string) => links.filter((l) => l.estado === estado).map(({ id, nombre, foto }) => ({ id, nombre, foto }));
     return {
       codigo,
+      bloqueadas,
       compartirLecturas: compartir,
       amigos: pick('amigos'),
       recibidas: pick('recibida'),
@@ -1242,7 +1259,7 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const target = body.codigo ? (await personByCode(sql, body.codigo)).id : uuid(body.usuario);
     if (target === user.id) throw new Fail('Ese es tu propio código');
-    const [exists] = await sql`select 1 from usuarios where id = ${target}`;
+    const [exists] = await sql`select 1 from usuarios where id = ${target} and not ${blocked(sql, user.id, target)}`;
     if (!exists) throw new Fail('Esa persona ya no está en la comunidad', 404);
     // Si la otra persona ya te había invitado, pedirle amistad es aceptarla.
     const accepted = await sql`update amistades set aceptada = true where de = ${target} and para = ${user.id} returning de`;
@@ -1279,6 +1296,23 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  // Bloquear: dejan de verse (publicaciones, comentarios, solicitudes y sugerencias) y la amistad se quita.
+  async bloquear({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const other = uuid(body.usuario);
+    if (other === user.id) throw new Fail('No puedes bloquearte a ti mismo');
+    await sql`insert into bloqueos (de, a) values (${user.id}, ${other}) on conflict do nothing`;
+    await sql`delete from amistades where (de = ${user.id} and para = ${other}) or (de = ${other} and para = ${user.id})`;
+    return { relacion: 'bloqueada' };
+  },
+
+  async desbloquear({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const other = uuid(body.usuario);
+    await sql`delete from bloqueos where de = ${user.id} and a = ${other}`;
+    return { relacion: await relation(sql, user.id, other) };
+  },
+
   async compartirLecturas({ sql, body, request }) {
     const user = await auth(sql, request);
     await sql`update usuarios set compartir_lecturas = ${Boolean(body.si)} where id = ${user.id}`;
@@ -1293,6 +1327,9 @@ const actions: Record<string, Handler> = {
         (select count(*)::int from amistades a where a.aceptada and (a.de = u.id or a.para = u.id)) as amigos
       from usuarios u where u.id = ${id}`;
     if (!p) throw new Fail('Esa persona ya no está en la comunidad', 404);
+    // Quien te bloqueó desaparece para ti, como si no estuviera.
+    const [theyBlocked] = await sql`select 1 from bloqueos where de = ${id} and a = ${user.id}`;
+    if (theyBlocked) throw new Fail('Esa persona ya no está en la comunidad', 404);
     return {
       persona: { ...p, relacion: await relation(sql, user.id, id) },
       publicaciones: await posts(sql, user.id, sql`p.usuario_id = ${id}`),

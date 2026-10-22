@@ -7,7 +7,7 @@ import { ProgresoCuenta } from '@/components/Sincronia';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, KeyIcon, PinIcon } from '@/components/icons';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, KeyIcon, LockIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
 import {
   disconnectFacebook,
@@ -300,6 +300,23 @@ export default function AccountScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Notificaciones</Text>
             <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Recordatorio diario y avisos de tus amigos</Text>
+          </View>
+          <ChevronRightIcon color={colors.muted} size={20} />
+        </Pressable>
+      </Appear>
+
+      <Appear delay={210}>
+        <Pressable
+          onPress={() => go('/privacidad')}
+          accessibilityRole="link"
+          style={[styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <View style={[styles.rowIcon, { backgroundColor: colors.accentSoft }]}>
+            <LockIcon color={colors.accent} size={20} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Privacidad</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Qué guardamos, a quién lo enviamos y cómo borrarlo</Text>
           </View>
           <ChevronRightIcon color={colors.muted} size={20} />
         </Pressable>

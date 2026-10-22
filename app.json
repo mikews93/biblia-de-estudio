@@ -1,13 +1,17 @@
 {
   "expo": {
-    "name": "Biblia de estudio",
-    "slug": "biblia-de-estudio",
+    "name": "Zarza",
+    "slug": "zarza",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.migueblanco.zarza",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -16,7 +20,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.migueblanco.zarza"
     },
     "web": {
       "favicon": "./assets/favicon.png",

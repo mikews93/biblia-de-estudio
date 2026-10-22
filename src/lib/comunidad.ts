@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import { requireConnection } from './conexion';
+import { pedirPermisoIa } from './permisoIa';
 import { chapterHref as routeToChapter, verseHref } from './routes';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
@@ -244,6 +245,7 @@ export async function aiHeaders(): Promise<Record<string, string>> {
   requireConnection();
   await load();
   if (!account.llave) throw new Error(NEEDS_ACCOUNT);
+  await pedirPermisoIa();
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${account.llave}` };
 }
 
