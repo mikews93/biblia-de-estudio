@@ -1,0 +1,54 @@
+Biblia de estudio
+Copyright (c) 2026 Miguel Blanco. Todos los derechos reservados.
+
+El código fuente de este repositorio es público para que se pueda leer y revisar,
+pero no es software libre ni de código abierto.
+
+1. Qué se permite
+   - Ver y leer el código en GitHub.
+   - Hacer un fork dentro de GitHub, solo en la medida en que lo permiten los
+     Términos de Servicio de GitHub, y proponer cambios con un pull request.
+
+2. Qué no se permite sin permiso escrito del titular
+   - Copiar, modificar, adaptar, traducir o redistribuir el código, entero o en
+     parte.
+   - Publicar, desplegar u ofrecer una aplicación, un sitio web o un servicio
+     basado en este código o derivado de él, gratis o de pago.
+   - Usar el código, el diseño, el nombre «Biblia de estudio», el ícono o la marca
+     con fines comerciales, o de forma que parezca que una copia es la aplicación
+     original o está respaldada por ella.
+   - Usar el código o los textos propios del repositorio para entrenar modelos de
+     inteligencia artificial.
+
+3. Contenido de terceros
+   Este archivo cubre solo la obra propia del titular: el código, el diseño, los
+   textos escritos para la aplicación y las grabaciones propias. Los textos
+   bíblicos, comentarios, datos, fotos y grabaciones de terceros conservan su
+   propia licencia (dominio público, CC BY, CC BY-SA, CC BY-NC, etc.), que se
+   detalla en NOTICE.md. Nada en este archivo limita los derechos que esas
+   licencias dan, ni obliga a cerrar lo que debe seguir siendo libre.
+
+4. Contribuciones
+   Quien envía un pull request o un parche acepta que el titular lo use, lo
+   modifique y lo publique como parte de este proyecto, bajo esta licencia o
+   cualquier otra que el titular elija en el futuro, y declara que tiene derecho a
+   hacerlo.
+
+5. Permisos
+   Para pedir un permiso (por ejemplo, para una iglesia o un uso educativo), abre
+   un issue en https://github.com/mikews93/biblia-de-estudio/issues.
+
+6. Sin garantía
+   El código se ofrece «tal cual», sin garantía de ningún tipo. El titular no
+   responde por daños derivados de su uso.
+
+---
+
+English summary (the Spanish text above prevails):
+Copyright (c) 2026 Miguel Blanco. All rights reserved. The source code is
+published for viewing only. No permission is granted to copy, modify,
+distribute, deploy, or use it commercially, or to use it to train AI models,
+without prior written permission. Viewing and forking on GitHub are allowed only
+as provided by the GitHub Terms of Service. Third-party content keeps its own
+license as listed in NOTICE.md. The software is provided "as is", without
+warranty of any kind.
