@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Buscar en Internet Archive
         run: |
-          for q in 'creator:(Shedd) AND title:(dogmatic theology)' 'creator:(Miley) AND title:(systematic theology)' 'creator:(Westcott) AND title:(canon of the New Testament)'; do
+          for q in 'creator:(Strong, Augustus) AND title:(systematic theology) AND year:[1906 TO 1910]'; do
             echo "== $q"
             curl -sG 'https://archive.org/advancedsearch.php' --data-urlencode "q=$q AND mediatype:texts" \
               --data-urlencode 'fl[]=identifier' --data-urlencode 'fl[]=title' --data-urlencode 'fl[]=year' --data-urlencode 'fl[]=volume' \
