@@ -1,11 +1,15 @@
-// La celebración de un sello nuevo: breve, con su versículo, y una sola vez. No sale en las pantallas que se
-// proyectan o se comparten en vivo, para no interrumpir a nadie: espera a que la persona salga de ellas.
+// La celebración de un sello nuevo: una tarjeta que baja desde arriba con el sello girando, se queda unos segundos
+// y se va sola, una sola vez. No tapa la lectura ni detiene el audio; al tocarla se abre el sello con su versículo.
+// No sale en las pantallas que se proyectan o se siguen en vivo: espera a que la persona salga de ellas.
 import { router, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import Sello from './Sello';
+import { CloseIcon } from './icons';
 import { hechos, DIAS, useSemanas } from '@/lib/semanas';
 import { useOraciones } from '@/lib/oraciones';
 import { useProgress } from '@/lib/progress';
@@ -14,6 +18,9 @@ import { leerAlmacen } from '@/lib/sincronia';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
+/** Cuánto se queda a la vista (ms). */
+const DURA = 7000;
+
 /** Pantallas donde no se interrumpe: se proyectan o se siguen en grupo. */
 const SIN_FIESTA = [/^\/vivo\/./, /\/proyectar$/, /\/presentar$/, /^\/evento\//];
 
@@ -21,6 +28,7 @@ export default function Celebracion() {
   const colors = useColors();
   const estado = useSellos();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const [sello, setSello] = useState<SelloDef | null>(null);
   const [t] = useState(() => new Animated.Value(0));
   const [giro] = useState(() => new Animated.Value(0));
@@ -37,6 +45,14 @@ export default function Celebracion() {
     return () => clearTimeout(id);
   }, [pendiente, sello, quieto]);
 
+  const cerrar = (id: string, ver?: boolean) => {
+    Animated.timing(t, { toValue: 0, duration: 180, useNativeDriver: Platform.OS !== 'web' }).start(() => {
+      setSello((s) => (s?.id === id ? null : s));
+      celebrado(id);
+    });
+    if (ver) navigate(() => router.push(`/sellos?sello=${id}` as never), 'forward');
+  };
+
   useEffect(() => {
     if (!sello) return;
     t.setValue(0);
@@ -51,70 +67,55 @@ export default function Celebracion() {
         }
         const native = Platform.OS !== 'web';
         Animated.parallel([
-          Animated.timing(t, { toValue: 1, duration: 260, useNativeDriver: native }),
-          Animated.spring(giro, { toValue: 1, friction: 5, tension: 70, useNativeDriver: native }),
+          Animated.spring(t, { toValue: 1, friction: 8, tension: 60, useNativeDriver: native }),
+          Animated.spring(giro, { toValue: 1, friction: 4, tension: 50, delay: 120, useNativeDriver: native }),
         ]).start();
       });
-    AccessibilityInfo.announceForAccessibility?.(`Nuevo sello: ${sello.titulo}`);
-  }, [sello, t, giro]);
+    AccessibilityInfo.announceForAccessibility?.(`Nuevo sello: ${sello.titulo}. ${sello.logro}`);
+    // Se va sola: celebra sin interrumpir la lectura ni el audio
+    const id = setTimeout(() => cerrar(sello.id), DURA);
+    return () => clearTimeout(id);
+  }, [sello]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!sello) return null;
 
-  const cerrar = (ver?: boolean) => {
-    const id = sello.id;
-    Animated.timing(t, { toValue: 0, duration: 160, useNativeDriver: Platform.OS !== 'web' }).start(() => {
-      setSello(null);
-      celebrado(id);
-    });
-    if (ver) navigate(() => router.push(`/sellos?sello=${id}` as never), 'forward');
-  };
-
-  const scale = giro.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
-  const rotate = giro.interpolate({ inputRange: [0, 1], outputRange: ['-25deg', '0deg'] });
-  const rayos = t.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
+  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [-140, 0] });
+  const scale = giro.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
+  const rotate = giro.interpolate({ inputRange: [0, 1], outputRange: ['-40deg', '0deg'] });
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, styles.fondo, { opacity: t }]} testID="celebracion">
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => cerrar()} accessibilityLabel="Cerrar" />
-      <View
-        style={[styles.tarjeta, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        accessibilityViewIsModal
-        accessibilityRole="alert"
+    <Animated.View
+      pointerEvents="box-none"
+      style={[styles.capa, { top: insets.top + 10, opacity: t, transform: [{ translateY }] }]}
+      testID="celebracion"
+    >
+      <Pressable
+        onPress={() => cerrar(sello.id, true)}
+        style={({ pressed }) => [styles.tarjeta, { backgroundColor: colors.surface, borderColor: colors.warm }, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`Nuevo sello: ${sello.titulo}. ${sello.logro} Ver mis sellos`}
       >
         <View style={styles.medalla}>
-          <Animated.View style={[StyleSheet.absoluteFill, { opacity: t, transform: [{ scale: rayos }] }]}>
+          <Animated.View style={[StyleSheet.absoluteFill, styles.centro, { opacity: giro }]}>
             <Rayos color={colors.warm} />
           </Animated.View>
           <Animated.View style={{ transform: [{ scale }, { rotate }] }}>
-            <Sello dibujo={sello.dibujo} colors={colors} ganado size={132} />
+            <Sello dibujo={sello.dibujo} colors={colors} ganado size={62} />
           </Animated.View>
         </View>
-        <Text style={[styles.kicker, { color: colors.warm }]}>Nuevo sello</Text>
-        <Text style={[styles.titulo, { color: colors.text, fontFamily: serif }]}>{sello.titulo}</Text>
-        <Text style={{ color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 4 }}>{sello.logro}</Text>
-        <View style={[styles.versiculo, { borderColor: colors.border }]}>
-          <Text style={{ color: colors.text, fontFamily: serif, fontStyle: 'italic', fontSize: 17, lineHeight: 25, textAlign: 'center' }}>
-            «{sello.versiculo.texto}»
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.kicker, { color: colors.warm }]}>Nuevo sello</Text>
+          <Text style={[styles.titulo, { color: colors.text, fontFamily: serif }]} numberOfLines={1}>
+            {sello.titulo}
           </Text>
-          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '600', marginTop: 6, textAlign: 'center' }}>{sello.versiculo.ref}</Text>
+          <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
+            {sello.logro} <Text style={{ fontStyle: 'italic' }}>{sello.versiculo.ref}</Text>
+          </Text>
         </View>
-        <View style={styles.botones}>
-          <Pressable
-            onPress={() => cerrar(true)}
-            style={({ pressed }) => [styles.boton, { backgroundColor: colors.accentSoft }, pressed && styles.pressed]}
-            accessibilityRole="button"
-          >
-            <Text style={{ color: colors.accent, fontWeight: '700' }}>Ver mis sellos</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => cerrar()}
-            style={({ pressed }) => [styles.boton, { backgroundColor: colors.accent }, pressed && styles.pressed]}
-            accessibilityRole="button"
-          >
-            <Text style={{ color: colors.surface, fontWeight: '700' }}>Amén</Text>
-          </Pressable>
-        </View>
-      </View>
+        <Pressable onPress={() => cerrar(sello.id)} hitSlop={10} style={styles.cerrar} accessibilityRole="button" accessibilityLabel="Cerrar">
+          <CloseIcon color={colors.muted} size={18} />
+        </Pressable>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -128,7 +129,7 @@ function Rayos({ color }: { color: string }) {
     return `M${90 + r1 * Math.cos(a)} ${90 + r1 * Math.sin(a)}L${90 + r2 * Math.cos(a)} ${90 + r2 * Math.sin(a)}`;
   }).join('');
   return (
-    <Svg width={180} height={180} viewBox="0 0 180 180">
+    <Svg width={92} height={92} viewBox="0 0 180 180">
       <Path d={rayos} stroke={color} strokeWidth={2.2} strokeLinecap="round" opacity={0.55} />
     </Svg>
   );
@@ -165,13 +166,28 @@ function useHuellasGuardadas() {
 }
 
 const styles = StyleSheet.create({
-  fondo: { backgroundColor: 'rgba(10,10,10,0.55)', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 50 },
-  tarjeta: { width: '100%', maxWidth: 380, borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, padding: 24, paddingTop: 20, alignItems: 'center' },
-  medalla: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center' },
-  kicker: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 },
-  titulo: { fontSize: 28, marginTop: 4, textAlign: 'center' },
-  versiculo: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 18, paddingTop: 16, width: '100%' },
-  botones: { flexDirection: 'row', gap: 10, marginTop: 22, width: '100%' },
-  boton: { flex: 1, borderRadius: 16, paddingVertical: 13, alignItems: 'center' },
-  pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
+  capa: { position: 'absolute', left: 12, right: 12, alignItems: 'center', zIndex: 50 },
+  tarjeta: {
+    width: '100%',
+    maxWidth: 440,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingLeft: 8,
+    paddingRight: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  medalla: { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' },
+  centro: { alignItems: 'center', justifyContent: 'center' },
+  kicker: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  titulo: { fontSize: 20, marginTop: 1 },
+  cerrar: { alignSelf: 'flex-start', padding: 4 },
+  pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
 });
