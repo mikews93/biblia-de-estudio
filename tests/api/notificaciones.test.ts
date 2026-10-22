@@ -151,6 +151,17 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
     expect((await call('estado', { endpoint: `${base}/__push/no-existe`, estado: {} })).json).toEqual({ existe: false });
   });
 
+  it('devuelve las preferencias guardadas para recuperarlas si la app perdió sus datos', async () => {
+    const sub = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: sub, hora: 21 * 60, avisos: { tarjetas: false } });
+    expect((await call('leer', { endpoint: sub.endpoint })).json).toEqual({
+      existe: true,
+      hora: 21 * 60,
+      avisos: { lectura: true, tarjetas: false, reto: true, comunidad: true },
+    });
+    expect((await call('leer', { endpoint: `${base}/__push/no-existe` })).json).toEqual({ existe: false });
+  });
+
   it('si el navegador dio de baja la suscripción, se borra', async () => {
     const sub = nuevaSuscripcion(base, `caducada-${Date.now()}`);
     await call('guardar', { suscripcion: sub });
