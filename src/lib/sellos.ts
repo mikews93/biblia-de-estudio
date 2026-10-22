@@ -32,7 +32,10 @@ export type Tipo =
   | 'mision' // una misión del Modo Jóvenes (src/lib/jovenes.ts)
   | 'profunda' // una misión con sus tres estrellas: entendida, pensada y vivida
   | 'ruta' // una ruta de misiones terminada
-  | `ruta-${string}`; // una misión de esa ruta
+  | `ruta-${string}` // una misión de esa ruta
+  | 'cuento' // una historia del Espacio Niños (src/lib/ninos.ts)
+  | 'charla' // una historia conversada en familia
+  | 'memoria'; // un versículo guardado de memoria
 
 const DE_ESTUDIO: Tipo[] = ['palabra', 'historia', 'original', 'lugar', 'persona', 'viaje', 'promesa', 'diferencia'];
 
@@ -80,7 +83,11 @@ export type Dibujo =
   | 'ola'
   | 'amigos'
   | 'ancla'
-  | 'chispa';
+  | 'chispa'
+  // Los del Espacio Niños
+  | 'arcoiris'
+  | 'oveja'
+  | 'corazon';
 
 export type Sello = {
   id: string;

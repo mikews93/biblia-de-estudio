@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
@@ -11,7 +11,7 @@ import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
 import { init as initDownloads } from '@/lib/descargas';
 import { fixedInTransition } from '@/lib/transition';
-import { SettingsProvider, isDark, useColors } from '@/lib/theme';
+import { SettingsProvider, isDark, useColors, useSettings } from '@/lib/theme';
 
 // La cabecera queda quieta en las transiciones (src/lib/transition.ts). headerStyle descarta los estilos
 // que no conoce, así que se fija cada parte por separado; el Stack de la web pasa estas opciones a Header
@@ -22,6 +22,18 @@ const fixedHeader = {
   headerTitleContainerStyle: fixedInTransition('cabecera-titulo'),
   headerRightContainerStyle: fixedInTransition('cabecera-der'),
 };
+
+// En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
+const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes)(\/|$)/;
+
+function GuardaNinos() {
+  const path = usePathname();
+  const { modo } = useSettings().settings;
+  useEffect(() => {
+    if (modo === 'ninos' && SIN_NINOS.test(path)) router.replace('/');
+  }, [modo, path]);
+  return null;
+}
 
 function AppStack() {
   const colors = useColors();
@@ -105,6 +117,9 @@ function AppStack() {
           <Stack.Screen name="jovenes/index" options={{ title: 'Misiones' }} />
           <Stack.Screen name="jovenes/[ruta]/index" options={{ title: '' }} />
           <Stack.Screen name="jovenes/[ruta]/[mision]" options={{ title: '' }} />
+          <Stack.Screen name="ninos/index" options={{ title: '' }} />
+          <Stack.Screen name="ninos/memoria" options={{ title: '' }} />
+          <Stack.Screen name="ninos/[historia]" options={{ title: '' }} />
           <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
           <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
           <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
@@ -125,6 +140,7 @@ function AppStack() {
       {Platform.OS === 'web' && <AvisosSync />}
       <SincroniaCuenta />
       <Celebracion />
+      <GuardaNinos />
       {Platform.OS === 'web' && (
         <>
           <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />

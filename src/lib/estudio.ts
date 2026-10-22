@@ -62,6 +62,8 @@ export async function askStudy(
   onUpdate: (text: string, sources: Source[]) => void,
   signal?: AbortSignal,
 ): Promise<{ text: string; sources: Source[] }> {
+  // El Espacio Niños no usa IA: la Biblia se escucha y se conversa con un adulto.
+  if (getSettings().modo === 'ninos') throw new Error('En el Espacio Niños no hay IA. Pregúntale a un adulto: ¡conversen juntos!');
   const res = await fetch(`${API}/api/estudiar`, {
     method: 'POST',
     headers: req.palabra ? await palabraHeaders() : await aiHeaders(),

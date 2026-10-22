@@ -62,11 +62,11 @@ export type Settings = {
   enfoque: 'devocional' | 'profundo';
   /** Versiones elegidas para comparar (vacío: las de src/lib/comparar.ts). */
   comparar: string[];
-  /** Para quién se ve la app: para todos o el Modo Jóvenes (src/lib/jovenes.ts). */
+  /** Para quién se ve la app: para todos, el Modo Jóvenes (src/lib/jovenes.ts) o el Espacio Niños (src/lib/ninos.ts). */
   modo: Modo;
 };
 
-export type Modo = 'general' | 'jovenes';
+export type Modo = 'general' | 'jovenes' | 'ninos';
 
 const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general' };
 const KEY = 'ajustes';

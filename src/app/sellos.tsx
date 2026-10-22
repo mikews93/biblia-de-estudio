@@ -20,6 +20,7 @@ import {
   type Sello as SelloDef,
 } from '@/lib/sellos';
 import '@/lib/jovenes';
+import '@/lib/ninos';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -30,8 +31,10 @@ export default function MisSellos() {
   const { width } = useWindowDimensions();
   const [abierto, setAbierto] = useState<string | null>(params.sello ?? null);
 
-  // En el Modo Jóvenes se suman los sellos de las misiones (src/lib/jovenes.ts).
-  const lista = sellosPara(useSettings().settings.modo === 'jovenes' ? 'jovenes' : 'todos');
+  // En el Modo Jóvenes se suman los sellos de las misiones (src/lib/jovenes.ts). En el Espacio Niños se ven solo los
+  // de las historias (src/lib/ninos.ts): los de estudio hablan de cosas que ese espacio no tiene.
+  const { modo } = useSettings().settings;
+  const lista = modo === 'ninos' ? sellosPara('ninos').filter((s) => s.publico === 'ninos') : sellosPara(modo === 'jovenes' ? 'jovenes' : 'todos');
   const ganados = ganadosRecientes(estado, lista);
   const proximo = siguienteSello(estado, lista);
   const porFila = width >= 900 ? 5 : width >= 560 ? 4 : 3;

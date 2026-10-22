@@ -302,6 +302,30 @@ export function SelloIcono({ dibujo, color }: { dibujo: Dibujo; color: string })
           <Path d="M18 16.5v4M16 18.5h4" />
         </>
       );
+    case 'arcoiris': // la promesa: la primera historia
+      return (
+        <>
+          <Path d="M3 17.5a9 9 0 0 1 18 0" />
+          <Path d="M6.5 17.5a5.5 5.5 0 0 1 11 0" />
+          <Path d="M10 17.5a2 2 0 0 1 4 0" />
+          <Path d="M2 20.5h20" />
+        </>
+      );
+    case 'oveja': // el buen pastor conoce sus ovejas
+      return (
+        <>
+          <Path d="M7 10.5a2.6 2.6 0 0 1 4-2.2 2.6 2.6 0 0 1 4.3.6 2.6 2.6 0 0 1 2.4 4 2.6 2.6 0 0 1-2 4.1H8.2a2.6 2.6 0 0 1-1.7-4.6A2.6 2.6 0 0 1 7 10.5z" />
+          <Path d="M5.2 12.4 3.5 11.8M9 17v3M14.5 17v3" />
+          <Circle cx={4} cy={13.2} r={1.4} fill={color} />
+        </>
+      );
+    case 'corazon': // guardado en el corazón
+      return (
+        <>
+          <Path d="M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" />
+          <Path d="M9.5 12.5h5M9.5 15h3.5" />
+        </>
+      );
     default:
       return <Rect x={6} y={6} width={12} height={12} rx={3} />;
   }
