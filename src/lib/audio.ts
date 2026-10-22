@@ -12,6 +12,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { getBooks } from './data';
 import { Line, SPEAKERS, chunks, pickVoices } from './podcast';
+import { lineStarts } from './podcastTiempos';
 import { chapterHref } from './routes';
 import { huella } from './sellos';
 
@@ -33,6 +34,8 @@ export type ChapterAudio = {
   /** Lectura en hebreo o griego: [inicio, fin] de cada palabra del interlineal, por versículo (null si no se lee). */
   words?: Record<string, ([number, number] | null)[]>;
   language?: 'hebreo' | 'griego';
+  /** Pódcast grabado: las intervenciones del guion (los tiempos marcan dónde empieza cada una). */
+  lines?: Line[];
 };
 /** El pódcast con la voz del dispositivo no tiene archivo: se lee intervención por intervención. */
 export type SpeechAudio = { lines: Line[]; index: number; playing: boolean };
@@ -201,12 +204,13 @@ function start(kind: AudioKind, book: string, chapter: number, title: string): n
   return id;
 }
 
-async function playFile(id: number, load: () => Promise<ChapterAudio>) {
+/** Carga y reproduce un archivo; `at` dice desde qué segundo, ya con los tiempos cargados. */
+async function playFile(id: number, load: () => Promise<ChapterAudio>, at?: (audio: ChapterAudio) => number) {
   try {
     const audio = await load();
     if (id !== request) return;
     set({ audio, loading: false });
-    playTrack(0, 0);
+    playTrack(0, at?.(audio) ?? 0);
   } catch (e) {
     if (id !== request) return;
     set({ loading: false, error: e instanceof Error ? e.message : String(e) });
@@ -330,13 +334,38 @@ export function seekWord(verse: number, index: number): boolean {
 }
 
 /** Una grabación que no está en /audio (por ejemplo, un pódcast grabado bajo demanda). */
-export type RemoteRecording = { url: string; duracion: number; credito: string };
+export type RemoteRecording = { url: string; duracion: number; credito: string; tiempos?: number[] };
 
-export function playRecordedPodcast(book: string, chapter: number, title: string, remote?: RemoteRecording) {
-  const label = 'Pódcast · Ana y Tomás';
-  if (!remote) return playRecording('podcast', book, chapter, title, label);
+/**
+ * El pódcast con voces naturales: el que viene con la app (/audio/podcast) o uno grabado bajo demanda. Con el guion
+ * (`lines`), cada intervención lleva su tiempo para que la pantalla siga el texto; `from` empieza en una intervención.
+ */
+export function playRecordedPodcast(
+  book: string,
+  chapter: number,
+  title: string,
+  { remote, lines = [], from = 0 }: { remote?: RemoteRecording; lines?: Line[]; from?: number } = {},
+) {
   const id = start('podcast', book, chapter, title);
-  return playFile(id, async () => ({ label, tracks: [{ url: remote.url, duration: remote.duracion }], timestamps: [], credit: remote.credito }));
+  const base = `${API}/audio/podcast/${recordingId(book, chapter)}`;
+  return playFile(
+    id,
+    async () => {
+      const src: RemoteRecording =
+        remote ?? (await fetchJson<Recording>(`${base}.json`).then((m) => ({ url: `${base}.mp3`, duracion: m.duracion, credito: m.credito })));
+      // Los tiempos del servidor sirven si son del mismo guion; si no, se reparten por la longitud de cada intervención.
+      const starts =
+        src.tiempos?.length === lines.length ? src.tiempos : lineStarts(lines.map((l) => l.text), src.duracion);
+      return {
+        label: 'Pódcast · Ana y Tomás',
+        tracks: [{ url: src.url, duration: src.duracion }],
+        timestamps: starts.map((t, i) => [i, t] as [number, number]),
+        credit: src.credito,
+        lines,
+      };
+    },
+    (audio) => audio.timestamps[from]?.[1] ?? 0,
+  );
 }
 
 // ---------------------------------------------------------------- pódcast con la voz del dispositivo

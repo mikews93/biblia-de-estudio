@@ -1,9 +1,9 @@
-// El pódcast de Ana y Tomás: reproductor con la voz del dispositivo, la versión grabada con voces naturales y la
-// transcripción que sigue a la voz. Lo usan el resumen de un capítulo (/podcast/juan/3) y la historia de una palabra
-// (/palabras/jesed/podcast).
+// El pódcast de Ana y Tomás: un reproductor (con voces naturales si ya está grabado; si no, con la voz del dispositivo
+// y la opción de grabarlo) y la transcripción, que se ilumina y avanza con lo que suena. Lo usan el resumen de un
+// capítulo (/podcast/juan/3) y la historia de una palabra (/palabras/jesed/podcast).
 import { router } from 'expo-router';
-import { ComponentRef, useEffect, useMemo, useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BackIcon, ForwardIcon, PauseIcon, PlayIcon } from '@/components/audioIcons';
 
@@ -14,8 +14,20 @@ import { ToolFooter, ToolState } from '@/components/ToolState';
 import { IconText } from '@/components/comunidad/ui';
 import { parseRef } from '@/lib/data';
 import { useHerramienta } from '@/lib/herramientas';
-import { closeAudio, playSpeech, toggle, useAudio } from '@/lib/audio';
+import {
+  RemoteRecording,
+  chapterTime,
+  closeAudio,
+  currentVerse,
+  getPlayer,
+  playRecordedPodcast,
+  playSpeech,
+  seekChapter,
+  toggle,
+  useAudio,
+} from '@/lib/audio';
 import { Line, SPEAKERS, minutes, parseScript } from '@/lib/podcast';
+import { usePodcastGrabado } from '@/lib/podcastGrabado';
 import { verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -45,8 +57,12 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
   const positions = useRef<Record<number, number>>({});
   const listY = useRef(0);
 
-  const ready = tool.done && lines.length > 0;
-  const player = useSpeechPlayer(bookId, chapter, title, lines);
+  const grabado = usePodcastGrabado(bookId, chapter, palabra);
+  // Ya grabado con voces naturales (en la app o bajo demanda): el reproductor suena con esas voces y no con las del
+  // dispositivo. Mientras se pregunta al servidor, el botón espera para no cambiar de voz a mitad.
+  const natural = recorded ? {} : grabado.estado === 'listo' ? { remote: grabado } : null;
+  const ready = tool.done && lines.length > 0 && (recorded || grabado.estado !== 'cargando');
+  const player = usePodcastPlayer(bookId, chapter, title, lines, natural);
   const colorOf = (speaker: string) => (speaker === 'ana' ? colors.accent : colors.greek);
   const tint = ready ? colors.text : colors.border;
 
@@ -75,7 +91,7 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
           {ready ? ` · unos ${minutes(lines)} min` : ''}
         </Text>
 
-        <PodcastGrabado book={bookId} chapter={chapter} title={title} inApp={recorded} scriptReady={ready} palabra={palabra} />
+        {!natural && <PodcastGrabado grabado={grabado} scriptReady={ready} />}
 
         <View style={[styles.player, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Pressable
@@ -95,7 +111,9 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
             accessibilityLabel={player.playing ? 'Pausar' : 'Escuchar'}
             style={({ pressed }) => [styles.play, { backgroundColor: ready ? colors.accent : colors.border }, pressed && styles.pressed]}
           >
-            {player.playing ? (
+            {player.loading ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : player.playing ? (
               <PauseIcon color={colors.surface} size={26} />
             ) : (
               <PlayIcon color={colors.surface} size={30} />
@@ -114,7 +132,7 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
         </View>
         {ready && (
           <Text style={[styles.progress, { color: colors.muted }]}>
-            {player.index + 1} de {lines.length} · voz del dispositivo
+            {player.index + 1} de {lines.length} · {natural ? 'voces naturales' : 'voz del dispositivo'}
           </Text>
         )}
 
@@ -167,18 +185,62 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
   );
 }
 
-/** El pódcast leído suena en el reproductor único; esta pantalla solo muestra y mueve la intervención actual. */
-function useSpeechPlayer(book: string, chapter: number, title: string, lines: Line[]) {
+/**
+ * El pódcast suena en el reproductor único; esta pantalla solo muestra y mueve la intervención actual. Con voces
+ * naturales es una grabación (la intervención sale de sus tiempos); si no, lo lee la voz del dispositivo.
+ */
+function usePodcastPlayer(book: string, chapter: number, title: string, lines: Line[], natural: { remote?: RemoteRecording } | null) {
   const audio = useAudio();
-  const mine = audio.open && audio.kind === 'podcast' && audio.book === book && audio.chapter === chapter ? audio.speech : null;
-  const jump = (i: number) => playSpeech(book, chapter, title, lines, Math.max(0, Math.min(lines.length - 1, i)));
-  return {
-    index: mine?.index ?? 0,
-    playing: mine?.playing ?? false,
-    toggle: () => (mine ? toggle() : jump(0)),
-    jump,
-    stop: () => mine && closeAudio(),
+  const here = audio.open && audio.kind === 'podcast' && audio.book === book && audio.chapter === chapter;
+  const speech = here ? audio.speech : null;
+  const file = here && !speech && natural ? audio : null;
+  const recording = file?.audio ?? null;
+  const at = useRecordingLine(!!recording);
+
+  if (!natural) {
+    const jump = (i: number) => playSpeech(book, chapter, title, lines, clamp(i, lines));
+    return {
+      index: speech?.index ?? 0,
+      playing: speech?.playing ?? false,
+      loading: false,
+      toggle: () => (speech ? toggle() : jump(0)),
+      jump,
+      stop: () => speech && closeAudio(),
+    };
+  }
+  const jump = (i: number) => {
+    const to = clamp(i, lines);
+    if (!recording) return playRecordedPodcast(book, chapter, title, { remote: natural.remote, lines, from: to });
+    seekChapter(recording.timestamps[to]?.[1] ?? 0);
+    if (!getPlayer().playing) getPlayer().play();
   };
+  return {
+    index: recording ? at.index : 0,
+    playing: !!recording && at.playing,
+    loading: !!file?.loading,
+    toggle: () => (recording ? toggle() : !file?.loading && jump(0)),
+    jump,
+    stop: () => file && closeAudio(),
+  };
+}
+
+const clamp = (i: number, lines: Line[]) => Math.max(0, Math.min(lines.length - 1, i));
+
+/** La intervención que suena en la grabación. Solo cambia de estado cuando cambia de intervención o se pausa. */
+function useRecordingLine(active: boolean) {
+  const [at, setAt] = useState({ index: 0, playing: false });
+  useEffect(() => {
+    if (!active) return;
+    const p = getPlayer();
+    const update = () => {
+      const index = currentVerse(chapterTime(p.currentTime)) ?? 0;
+      setAt((prev) => (prev.index === index && prev.playing === p.playing ? prev : { index, playing: p.playing }));
+    };
+    update();
+    const sub = p.addListener('playbackStatusUpdate', update);
+    return () => sub.remove();
+  }, [active]);
+  return at;
 }
 
 const styles = StyleSheet.create({
