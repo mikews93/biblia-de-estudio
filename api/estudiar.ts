@@ -20,7 +20,7 @@ import path from 'node:path';
 import postgres from 'postgres';
 
 import { Section, sections } from './_comentarios';
-import { needsAccount } from './_cuenta';
+import { gastarLampara, needsAccount } from './_cuenta';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
@@ -28,7 +28,10 @@ import { original } from '../src/lib/original';
 import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabras';
 import { formatRef, parseRef } from '../src/lib/refs';
 
+// Lo que se guarda para todos (el primer estudio de un pasaje, las herramientas) se paga una vez: va con el mejor modelo.
+// Lo de cada persona (preguntas de seguimiento, Taller, semana) se paga cada vez: va con uno más barato.
 const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
+const MODEL_PROPIO = process.env.ESTUDIO_MODEL_PROPIO ?? 'claude-sonnet-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
 // Palabras de cada comentario que lee la IA: para un versículo y para un capítulo entero.
 const COMMENT_WORDS = { verse: 700, chapter: 1200 };
@@ -827,7 +830,7 @@ async function palabraPost(request: Request, body: Body) {
       ],
     },
   ];
-  return streamAnswer(request, docs, messages, SYSTEM + PALABRA_SYSTEM, (saved) => saveTool(tool, palabra.id, 0, saved));
+  return streamAnswer(request, docs, messages, SYSTEM + PALABRA_SYSTEM, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved));
 }
 
 function badRequest(message: string, status = 400) {
@@ -909,6 +912,13 @@ export async function POST(request: Request) {
     }
   }
 
+  // Lo que no se guarda para todos gasta la lámpara diaria de la cuenta.
+  const compartido = Boolean(herramienta || clave);
+  if (!compartido) {
+    const vacia = await gastarLampara(request);
+    if (vacia) return vacia;
+  }
+
   let docs;
   let focus;
   let hasOriginal = false;
@@ -946,7 +956,7 @@ export async function POST(request: Request) {
 
   const system =
     (semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) + (jovenes ? JOVENES_SYSTEM : '');
-  return streamAnswer(request, docs, messages, system, async (saved) => {
+  return streamAnswer(request, docs, messages, system, compartido ? MODEL : MODEL_PROPIO, async (saved) => {
     if (herramienta) await saveTool(herramienta, book.id, chapter, saved);
     else if (clave) await saveStudy(clave, saved);
   });
@@ -960,6 +970,7 @@ function streamAnswer(
   docs: Doc[],
   messages: Anthropic.Beta.BetaMessageParam[],
   system: string,
+  model: string,
   save: (saved: Saved) => Promise<void>,
 ) {
   const encoder = new TextEncoder();
@@ -974,7 +985,7 @@ function streamAnswer(
       try {
         const response = client.beta.messages.stream(
           {
-            model: MODEL,
+            model,
             max_tokens: 16000,
             system,
             messages,
