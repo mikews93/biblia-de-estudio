@@ -5,21 +5,25 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, Field } from '@/components/comunidad/ui';
-import { BooksIcon, CheckIcon, LockIcon, PeopleIcon, SparkIcon, StarIcon, type IconProps } from '@/components/icons';
+import { BooksIcon, CheckIcon, HeartIcon, ListenIcon, LockIcon, PeopleIcon, SparkIcon, StarIcon, type IconProps } from '@/components/icons';
 import { pinValido, ponerPin, revisarPin, tienePin } from '@/lib/jovenes';
+import { preguntaAdulto } from '@/lib/ninos';
 import { Modo, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-// Elegir para quién se ve la app. Al entrar al Modo Jóvenes la Biblia pasa al Español Sencillo; al salir
-// vuelve la versión que se leía antes. Un adulto puede poner un PIN para que el modo no se cambie sin querer.
+// Elegir para quién se ve la app. Al entrar al Modo Jóvenes o al Espacio Niños la Biblia pasa al Español Sencillo;
+// al volver a la app para todos vuelve la versión que se leía antes. Un adulto puede poner un PIN para que el modo
+// no se cambie sin querer; salir del Espacio Niños pide siempre un adulto (el PIN o una multiplicación).
 const VERSION_ANTES = 'jovenes-version-antes';
 
 export default function ModoScreen() {
   const colors = useColors();
   const { settings, update } = useSettings();
   const [pin, setPin] = useState(false);
-  const [pidePin, setPidePin] = useState(false);
+  // Adónde se quiere ir cuando hace falta un adulto (PIN o la pregunta de adultos).
+  const [destino, setDestino] = useState<Modo | null>(null);
   const [intento, setIntento] = useState('');
+  const [pregunta] = useState(() => preguntaAdulto());
   const [nuevoPin, setNuevoPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -30,8 +34,9 @@ export default function ModoScreen() {
 
   const cambiar = async (modo: Modo) => {
     if (modo === settings.modo) return;
-    if (modo === 'jovenes') {
-      await AsyncStorage.setItem(VERSION_ANTES, settings.version).catch(() => {});
+    if (modo !== 'general') {
+      // Al pasar de un modo a otro se conserva la versión que había antes de entrar al primero.
+      if (settings.modo === 'general') await AsyncStorage.setItem(VERSION_ANTES, settings.version).catch(() => {});
       update({ modo, version: 'bes' });
     } else {
       const antes = await AsyncStorage.getItem(VERSION_ANTES).catch(() => null);
@@ -40,13 +45,27 @@ export default function ModoScreen() {
     navigate(() => router.dismissTo('/'), 'back');
   };
 
-  const salir = async () => {
-    if (!pin) return cambiar('general');
-    if (!pidePin) return setPidePin(true);
-    if (!(await revisarPin(intento))) return setError('Ese no es el PIN.');
-    await ponerPin(null);
-    setPin(false);
-    cambiar('general');
+  // Salir del Espacio Niños pide siempre un adulto; salir del Modo Jóvenes, solo si se puso un PIN.
+  const necesitaAdulto = (modo: Modo) => modo !== settings.modo && (settings.modo === 'ninos' || (settings.modo === 'jovenes' && modo === 'general' && pin));
+
+  const elegir = (modo: Modo) => {
+    if (modo === settings.modo) return;
+    if (!necesitaAdulto(modo)) return cambiar(modo);
+    setDestino(modo);
+    setIntento('');
+    setError(null);
+  };
+
+  const confirmar = async () => {
+    if (!destino) return;
+    if (pin) {
+      if (!(await revisarPin(intento))) return setError('Ese no es el PIN.');
+      if (destino === 'general') {
+        await ponerPin(null);
+        setPin(false);
+      }
+    } else if (Number(intento) !== pregunta.r) return setError('Esa no es la respuesta.');
+    cambiar(destino);
   };
 
   const guardarPin = async () => {
@@ -58,7 +77,34 @@ export default function ModoScreen() {
     setAviso('PIN guardado en este dispositivo.');
   };
 
-  const jovenes = settings.modo === 'jovenes';
+  const { modo } = settings;
+  const nombre = (m: Modo) => (m === 'general' ? 'la app para todos' : m === 'jovenes' ? 'el Modo Jóvenes' : 'el Espacio Niños');
+
+  const puerta = (m: Modo) =>
+    destino === m && (
+      <Appear>
+        <View style={[styles.pin, { backgroundColor: colors.surface, borderColor: colors.border }]} testID="puerta-adulto">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <LockIcon color={colors.accent} size={18} />
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15, flex: 1 }}>
+              {pin ? 'Un adulto puso un PIN para cambiar de modo' : `Para papás: ${pregunta.q}`}
+            </Text>
+          </View>
+          <Field
+            value={intento}
+            onChangeText={setIntento}
+            placeholder={pin ? 'PIN' : 'Respuesta'}
+            keyboardType="number-pad"
+            maxLength={4}
+            secureTextEntry={pin}
+            autoFocus
+            testID="respuesta-adulto"
+          />
+          <Button label={`Ir a ${nombre(m)}`} onPress={confirmar} disabled={!intento} />
+          <ErrorText>{error}</ErrorText>
+        </View>
+      </Appear>
+    );
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
@@ -74,33 +120,20 @@ export default function ModoScreen() {
         <Opcion
           titulo="Para todos"
           detalle="Estudio profundo con IA, interlineal, Taller para preparar mensajes y la comunidad completa."
-          activo={!jovenes}
-          onPress={salir}
+          activo={modo === 'general'}
+          onPress={() => elegir('general')}
           testID="modo-general"
         />
       </Appear>
-
-      {pidePin && (
-        <Appear>
-          <View style={[styles.pin, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <LockIcon color={colors.accent} size={18} />
-              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Un adulto puso un PIN para salir</Text>
-            </View>
-            <Field value={intento} onChangeText={setIntento} placeholder="PIN" keyboardType="number-pad" maxLength={4} secureTextEntry autoFocus />
-            <Button label="Salir del Modo Jóvenes" onPress={salir} disabled={intento.length !== 4} />
-            <ErrorText>{error}</ErrorText>
-          </View>
-        </Appear>
-      )}
+      {puerta('general')}
 
       <Appear delay={80}>
         <Opcion
           titulo="Jóvenes"
           etiqueta="12 a 17 años"
           detalle="Para leer la Biblia con ganas, a tu ritmo."
-          activo={jovenes}
-          onPress={() => cambiar('jovenes')}
+          activo={modo === 'jovenes'}
+          onPress={() => elegir('jovenes')}
           testID="modo-jovenes"
           puntos={[
             { icon: (p) => <StarIcon {...p} />, texto: 'Misiones de 5 minutos con estrellas y sellos, sin rankings' },
@@ -110,20 +143,27 @@ export default function ModoScreen() {
           ]}
         />
       </Appear>
+      {puerta('jovenes')}
 
       <Appear delay={120}>
-        <View style={[styles.opcion, { backgroundColor: colors.surface, borderColor: colors.border, opacity: 0.6 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={[styles.opcionTitulo, { color: colors.text, fontFamily: serif }]}>Niños</Text>
-            <Text style={[styles.etiqueta, { color: colors.muted, borderColor: colors.border }]}>6 a 11 años</Text>
-          </View>
-          <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 4 }}>
-            Historias ilustradas y narradas, con un adulto al lado. Muy pronto.
-          </Text>
-        </View>
+        <Opcion
+          titulo="Niños"
+          etiqueta="6 a 11 años"
+          detalle="Historias de la Biblia para escuchar con un adulto al lado."
+          activo={modo === 'ninos'}
+          onPress={() => elegir('ninos')}
+          testID="modo-ninos"
+          puntos={[
+            { icon: ListenIcon, texto: '12 historias ilustradas que se leen en voz alta' },
+            { icon: (p) => <StarIcon {...p} />, texto: 'Un camino de estrellas y preguntas con dibujos' },
+            { icon: HeartIcon, texto: 'Un versículo por semana para guardar en el corazón' },
+            { icon: LockIcon, texto: 'Sin IA ni comunidad. Para salir hace falta un adulto' },
+          ]}
+        />
       </Appear>
+      {puerta('ninos')}
 
-      {jovenes && !pidePin && (
+      {modo !== 'general' && !destino && (
         <Appear delay={160}>
           <View style={[styles.pin, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -132,8 +172,10 @@ export default function ModoScreen() {
             </View>
             <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>
               {pin
-                ? 'Este dispositivo tiene un PIN: hace falta para volver a la app para todos.'
-                : 'Pon un PIN de cuatro números para que el Modo Jóvenes no se cambie sin querer. Queda solo en este dispositivo.'}
+                ? 'Este dispositivo tiene un PIN: hace falta para cambiar de modo.'
+                : modo === 'ninos'
+                  ? 'Para salir del Espacio Niños se pide resolver una multiplicación. Si prefieres, pon un PIN de cuatro números. Queda solo en este dispositivo.'
+                  : 'Pon un PIN de cuatro números para que el Modo Jóvenes no se cambie sin querer. Queda solo en este dispositivo.'}
             </Text>
             {!pin && (
               <>

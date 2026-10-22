@@ -103,7 +103,7 @@ def main():
         encoding="utf-8",
     )
     (dist / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: {site}/sitemap.xml\n", encoding="utf-8")
-    shell_files = sorted("/" + p.relative_to(dist).as_posix() for d in ("_expo", "assets") for p in (dist / d).rglob("*") if p.is_file())
+    shell_files = sorted("/" + p.relative_to(dist).as_posix() for d in ("_expo", "assets", "ninos") for p in (dist / d).rglob("*") if p.is_file())
     (dist / "precache.json").write_text(json.dumps(shell_files), encoding="utf-8")
     print(f"{len(order)} capítulos con página propia en {dist}")
 
