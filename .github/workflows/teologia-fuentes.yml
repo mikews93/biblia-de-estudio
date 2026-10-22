@@ -1,6 +1,7 @@
 name: Fuentes de teología
 
-# Descarga las obras de teología de dominio público (CCEL, Internet Archive, biblicalstudies.org.uk) y las deja como
+# Descarga las obras de teología de dominio público (CCEL, Internet Archive, Project Gutenberg,
+# biblicalstudies.org.uk) y las deja como
 # archivos de la versión «teologia-fuentes-v1» de este repositorio, para que pipeline/build_teologia.py las lea aunque
 # esos sitios no se puedan abrir desde el entorno de desarrollo. Se lanza al cambiar la lista o a mano.
 
@@ -22,14 +23,6 @@ jobs:
       TAG: teologia-fuentes-v1
     steps:
       - uses: actions/checkout@v4
-      - name: Buscar en Internet Archive
-        run: |
-          for q in 'creator:(Strong) AND title:(systematic theology)' 'title:(systematic theology) AND description:(Strong)'; do
-            echo "== $q"
-            curl -sG 'https://archive.org/advancedsearch.php' --data-urlencode "q=$q AND mediatype:texts" \
-              --data-urlencode 'fl[]=identifier' --data-urlencode 'fl[]=title' --data-urlencode 'fl[]=year' --data-urlencode 'fl[]=volume' \
-              --data-urlencode 'rows=40' --data-urlencode 'output=json' | python3 -c "import json,sys; [print(d) for d in json.load(sys.stdin)['response']['docs']]"
-          done
       - name: Descargar
         run: |
           mkdir -p fuentes

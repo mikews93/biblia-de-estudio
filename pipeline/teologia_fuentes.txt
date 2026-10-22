@@ -13,3 +13,6 @@ miley1.txt https://archive.org/download/systematictheolo01mile/systematictheolo0
 miley2.txt https://archive.org/download/systematictheolo02mile/systematictheolo02mile_djvu.txt
 shedd1.txt https://archive.org/download/dogmatictheology01sheduoft/dogmatictheology01sheduoft_djvu.txt
 shedd2.txt https://archive.org/download/dogmatictheology02sheduoft/dogmatictheology02sheduoft_djvu.txt
+strong1.html https://www.gutenberg.org/cache/epub/44035/pg44035-images.html
+strong2.html https://www.gutenberg.org/cache/epub/44555/pg44555-images.html
+strong3.html https://www.gutenberg.org/cache/epub/45283/pg45283-images.html
