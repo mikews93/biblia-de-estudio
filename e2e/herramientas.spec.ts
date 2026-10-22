@@ -1,6 +1,6 @@
 import type { Locator, TestInfo } from '@playwright/test';
 
-import { conSesion, cuentaNueva, expect, peticionesIA, test } from './support/fixtures';
+import { abrirHoja, conSesion, cuentaNueva, expect, peticionesIA, test } from './support/fixtures';
 
 // Herramientas de estudio: las del capítulo hechas con IA (resumen en audio, tarjetas y repaso, mapa
 // mental) y las de datos (mapa de lugares, genealogías y línea de tiempo).
@@ -87,6 +87,7 @@ test.describe('Herramientas del capítulo con IA', () => {
     const antes = (await peticionesIA(request, marca)).length;
 
     await page.goto(`/juan/${cap}`);
+    await abrirHoja(page, 'mas');
     await v(page.getByRole('button', { name: 'Tarjetas de repaso del capítulo' })).click();
     await expect(page).toHaveURL(new RegExp(`/tarjetas/juan/${cap}$`));
     const tarjetas = v(page.getByRole('checkbox'));
@@ -164,7 +165,8 @@ test.describe('Herramientas del capítulo con IA', () => {
     const antes = (await peticionesIA(request, marca)).length;
 
     await page.goto(`/juan/${cap}`);
-    await v(page.getByRole('button', { name: 'Mapa mental del capítulo' })).click();
+    await abrirHoja(page, 'mas');
+    await v(page.getByRole('button', { name: 'Las ideas del capítulo en un mapa' })).click();
     await expect(page).toHaveURL(new RegExp(`/mapa-mental/juan/${cap}$`));
     await expect(v(page.getByText('Toca una idea para leer su versículo.'))).toBeVisible();
     // El dibujo lleva la idea central y las ramas con sus versículos

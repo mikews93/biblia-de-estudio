@@ -1,9 +1,9 @@
 // Íconos de línea de toda la app: un solo juego, con la base común de iconLine.tsx (caja de 24 × 24, trazo de 1,7).
 // Las pantallas usan estos íconos y no símbolos de texto ni emojis, para que cada función se vea igual en todas partes.
 // Todos se dibujan con el centro óptico en (12, 12), para que queden centrados en sus botones.
-import { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Rect, Text as SvgText } from 'react-native-svg';
 
-import { Line, type IconProps as Props } from './iconLine';
+import { Line, STROKE, type IconProps as Props } from './iconLine';
 
 export {
   CameraIcon,
@@ -487,5 +487,26 @@ export const RingsIcon = (p: Props) => (
     <Circle cx={9} cy={13} r={5.2} />
     <Circle cx={15} cy={13} r={5.2} />
     <Path d="M10.6 4.6 12 6l1.4-1.4" />
+  </Line>
+);
+
+/** El interlineal: dos letras del original (αβ o אב) y, debajo de cada una, la raya de su traducción. */
+export const InterlinearIcon = ({ size = 22, color, letter = 'α' }: Props & { letter?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <SvgText x={12} y={letter === 'α' ? 12 : 12.5} fill={color} fontSize={letter === 'α' ? 13 : 12} fontWeight="700" textAnchor="middle" letterSpacing={1}>
+      {letter === 'α' ? 'αβ' : 'אב'}
+    </SvgText>
+    <Path d="M5 17.2h5.5M13.5 17.2h5.5" fill="none" stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
+    <Path d="M6 20.6h3.5M14.5 20.6h3.5" fill="none" stroke={color} strokeWidth={1.3} strokeLinecap="round" opacity={0.6} />
+  </Svg>
+);
+
+/** Cuatro cuadros: todas las herramientas. */
+export const GridIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={4} y={4} width={6.5} height={6.5} rx={1.8} />
+    <Rect x={13.5} y={4} width={6.5} height={6.5} rx={1.8} />
+    <Rect x={4} y={13.5} width={6.5} height={6.5} rx={1.8} />
+    <Rect x={13.5} y={13.5} width={6.5} height={6.5} rx={1.8} />
   </Line>
 );

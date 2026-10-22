@@ -1,0 +1,18 @@
+# nombre url — obras de dominio público que lee pipeline/build_teologia.py (copiadas por .github/workflows/teologia-fuentes.yml)
+hodge1.xml https://ccel.org/ccel/h/hodge/theology1.xml
+hodge2.xml https://ccel.org/ccel/h/hodge/theology2.xml
+hodge3.xml https://ccel.org/ccel/h/hodge/theology3.xml
+calvino.xml https://ccel.org/ccel/c/calvin/institutes.xml
+credos2.xml https://ccel.org/ccel/s/schaff/creeds2.xml
+credos3.xml https://ccel.org/ccel/s/schaff/creeds3.xml
+eusebio.xml https://ccel.org/ccel/s/schaff/npnf201.xml
+atanasio.xml https://ccel.org/ccel/s/schaff/npnf204.xml
+anf05.xml https://ccel.org/ccel/s/schaff/anf05.xml
+westcott.pdf https://biblicalstudies.org.uk/pdf/e-books/westcott_b-f/canon-of-the-nt_westcott.pdf
+miley1.txt https://archive.org/download/systematictheolo01mile/systematictheolo01mile_djvu.txt
+miley2.txt https://archive.org/download/systematictheolo02mile/systematictheolo02mile_djvu.txt
+shedd1.txt https://archive.org/download/dogmatictheology01sheduoft/dogmatictheology01sheduoft_djvu.txt
+shedd2.txt https://archive.org/download/dogmatictheology02sheduoft/dogmatictheology02sheduoft_djvu.txt
+strong1.html https://www.gutenberg.org/cache/epub/44035/pg44035-images.html
+strong2.html https://www.gutenberg.org/cache/epub/44555/pg44555-images.html
+strong3.html https://www.gutenberg.org/cache/epub/45283/pg45283-images.html

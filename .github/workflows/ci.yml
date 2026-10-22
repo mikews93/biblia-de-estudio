@@ -54,6 +54,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run data
       - run: npm run comentarios
+      - run: npm run teologia
       - run: npm run build:web
       - name: Pruebas unitarias
         run: npm test

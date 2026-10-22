@@ -7,12 +7,16 @@ import { getSettings } from './theme';
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
-export type Source = { n: number; label: string; ref?: string };
-export type Turn = { role: 'user' | 'assistant'; text: string; sources?: Source[] };
+/** Una fuente de la respuesta: un pasaje que se abre en la app («ref») o una obra que se lee fuera («url»). */
+export type Source = { n: number; label: string; ref?: string; url?: string; nota?: string };
+/** Lo que la IA consultó para responder una pregunta (las herramientas de api/_investigar.ts). */
+export type Paso = { tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia'; texto: string };
+export type Turn = { role: 'user' | 'assistant'; text: string; sources?: Source[]; pasos?: Paso[] };
 
 type Event =
   | { type: 'text'; text: string }
   | ({ type: 'source' } & Source)
+  | ({ type: 'paso' } & Paso)
   | { type: 'done' }
   | { type: 'error'; message: string };
 
@@ -44,6 +48,8 @@ type Request = {
   nueva?: boolean;
   /** Del sermón a tu semana: las notas del sermón para preparar cinco días (src/lib/semanas.ts). */
   semana?: { notas: string; desde?: number; hasta?: number; predicador?: string };
+  /** La versión que lee la persona: la IA cita esa (o la RV1909 si es una con derechos; ver api/_investigar.ts). */
+  version?: string;
   /** Una pregunta frecuente del pasaje (src/lib/senales.ts): su respuesta es la misma para todos. */
   frecuente?: number;
 };
@@ -58,12 +64,12 @@ async function palabraHeaders(): Promise<Record<string, string>> {
   return { 'Content-Type': 'application/json', ...(llave && { Authorization: `Bearer ${llave}` }) };
 }
 
-/** Llama a onUpdate con el texto y las fuentes acumulados cada vez que llega algo nuevo. */
+/** Llama a onUpdate con el texto, las fuentes y lo consultado, acumulados, cada vez que llega algo nuevo. */
 export async function askStudy(
   req: Request,
-  onUpdate: (text: string, sources: Source[]) => void,
+  onUpdate: (text: string, sources: Source[], pasos: Paso[]) => void,
   signal?: AbortSignal,
-): Promise<{ text: string; sources: Source[] }> {
+): Promise<{ text: string; sources: Source[]; pasos?: Paso[] }> {
   // El Espacio Niños no usa IA: la Biblia se escucha y se conversa con un adulto.
   if (getSettings().modo === 'ninos') throw new Error('En el Espacio Niños no hay IA. Pregúntale a un adulto: ¡conversen juntos!');
   const res = await fetch(`${API}/api/estudiar`, {
@@ -89,12 +95,14 @@ export async function askStudy(
 
   let text = '';
   const sources: Source[] = [];
+  const pasos: Paso[] = [];
   let failure: string | null = null;
   const handle = (line: string) => {
     if (!line.trim()) return;
     const event = JSON.parse(line) as Event;
     if (event.type === 'text') text += event.text;
-    else if (event.type === 'source') sources.push({ n: event.n, label: event.label, ref: event.ref });
+    else if (event.type === 'source') sources.push({ n: event.n, label: event.label, ref: event.ref, url: event.url, nota: event.nota });
+    else if (event.type === 'paso') pasos.push({ tipo: event.tipo, texto: event.texto });
     else if (event.type === 'error') failure = event.message;
   };
 
@@ -109,14 +117,14 @@ export async function askStudy(
       const lines = buffer.split('\n');
       buffer = lines.pop() ?? '';
       lines.forEach(handle);
-      onUpdate(text, [...sources]);
+      onUpdate(text, [...sources], [...pasos]);
     }
     handle(buffer);
   } else {
     // Sin lectura por partes (algunas versiones de React Native): se muestra al terminar.
     (await res.text()).split('\n').forEach(handle);
   }
-  onUpdate(text, [...sources]);
+  onUpdate(text, [...sources], [...pasos]);
   if (failure) throw new Error(failure);
-  return { text, sources };
+  return { text, sources, ...(pasos.length && { pasos }) };
 }

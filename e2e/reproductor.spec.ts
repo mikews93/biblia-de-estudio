@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import type { Locator, Page } from '@playwright/test';
 
-import { conSesion, cuentaNueva, expect, test } from './support/fixtures';
+import { abrirHoja, conSesion, cuentaNueva, expect, test } from './support/fixtures';
 
 // Reproductor único: el audio dramatizado (y todo lo que suena) va a la misma barra, sigue sonando al cambiar
 // de pantalla y se anuncia a la Media Session del navegador para controlarlo desde la pantalla de bloqueo.
@@ -29,6 +29,7 @@ test.describe('Reproductor único', () => {
   test('el dramatizado suena en la barra, sigue al cambiar de pantalla y llega a la Media Session', async ({ page }) => {
     await conDramatizado(page);
     await page.goto('/marcos/1');
+    await abrirHoja(page, 'escuchar');
     await v(page.getByRole('button', { name: 'Escuchar el capítulo dramatizado, con voces, efectos y música' })).click();
 
     await expect(v(page.getByText('Audio dramatizado', { exact: true }))).toBeVisible();

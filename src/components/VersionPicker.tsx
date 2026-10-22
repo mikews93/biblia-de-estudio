@@ -6,10 +6,15 @@ import { Version } from '@/lib/data';
 import { OFFLINE_DAYS } from '@/lib/licenciadas';
 import { serif, useColors, useSettings } from '@/lib/theme';
 
-type Props = { versions: Version[]; onClose: () => void };
+type Props = {
+  versions: Version[];
+  onClose: () => void;
+  /** Abierta desde el estudio con IA: explica qué versión cita la IA con cada una. */
+  estudio?: boolean;
+};
 
 /** Lista de versiones: primero las libres y después las que llegan con permiso por API.Bible o YouVersion. */
-export default function VersionPicker({ versions, onClose }: Props) {
+export default function VersionPicker({ versions, onClose, estudio }: Props) {
   const colors = useColors();
   const { settings, update } = useSettings();
 
@@ -17,7 +22,12 @@ export default function VersionPicker({ versions, onClose }: Props) {
     <Modal transparent animationType="fade" visible onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar versiones" />
       <Appear style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.label, { color: colors.muted }]}>Versión</Text>
+        <Text style={[styles.label, { color: colors.muted }]}>{estudio ? 'Versión del estudio' : 'Versión'}</Text>
+        {estudio && (
+          <Text style={[styles.intro, { color: colors.text }]}>
+            La IA responde y cita con la versión que elijas. También cambia la del lector.
+          </Text>
+        )}
         <ScrollView style={styles.list} contentContainerStyle={{ gap: 8 }}>
           {versions.map((v, i) => {
             const on = settings.version === v.id;
@@ -39,7 +49,13 @@ export default function VersionPicker({ versions, onClose }: Props) {
                 <Text style={[styles.abbr, { color: colors.accent, fontFamily: serif }]}>{v.abbr}</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{v.name}</Text>
-                  <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{v.licensed ? v.credit.split(' · ')[1] : v.credit.split(' · ').slice(1).join(' · ')}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                    {estudio && v.licensed
+                      ? 'La IA cita la RV1909; al tocar una cita la ves en esta'
+                      : v.licensed
+                        ? v.credit.split(' · ')[1]
+                        : v.credit.split(' · ').slice(1).join(' · ')}
+                  </Text>
                 </View>
                 {on && <CheckIcon color={colors.accent} size={18} strokeWidth={2.6} />}
               </Pressable>
@@ -94,4 +110,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 12, padding: 12 },
   abbr: { width: 56, fontSize: 15, fontWeight: '700' },
   note: { fontSize: 12, marginTop: 4, lineHeight: 17 },
+  intro: { fontSize: 14, lineHeight: 20, marginBottom: 4 },
 });

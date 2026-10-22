@@ -40,6 +40,12 @@ export async function peticionesIA(request: APIRequestContext, marca: string) {
   return all.filter((r) => JSON.stringify(r.messages).includes(marca));
 }
 
+/** Abre una hoja de la barra del capítulo: la de escuchar (lectura, dramatizado, original) o la de «Más». */
+export async function abrirHoja(page: Page, hoja: 'escuchar' | 'mas') {
+  const nombre = hoja === 'mas' ? 'Más herramientas del capítulo' : /^Escuchar el capítulo: elegir/;
+  await page.getByRole('button', { name: nombre }).filter({ visible: true }).click();
+}
+
 export const test = base;
 export { expect };
 export type { Page };
