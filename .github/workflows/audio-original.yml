@@ -2,13 +2,9 @@ name: Audio original
 
 # Alinea palabra por palabra la lectura en griego (Marilyn Phemister) y en hebreo (Abraham Shmuelof) de Internet Archive
 # con el interlineal, y publica los tiempos en public/audio/original/<libro>-<cap>.json. El audio no se copia: la app lo
-# reproduce desde archive.org. Se lanza al cambiar pipeline/audio_original/ o a mano desde la pestaña Actions.
+# reproduce desde archive.org. Se lanza a mano desde la pestaña Actions (en push corría en cada rama que unía main).
 
 on:
-  push:
-    paths:
-      - pipeline/audio_original/**
-      - .github/workflows/audio-original.yml
   workflow_dispatch:
     inputs:
       capitulos:
@@ -17,10 +13,6 @@ on:
 
 permissions:
   contents: write
-
-concurrency:
-  group: audio-original-${{ github.ref }}
-  cancel-in-progress: false
 
 jobs:
   alinear:
