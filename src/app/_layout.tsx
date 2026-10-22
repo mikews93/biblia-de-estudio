@@ -5,6 +5,7 @@ import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
 import AvisosSync from '@/components/AvisosSync';
+import Celebracion from '@/components/Celebracion';
 import SincroniaCuenta from '@/components/Sincronia';
 import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
@@ -109,6 +110,7 @@ function AppStack() {
           <Stack.Screen name="semana/[id]/index" options={{ title: '' }} />
           <Stack.Screen name="semana/[id]/[dia]" options={{ title: '' }} />
           <Stack.Screen name="eventos" options={{ title: 'Eventos' }} />
+          <Stack.Screen name="sellos" options={{ title: 'Mis sellos' }} />
           <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
           <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
         </Stack>
@@ -118,6 +120,7 @@ function AppStack() {
       <TabBar />
       {Platform.OS === 'web' && <AvisosSync />}
       <SincroniaCuenta />
+      <Celebracion />
       {Platform.OS === 'web' && (
         <>
           <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />

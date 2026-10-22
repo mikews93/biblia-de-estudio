@@ -20,6 +20,7 @@ import {
   useEventosSeguidos,
 } from '@/lib/eventos';
 import { pasajeLabel } from '@/lib/taller';
+import { huella } from '@/lib/sellos';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -44,6 +45,12 @@ export default function EventoScreen() {
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
   }, []);
+
+  // Seguir en vivo el evento de la iglesia es un sello de Mis sellos
+  const enVivo = evento?.estado === 'en-vivo';
+  useEffect(() => {
+    if (enVivo) huella('evento', codigo);
+  }, [enVivo, codigo]);
 
   // Al avanzar quien predica, la página baja sola hasta el punto nuevo (si se sigue en vivo).
   const punto = evento?.punto ?? -1;

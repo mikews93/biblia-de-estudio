@@ -24,6 +24,7 @@ import {
 } from '@/lib/fichas';
 import { ERAS, REGION_COLORS, esCorriente, eventosDe, fechaEvento, fechaPeriodo, rango } from '@/lib/historia';
 import { verseHref } from '@/lib/routes';
+import { huella, huellaLugar } from '@/lib/sellos';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -53,6 +54,12 @@ export default function FichaScreen() {
   }, [fid]);
   const ficha = loaded?.id === fid ? loaded.ficha : undefined;
   const error = loaded?.id === fid ? loaded.error : undefined;
+  // El pasaporte de Mis sellos: cada lugar visitado y cada persona conocida
+  useEffect(() => {
+    if (!ficha) return;
+    if (ficha.tipo === 'l') huellaLugar(ficha.nombre);
+    else if (ficha.tipo !== 'g') huella('persona', ficha.id);
+  }, [ficha]);
 
   const go = (href: string) => navigate(() => router.push(href as never), 'forward');
   const open = (r: { id: string; nombre: string }) => go(fichaHref(r));

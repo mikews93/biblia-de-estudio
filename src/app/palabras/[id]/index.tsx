@@ -29,6 +29,7 @@ import {
   recorrido,
 } from '@/lib/palabras';
 import { verseHref } from '@/lib/routes';
+import { huella, huellaPalabra } from '@/lib/sellos';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -60,6 +61,12 @@ function Palabra({ palabra }: { palabra: PalabraEnTema }) {
   const [data, setData] = useState<Concordance | null | undefined>(undefined);
   const [peek, setPeek] = useState<Source | null>(null);
   const relato = usePalabraIA(palabra.id, 'relato');
+
+  // Mis sellos: leer la historia de una palabra, y cada palabra original que la forma
+  useEffect(() => {
+    huella('historia', palabra.id);
+    palabra.strongs.forEach(huellaPalabra);
+  }, [palabra.id, palabra.strongs]);
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});

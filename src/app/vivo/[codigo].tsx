@@ -14,6 +14,7 @@ import TextoVivo from '@/components/vivo/TextoVivo';
 import { chapterHref, useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { useTaller } from '@/lib/taller';
+import { huella } from '@/lib/sellos';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { type Sala, cleanCode, liveUrl, spacedCode, touchesByVerse, useSala, vivoApi } from '@/lib/vivo';
@@ -54,6 +55,12 @@ export default function SalaEnVivo() {
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
   }, []);
+
+  // Leer en vivo con la célula (guía o no) es un sello de Mis sellos
+  const enSala = !!sala;
+  useEffect(() => {
+    if (enSala) huella('celula', codigo);
+  }, [enSala, codigo]);
 
   // El texto en la versión de cada quien (los números de versículo coinciden), con la RV1909 si no se puede.
   useEffect(() => {

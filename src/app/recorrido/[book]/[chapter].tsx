@@ -37,6 +37,7 @@ import {
   stopIndexAt,
 } from '@/lib/recorridos';
 import { bookIdFromParam, verseHref } from '@/lib/routes';
+import { huella, huellaLugar } from '@/lib/sellos';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -177,6 +178,16 @@ export default function Recorrido() {
   const mapHeight = wide ? Math.max(460, height - 150) : Math.round(Math.min(Math.max(300, height * 0.42), 480));
   const nextChapter = stops && shown === stops.length - 1 ? null : stops?.find((st, i) => i > shown && (st.book !== bookId || st.chapter !== chapter));
   const lastInChapter = stops ? !stops.some((st, i) => i > shown && st.book === bookId && st.chapter === chapter) : false;
+
+  // El pasaporte de Mis sellos: los lugares por los que pasa la lectura, y el recorrido seguido hasta el final
+  const lugaresAqui = [...inVerse.map((p) => p.name), ...(shownStop ? [shownStop.name] : [])].join('|');
+  useEffect(() => {
+    if (lugaresAqui) lugaresAqui.split('|').forEach(huellaLugar);
+  }, [lugaresAqui]);
+  const viajeCompleto = !!journey && !!stops?.length && shown === stops.length - 1 ? journey.id : null;
+  useEffect(() => {
+    if (viajeCompleto) huella('viaje', viajeCompleto);
+  }, [viajeCompleto]);
 
   const map = (
     <View>
