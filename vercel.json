@@ -6,7 +6,7 @@
   "ignoreCommand": "sh pipeline/vercel_ignorar.sh",
   "functions": {
     "api/estudiar.ts": {
-      "includeFiles": "dist/data/{books.json,text/rv1909/**,interlinear/**,xrefs/**,concordance/**,palabras/**}",
+      "includeFiles": "dist/data/{books.json,versions.json,text/rv1909/**,interlinear/**,xrefs/**,concordance/**,palabras/**}",
       "maxDuration": 300,
       "excludeFiles": "dist/**"
     },

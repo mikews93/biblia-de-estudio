@@ -39,6 +39,8 @@ type Props = {
   onSaved?: (entrada: string) => void;
   /** Lo que se muestra al final, debajo del resumen (por ejemplo, el día siguiente). */
   after?: ReactNode;
+  /** La versión libre con la que se lee el pasaje (la misma que cita la IA). Sin ella, la RV1909. */
+  version?: { id: string; abbr: string };
 };
 
 const STEPS = [
@@ -65,7 +67,7 @@ const native = Platform.OS !== 'web';
  * para hoy y orar con pistas del texto. La IA abre el texto y pregunta; lo que la persona escribe es suyo
  * y se guarda en su diario.
  */
-export default function Devotional({ book, chapter, verse, text, sources, busy, problem, onOpen, onCite, onStep, hasta, keepKey, onSaved, after }: Props) {
+export default function Devotional({ book, chapter, verse, text, sources, busy, problem, onOpen, onCite, onStep, hasta, keepKey, onSaved, after, version }: Props) {
   const colors = useColors();
   // El paso y lo escrito sobreviven a seguir un enlace y volver atrás (src/lib/recordado.ts).
   const keep = keepKey ?? `${studyKeep(book.id, chapter, verse)}devocional.`;
@@ -88,8 +90,8 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
   };
 
   useEffect(() => {
-    getChapter(book.id, chapter).then(setVerses, () => {});
-  }, [book.id, chapter]);
+    getChapter(book.id, chapter, version?.id).then(setVerses, () => {});
+  }, [book.id, chapter, version?.id]);
 
   const reading = range
     ? verses.filter(([n]) => n >= verse && n <= hasta)
@@ -429,7 +431,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
             verse: llevarVerse[0],
             text: llevarVerse[1],
             reference: `${book.name} ${chapter}:${llevarVerse[0]}`,
-            version: 'RV1909',
+            version: version?.abbr ?? 'RV1909',
           }}
           onClose={() => setSharing(false)}
         />

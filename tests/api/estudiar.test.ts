@@ -163,6 +163,68 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(henry.source.content).toEqual([{ type: 'text', text: 'The love of God\nHere is the great gospel truth.' }]);
   });
 
+  it('las preguntas pueden investigar: lee y busca, envía los pasos y cita lo que encontró', async () => {
+    const messages = [
+      { role: 'assistant', text: 'Estudio anterior' },
+      { role: 'user', text: '¿Cómo se definió el canon?' },
+    ];
+    const before = aiRequests.length;
+    const evs = await events(await ask({ book: 'jhn', chapter: 3, verse: 16, messages }));
+    expect(evs.filter((e) => e.type === 'paso')).toEqual([
+      { type: 'paso', tipo: 'leer', texto: '2 Timoteo 3:14-17' },
+      { type: 'paso', tipo: 'buscar', texto: '«escritur»' },
+    ]);
+    // La cita del resultado de la herramienta se convierte en una fuente que se puede abrir
+    expect(evs.find((e) => e.type === 'source')).toEqual({ type: 'source', n: 1, label: '2 Timoteo 3:16', ref: '2ti.3.16' });
+    expect(textOf(evs)).toBe('Pablo dice que toda Escritura es inspirada por Dios.⟦1⟧');
+    expect(evs.at(-1)).toEqual({ type: 'done' });
+
+    // Dos llamadas a la IA: la que pide las herramientas y la que responde con sus resultados
+    const [first, second] = aiRequests.slice(before);
+    expect(first.tools.map((t: { name: string }) => t.name)).toContain('leer_pasaje');
+    expect(JSON.stringify(first.system)).toContain('Herramientas: puedes investigar');
+    const results = second.messages.at(-1).content;
+    expect(results.map((r: { tool_use_id: string }) => r.tool_use_id)).toEqual(['toolu_0', 'toolu_1']);
+    const leido = results[0].content[0];
+    expect(leido.type).toBe('search_result');
+    expect(leido.title).toBe('2 Timoteo 3:14-17 · Reina-Valera 1909');
+    expect(leido.content[2].text).toMatch(/^3:16 Toda Escritura/);
+    // La búsqueda dice cuántos versículos hay y en qué libros, con una muestra
+    expect(results[1].content[0].text).toMatch(/^«escritur» aparece en \d+ versículos de la RV1909 \(Nuevo Testamento\)/);
+    expect(results[1].content[1].type).toBe('search_result');
+  });
+
+  it('el primer estudio no investiga: se basta con el pasaje', async () => {
+    await events(await ask({ book: 'jhn', chapter: 2 }));
+    expect(aiRequests.at(-1)!.tools).toBeUndefined();
+  });
+
+  it('con otra versión libre, la IA lee y cita esa versión', async () => {
+    const before = aiRequests.length;
+    await events(await ask({ book: 'jhn', chapter: 3, version: 'bes' }));
+    const sent = aiRequests.at(-1)!;
+    expect(aiRequests.length).toBe(before + 1); // no es el estudio guardado de la RV1909
+    const pasaje = sent.messages[0].content[0];
+    expect(pasaje.title).toBe('Juan 3 · La Biblia en Español Sencillo');
+    expect(JSON.stringify(sent.system)).toContain('la persona lee la Biblia en la versión «La Biblia en Español Sencillo» (BES)');
+  });
+
+  it('con una versión con derechos, la IA trabaja con la RV1909 y no recibe ese texto', async () => {
+    const messages = [
+      { role: 'assistant', text: 'Estudio anterior' },
+      { role: 'user', text: '¿Qué significa nacer otra vez?' },
+    ];
+    await events(await ask({ book: 'jhn', chapter: 3, version: 'nbla', messages }));
+    const sent = aiRequests.at(-1)!;
+    expect(sent.messages[0].content[0].title).toBe('Juan 3 · Reina-Valera 1909');
+    expect(JSON.stringify(sent.system)).toContain('«Nueva Biblia de las Américas» (NBLA), que tiene derechos de autor: su texto no lo recibes');
+  });
+
+  it('rechaza versiones que no existen', async () => {
+    expect(await bad({ book: 'jhn', chapter: 3, version: 'inventada' })).toBe('Versión no válida');
+    expect(await bad({ book: 'jhn', chapter: 3, version: 7 })).toBe('Versión no válida');
+  });
+
   it('«¿Por qué esta palabra?» añade otros pasajes con la misma palabra', async () => {
     await events(await ask({ book: 'jhn', chapter: 3, verse: 16, word: 0 }));
     const text = lastAiText();

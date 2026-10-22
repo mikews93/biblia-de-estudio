@@ -7,29 +7,42 @@
 // «herramienta: 'podcast'» escribe el guion del pódcast de esa historia. Ya preparados, se leen sin cuenta.
 // Lo que sale bien se guarda en la base de datos por capítulo: la siguiente persona lo recibe al instante, sin
 // volver a llamar a la IA. Con «nueva: true» («Preparar otra versión») se genera otra y sustituye a la guardada.
-// Solo usa las fuentes de la app (RV1909, hebreo y griego de STEPBible, referencias de OpenBible.info y los
-// comentarios libres de comentarioFuentes.ts, en su inglés original), que se pasan a Claude como documentos con citas
-// activadas. La respuesta se envía como NDJSON:
+// Solo usa las fuentes de la app (la versión libre que lee la persona o la RV1909, hebreo y griego de STEPBible,
+// referencias de OpenBible.info y los comentarios libres de comentarioFuentes.ts, en su inglés original), que se pasan
+// a Claude como documentos con citas activadas. Con «version» la IA trabaja con esa versión (ver api/_investigar.ts:
+// las versiones con derechos no se le pasan). En las preguntas de seguimiento y el Taller la IA puede además
+// investigar otros pasajes y fuentes con herramientas (TOOLS en api/_investigar.ts).
+// La respuesta se envía como NDJSON:
 //   {"type":"text","text":"…"}  fragmento de texto en markdown; las citas llegan como ⟦n⟧
 //   {"type":"source","n":1,"label":"Juan 3:16","ref":"jhn.3.16"}  fuente de la cita n
+//   {"type":"paso","tipo":"leer","texto":"Hechos 15"}  lo que la IA está consultando
 //   {"type":"done"} | {"type":"error","message":"…"}
 
 import Anthropic from '@anthropic-ai/sdk';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import postgres from 'postgres';
 
-import { Section, sections } from './_comentarios';
 import { needsAccount } from './_cuenta';
-import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
+import {
+  Biblia,
+  Block,
+  BlockMeta,
+  Book,
+  TOOLS,
+  Use,
+  Word,
+  commentaryBlocks,
+  investigar,
+  lectura,
+  load,
+  pasoDe,
+  versionSystem,
+} from './_investigar';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { original } from '../src/lib/original';
 import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabras';
-import { formatRef, parseRef } from '../src/lib/refs';
 
 const MODEL = process.env.ESTUDIO_MODEL ?? 'claude-opus-5-5';
-const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
 // Palabras de cada comentario que lee la IA: para un versículo y para un capítulo entero.
 const COMMENT_WORDS = { verse: 700, chapter: 1200 };
 // Cambia cuando cambian las fuentes del estudio, para que los estudios guardados antes se preparen de nuevo.
@@ -38,10 +51,9 @@ const MAX_TURNS = 12;
 const MAX_QUESTION = 600;
 const MAX_USES = 24;
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+// Vueltas con herramientas en una respuesta: después la IA responde con lo que tiene.
+const MAX_ROUNDS = 6;
 
-type Book = { id: string; name: string; chapters: number; testament: 'AT' | 'NT'; interlinear: boolean };
-type Verse = [number, string];
-type Word = [string, string, string, string, string, string, string, string];
 type Turn = { role: 'user' | 'assistant'; text: string };
 type Herramienta = 'podcast' | 'tarjetas' | 'mapa';
 /** Lo que se guarda en herramientas_ia: las herramientas de un capítulo y las de una palabra (con capítulo 0). */
@@ -62,6 +74,8 @@ type Body = {
   palabra?: string;
   /** «jovenes»: la app está en el Modo Jóvenes (12 a 17 años). */
   publico?: 'jovenes';
+  /** La versión que lee la persona (pipeline/build_data.py VERSIONS o src/lib/licenciadas.ts). Sin ella, la RV1909. */
+  version?: string;
 };
 // Del sermón a tu semana: lo que la persona anotó del sermón del domingo, para cinco días de devocional.
 type Semana = { notas: string; desde?: number; hasta?: number; predicador?: string };
@@ -76,14 +90,10 @@ type Taller = {
   hasta?: number;
   borrador?: string;
 };
-// [referencia, forma griega, glosa]: concordancia por número de Strong generada por el pipeline
-type Use = [string, string, string];
-// Cada bloque de un documento lleva su etiqueta y, si se puede abrir en la app, su referencia.
-type BlockMeta = { label: string; ref?: string };
 
 const SYSTEM = `Eres el asistente de estudio de una app bíblica gratuita en español. Ayudas a entender el texto; no sustituyes la lectura de la persona ni predicas por ella.
 
-Fuentes: en cada conversación recibes documentos de la app: el capítulo en la Reina-Valera 1909, el texto original palabra por palabra (hebreo y arameo del Antiguo Testamento, griego del Nuevo) con su análisis gramatical (STEPBible, Tyndale House), referencias cruzadas votadas por lectores (OpenBible.info) y lo que dicen del pasaje los comentarios bíblicos de la app, en su inglés original (las notas de estudio de Tyndale y comentaristas clásicos como Matthew Henry, Calvino o Spurgeon).
+Fuentes: en cada conversación recibes documentos de la app: el capítulo en la versión con la que trabajas (la Reina-Valera 1909 si no se dice otra), el texto original palabra por palabra (hebreo y arameo del Antiguo Testamento, griego del Nuevo) con su análisis gramatical (STEPBible, Tyndale House), referencias cruzadas votadas por lectores (OpenBible.info) y lo que dicen del pasaje los comentarios bíblicos de la app, en su inglés original (las notas de estudio de Tyndale y comentaristas clásicos como Matthew Henry, Calvino o Spurgeon).
 
 Reglas:
 - Basa lo que afirmes en esos documentos y cítalos cada vez que los uses.
@@ -94,6 +104,15 @@ Reglas:
 - No uses ni presentes como interpretación cristiana las enseñanzas de grupos que niegan doctrinas centrales del cristianismo histórico, como la Trinidad o la divinidad de Cristo (por ejemplo, Testigos de Jehová o mormones).
 - Escribe en español claro y cálido para alguien sin formación teológica: párrafos cortos, títulos con "## ", listas con "- " y **negritas** solo para palabras clave. Sin tablas.
 - En las preguntas de seguimiento responde a lo que se pregunta, con la misma regla de fuentes. Si la pregunta no tiene que ver con la Biblia o con el estudio, redirígela con amabilidad.`;
+
+// Solo cuando la IA tiene herramientas (en las preguntas de seguimiento).
+const TOOLS_SYSTEM = `
+
+Herramientas: puedes investigar más allá del pasaje abierto: leer otros pasajes, buscar palabras en toda la Biblia, ver referencias cruzadas, el texto original y la concordancia, y consultar los comentarios de la app sobre cualquier pasaje.
+- Úsalas cuando la pregunta va más allá del pasaje (un tema que recorre la Biblia, otro libro, una pregunta general como «¿cómo se formó el canon?») o cuando vayas a hablar de otro pasaje: léelo antes y cítalo.
+- No las uses si los documentos del pasaje ya bastan. Pide varias a la vez cuando no dependan unas de otras, y no más de las necesarias: la persona espera la respuesta.
+- No escribas nada antes de terminar de investigar: tu respuesta empieza cuando ya tienes lo que necesitas.
+- Lo que encuentres con ellas se cita igual que los documentos. Si una pregunta general (historia de la Iglesia, el canon, los concilios) no está en las fuentes de la app, di qué muestran los textos bíblicos y los comentarios, y marca el resto como «contexto general», breve y sin inventar fechas ni citas.`;
 
 const TALLER_SYSTEM = `
 
@@ -343,16 +362,7 @@ const ndjson = (events: object[]) =>
     headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
   });
 
-async function load<T>(rel: string, fallback?: T): Promise<T> {
-  try {
-    return JSON.parse(await readFile(path.join(DATA_DIR, rel), 'utf8')) as T;
-  } catch (err) {
-    if (fallback !== undefined) return fallback;
-    throw err;
-  }
-}
-
-function doc(title: string, blocks: { text: string; meta: BlockMeta }[]) {
+function doc(title: string, blocks: Block[]) {
   const param: Anthropic.Beta.BetaRequestDocumentBlock = {
     type: 'document',
     title,
@@ -362,97 +372,31 @@ function doc(title: string, blocks: { text: string; meta: BlockMeta }[]) {
   return { param, metas: blocks.map((b) => b.meta) };
 }
 
-/** Texto de una referencia (solo el tramo dentro del primer capítulo, para no cargar de más). */
-async function refText(ref: string): Promise<string> {
-  const { start, end } = parseRef(ref);
-  const verses = await load<Verse[]>(`text/rv1909/${start.book}/${start.chapter}.json`, []);
-  const last = end.book === start.book && end.chapter === start.chapter ? end.verse : start.verse;
-  return verses
-    .filter(([n]) => n >= start.verse && n <= last)
-    .map(([, t]) => t)
-    .join(' ');
-}
-
 /** Otras apariciones de la palabra en su testamento, repartidas por todo el texto para que no salgan solo del mismo libro. */
-async function wordUses(word: Word, here: string, books: Book[]) {
+async function wordUses(word: Word, here: string, biblia: Biblia) {
   const entry = await load<{ uses: Use[] } | Use[]>(`concordance/${word[6]}.json`, []);
   const uses = (Array.isArray(entry) ? entry : entry.uses).filter(([ref]) => ref !== here);
   const step = Math.max(1, uses.length / MAX_USES);
   const picked = Array.from({ length: Math.min(MAX_USES, uses.length) }, (_, i) => uses[Math.floor(i * step)]);
   const blocks = await Promise.all(
     picked.map(async ([ref, form, gloss]) => {
-      const label = formatRef(ref, books);
-      return { text: `${label}: ${form} «${gloss}». RV1909: ${await refText(ref)}`, meta: { label, ref } };
+      const label = biblia.label(ref);
+      return { text: `${label}: ${form} «${gloss}». ${biblia.version.abbr}: ${await biblia.refText(ref)}`, meta: { label, ref } };
     }),
   );
   return { total: uses.length + 1, blocks };
 }
 
-/** Los primeros párrafos de un texto hasta unas palabras; el último se corta en una frase si hace falta. */
-function firstWords(paras: string[], max: number) {
-  const out: string[] = [];
-  let left = max;
-  for (const p of paras) {
-    const words = p.split(/\s+/);
-    if (words.length <= left) {
-      out.push(p);
-      left -= words.length;
-      continue;
-    }
-    if (left >= 40 || out.length === 0) out.push(words.slice(0, Math.max(left, 40)).join(' ') + '…');
-    break;
-  }
-  return out;
-}
-
 /** Lo que dicen del pasaje los comentarios que la IA puede leer: un documento por comentario. */
 async function commentaryDocs(request: Request, book: Book, chapter: number, verse: number | undefined, books: Book[]) {
-  const fuentes = ACTIVAS.filter((f) => f.tipo !== 'enlace' && f.ia !== false && comenta(f, book));
-  const docs = await Promise.all(
-    fuentes.map(async (f: Fuente) => {
-      const all = await sections(request, f, book.id, chapter);
-      // Un versículo: la sección que lo comenta (o la anterior más cercana, que suele cubrir un tramo).
-      const picked = verse
-        ? [all.find((s) => s.desde <= verse && verse <= s.hasta) ?? all.filter((s) => s.desde > 0 && s.desde <= verse).at(-1)].filter(
-            (s): s is Section => !!s,
-          )
-        : all;
-      if (!picked.length) return null;
-      const budget = verse ? COMMENT_WORDS.verse : COMMENT_WORDS.chapter;
-      const each = Math.max(60, Math.floor(budget / picked.length));
-      const blocks = picked.flatMap((s) => {
-        const where =
-          s.desde === 0 ? `${book.name} ${chapter}` : `${book.name} ${chapter}:${s.desde}${s.hasta > s.desde ? `-${s.hasta}` : ''}`;
-        const paras = s.partes.join('\n\n').split(/\n{2,}/);
-        const text = firstWords(paras, each).map((p) =>
-          // Las referencias ⟦jhn.3.16⟧ se leen como «Juan 3:16»: ⟦…⟧ marca las citas en la respuesta.
-          p.replace(/⟦([^⟧]+)⟧/g, (_, r: string) => {
-            try {
-              return formatRef(r, books);
-            } catch {
-              return '';
-            }
-          }),
-        );
-        const meta = { label: `${f.nombre}, ${where}`, ref: `${book.id}.${chapter}.${Math.max(1, s.desde)}` };
-        return text.map((t, i) => ({ text: i === 0 && s.titulo ? `${s.titulo}\n${t}` : t, meta }));
-      });
-      return doc(`${f.obra}, ${f.autor}${f.año ? ` (${f.año})` : ''} · comentario sobre ${verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`}`, blocks);
-    }),
-  );
-  return docs.filter((d) => d !== null);
+  const found = await commentaryBlocks(request, book, chapter, verse, books, verse ? COMMENT_WORDS.verse : COMMENT_WORDS.chapter);
+  return found.map((f) => doc(f.title, f.blocks));
 }
 
-async function buildSources(
-  request: Request,
-  book: Book,
-  chapter: number,
-  verse: number | undefined,
-  books: Book[],
-  word?: number,
-) {
+async function buildSources(biblia: Biblia, book: Book, chapter: number, verse: number | undefined, word?: number) {
+  const { request, books } = biblia;
   const [verses, interlinear, xrefs] = await Promise.all([
-    load<Verse[]>(`text/rv1909/${book.id}/${chapter}.json`),
+    biblia.chapter(book.id, chapter),
     load<Record<string, Word[]>>(`interlinear/${book.id}/${chapter}.json`, {}),
     load<Record<string, [string, number][]>>(`xrefs/${book.id}/${chapter}.json`, {}),
   ]);
@@ -460,7 +404,7 @@ async function buildSources(
 
   const docs = [
     doc(
-      `${book.name} ${chapter} · Reina-Valera 1909`,
+      `${book.name} ${chapter} · ${biblia.version.name}`,
       verses.map(([n, t]) => ({
         text: `${chapter}:${n} ${t}`,
         meta: { label: `${book.name} ${chapter}:${n}`, ref: `${book.id}.${chapter}.${n}` },
@@ -494,8 +438,8 @@ async function buildSources(
     : Object.values(xrefs).flatMap((list) => list.slice(0, 2).map(([r]) => r)).slice(0, 40);
   const refBlocks = await Promise.all(
     refs.map(async (r) => {
-      const label = formatRef(r, books);
-      return { text: `${label}: ${await refText(r)}`, meta: { label, ref: r } };
+      const label = biblia.label(r);
+      return { text: `${label}: ${await biblia.refText(r)}`, meta: { label, ref: r } };
     }),
   );
   if (refBlocks.length) {
@@ -509,9 +453,9 @@ async function buildSources(
   if (verse && word !== undefined) {
     const w = interlinear[verse]?.[word];
     if (!w) throw new Error('Esa palabra no existe en el versículo');
-    const uses = await wordUses(w, `${book.id}.${chapter}.${verse}`, books);
+    const uses = await wordUses(w, `${book.id}.${chapter}.${verse}`, biblia);
     if (uses.blocks.length) {
-      docs.push(doc(`Otros pasajes del ${testamentName(book)} con ${w[4]} (${w[6]}), con su glosa y la RV1909`, uses.blocks));
+      docs.push(doc(`Otros pasajes del ${testamentName(book)} con ${w[4]} (${w[6]}), con su glosa y la ${biblia.version.abbr}`, uses.blocks));
     }
     focus = { word: w, total: uses.total };
   }
@@ -521,14 +465,14 @@ async function buildSources(
 
 const testamentName = (book: Book) => (book.testament === 'AT' ? 'Antiguo Testamento' : 'Nuevo Testamento');
 
-function wordTask(book: Book, chapter: number, verse: number, focus: { word: Word; total: number }) {
+function wordTask(book: Book, chapter: number, verse: number, focus: { word: Word; total: number }, abbr: string) {
   const [greek, translit, es, , lemma, lemmaGloss, strong] = focus.word;
   const lang = original(book);
   return `La persona tocó la ${lang.word} ${greek} (${translit}, glosa «${es}») en ${book.name} ${chapter}:${verse}. Su forma de diccionario es ${lemma} «${lemmaGloss}» (${strong}) y aparece ${focus.total} ${
     focus.total === 1 ? 'vez' : 'veces'
   } en el ${testamentName(book)}. Explica «¿Por qué esta palabra?» con estas secciones:
 ## Qué dice el ${lang.name}: el significado de la palabra y lo que aporta su forma gramatical aquí.
-## Cómo la traduce la RV1909: qué palabra española usa en este versículo y qué matiz se gana o se pierde frente al ${lang.name}.
+## Cómo la traduce la ${abbr}: qué palabra española usa en este versículo y qué matiz se gana o se pierde frente al ${lang.name}.
 ## Dónde más aparece: 3 o 4 pasajes de la lista de otros pasajes que muestren cómo se usa, y qué enseña cada uno.
 ## Para pensar: una pregunta breve para la persona.
 
@@ -690,17 +634,18 @@ export function repartir(uses: Use[], max: number): Use[] {
   return [...picked].sort((a, b) => a - b).map((i) => uses[i]);
 }
 
-async function usesDoc(title: string, uses: Use[], books: Book[]) {
+async function usesDoc(title: string, uses: Use[], biblia: Biblia) {
   const blocks = await Promise.all(
     uses.map(async ([ref, form, gloss]) => {
-      const label = formatRef(ref, books);
-      return { text: `${label}: ${form} «${gloss}». RV1909: ${await refText(ref)}`, meta: { label, ref } };
+      const label = biblia.label(ref);
+      return { text: `${label}: ${form} «${gloss}». RV1909: ${await biblia.refText(ref)}`, meta: { label, ref } };
     }),
   );
   return doc(title, blocks);
 }
 
-async function palabraSources(p: PalabraEnTema, books: Book[]) {
+async function palabraSources(p: PalabraEnTema, biblia: Biblia) {
+  const { books } = biblia;
   const order = new Map(books.map((b, i) => [b.id, i]));
   const name = new Map(books.map((b) => [b.id, b.name]));
   const [{ lexico }, uses, pareja] = await Promise.all([
@@ -734,14 +679,14 @@ async function palabraSources(p: PalabraEnTema, books: Book[]) {
       },
     ]),
   );
-  docs.push(await usesDoc(`Pasajes con ${p.nombre} (${p.original}), con la forma original, su glosa y la RV1909`, repartir(uses, PALABRA_USES), books));
+  docs.push(await usesDoc(`Pasajes con ${p.nombre} (${p.original}), con la forma original, su glosa y la RV1909`, repartir(uses, PALABRA_USES), biblia));
   if (p.pareja && pareja.length) {
     const otro = p.hebreo ? 'griego del Nuevo Testamento' : 'hebreo del Antiguo Testamento';
     docs.push(
       await usesDoc(
         `La misma idea en el ${otro}: pasajes con ${p.pareja.nombre} (${p.pareja.original}), que aparece ${pareja.length} veces`,
         repartir(pareja, PAREJA_USES),
-        books,
+        biblia,
       ),
     );
   }
@@ -817,7 +762,8 @@ async function palabraPost(request: Request, body: Body) {
   if (denied) return denied;
 
   const books = await load<Book[]>('books.json');
-  const docs = await palabraSources(palabra, books);
+  // La historia de una palabra es la misma para todos: siempre con la RV1909.
+  const docs = await palabraSources(palabra, new Biblia(request, (await lectura(undefined))!, books));
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     {
       role: 'user',
@@ -891,11 +837,21 @@ export async function POST(request: Request) {
     return badRequest('Herramienta no válida');
   }
   if (body.nueva !== undefined && (typeof body.nueva !== 'boolean' || !herramienta)) return badRequest('Pedido no válido');
+  // Las herramientas (pódcast, tarjetas, mapa) se guardan por capítulo para todos: siempre con la RV1909.
+  const version = await lectura(herramienta ? undefined : body.version);
+  if (!version) return badRequest('Versión no válida');
 
   // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos. La semana es de cada persona.
   const clave =
     !herramienta && !taller && !semana && turns.length === 0
-      ? [STUDY_VERSION, (devocional ? 'devocional' : 'profundo') + (jovenes ? '-jovenes' : ''), book.id, chapter, verse ?? '', word ?? ''].join(':')
+      ? [
+          STUDY_VERSION + (version.id === 'rv1909' ? '' : `-${version.id}`),
+          (devocional ? 'devocional' : 'profundo') + (jovenes ? '-jovenes' : ''),
+          book.id,
+          chapter,
+          verse ?? '',
+          word ?? '',
+        ].join(':')
       : null;
 
   if ((herramienta || clave) && !body.nueva) {
@@ -909,11 +865,12 @@ export async function POST(request: Request) {
     }
   }
 
+  const biblia = new Biblia(request, version, books);
   let docs;
   let focus;
   let hasOriginal = false;
   try {
-    ({ docs, focus, hasOriginal } = await buildSources(request, book, chapter, verse, books, word));
+    ({ docs, focus, hasOriginal } = await buildSources(biblia, book, chapter, verse, word));
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
@@ -934,7 +891,7 @@ export async function POST(request: Request) {
             : herramienta
               ? HERRAMIENTAS[herramienta](book, chapter, hasOriginal && book.interlinear)
               : focus && verse
-              ? wordTask(book, chapter, verse, focus)
+              ? wordTask(book, chapter, verse, focus, version.abbr)
               : devocional
               ? devotionalTask(book, chapter, verse)
               : studyTask(book, chapter, verse, hasOriginal && book.interlinear),
@@ -944,85 +901,140 @@ export async function POST(request: Request) {
     ...turns.map((t) => ({ role: t.role, content: t.text })),
   ];
 
+  // Investigar otros pasajes y fuentes: en las preguntas de la persona. El primer estudio se basta con el pasaje.
+  const investiga = turns.length > 0;
   const system =
-    (semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) + (jovenes ? JOVENES_SYSTEM : '');
-  return streamAnswer(request, docs, messages, system, async (saved) => {
-    if (herramienta) await saveTool(herramienta, book.id, chapter, saved);
-    else if (clave) await saveStudy(clave, saved);
-  });
+    (semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) +
+    versionSystem(version) +
+    (investiga ? TOOLS_SYSTEM : '') +
+    (jovenes ? JOVENES_SYSTEM : '');
+  return streamAnswer(
+    request,
+    docs,
+    messages,
+    system,
+    async (saved) => {
+      if (herramienta) await saveTool(herramienta, book.id, chapter, saved);
+      else if (clave) await saveStudy(clave, saved);
+    },
+    investiga ? biblia : undefined,
+  );
 }
 
 type Doc = ReturnType<typeof doc>;
 
-/** Pide la respuesta a Claude y la envía por partes; «save» guarda la respuesta completa. */
+/**
+ * Pide la respuesta a Claude y la envía por partes; «save» guarda la respuesta completa. Con «biblia», la IA puede
+ * usar las herramientas de api/_investigar.ts: cada vuelta envía lo que consulta y sigue hasta que responde.
+ */
 function streamAnswer(
   request: Request,
   docs: Doc[],
   messages: Anthropic.Beta.BetaMessageParam[],
   system: string,
   save: (saved: Saved) => Promise<void>,
+  biblia?: Biblia,
 ) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: object) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
       const sources = new Map<string, number>();
-      const pending = new Map<number, Set<number>>();
+      // Bloques de cada search_result que devolvieron las herramientas, en el orden en que la IA los recibió.
+      const results: BlockMeta[][] = [];
       // Lo enviado, para guardar la herramienta tal cual la recibió la persona
       let texto = '';
       const fuentes: Saved['fuentes'] = [];
-      try {
-        const response = client.beta.messages.stream(
-          {
-            model: MODEL,
-            max_tokens: 16000,
-            system,
-            messages,
-            cache_control: { type: 'ephemeral' },
-            output_config: { effort: 'medium' },
-            betas: ['server-side-fallback-2026-07-01'],
-            fallbacks: 'default',
-          },
-          { signal: request.signal },
-        );
-        for await (const event of response) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            texto += event.delta.text;
-            send({ type: 'text', text: event.delta.text });
-          } else if (event.type === 'content_block_delta' && event.delta.type === 'citations_delta') {
-            const c = event.delta.citation;
-            if (c.type !== 'content_block_location') continue;
-            const metas = docs[c.document_index]?.metas ?? [];
-            for (let i = c.start_block_index; i < c.end_block_index; i++) {
-              const meta = metas[i];
-              if (!meta) continue;
-              let n = sources.get(meta.label);
-              if (n === undefined) {
-                n = sources.size + 1;
-                sources.set(meta.label, n);
-                fuentes.push({ n, ...meta });
-                send({ type: 'source', n, ...meta });
-              }
-              if (!pending.has(event.index)) pending.set(event.index, new Set());
-              pending.get(event.index)!.add(n);
-            }
-          } else if (event.type === 'content_block_stop' && pending.has(event.index)) {
-            // Las marcas van al final del fragmento citado, como notas al pie.
-            const marks = [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('');
-            texto += marks;
-            send({ type: 'text', text: marks });
-            pending.delete(event.index);
+      const cite = (metas: BlockMeta[], from: number, to: number, into: Set<number>) => {
+        for (let i = from; i < to; i++) {
+          const meta = metas[i];
+          if (!meta) continue;
+          let n = sources.get(meta.label);
+          if (n === undefined) {
+            n = sources.size + 1;
+            sources.set(meta.label, n);
+            fuentes.push({ n, ...meta });
+            send({ type: 'source', n, ...meta });
           }
+          into.add(n);
         }
-        const final = await response.finalMessage();
-        if (final.stop_reason === 'refusal') {
-          send({ type: 'error', message: 'No puedo ayudar con esta pregunta. Prueba a formularla de otra manera.' });
-        } else {
-          // Solo se guarda una respuesta completa
-          if (final.stop_reason === 'end_turn' && texto.trim()) {
-            await save({ texto, fuentes });
+      };
+      const history = [...messages];
+      try {
+        for (let round = 0; ; round++) {
+          const pending = new Map<number, Set<number>>();
+          const last = !biblia || round >= MAX_ROUNDS;
+          const response = client.beta.messages.stream(
+            {
+              model: MODEL,
+              max_tokens: 16000,
+              system,
+              messages: history,
+              // En la última vuelta las herramientas siguen declaradas (la conversación las usó), pero ya no se pueden pedir.
+              ...(biblia && { tools: TOOLS, tool_choice: { type: last ? 'none' : 'auto' } as const }),
+              cache_control: { type: 'ephemeral' },
+              output_config: { effort: 'medium' },
+              betas: ['server-side-fallback-2026-07-01'],
+              fallbacks: 'default',
+            },
+            { signal: request.signal },
+          );
+          for await (const event of response) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              texto += event.delta.text;
+              send({ type: 'text', text: event.delta.text });
+            } else if (event.type === 'content_block_delta' && event.delta.type === 'citations_delta') {
+              const c = event.delta.citation;
+              if (!pending.has(event.index)) pending.set(event.index, new Set());
+              const into = pending.get(event.index)!;
+              if (c.type === 'content_block_location') cite(docs[c.document_index]?.metas ?? [], c.start_block_index, c.end_block_index, into);
+              else if (c.type === 'search_result_location') cite(results[c.search_result_index] ?? [], c.start_block_index, c.end_block_index, into);
+            } else if (event.type === 'content_block_stop' && pending.has(event.index)) {
+              // Las marcas van al final del fragmento citado, como notas al pie.
+              const marks = [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('');
+              if (marks) {
+                texto += marks;
+                send({ type: 'text', text: marks });
+              }
+              pending.delete(event.index);
+            }
           }
-          send({ type: 'done' });
+          const final = await response.finalMessage();
+          const calls = final.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
+          if (biblia && final.stop_reason === 'tool_use' && calls.length) {
+            // Separa lo que hubiera escrito antes de investigar de la respuesta que viene después.
+            if (texto && !texto.endsWith('\n\n')) {
+              texto += '\n\n';
+              send({ type: 'text', text: '\n\n' });
+            }
+            const inputs = calls.map((call) => (call.input && typeof call.input === 'object' ? (call.input as Record<string, unknown>) : {}));
+            calls.forEach((call, i) => send({ type: 'paso', ...pasoDe(call.name, inputs[i], biblia) }));
+            const done = await Promise.all(calls.map((call, i) => investigar(call.name, inputs[i], biblia)));
+            done.forEach((d) => results.push(...d.results));
+            history.push(
+              { role: 'assistant', content: final.content },
+              {
+                role: 'user',
+                content: calls.map((call, i) => ({
+                  type: 'tool_result' as const,
+                  tool_use_id: call.id,
+                  content: done[i].content,
+                  ...(done[i].error && { is_error: true }),
+                })),
+              },
+            );
+            continue;
+          }
+          if (final.stop_reason === 'refusal') {
+            send({ type: 'error', message: 'No puedo ayudar con esta pregunta. Prueba a formularla de otra manera.' });
+          } else {
+            // Solo se guarda una respuesta completa
+            if (final.stop_reason === 'end_turn' && texto.trim()) {
+              await save({ texto, fuentes });
+            }
+            send({ type: 'done' });
+          }
+          break;
         }
       } catch (err) {
         console.error('estudiar', err);

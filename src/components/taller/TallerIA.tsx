@@ -15,6 +15,7 @@ import {
 import { IconText } from '@/components/comunidad/ui';
 import { CloseIcon, SparkIcon } from '@/components/icons';
 import AskBar from '@/components/AskBar';
+import Investigacion from '@/components/Investigacion';
 import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
 import { parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
@@ -26,7 +27,7 @@ import { useConversations } from '@/lib/conversaciones';
 import { Source, TallerRequest, askStudy } from '@/lib/estudio';
 import { verseHref } from '@/lib/routes';
 import { Mensaje, borradorParaIA, plantilla } from '@/lib/taller';
-import { serif, useColors } from '@/lib/theme';
+import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 export type Modo = TallerRequest['modo'];
@@ -43,6 +44,7 @@ type Props = { mensaje: Mensaje; paso: Paso; modo: Modo; title: string; onClose:
 /** La IA del Taller: pregunta, sugiere o revisa con citas de las fuentes de la app. Nunca escribe el mensaje. */
 export default function TallerIA({ mensaje, paso, modo: initialModo, title, onClose }: Props) {
   const colors = useColors();
+  const { settings } = useSettings();
   // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
   const focused = useIsFocused();
   const [modo, setModo] = useState<Modo>(initialModo);
@@ -60,6 +62,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
         chapter: p.chapter,
         verse: single,
         messages: history,
+        version: settings.version,
         taller: {
           modo: m,
           paso,
@@ -97,7 +100,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
     navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward');
   };
 
-  const waiting = busy && !turns[turns.length - 1]?.text;
+  const waiting = busy && !turns[turns.length - 1]?.text && !turns[turns.length - 1]?.pasos?.length;
 
   return (
     <Modal transparent animationType="slide" visible={focused} onRequestClose={onClose}>
@@ -154,6 +157,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                   </View>
                 ) : (
                   <View key={i}>
+                    {!!turn.pasos?.length && <Investigacion pasos={turn.pasos} working={!turn.text && busy && i === turns.length - 1} colors={colors} />}
                     {!turn.text ? null : modo === 'sugerir' ? (
                       <Sugerencias
                         text={turn.text}

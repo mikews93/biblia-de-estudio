@@ -1,9 +1,10 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ArrowRightIcon, BooksIcon, ChevronRightIcon, CloseIcon, CompassIcon, CrossIcon, EyeIcon, type IconProps, LampIcon, LinkIcon } from '@/components/icons';
 import Appear from '@/components/Appear';
-import { getChapter, parseRef } from '@/lib/data';
+import { getChapter, getChapterExtras, parseRef } from '@/lib/data';
+import { licensedById } from '@/lib/licenciadas';
 import { Source } from '@/lib/estudio';
 import { Colors, serif } from '@/lib/theme';
 
@@ -141,24 +142,44 @@ function inline(text: string, colors: Colors, { sources, onCite }: Cites = {}): 
 
 /**
  * Lo que dice una fuente sin salir del estudio: al tocar un número aparece encima de la caja de preguntas
- * con el texto del pasaje y un botón para leerlo en su capítulo.
+ * con el texto del pasaje y un botón para leerlo en su capítulo. Con «version», el texto sale en la versión que
+ * lee la persona, también si es una con derechos (con el aviso que piden sus editores), aunque la IA no la recibe.
  */
-export function SourcePeek({ source, colors, onOpen, onClose }: { source: Source; colors: Colors; onOpen: (ref: string) => void; onClose: () => void }) {
-  const [text, setText] = useState<{ ref: string; verses: [number, string][] } | null>(null);
+export function SourcePeek({
+  source,
+  colors,
+  onOpen,
+  onClose,
+  version = 'rv1909',
+}: {
+  source: Source;
+  colors: Colors;
+  onOpen: (ref: string) => void;
+  onClose: () => void;
+  version?: string;
+}) {
+  const [text, setText] = useState<{ ref: string; verses: [number, string][]; copyright?: string | null; licensed?: boolean } | null>(null);
   const ref = source.ref;
+  const licensed = licensedById(version);
 
   useEffect(() => {
     if (!ref) return;
     let alive = true;
     const { start, end } = parseRef(ref);
     const last = end.chapter === start.chapter ? end.verse : start.verse + 2;
-    getChapter(start.book, start.chapter)
-      .then((vs) => alive && setText({ ref, verses: vs.filter(([n]) => n >= start.verse && n <= Math.min(last, start.verse + 2)).map(([n, t]) => [n, t]) }))
+    const pick = (vs: [number, string, string?][]) => vs.filter(([n]) => n >= start.verse && n <= Math.min(last, start.verse + 2)).map(([n, t]): [number, string] => [n, t]);
+    getChapter(start.book, start.chapter, version)
+      .then(async (vs) => {
+        const extras = licensed ? await getChapterExtras(start.book, start.chapter, version).catch(() => null) : null;
+        if (alive) setText({ ref, verses: pick(vs), copyright: extras?.copyright, licensed: !!licensed });
+      })
+      // Sin la versión con derechos (sin conexión), la RV1909
+      .catch(() => (licensed ? getChapter(start.book, start.chapter).then((vs) => alive && setText({ ref, verses: pick(vs) })) : Promise.reject()))
       .catch(() => alive && setText({ ref, verses: [] }));
     return () => {
       alive = false;
     };
-  }, [ref]);
+  }, [ref, version, licensed]);
 
   const shown = text?.ref === ref ? text : null;
   const { start, end } = ref ? parseRef(ref) : { start: null, end: null };
@@ -194,6 +215,17 @@ export function SourcePeek({ source, colors, onOpen, onClose }: { source: Source
             )
           ) : (
             <ActivityIndicator color={colors.accent} style={{ marginVertical: 10 }} />
+          )}
+          {/* Los editores piden su aviso de derechos y sus enlaces cada vez que se muestra su texto. */}
+          {licensed && shown?.licensed && !!shown.verses.length && (
+            <Text style={[styles.peekCredit, { color: colors.muted }]}>
+              {shown.copyright || licensed.credit}
+              {licensed.links.map((l) => (
+                <Text key={l.url} onPress={() => Linking.openURL(l.url)} role="link" style={{ color: colors.accent }}>
+                  {` · ${l.label}`}
+                </Text>
+              ))}
+            </Text>
           )}
           <Pressable
             onPress={() => onOpen(ref)}
@@ -234,6 +266,7 @@ const styles = StyleSheet.create({
   peekText: { fontFamily: serif, fontSize: 16, lineHeight: 24, marginTop: 10 },
   peekVerse: { fontSize: 11, fontWeight: '700' },
   peekHint: { fontSize: 13, lineHeight: 18, marginTop: 8 },
+  peekCredit: { fontSize: 11, lineHeight: 15, marginTop: 8 },
   peekOpen: { alignSelf: 'flex-start', marginTop: 12, borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 7 },
   citeTap: { borderRadius: 8, overflow: 'hidden' },
   ornate: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 6 },
