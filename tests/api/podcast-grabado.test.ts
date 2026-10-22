@@ -115,6 +115,11 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     expect(nuevas[0].model_id).toBe('eleven_v4');
     expect(nuevas[0].inputs[1].text).toBe('Respuesta 1.');
     expect(nuevas[0].inputs[0].voice_id).not.toBe(nuevas[0].inputs[1].voice_id);
+    // Dónde empieza cada intervención: el segundo tramo empieza justo en el segundo 1.
+    expect(listo.tiempos).toHaveLength(10);
+    expect(listo.tiempos[0]).toBe(0);
+    expect(listo.tiempos[8]).toBe(1);
+    expect(listo.tiempos[7]).toBeLessThan(1);
     const mp3 = await readFile(new URL(listo.url));
     expect(mp3.length).toBe(16000);
 
