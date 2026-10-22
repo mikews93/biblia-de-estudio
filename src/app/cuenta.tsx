@@ -7,7 +7,7 @@ import { ProgresoCuenta } from '@/components/Sincronia';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, KeyIcon, LockIcon, PinIcon } from '@/components/icons';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
 import {
   disconnectFacebook,
@@ -20,6 +20,7 @@ import {
   resumeFacebook,
   saveProfile,
 } from '@/lib/perfil';
+import { HAY_SOSTENER } from '@/lib/sostener';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -304,6 +305,25 @@ export default function AccountScreen() {
           <ChevronRightIcon color={colors.muted} size={20} />
         </Pressable>
       </Appear>
+
+      {HAY_SOSTENER && (
+        <Appear delay={200}>
+          <Pressable
+            onPress={() => go('/sostener')}
+            accessibilityRole="link"
+            style={[styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: colors.border }]}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: colors.accentSoft }]}>
+              <LampIcon color={colors.accent} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Sostén Zarza</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Mantén la app gratis para otros, tú o tu iglesia</Text>
+            </View>
+            <ChevronRightIcon color={colors.muted} size={20} />
+          </Pressable>
+        </Appear>
+      )}
 
       <Appear delay={210}>
         <Pressable
