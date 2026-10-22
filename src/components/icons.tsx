@@ -372,3 +372,103 @@ export const CompareIcon = (p: Props) => (
     <Path d="M5.8 8.5h3M5.8 11.5h3M5.8 14.5h2M15.3 8.5h3M15.3 11.5h2M15.3 14.5h3" />
   </Line>
 );
+
+/** Concordancia: renglones con la misma palabra marcada en cada uno. */
+export const ConcordanceIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4 6h3.5M11.5 6H20M4 12h7M15 12h5M4 18h2.5M10.5 18H20" />
+    <Rect x={7.5} y={4.3} width={4} height={3.4} rx={1.2} />
+    <Rect x={11} y={10.3} width={4} height={3.4} rx={1.2} />
+    <Rect x={6.5} y={16.3} width={4} height={3.4} rx={1.2} />
+  </Line>
+);
+
+/** Una palabra que se abre en dos: por qué difieren las versiones. */
+export const ForkIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={12} cy={5.5} r={2} />
+    <Path d="M12 7.5v3.2c0 1.6-1 2.6-2.6 3.4L7.5 15v3.5M12 10.7c0 1.6 1 2.6 2.6 3.4l1.9.9v3.5" />
+    <Path d="M5.5 18.5h4M14.5 18.5h4" />
+  </Line>
+);
+
+/** Rollo de pergamino: diferencias entre manuscritos. */
+export const ScrollIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7 4.5h10.5a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H16" />
+    <Path d="M7 4.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8.5" />
+    <Path d="M7 4.5a2 2 0 0 1 2 2v13" />
+    <Path d="M11.5 11.5h3.5M11.5 14.5h3.5" />
+  </Line>
+);
+
+/** Un arco de una promesa (círculo abierto) a su cumplimiento (círculo lleno): promesa y cumplimiento. */
+export const PromiseIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M5.5 16.5C6.5 9 9 6 12 6s5.5 3 6.5 10.5" />
+    <Circle cx={5.5} cy={18} r={2} />
+    <Circle cx={18.5} cy={18} r={2} fill={p.color} />
+  </Line>
+);
+
+/** Ondas a los lados de un punto: un evento en vivo. */
+export const LiveIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={12} cy={12} r={2.2} fill={p.color} />
+    <Path d="M8.2 8.2a5.4 5.4 0 0 0 0 7.6M15.8 8.2a5.4 5.4 0 0 1 0 7.6M5.3 5.3a9.5 9.5 0 0 0 0 13.4M18.7 5.3a9.5 9.5 0 0 1 0 13.4" />
+  </Line>
+);
+
+/** Tres esquinas de un código QR: unirse con la cámara. */
+export const QrIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={4} y={4} width={6} height={6} rx={1.2} />
+    <Rect x={14} y={4} width={6} height={6} rx={1.2} />
+    <Rect x={4} y={14} width={6} height={6} rx={1.2} />
+    <Path d="M14 14h2.5v2.5M20 14v.01M14 20h.01M17.5 20H20v-3" />
+  </Line>
+);
+
+/** Una pantalla sobre su pie: proyectar en la iglesia. */
+export const ScreenIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={3.5} y={4.5} width={17} height={11.5} rx={1.8} />
+    <Path d="M12 16v3.5M8.5 19.5h7" />
+  </Line>
+);
+
+/** Reloj de arena: el tiempo de una dinámica. */
+export const HourglassIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7 3.5h10M7 20.5h10" />
+    <Path d="M8 3.5c0 4 4 5 4 8.5s-4 4.5-4 8.5M16 3.5c0 4-4 5-4 8.5s4 4.5 4 8.5" />
+    <Path d="M10 18.5h4" />
+  </Line>
+);
+
+/** La historia de una palabra: un camino que serpentea entre tres pasajes. */
+export const WordJourneyIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M6 18.5c4.5 0 2.5-6.5 6-6.5s1.5-6.5 6-6.5" />
+    <Circle cx={5} cy={18.5} r={1.8} />
+    <Circle cx={12} cy={12} r={1.8} />
+    <Circle cx={19} cy={5.5} r={1.8} />
+  </Line>
+);
+
+/** Cuatro esquinas hacia fuera: ver el mapa entero. */
+export const ExpandIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" />
+  </Line>
+);
+
+/** Camino punteado entre dos puntos: el mapa que sigue la lectura. */
+export const RouteIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={6} cy={18} r={2.2} />
+    <Path d="M18 11.5s-3.5-3-3.5-5.8a3.5 3.5 0 0 1 7 0c0 2.8-3.5 5.8-3.5 5.8z" />
+    <Circle cx={18} cy={5.8} r={0.9} fill={p.color} />
+    <Path d="M8.3 17.2c3.4-1 1.2-4.6 4.6-5.2 1.3-.2 2.4 0 3.4-.3" strokeDasharray="2 2.6" />
+  </Line>
+);

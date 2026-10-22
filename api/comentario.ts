@@ -10,6 +10,11 @@
 //      {"type":"text","text":"…"} | {"type":"done","estado":"traducido"} | {"type":"error","message":"…"}
 //      Si otra persona la está traduciendo en ese momento: 409 { enCurso: true }.
 // POST { reporte: { fuente, libro, capitulo, desde, parte, nota } }  avisa de un error en una traducción.
+//
+// Fichas de personas y lugares (pipeline/fichas.py): el artículo de STEPBible TIPNR viene en inglés y se traduce igual,
+// una vez para todos. Van aquí y no en una función aparte porque el plan Hobby de Vercel admite 12 funciones.
+// GET  ?ficha=h1732  -> { texto, estado } o { texto: null }
+// POST { ficha: 'h1732' }  traduce el artículo y lo envía por partes como NDJSON, igual que un comentario.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
@@ -28,6 +33,9 @@ const PER_DAY = Number(process.env.COMENTARIO_PARTES_DIA ?? 400);
 // Si una traducción lleva más de esto «en curso», se da por perdida y otra petición puede tomarla.
 const LOCK_MINUTES = 4;
 const MAX_NOTE = 500;
+// Tope de fichas nuevas traducidas al día entre todos.
+const FICHAS_PER_DAY = Number(process.env.FICHAS_DIA ?? 300);
+const FICHA_ID = /^[gh]\d{4}[a-z]?$/;
 
 const SCHEMA = `
 create table if not exists comentarios_es (
@@ -44,6 +52,17 @@ create table if not exists comentarios_es (
   primary key (fuente, libro, capitulo, desde, parte)
 );
 create table if not exists comentarios_uso (
+  dia date primary key,
+  n int not null default 0
+);
+create table if not exists fichas_es (
+  id text primary key,
+  texto text,
+  estado text not null default 'en_curso',
+  modelo text,
+  creado timestamptz not null default now()
+);
+create table if not exists fichas_uso (
   dia date primary key,
   n int not null default 0
 );
@@ -80,6 +99,17 @@ Compara la traducción con el original en inglés y corrígela:
 - Español natural y correcto (ortografía, concordancia, falsos amigos).
 
 Responde solo con la traducción corregida completa, sin comentarios. Si no hace falta ningún cambio, responde exactamente SIN CAMBIOS.`;
+
+const TRANSLATE_FICHA = `Traduces al español las fichas de personas y lugares de la Biblia de STEPBible (Tyndale House) para una app bíblica gratuita.
+
+Reglas:
+- Traduce con fidelidad todo el texto: no resumas, no omitas, no añadas datos ni opiniones tuyas.
+- Usa un español claro y actual, neutro para Latinoamérica y España.
+- Escribe los nombres como la Reina-Valera 1909: usa los del glosario que se te da (Jesse → Isaí). Para los demás nombres bíblicos, la forma habitual en las Biblias españolas.
+- Las marcas de referencia como ⟦jhn.3.16⟧ o ⟦rom.8.1-rom.8.4⟧ van exactamente iguales, sin traducirlas ni moverlas de su frase. Las citas sin marca («Génesis 35:19; 48:7») se traducen con los nombres de los libros en español.
+- Usa los términos de la tradición cristiana histórica en español: gracia, cruz, expiación, justificación, arrepentimiento, Espíritu Santo, el Señor.
+- Mantén los mismos párrafos, separados por una línea en blanco.
+- Responde solo con la traducción, sin comentarios antes ni después.`;
 
 type Book = { id: string; name: string; chapters: number };
 type Verse = [number, string];
@@ -164,6 +194,7 @@ const marks = (s: string) => (s.match(/⟦[^⟧]*⟧/g) ?? []).sort().join(' ');
 
 async function getHandler(request: Request) {
   const q = Object.fromEntries(new URL(request.url).searchParams);
+  if (q.ficha) return getFicha(q.ficha);
   const { fuente, libro, capitulo, secciones } = await chapter(request, q);
   const verse = Number(q.versiculo ?? 0);
   const seccion =
@@ -321,6 +352,108 @@ async function translate(request: Request, body: Record<string, unknown>) {
   });
 }
 
+type FichaSource = { id: string; nombre: string; en: string; glosario?: Record<string, string> };
+
+/** El artículo en inglés de la ficha, de los archivos de la web (como los comentarios libres, ver _comentarios.ts). */
+async function fichaSource(request: Request, id: unknown): Promise<FichaSource> {
+  if (typeof id !== 'string' || !FICHA_ID.test(id)) throw new Fail('Ficha no válida');
+  const rel = `fichas/f/${id}.json`;
+  const local = await readFile(path.join(DATA_DIR, rel), 'utf8').catch(() => null);
+  if (local) return JSON.parse(local) as FichaSource;
+  const cookie = request.headers.get('cookie');
+  const res = await fetch(new URL(`/data/${rel}`, request.url), {
+    headers: cookie ? { cookie } : {},
+    signal: AbortSignal.timeout(8000),
+  }).catch(() => null);
+  if (!res?.ok) throw new Fail('Ficha no encontrada', 404);
+  return (await res.json()) as FichaSource;
+}
+
+async function getFicha(id: string) {
+  if (!FICHA_ID.test(id)) throw new Fail('Ficha no válida');
+  const sql = await db();
+  const [row] = await sql<{ texto: string; estado: string }[]>`
+    select texto, estado from fichas_es where id = ${id} and texto is not null`;
+  return Response.json(row ?? { texto: null }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+async function translateFicha(request: Request, id: unknown) {
+  const ficha = await fichaSource(request, id);
+  if (!ficha.en) throw new Fail('Esta ficha no tiene descripción');
+  const sql = await db();
+  const [done] = await sql<{ texto: string; estado: string }[]>`
+    select texto, estado from fichas_es where id = ${ficha.id} and texto is not null`;
+  const ndjson = { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' };
+  if (done) {
+    const lines = [{ type: 'text', text: done.texto }, { type: 'done', estado: done.estado }];
+    return new Response(lines.map((l) => JSON.stringify(l) + '\n').join(''), { headers: ndjson });
+  }
+  const [usage] = await sql`select n from fichas_uso where dia = current_date`;
+  if (usage && usage.n >= FICHAS_PER_DAY) {
+    throw new Fail('Hoy ya se tradujeron muchas fichas nuevas. Vuelve mañana para leer esta descripción.', 429);
+  }
+  // Reserva: si otra petición la está traduciendo, 409 y el cliente espera.
+  const inserted = await sql`insert into fichas_es (id) values (${ficha.id}) on conflict do nothing returning 1`;
+  if (!inserted.length) {
+    const stale = await sql`update fichas_es set creado = now()
+      where id = ${ficha.id} and texto is null and creado < now() - make_interval(mins => ${LOCK_MINUTES}) returning 1`;
+    if (!stale.length) return Response.json({ enCurso: true }, { status: 409 });
+  }
+
+  const glosario = Object.entries(ficha.glosario ?? {})
+    .map(([en, es]) => `${en} → ${es}`)
+    .join('\n');
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (event: object) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
+      let saved = false;
+      try {
+        const response = client.messages.stream({
+          model: MODEL,
+          max_tokens: 8000,
+          system: TRANSLATE_FICHA,
+          messages: [
+            {
+              role: 'user',
+              content: `Ficha: ${ficha.nombre}.\n\nGlosario de nombres (inglés → Reina-Valera 1909):\n${glosario}\n\nTraduce:\n\n${ficha.en}`,
+            },
+          ],
+        });
+        let texto = '';
+        for await (const event of response) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            texto += event.delta.text;
+            send({ type: 'text', text: event.delta.text });
+          }
+        }
+        const final = await response.finalMessage();
+        texto = texto.trim();
+        if (final.stop_reason !== 'end_turn' || !texto) throw new Error(`traducción incompleta: ${final.stop_reason}`);
+        await sql`update fichas_es set texto = ${texto}, estado = 'traducido', modelo = ${MODEL}, creado = now()
+          where id = ${ficha.id}`;
+        await sql`insert into fichas_uso (dia, n) values (current_date, 1)
+          on conflict (dia) do update set n = fichas_uso.n + 1`;
+        saved = true;
+        send({ type: 'done', estado: 'traducido' });
+      } catch (err) {
+        console.error('ficha', err);
+        send({
+          type: 'error',
+          message:
+            err instanceof Anthropic.RateLimitError
+              ? 'Hay muchas consultas ahora mismo. Inténtalo en un momento.'
+              : 'No se pudo traducir la descripción. Inténtalo de nuevo.',
+        });
+      } finally {
+        if (!saved) await sql`delete from fichas_es where id = ${ficha.id} and texto is null`.catch(() => {});
+        controller.close();
+      }
+    },
+  });
+  return new Response(stream, { headers: ndjson });
+}
+
 async function report(request: Request, body: Record<string, unknown>) {
   const k = await key(request, body);
   const nota = typeof body.nota === 'string' ? body.nota.trim().slice(0, MAX_NOTE) : '';
@@ -354,6 +487,7 @@ export async function POST(request: Request) {
       throw new Fail('JSON no válido');
     }
     if (body.reporte && typeof body.reporte === 'object') return await report(request, body.reporte as Record<string, unknown>);
+    if (body.ficha !== undefined) return await translateFicha(request, body.ficha);
     return await translate(request, body);
   } catch (err) {
     return failure(err);

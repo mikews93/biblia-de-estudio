@@ -286,7 +286,7 @@ function Report({ colors, send }: { colors: Colors; send: (nota: string) => Prom
 }
 
 /** Markdown del comentario: ## títulos, **negritas**, *cursivas* y referencias ⟦jhn.3.16⟧ que se pueden tocar. */
-function Rich({ text, books, colors, onRef }: { text: string; books: Book[]; colors: Colors; onRef: (ref: string) => void }) {
+export function Rich({ text, books, colors, onRef }: { text: string; books: Book[]; colors: Colors; onRef: (ref: string) => void }) {
   return (
     <View>
       {text

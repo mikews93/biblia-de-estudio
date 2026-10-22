@@ -39,6 +39,7 @@ import {
 import IconoHistoria from '@/components/IconoHistoria';
 import { Ligadura, Rama } from '@/components/Rama';
 import { iconoEvento, iconoPeriodo } from '@/lib/iconos';
+import { HILOS, Hilo, TEMAS, hilosEn, periodoPaso, promesaHref } from '@/lib/promesas';
 import { FIN, INICIO, anchoTexto, apilar, crearEscala, etiquetaMarca, filasEn } from '@/lib/lineaTiempo';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
@@ -684,8 +685,11 @@ function Detalle({
   let ref: string | undefined;
   let relacion: string;
   let relacionados: Sel[];
+  let promesas: Hilo[];
   if (sel.kind === 'periodo') {
     const p = sel.p;
+    // Promesas dadas o cumplidas en estos años
+    promesas = HILOS.filter((h) => h.pasos.some((paso) => (paso.rol === 'promesa' || paso.rol === 'cumple') && periodoPaso(paso) === p));
     const era = ERAS.find((e) => p.desde >= e.desde && p.desde < e.hasta) ?? ERAS[0];
     kicker = p.id === actual?.id ? 'Estás leyendo esta época' : era.titulo;
     color = p.id === actual?.id ? colors.accent : era.color;
@@ -702,6 +706,7 @@ function Detalle({
     texto = e.texto;
     ref = e.ref;
     relacion = 'En la Biblia, por esos años';
+    promesas = e.ref ? hilosEn(...refCapVers(e.ref)).map((x) => x.hilo) : [];
     const periodos = Object.values(PERIODOS).filter((p) => !p.sinFecha);
     const cruzan = periodos.filter((p) => p.desde <= fin(e) && p.hasta >= e.desde);
     const cerca = [...periodos].sort((a, b) => dist(a, e) - dist(b, e));
@@ -725,6 +730,26 @@ function Detalle({
             {sel.kind === 'periodo' ? `Leer ${refLabel(ref)} ›` : `${refLabel(ref)} ›`}
           </Text>
         </Pressable>
+      )}
+      {promesas.length > 0 && (
+        <>
+          <Text style={[styles.relacion, { color: colors.muted }]}>PROMESA Y CUMPLIMIENTO</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
+            {promesas.map((h) => (
+              <Pressable
+                key={h.id}
+                onPress={() => navigate(() => router.push(promesaHref(h) as never), 'forward')}
+                style={({ pressed }) => [styles.rel, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.7 }]}
+              >
+                <View style={[styles.rotuloPunto, { backgroundColor: TEMAS[h.tema].color }]} />
+                <View>
+                  <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{h.titulo}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 11 }}>{TEMAS[h.tema].titulo}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </>
       )}
       {relacionados.length > 0 && (
         <>
@@ -752,6 +777,12 @@ function Detalle({
     </ScrollView>
   );
 }
+
+/** 'mat.24.2' → ['mat', 24, 2]. */
+const refCapVers = (ref: string): [string, number, number] => {
+  const [b, c, v] = ref.split('.');
+  return [b, Number(c), Number(v)];
+};
 
 const dist = (p: Periodo, e: Evento) => (p.hasta < e.desde ? e.desde - p.hasta : p.desde > fin(e) ? p.desde - fin(e) : 0);
 

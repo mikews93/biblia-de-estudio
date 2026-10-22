@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { nativeStore } from './almacen';
 import { isOnline } from './conexion';
 import { Book, dataUrl, getBooks, load } from './data';
 
-// Descargas para leer sin conexión (web). Cada paquete se baja por libros y se guarda en Cache Storage
-// («biblia-descargas») con la misma dirección que pide la app, así que data.ts no cambia: public/sw.js
-// responde desde ahí cuando el archivo está guardado. Los tamaños salen de data/descargas.json, que
-// escribe pipeline/build_data.py.
+// Descargas para leer sin conexión. Cada paquete se baja por libros. En la web se guarda en Cache Storage
+// («biblia-descargas») con la misma dirección que pide la app, y public/sw.js responde desde ahí cuando el
+// archivo está guardado. En el teléfono se guarda en archivos (almacen.native.ts) y data.ts los lee primero.
+// Los tamaños salen de data/descargas.json, que escribe pipeline/build_data.py.
 //
-// Paquetes: «texto:<versión>» (el texto y los párrafos), «original» (interlineal griego y hebreo) y
+// Paquetes: «texto:<versión>» (el texto y los párrafos), «original» (interlineal griego y hebreo, y las
+// diferencias entre manuscritos) y
 // «referencias» (referencias cruzadas).
 
 export const DOWNLOADS_CACHE = 'biblia-descargas';
@@ -31,7 +33,7 @@ export const BASE_FILES = ['books.json', 'versions.json', 'words.json', 'descarg
 
 export function resources(pack: string): string[] {
   if (pack.startsWith('texto:')) return [`text/${pack.slice(6)}`, 'paragraphs'];
-  if (pack === ORIGINAL) return ['interlinear'];
+  if (pack === ORIGINAL) return ['interlinear', 'variantes'];
   if (pack === REFERENCIAS) return ['xrefs'];
   return [];
 }
@@ -57,7 +59,7 @@ export function formatBytes(n: number): string {
   return `${(n / 1e6).toLocaleString('es', { maximumFractionDigits: n < 1e7 ? 1 : 0 })} MB`;
 }
 
-/** Dónde se guarda lo descargado. En la web, Cache Storage; en pruebas, un sustituto. */
+/** Dónde se guarda lo descargado. En la web, Cache Storage; en el teléfono, archivos; en pruebas, un sustituto. */
 export type Store = {
   has(path: string): Promise<boolean>;
   put(path: string, res: Response): Promise<void>;
@@ -65,6 +67,8 @@ export type Store = {
   readIndex(): Promise<Index>;
   writeIndex(index: Index): Promise<void>;
   clear(): Promise<void>;
+  /** Bytes libres en el dispositivo, si el almacén lo sabe (en la web lo informa el navegador). */
+  free?(): Promise<number | null>;
 };
 
 function cacheStore(): Store | null {
@@ -106,18 +110,18 @@ async function cacheShell() {
 type Job = { books: string[]; done: number; total: number; error?: string };
 
 type State = {
-  /** false en el teléfono (por ahora) o en un navegador sin Cache Storage. */
+  /** false en un navegador sin Cache Storage. */
   supported: boolean;
   ready: boolean;
   books: Book[];
   manifest: Manifest;
   index: Index;
   jobs: Record<string, Job>;
-  /** Espacio libre que informa el navegador, si lo informa. */
+  /** Espacio libre que informa el dispositivo, si lo informa. */
   free: number | null;
 };
 
-let store: Store | null = cacheStore();
+let store: Store | null = cacheStore() ?? nativeStore;
 let fetcher: typeof fetch = (...args) => fetch(...args);
 let state: State = { supported: !!store, ready: false, books: [], manifest: {}, index: {}, jobs: {}, free: null };
 let loading: Promise<void> | null = null;
@@ -146,6 +150,11 @@ export function useStoreForTests(s: Store | null, f: typeof fetch) {
 }
 
 async function refreshFree() {
+  if (store?.free) {
+    const free = await store.free();
+    return set({ free: free != null && Number.isFinite(free) ? Math.max(0, free) : null });
+  }
+  if (typeof navigator === 'undefined') return;
   const estimate = await navigator.storage?.estimate?.().catch(() => null);
   if (estimate?.quota != null && estimate.usage != null) set({ free: Math.max(0, estimate.quota - estimate.usage) });
 }
@@ -159,7 +168,7 @@ export function init() {
       store.readIndex().catch(() => ({}) as Index),
     ]);
     set({ books, manifest, index, ready: true });
-    if (typeof navigator !== 'undefined') refreshFree().catch(() => {});
+    refreshFree().catch(() => {});
     // Tras publicar una versión nueva de la app, se guarda su código para seguir abriéndola sin conexión.
     if (Object.keys(index).length && isOnline()) cacheShell().catch(() => {});
   })();
@@ -188,7 +197,7 @@ async function fetchOne(path: string, signal: AbortSignal) {
       await store!.put(path, res);
       return;
     } catch (e) {
-      if (signal.aborted || attempt >= 2 || (e as Error).name === 'QuotaExceededError') throw e;
+      if (signal.aborted || attempt >= 2 || isNoSpace(e)) throw e;
       await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
     }
   }
@@ -206,8 +215,14 @@ async function fetchAll(paths: string[], signal: AbortSignal, onFile: () => void
   await Promise.all(Array.from({ length: Math.min(PARALLEL, paths.length) }, worker));
 }
 
+const NO_SPACE = 'No queda espacio en este dispositivo. Borra algo de lo descargado e inténtalo otra vez.';
+
+/** Sin espacio: QuotaExceededError en el navegador; en el teléfono, el error del sistema de archivos. */
+const isNoSpace = (e: unknown) =>
+  (e as Error)?.name === 'QuotaExceededError' || /ENOSPC|no space|not enough space|disk full/i.test(String((e as Error)?.message ?? ''));
+
 function failure(e: unknown) {
-  if ((e as Error)?.name === 'QuotaExceededError') return 'No queda espacio en este dispositivo. Borra algo de lo descargado e inténtalo otra vez.';
+  if (isNoSpace(e)) return NO_SPACE;
   if (!isOnline()) return 'Se cortó la conexión. Lo que ya bajó queda guardado; continúa cuando vuelvas a tener internet.';
   return 'No se pudo terminar la descarga. Inténtalo otra vez.';
 }
@@ -226,12 +241,16 @@ export async function download(pack: string, bookIds: string[]) {
 
   const queue = bookIds.filter((id) => !isDownloaded(pack, id));
   if (!queue.length) return;
+  const total = filesOf(pack, queue).length;
+  // Si ya se sabe que no cabe, se avisa antes de empezar (se deja un margen para lo demás del dispositivo).
+  if (state.free != null && packBytes(state.manifest, pack, queue) + 50e6 > state.free)
+    return setJob(pack, { books: [...queue], done: 0, total, error: NO_SPACE });
   const controller = new AbortController();
   running.set(pack, { queue, controller });
-  setJob(pack, { books: [...queue], done: 0, total: filesOf(pack, queue).length });
+  setJob(pack, { books: [...queue], done: 0, total });
 
   try {
-    navigator.storage?.persist?.().catch(() => {});
+    globalThis.navigator?.storage?.persist?.().catch(() => {});
     await fetchAll(BASE_FILES, controller.signal, () => {});
     await cacheShell().catch(() => {});
     while (queue.length) {
@@ -251,7 +270,7 @@ export async function download(pack: string, bookIds: string[]) {
     else setJob(pack, { ...state.jobs[pack], error: failure(e) });
   } finally {
     running.delete(pack);
-    if (typeof navigator !== 'undefined') refreshFree().catch(() => {});
+    refreshFree().catch(() => {});
   }
 }
 
@@ -273,7 +292,7 @@ export async function remove(pack: string, bookIds: string[]) {
   if (!left.length) delete index[pack];
   await store.writeIndex(index);
   set({ index });
-  if (typeof navigator !== 'undefined') refreshFree().catch(() => {});
+  refreshFree().catch(() => {});
 }
 
 export async function removeAll() {
@@ -281,7 +300,7 @@ export async function removeAll() {
   running.forEach((r) => r.controller.abort());
   await store?.clear();
   set({ index: {}, jobs: {} });
-  if (typeof navigator !== 'undefined') refreshFree().catch(() => {});
+  refreshFree().catch(() => {});
 }
 
 /** Bytes que ocupa lo descargado, contando una sola vez los archivos compartidos. */

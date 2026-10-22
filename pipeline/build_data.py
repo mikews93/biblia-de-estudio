@@ -11,6 +11,8 @@ Fuentes (se descargan, no se guardan en el repositorio):
 - Español Sencillo y Palabra de Dios para ti, ya descargadas en pipeline/versions/ (ver fetch_versions.py)
 - Lugares bíblicos de OpenBible.info Bible Geocoding Data (CC BY 4.0), con el mapa de fondo de pipeline/geo/basemap.json
 - Medidas antiguas (pipeline/medidas.py) e imágenes libres de Wikimedia Commons (pipeline/imagenes.py)
+- Genealogías de Theographic (pipeline/genealogias.py) y fichas de personas y lugares de STEPBible TIPNR
+  (pipeline/fichas.py), que se generan al final
 """
 
 import difflib
@@ -38,6 +40,11 @@ SOURCES = {
     "tagnt2.txt": STEP + "TAGNT%20Act-Rev%20-%20Translators%20Amalgamated%20Greek%20NT%20-%20STEPBible.org%20CC-BY.txt",
     **{f"tahot{i}.txt": STEP + f"TAHOT%20{part}%20-%20Translators%20Amalgamated%20Hebrew%20OT%20-%20STEPBible.org%20CC%20BY.txt"
        for i, part in enumerate(["Gen-Deu", "Jos-Est", "Job-Sng", "Isa-Mal"], 1)},
+    # Léxicos breves de STEPBible (CC BY 4.0): la definición de cada palabra de «La historia de una palabra»
+    "tbesh.txt": "https://raw.githubusercontent.com/STEPBible/STEPBible-Data/master/Lexicons/"
+                 "TBESH%20-%20Translators%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Hebrew%20-%20STEPBible.org%20CC%20BY.txt",
+    "tbesg.txt": "https://raw.githubusercontent.com/STEPBible/STEPBible-Data/master/Lexicons/"
+                 "TBESG%20-%20Translators%20Brief%20lexicon%20of%20Extended%20Strongs%20for%20Greek%20-%20STEPBible.org%20CC%20BY.txt",
     "ancient.jsonl": "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/"
                      "7eb18a5ee62f27b9b93bd6689ea272d76dd23b8f/data/ancient.jsonl",
     "image.jsonl": "https://raw.githubusercontent.com/openbibleinfo/Bible-Geocoding-Data/"
@@ -92,6 +99,26 @@ def write(out, rel, data):
     path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
+# Puntuación pegada a la palabra en TAGNT/TAHOT («ἀγάπῃ.»): no forma parte de la palabra en la concordancia
+FORM_PUNCT = re.compile(r"[.,;:·!?'\"“”‘’()\[\]־׃]+$")
+
+
+def write_concordance(out, concordance, meta, prefix):
+    """Una concordancia por número de Strong: lema, significado, transliteración, acepciones hermanas del mismo
+    número (H2617A y H2617B) y cada aparición como [referencia, forma original, glosa española]."""
+    keys = [k for k in concordance if re.fullmatch(prefix + r"\d+[A-Za-z]?", k)]
+    family = defaultdict(list)
+    for k in keys:
+        family[re.sub(r"[A-Za-z]$", "", k)].append(k)
+    for k in keys:
+        lemma, meaning, translit = meta.get(k, ("", "", ""))
+        related = [r for r in sorted(family[re.sub(r"[A-Za-z]$", "", k)]) if r != k]
+        write(out, f"concordance/{k}.json", {
+            "lemma": lemma, "meaning": meaning, "translit": translit, "related": related,
+            "uses": [[ref, FORM_PUNCT.sub("", form) or form, gloss] for ref, form, gloss in concordance[k]],
+        })
+
+
 def build_text(out):
     src = json.loads(fetch("rv1909.json").read_text(encoding="utf-8"))
     assert len(src["books"]) == len(BOOKS)
@@ -140,10 +167,21 @@ def build_xrefs(out):
         write(out, f"xrefs/{bid}/{ch}.json", verses)
 
 
+def remember_lemma(meta, strong, lemma, meaning, form, translit):
+    """Lema y significado de cada Strong; la transliteración, de una aparición escrita igual que el lema."""
+    known = meta.get(strong)
+    if not known:
+        meta[strong] = known = (lemma, meaning, "")
+    if not known[2] and translit and FORM_PUNCT.sub("", form) == lemma:
+        meta[strong] = (known[0] or lemma, known[1] or meaning, translit)
+
+
 def build_interlinear(out):
     by_chapter = defaultdict(lambda: defaultdict(list))
     paragraph_ends = defaultdict(set)
     concordance = defaultdict(list)
+    meta = {}
+    variants = defaultdict(dict)
     for name in ("tagnt1.txt", "tagnt2.txt"):
         with fetch(name).open(encoding="utf-8-sig") as f:
             for line in f:
@@ -152,12 +190,22 @@ def build_interlinear(out):
                 if not m:
                     continue
                 book, ch, v, kch, kv, kind = m.groups()
-                # Solo palabras del texto tradicional (K/k): la RV1909 se tradujo del Textus Receptus
-                if "K" not in kind.upper():
-                    continue
                 if kch:
                     ch, v = kch, kv
                 greek, _, translit = cols[1].partition(" (")
+                # Solo palabras del texto tradicional (K/k): la RV1909 se tradujo del Textus Receptus. Las que solo
+                # tiene el texto crítico (N mayúscula, sin K: cambian la traducción) se guardan aparte como variantes.
+                if "K" not in kind.upper():
+                    if "N" in kind:
+                        verse = variants[(STEP_TO_ID[book], ch)].setdefault(v, {"tr": [], "na": []})
+                        after = len(by_chapter[(STEP_TO_ID[book], ch)][v]) - 1
+                        gloss = fix_gloss(cols[8].strip(), cols[3].partition("=")[0].strip())
+                        verse["na"].append([greek.replace("¶", "").strip(), translit.rstrip(")").strip(), gloss, after])
+                    continue
+                if "K" in kind and "N" not in kind.upper():
+                    # Palabra del texto tradicional que el texto crítico (Nestle-Aland) no tiene
+                    verse = variants[(STEP_TO_ID[book], ch)].setdefault(v, {"tr": [], "na": []})
+                    verse["tr"].append(len(by_chapter[(STEP_TO_ID[book], ch)][v]))
                 # ¶ marca el final de un párrafo en el griego: lo usamos para dividir el texto en párrafos
                 if "¶" in greek:
                     paragraph_ends[(STEP_TO_ID[book], ch)].add(int(v))
@@ -166,6 +214,7 @@ def build_interlinear(out):
                 lemma, _, lemma_gloss = cols[4].partition("=")
                 gloss = fix_gloss(cols[8].strip(), strong.strip())
                 concordance[strong.strip()].append([f"{STEP_TO_ID[book]}.{ch}.{v}", greek.strip(), gloss])
+                remember_lemma(meta, strong.strip(), lemma.strip(), lemma_gloss.strip(), greek.strip(), translit.rstrip(")").strip())
                 by_chapter[(STEP_TO_ID[book], ch)][v].append([
                     greek.strip(),
                     translit.rstrip(")").strip(),
@@ -180,10 +229,13 @@ def build_interlinear(out):
         write(out, f"interlinear/{bid}/{ch}.json", verses)
     for (bid, ch), ends in paragraph_ends.items():
         write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
-    # Concordancia por número de Strong: [referencia, forma griega, glosa]. La usa «¿Por qué esta palabra?».
-    for strong, uses in concordance.items():
-        if re.fullmatch(r"G\d+[A-Za-z]?", strong):
-            write(out, f"concordance/{strong}.json", uses)
+    # La concordancia la usan la pantalla /concordancia y «¿Por qué esta palabra?»
+    write_concordance(out, concordance, meta, "G")
+    # Diferencias entre manuscritos, para «¿Por qué difieren las versiones?» (src/lib/diferencias.ts):
+    # {versículo: {"tr": [posiciones en el interlineal solo del texto tradicional],
+    #              "na": [[griego, transliteración, glosa, posición tras la que va], …] solo del texto crítico}}
+    for (bid, ch), verses in variants.items():
+        write(out, f"variantes/{bid}/{ch}.json", verses)
 
 
 # "Gen.1.1#01=L" o "Psa.3.1(3.2)#01=Q(K)": referencia de las Biblias españolas e inglesas (la de la RV1909),
@@ -224,6 +276,7 @@ def build_hebrew(out):
     by_chapter = defaultdict(lambda: defaultdict(list))
     paragraph_ends = defaultdict(set)
     concordance = defaultdict(list)
+    meta = {}
     missing = set()
     for i in range(1, 5):
         with fetch(f"tahot{i}.txt").open(encoding="utf-8-sig") as f:
@@ -254,6 +307,7 @@ def build_hebrew(out):
                     missing.add(english)
                 translit = cols[2].replace("/", "").replace(".", "").replace("\\", "").lower()
                 concordance[strong].append([f"{bid}.{ch}.{v}", hebrew, gloss])
+                remember_lemma(meta, strong, lemma, meaning, hebrew, translit)
                 by_chapter[(bid, ch)][str(v)].append([
                     hebrew, translit, gloss, english.replace("/ ", " ").replace("/", ""),
                     lemma, meaning, strong, cols[5].strip(),
@@ -264,9 +318,59 @@ def build_hebrew(out):
         write(out, f"interlinear/{bid}/{ch}.json", verses)
     for (bid, ch), ends in paragraph_ends.items():
         write(out, f"paragraphs/{bid}/{ch}.json", sorted(ends))
-    for strong, uses in concordance.items():
-        if re.fullmatch(r"H\d+[A-Za-z]?", strong):
-            write(out, f"concordance/{strong}.json", uses)
+    write_concordance(out, concordance, meta, "H")
+
+
+# Palabras de «La historia de una palabra»: el catálogo es el de la app (src/lib/palabras.ts)
+PALABRAS = ROOT.parent / "src" / "lib" / "palabras.json"
+LEXICON_CHARS = 1800
+HTML_TAG = re.compile(r"<[^>]+>")
+
+
+def lexicon_text(raw):
+    """La definición del léxico sin HTML: <br> y <BR /> son saltos de línea; las referencias quedan como texto."""
+    text = re.sub(r"<br\s*/?>", "\n", raw, flags=re.I).replace("__", "")
+    text = HTML_TAG.sub("", text)
+    lines = [re.sub(r"\s+", " ", l).strip() for l in text.split("\n")]
+    text = "\n".join(l for l in lines if l).strip(": \n")
+    if len(text) > LEXICON_CHARS:
+        text = text[:LEXICON_CHARS].rsplit(" ", 1)[0] + "…"
+    return text
+
+
+def build_palabras(out):
+    """palabras/<id>.json con la entrada del léxico de cada número de Strong, que lee la IA del relato, y
+    palabras/index.json con cuántas veces aparece cada palabra (total, AT, NT) para las tarjetas de la app."""
+    wanted = {s for tema in json.loads(PALABRAS.read_text(encoding="utf-8")) for p in tema["palabras"] for s in p["strongs"]}
+    lexicon = {}
+    for name in ("tbesh.txt", "tbesg.txt"):
+        with fetch(name).open(encoding="utf-8-sig") as f:
+            for line in f:
+                cols = line.rstrip("\n").split("\t")
+                if len(cols) < 8:
+                    continue
+                strong = cols[1].split(" ")[0]
+                if strong in wanted and strong not in lexicon:
+                    lexicon[strong] = {"strong": strong, "lema": cols[3].strip(), "glosa": cols[6].strip(),
+                                       "definicion": lexicon_text(cols[7])}
+    index = {}
+    for tema in json.loads(PALABRAS.read_text(encoding="utf-8")):
+        for p in tema["palabras"]:
+            total = ot = 0
+            for s in p["strongs"]:
+                path = out / "concordance" / f"{s}.json"
+                if not path.exists():
+                    print(f"Aviso: la palabra {p['id']} pide {s}, que no está en la concordancia")
+                    continue
+                for ref, _, _ in json.loads(path.read_text(encoding="utf-8"))["uses"]:
+                    total += 1
+                    ot += ref.split(".")[0] in OT
+            missing = [s for s in p["strongs"] if s not in lexicon]
+            if missing:
+                print(f"Aviso: sin entrada de léxico para {missing}")
+            index[p["id"]] = [total, ot, total - ot]
+            write(out, f"palabras/{p['id']}.json", {"lexico": [lexicon[s] for s in p["strongs"] if s in lexicon]})
+    write(out, "palabras/index.json", index)
 
 
 VERSIONS = [
@@ -460,6 +564,7 @@ def main():
     build_xrefs(out)
     build_interlinear(out)
     build_hebrew(out)
+    build_palabras(out)
     build_versions(out)
     place_pictures = build_places(out, text)
     build_context(out, place_pictures)
@@ -479,7 +584,7 @@ def build_downloads(out, books):
     {"text/rv1909": {"gen": [bytes]}, "paragraphs": {"gen": [bytes, [1, 3, …]]}}: la lista de capítulos
     solo aparece cuando al libro le faltan archivos, para no pedirlos y recibir 404.
     """
-    resources = [f"text/{v['id']}" for v in VERSIONS] + ["interlinear", "paragraphs", "xrefs"]
+    resources = [f"text/{v['id']}" for v in VERSIONS] + ["interlinear", "variantes", "paragraphs", "xrefs"]
     sizes = {}
     for res in resources:
         sizes[res] = {}
@@ -499,3 +604,5 @@ if __name__ == "__main__":
     main()
     import genealogias  # módulo aparte: Theographic (CC BY-SA 4.0)
     genealogias.main()
+    import fichas  # personas y lugares de STEPBible TIPNR (CC BY 4.0), junto con las genealogías y los mapas
+    fichas.main()

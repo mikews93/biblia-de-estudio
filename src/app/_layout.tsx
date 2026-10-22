@@ -5,6 +5,7 @@ import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
 import AvisosSync from '@/components/AvisosSync';
+import Celebracion from '@/components/Celebracion';
 import SincroniaCuenta from '@/components/Sincronia';
 import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
@@ -38,9 +39,9 @@ function AppStack() {
     if (Platform.OS === 'web') hidePortadaWhenReady();
   }, []);
 
-  // Con algo descargado, mantiene al día la copia de la app para abrirla sin conexión.
+  // Lee qué hay descargado y, en la web, mantiene al día la copia de la app para abrirla sin conexión.
   useEffect(() => {
-    if (Platform.OS === 'web') initDownloads().catch(() => {});
+    initDownloads().catch(() => {});
   }, []);
 
   return (
@@ -60,8 +61,14 @@ function AppStack() {
           <Stack.Screen name="[book]/[chapter]/index" options={{ title: '' }} />
           <Stack.Screen name="[book]/[chapter]/[verse]" options={{ title: '' }} />
           <Stack.Screen name="mapa/[book]/[chapter]" options={{ title: 'Lugares' }} />
+          <Stack.Screen name="recorrido/[book]/[chapter]" options={{ title: 'En el mapa' }} />
+          <Stack.Screen name="recorridos" options={{ title: 'Recorridos' }} />
           <Stack.Screen name="podcast/[book]/[chapter]" options={{ title: 'Resumen en audio' }} />
           <Stack.Screen name="comparar/[book]/[chapter]" options={{ title: 'Comparar versiones' }} />
+          <Stack.Screen name="concordancia/[strong]" options={{ title: 'Concordancia' }} />
+          <Stack.Screen name="palabras/index" options={{ title: 'La historia de una palabra' }} />
+          <Stack.Screen name="palabras/[id]/index" options={{ title: 'La historia de una palabra' }} />
+          <Stack.Screen name="palabras/[id]/podcast" options={{ title: 'Pódcast de la palabra' }} />
           <Stack.Screen name="mapa-mental/[book]/[chapter]" options={{ title: 'Mapa mental' }} />
           <Stack.Screen name="tarjetas/[book]/[chapter]" options={{ title: 'Tarjetas de repaso' }} />
           <Stack.Screen name="repaso" options={{ title: 'Repaso' }} />
@@ -69,7 +76,10 @@ function AppStack() {
           <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
           <Stack.Screen name="genealogia/index" options={{ title: 'Genealogías' }} />
           <Stack.Screen name="genealogia/[id]" options={{ title: '' }} />
+          <Stack.Screen name="ficha/[id]" options={{ title: '' }} />
           <Stack.Screen name="historia" options={{ title: 'Línea de tiempo' }} />
+          <Stack.Screen name="promesas/index" options={{ title: 'Promesa y cumplimiento' }} />
+          <Stack.Screen name="promesas/[id]" options={{ title: '' }} />
           <Stack.Screen name="comunidades/index" options={{ title: 'Comunidad' }} />
           <Stack.Screen name="comunidades/amigos" options={{ title: 'Amigos' }} />
           <Stack.Screen name="comunidades/publicar" options={{ title: 'Publicar' }} />
@@ -84,15 +94,29 @@ function AppStack() {
           <Stack.Screen name="entrar" options={{ title: '' }} />
           <Stack.Screen name="registro" options={{ title: '' }} />
           <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
+          <Stack.Screen name="vivo/index" options={{ title: 'Lectura en vivo' }} />
+          <Stack.Screen name="vivo/[codigo]" options={{ headerShown: false }} />
           <Stack.Screen name="planes/index" options={{ title: 'Planes de lectura' }} />
           <Stack.Screen name="planes/[id]" options={{ title: '' }} />
           <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
-          <Stack.Screen name="diario" options={{ title: 'Mi diario devocional' }} />
+          <Stack.Screen name="diario" options={{ title: 'Mi diario' }} />
           <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
+          <Stack.Screen name="modo" options={{ title: '' }} />
+          <Stack.Screen name="jovenes/index" options={{ title: 'Misiones' }} />
+          <Stack.Screen name="jovenes/[ruta]/index" options={{ title: '' }} />
+          <Stack.Screen name="jovenes/[ruta]/[mision]" options={{ title: '' }} />
           <Stack.Screen name="taller/index" options={{ title: 'Taller' }} />
           <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
           <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
           <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
+          <Stack.Screen name="semana/index" options={{ title: 'Del sermón a tu semana' }} />
+          <Stack.Screen name="semana/nueva" options={{ title: 'Del sermón a tu semana' }} />
+          <Stack.Screen name="semana/[id]/index" options={{ title: '' }} />
+          <Stack.Screen name="semana/[id]/[dia]" options={{ title: '' }} />
+          <Stack.Screen name="eventos" options={{ title: 'Eventos' }} />
+          <Stack.Screen name="sellos" options={{ title: 'Mis sellos' }} />
+          <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
+          <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
         </Stack>
       </View>
       <AudioBar />
@@ -100,6 +124,7 @@ function AppStack() {
       <TabBar />
       {Platform.OS === 'web' && <AvisosSync />}
       <SincroniaCuenta />
+      <Celebracion />
       {Platform.OS === 'web' && (
         <>
           <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />

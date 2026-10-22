@@ -55,12 +55,12 @@ export function ToolState({ colors, busy, error, waiting, onRetry }: Props) {
 }
 
 /** Aviso de fuentes y opción de pedir una versión nueva. */
-export function ToolFooter({ colors, done, onRegenerate }: { colors: Colors; done: boolean; onRegenerate: () => void }) {
+export function ToolFooter({ colors, done, onRegenerate, text }: { colors: Colors; done: boolean; onRegenerate: () => void; text?: string }) {
   return (
     <View style={{ alignItems: 'center', marginTop: 24, gap: 10 }}>
       <Text style={[styles.disclaimer, { color: colors.muted }]}>
-        Generado con IA solo a partir de la Reina-Valera 1909, el griego de STEPBible y las referencias de OpenBible.info.
-        Los números llevan a la fuente de cada idea.
+        {text ??
+          'Generado con IA solo a partir de la Reina-Valera 1909, el griego de STEPBible y las referencias de OpenBible.info. Los números llevan a la fuente de cada idea.'}
       </Text>
       {done && (
         <Pressable onPress={onRegenerate} accessibilityRole="button" hitSlop={8}>

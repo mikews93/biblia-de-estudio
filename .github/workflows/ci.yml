@@ -40,6 +40,10 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Pruebas e2e
         run: npm run test:e2e
+      # La cuota de artefactos se puede agotar: el contexto de cada fallo queda también en el registro.
+      - name: Contexto de las pruebas que fallaron
+        if: failure()
+        run: find test-results -name error-context.md -exec sh -c 'echo "=== $1"; cat "$1"' _ {} \; || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

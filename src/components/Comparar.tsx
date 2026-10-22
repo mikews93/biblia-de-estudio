@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { WhyDifferent, useOriginal } from '@/components/Diferencias';
 import { CheckIcon, ChevronRightIcon, GlobeIcon } from '@/components/icons';
 import { compareList, diffWords, findVerse, toggleCompare } from '@/lib/comparar';
 import { Book, Verse, Version, getChapter, getChapterExtras, getVersions } from '@/lib/data';
@@ -238,6 +239,7 @@ export function CompareVerse({
   const chapters = useChapters(book.id, chapter, chosen);
   const [marks, setMarks] = useState(true);
   const baseText = findVerse(chapters(reading).verses ?? [], verse)?.[1] ?? null;
+  const original = useOriginal(book.id, chapter);
 
   return (
     <View>
@@ -306,6 +308,15 @@ export function CompareVerse({
           );
         })}
       </View>
+
+      <WhyDifferent
+        verse={verse}
+        reference={`${book.name} ${chapter}:${verse}`}
+        original={original}
+        versions={chosen}
+        chapters={chapters}
+        colors={colors}
+      />
 
       <Pressable
         onPress={() => {

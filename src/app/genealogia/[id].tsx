@@ -17,6 +17,7 @@ import {
   linaje,
   personaHref,
 } from '@/lib/genealogia';
+import { fichaHref, getFichaDeGenealogia } from '@/lib/fichas';
 import { verseHref } from '@/lib/routes';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -35,10 +36,12 @@ export default function Genealogia() {
   const [books, setBooks] = useState<Book[]>([]);
   const [error, setError] = useState(false);
   const [entero, setEntero] = useState(false);
+  const [fichas, setFichas] = useState<Record<string, string>>({});
 
   useEffect(() => {
     getPersonas().then(setAll, () => setError(true));
     getBooks().then(setBooks, () => {});
+    getFichaDeGenealogia().then(setFichas, () => {});
   }, []);
   useEffect(() => setEntero(false), [pid]);
 
@@ -73,15 +76,27 @@ export default function Genealogia() {
         <Stat value={persona.hijos.length} label={persona.hijos.length === 1 ? 'hijo' : 'hijos'} colors={colors} />
         <Stat value={line.length - 1} label="generaciones atrás" colors={colors} />
       </View>
-      <Pressable
-        onPress={() => navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward')}
-        style={({ pressed }) => [styles.cita, { backgroundColor: colors.accentSoft }, pressed && { opacity: 0.7 }]}
-      >
-        <Text style={{ color: colors.muted, fontSize: 12 }}>Primera mención</Text>
-        <Text style={{ color: colors.accent, fontWeight: '700' }}>
-          {books.length ? formatRef(persona.cita, books) : persona.cita} ›
-        </Text>
-      </Pressable>
+      <View style={styles.citas}>
+        <Pressable
+          onPress={() => navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward')}
+          style={({ pressed }) => [styles.cita, { backgroundColor: colors.accentSoft }, pressed && { opacity: 0.7 }]}
+        >
+          <Text style={{ color: colors.muted, fontSize: 12 }}>Primera mención</Text>
+          <Text style={{ color: colors.accent, fontWeight: '700' }}>
+            {books.length ? formatRef(persona.cita, books) : persona.cita} ›
+          </Text>
+        </Pressable>
+        {fichas[pid] && (
+          <Pressable
+            onPress={() => navigate(() => router.push(fichaHref({ id: fichas[pid], nombre: persona.nombre }) as never), 'forward')}
+            style={({ pressed }) => [styles.cita, { backgroundColor: colors.accentSoft }, pressed && { opacity: 0.7 }]}
+            accessibilityRole="link"
+          >
+            <Text style={{ color: colors.muted, fontSize: 12 }}>Quién fue, mapa y época</Text>
+            <Text style={{ color: colors.accent, fontWeight: '700' }}>Ver la ficha ›</Text>
+          </Pressable>
+        )}
+      </View>
 
       <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
         <FamilyTree persona={persona} all={all} colors={colors} onSelect={select} />
@@ -221,7 +236,8 @@ const styles = StyleSheet.create({
   hero: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 },
   stats: { flexDirection: 'row', gap: 8, marginTop: 18 },
   stat: { flex: 1, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingVertical: 10, alignItems: 'center' },
-  cita: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginTop: 10, marginBottom: 18 },
+  citas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, marginBottom: 18 },
+  cita: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, flexGrow: 1 },
   lineCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 20, padding: 16, marginTop: 20 },
   card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 20, paddingVertical: 14 },
   hint: { fontSize: 12, textAlign: 'center', marginTop: 8 },

@@ -28,6 +28,8 @@ import {
   fechaPeriodo,
   periodoDe,
 } from '@/lib/historia';
+import { PromesasDelPasaje } from '@/components/Promesas';
+import { hilosEn } from '@/lib/promesas';
 import { verseHref } from '@/lib/routes';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { studyKeep, useKept } from '@/lib/recordado';
@@ -48,6 +50,11 @@ export default function StudyBackground({ book, bookName, chapter, verse }: Prop
   const [books, setBooks] = useState<Book[]>([]);
   const periodo = periodoDe(book, chapter);
   const eventos = useMemo(() => (periodo ? eventosDe(periodo) : []), [periodo]);
+  // Promesas del versículo; si no hay, las del capítulo
+  const promesas = useMemo(() => {
+    const aqui = verse ? hilosEn(book, chapter, verse) : [];
+    return aqui.length ? aqui : hilosEn(book, chapter);
+  }, [book, chapter, verse]);
 
   useEffect(() => {
     let live = true;
@@ -81,7 +88,7 @@ export default function StudyBackground({ book, bookName, chapter, verse }: Prop
   const toggle = (k: 'mundo' | 'familias') => setOpen((o) => (o === k ? null : k));
   const refLabel = (ref: string) => (books.length ? formatRef(ref, books) : ref);
 
-  if (!periodo && !people.length) return null;
+  if (!periodo && !people.length && !promesas.length) return null;
   const regiones = [...new Set(eventos.map((e) => e.region))];
 
   return (
@@ -129,6 +136,12 @@ export default function StudyBackground({ book, bookName, chapter, verse }: Prop
           />
         )}
       </View>
+
+      {promesas.length > 0 && (
+        <View style={{ marginTop: 12 }}>
+          <PromesasDelPasaje encontrados={promesas.slice(0, 4)} books={books} colors={colors} />
+        </View>
+      )}
 
       {open === 'mundo' && periodo && (
         <Appear style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}>

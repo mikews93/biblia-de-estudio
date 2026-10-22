@@ -3,13 +3,14 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Post from '@/components/comunidad/Post';
+import { EntradaEventos } from '@/components/evento/piezas';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
 import { Avatar, Button, Card, Chips, ErrorText, text } from '@/components/comunidad/ui';
 import { useAccount } from '@/lib/comunidad';
 import { useOnline } from '@/lib/conexion';
 import { Audiencia, Publicacion, network, wall } from '@/lib/social';
-import { useColors } from '@/lib/theme';
+import { useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 /** La pestaña Comunidad: lo que leen y comparten tus amigos y la comunidad, con «me gusta» y comentarios. */
@@ -17,7 +18,10 @@ export default function Comunidad() {
   const colors = useColors();
   const { ready, usuario } = useAccount();
   const online = useOnline();
-  const [filter, setFilter] = useState<Audiencia>('amigos');
+  // En el Modo Jóvenes solo se ve lo de los amigos y los grupos: nada de desconocidos.
+  const jovenes = useSettings().settings.modo === 'jovenes';
+  const [elegido, setFilter] = useState<Audiencia>('amigos');
+  const filter: Audiencia = jovenes ? 'amigos' : elegido;
   const [posts, setPosts] = useState<Publicacion[] | null>(null);
   const [more, setMore] = useState(true);
   const [requests, setRequests] = useState(0);
@@ -94,25 +98,38 @@ export default function Comunidad() {
         <>
           <Text style={[text.title, { color: colors.text, marginBottom: 12 }]}>La comunidad</Text>
           <Welcome intro="Mira lo que leen tus amigos, comparte los versículos que resaltas y las imágenes que creas, haz preguntas y anímense unos a otros." />
+          <EntradaEventos style={{ marginTop: 14 }} />
         </>
       ) : (
         <>
           <Pressable onPress={() => go('/comunidades/publicar')} accessibilityRole="button">
             <Card style={styles.composer}>
               <Avatar name={usuario.nombre} foto={usuario.foto} size={36} filled />
-              <Text style={{ color: colors.muted, flex: 1, fontSize: 15 }}>Pregúntale algo a la comunidad…</Text>
+              <Text style={{ color: colors.muted, flex: 1, fontSize: 15 }}>
+                {jovenes ? 'Pregúntales algo a tus amigos…' : 'Pregúntale algo a la comunidad…'}
+              </Text>
             </Card>
           </Pressable>
 
+          <EntradaEventos style={{ marginTop: 10 }} />
+
           <View style={styles.bar}>
-            <Chips
-              options={[
-                { value: 'amigos', label: 'Amigos' },
-                { value: 'todos', label: 'Todos' },
-              ]}
-              value={filter}
-              onChange={change}
-            />
+            {jovenes ? (
+              <Pressable onPress={() => go('/grupos')} hitSlop={8} accessibilityRole="link" testID="jovenes-grupos">
+                <Text style={{ color: colors.muted, fontSize: 13 }}>
+                  Solo tus amigos y <Text style={{ color: colors.accent, fontWeight: '700' }}>tus grupos ›</Text>
+                </Text>
+              </Pressable>
+            ) : (
+              <Chips
+                options={[
+                  { value: 'amigos', label: 'Amigos' },
+                  { value: 'todos', label: 'Todos' },
+                ]}
+                value={filter}
+                onChange={change}
+              />
+            )}
             <Pressable onPress={() => go('/comunidades/amigos')} hitSlop={8} style={styles.friends} accessibilityRole="link">
               <Text style={{ color: colors.accent, fontWeight: '700' }}>＋ Amigos</Text>
               {requests > 0 && (

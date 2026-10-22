@@ -8,11 +8,19 @@ import { playRecordedPodcast } from '@/lib/audio';
 import { usePodcastGrabado } from '@/lib/podcastGrabado';
 import { useColors } from '@/lib/theme';
 
-type Props = { book: string; chapter: number; title: string; inApp: boolean; scriptReady: boolean };
+type Props = {
+  book: string;
+  chapter: number;
+  title: string;
+  inApp: boolean;
+  scriptReady: boolean;
+  /** El pódcast de «La historia de una palabra» (book es entonces su clave en el reproductor y chapter, 0). */
+  palabra?: string;
+};
 
-export function PodcastGrabado({ book, chapter, title, inApp, scriptReady }: Props) {
+export function PodcastGrabado({ book, chapter, title, inApp, scriptReady, palabra }: Props) {
   const colors = useColors();
-  const grabado = usePodcastGrabado(book, chapter);
+  const grabado = usePodcastGrabado(book, chapter, palabra);
 
   if (inApp || grabado.estado === 'listo') {
     return (

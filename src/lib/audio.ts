@@ -13,11 +13,12 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { getBooks } from './data';
 import { Line, SPEAKERS, chunks, pickVoices } from './podcast';
 import { chapterHref } from './routes';
+import { huella } from './sellos';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const VERSION_KEY = 'audio-version';
 
-export type AudioKind = 'lectura' | 'dramatizado' | 'podcast';
+export type AudioKind = 'lectura' | 'dramatizado' | 'podcast' | 'original';
 export type AudioVersion = { id: string; name: string; nt: boolean; ot: boolean };
 type Track = { url: string; duration: number };
 /** Lo que suena desde un archivo. Los tiempos marcan dónde empieza cada versículo (o cada intervención del pódcast). */
@@ -29,11 +30,14 @@ export type ChapterAudio = {
   timestamps: [number, number][];
   credit: string;
   note?: string;
+  /** Lectura en hebreo o griego: [inicio, fin] de cada palabra del interlineal, por versículo (null si no se lee). */
+  words?: Record<string, ([number, number] | null)[]>;
+  language?: 'hebreo' | 'griego';
 };
 /** El pódcast con la voz del dispositivo no tiene archivo: se lee intervención por intervención. */
 export type SpeechAudio = { lines: Line[]; index: number; playing: boolean };
-/** Capítulos con grabaciones propias, por tipo («mrk-1»). Lo escribe la acción de audio dramatizado. */
-export type Catalog = { dramatizado: string[]; podcast: string[] };
+/** Capítulos con grabaciones propias, por tipo («mrk-1»). Lo escriben las acciones de audio dramatizado y original. */
+export type Catalog = { dramatizado: string[]; podcast: string[]; original: string[] };
 
 export type AudioState = {
   open: boolean;
@@ -64,7 +68,7 @@ let state: AudioState = {
   track: 0,
   versions: [],
   rate: 1,
-  catalog: { dramatizado: [], podcast: [] },
+  catalog: { dramatizado: [], podcast: [], original: [] },
 };
 const listeners = new Set<() => void>();
 
@@ -84,6 +88,11 @@ export function useAudio(): AudioState {
   return useSyncExternalStore(subscribe, () => state, () => state);
 }
 
+/** Una parte del estado del reproductor (un número o un booleano): así solo se vuelve a dibujar cuando esa parte cambia. */
+export function useAudioSelect<T>(select: (s: AudioState) => T): T {
+  return useSyncExternalStore(subscribe, () => select(state), () => select(state));
+}
+
 export const recordingId = (book: string, chapter: number) => `${book}-${chapter}`;
 
 let catalogLoad: Promise<void> | null = null;
@@ -96,7 +105,7 @@ export function useCatalog(): Catalog {
     catalogLoad ??= fetch(`${API}/audio/index.json`)
       .then((res) => (res.ok ? res.json() : null))
       .then((body: Partial<Catalog> | null) => {
-        if (body) set({ catalog: { dramatizado: body.dramatizado ?? [], podcast: body.podcast ?? [] } });
+        if (body) set({ catalog: { dramatizado: body.dramatizado ?? [], podcast: body.podcast ?? [], original: body.original ?? [] } });
       })
       .catch(() => {
         // sin catálogo solo se pierden los botones de las grabaciones
@@ -188,6 +197,7 @@ function start(kind: AudioKind, book: string, chapter: number, title: string): n
   stopSpeech();
   getPlayer().pause();
   set({ open: true, kind, book, chapter, title, loading: true, error: null, audio: null, speech: null, track: 0 });
+  followWords(kind === 'original');
   return id;
 }
 
@@ -232,6 +242,92 @@ function playRecording(kind: 'dramatizado' | 'podcast', book: string, chapter: n
 
 export const playDramatized = (book: string, chapter: number, title: string) =>
   playRecording('dramatizado', book, chapter, title, 'Audio dramatizado');
+
+/** Lo que guarda la acción de audio original junto a cada capítulo (pipeline/audio_original/alinear.py). */
+type OriginalTimings = {
+  idioma: 'hebreo' | 'griego';
+  src: string;
+  duracion: number;
+  lector: string;
+  credito: string;
+  timestamps: [number, number][];
+  palabras: Record<string, ([number, number] | null)[]>;
+};
+
+/** El capítulo leído en hebreo o en griego, con los tiempos de cada palabra para resaltar el interlineal. */
+export function playOriginal(book: string, chapter: number, title: string) {
+  huella('original', `${book}.${chapter}`);
+  const id = start('original', book, chapter, title);
+  return playFile(id, async () => {
+    const meta = await fetchJson<OriginalTimings>(`${API}/audio/original/${recordingId(book, chapter)}.json`);
+    return {
+      label: `En ${meta.idioma} · ${meta.lector}`,
+      tracks: [{ url: meta.src, duration: meta.duracion }],
+      timestamps: meta.timestamps,
+      credit: meta.credito,
+      words: meta.palabras,
+      language: meta.idioma,
+    };
+  });
+}
+
+// La palabra que suena se consulta varias veces por segundo (el estado del reproductor llega cada 250 ms, poco para
+// seguir palabras cortas). Va aparte del estado general para que solo se vuelva a dibujar la palabra que cambia.
+type Spoken = { verse: number; index: number } | null;
+let spoken: Spoken = null;
+let ticker: ReturnType<typeof setInterval> | null = null;
+const wordListeners = new Set<() => void>();
+
+function setSpoken(next: Spoken) {
+  if (next?.verse === spoken?.verse && next?.index === spoken?.index) return;
+  spoken = next;
+  wordListeners.forEach((l) => l());
+}
+
+function followWords(on: boolean) {
+  if (ticker) clearInterval(ticker);
+  ticker = null;
+  setSpoken(null);
+  if (on) ticker = setInterval(() => player && setSpoken(wordAt(chapterTime(player.currentTime))), 80);
+}
+
+/** Lo que el componente necesita de la palabra que suena (un número o un booleano, para no dibujar de más). */
+export function useSpoken<T>(select: (w: Spoken) => T): T {
+  return useSyncExternalStore(
+    (l) => {
+      wordListeners.add(l);
+      return () => {
+        wordListeners.delete(l);
+      };
+    },
+    () => select(spoken),
+    () => select(null),
+  );
+}
+
+/** Palabra del interlineal que suena ahora en la lectura original (null si no suena ninguna). */
+export function wordAt(seconds: number): { verse: number; index: number } | null {
+  const words = state.kind === 'original' ? state.audio?.words : undefined;
+  const verse = words ? currentVerse(seconds) : null;
+  if (!words || verse === null) return null;
+  const row = words[String(verse)] ?? [];
+  let found = -1;
+  for (let i = 0; i < row.length; i++) {
+    const t = row[i];
+    if (t && t[0] <= seconds + 0.05) found = i;
+    else if (t && t[0] > seconds) break;
+  }
+  return found < 0 ? null : { verse, index: found };
+}
+
+/** Salta a una palabra de la lectura original (al tocarla en el interlineal). */
+export function seekWord(verse: number, index: number): boolean {
+  const t = state.kind === 'original' ? state.audio?.words?.[String(verse)]?.[index] : null;
+  if (!t) return false;
+  seekChapter(t[0]);
+  if (!getPlayer().playing) getPlayer().play();
+  return true;
+}
 
 /** Una grabación que no está en /audio (por ejemplo, un pódcast grabado bajo demanda). */
 export type RemoteRecording = { url: string; duracion: number; credito: string };
@@ -412,6 +508,8 @@ async function playChapterAt(step: 1 | -1) {
   // Si se está leyendo el capítulo que suena, la pantalla lo acompaña.
   const here = chapterHref(next.from.id, state.chapter);
   if (location === here || location.startsWith(`${here}/`)) router.replace(chapterHref(next.to.id, next.chapter));
+  // También el mapa que sigue la lectura (/recorrido/hechos/13)
+  else if (location.split('?')[0] === `/recorrido${here}`) router.replace(`/recorrido${chapterHref(next.to.id, next.chapter)}` as never);
   playChapter(next.to.id, next.chapter, `${next.to.name} ${next.chapter}`, state.audio?.version?.id);
 }
 
@@ -420,6 +518,7 @@ const playPreviousChapter = () => playChapterAt(-1);
 
 export function closeAudio() {
   request++;
+  followWords(false);
   stopSpeech();
   if (player) {
     player.pause();

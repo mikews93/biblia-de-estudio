@@ -6,6 +6,7 @@ import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
 import { compareHref } from '@/components/Comparar';
 import NoteEditor from '@/components/NoteEditor';
+import { OrarConVersiculo } from '@/components/Oraciones';
 import ReaderSettings from '@/components/ReaderSettings';
 import { NeedsConnection } from '@/components/SinConexion';
 import StudyPanel from '@/components/StudyPanel';
@@ -27,15 +28,20 @@ import {
   getCrossRefs,
   getInterlinear,
   getParagraphEnds,
+  getPlaces,
   getVersions,
   original,
 } from '@/lib/data';
-import { playChapter, playDramatized, recordingId, useCatalog } from '@/lib/audio';
+import { journeysFor, recorridoHref } from '@/lib/recorridos';
+import { getPlayer, playChapter, playDramatized, playOriginal, recordingId, seekWord, useAudioSelect, useCatalog, useSpoken } from '@/lib/audio';
+import { OriginalIcon } from '@/components/audioIcons';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
 import { useChapterNotes } from '@/lib/notas';
 import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
+import { CapituloRow, fichaHref, fichasDelVersiculo, getFichasCapitulo, marcarNombres } from '@/lib/fichas';
+import FichaChips from '@/components/FichaChips';
 import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import ReaderHeader, { HEADER_HEIGHT } from '@/components/ReaderHeader';
@@ -55,10 +61,15 @@ import {
   ListenIcon,
   MindMapIcon,
   PencilIcon,
+  PrayIcon,
+  PromiseIcon,
+  RouteIcon,
   ShareIcon,
   SparkIcon,
   TalkIcon,
 } from '@/components/icons';
+import { abrirHilo } from '@/components/Promesas';
+import { hilosEn } from '@/lib/promesas';
 import { chrome, setChromeHidden, useAutoHide } from '@/lib/chrome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -93,8 +104,11 @@ export default function Reader() {
   const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState(0);
   const [sharing, setSharing] = useState(false);
+  const [praying, setPraying] = useState(false);
   const [study, setStudy] = useState<{ verse?: number } | null>(null);
   const [writing, setWriting] = useState(false);
+  const [fichas, setFichas] = useState<CapituloRow[]>([]);
+  const [placeCount, setPlaceCount] = useState(0);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const paragraphHeight = useRef(0);
 
@@ -122,15 +136,33 @@ export default function Reader() {
       .catch((e) => setError(String(e.message)));
     getCrossRefs(bookId, chapter).then(setXrefs).catch(() => {});
     getParagraphEnds(bookId, chapter).then(setParagraphEnds).catch(() => {});
+    setFichas([]);
+    getFichasCapitulo(bookId, chapter).then(setFichas).catch(() => {});
+    setPlaceCount(0);
+    getPlaces(bookId, chapter).then((p) => setPlaceCount(p.length), () => {});
     saveLastRead(bookId, chapter);
   }, [bookId, chapter, target, settings.version]);
 
   const index = books.findIndex((b) => b.id === bookId);
   const book = books[index];
 
+  // Mientras suena el capítulo en hebreo o en griego, el lector muestra el interlineal aunque el modo estudio esté
+  // apagado, ilumina la palabra que suena y acompaña la lectura bajando hasta el versículo.
+  const listening = useAudioSelect((a) => a.open && a.kind === 'original' && a.book === bookId && a.chapter === chapter);
+  const spokenVerse = useSpoken((w) => w?.verse ?? 0);
+  const verseY = useRef<Record<number, number>>({});
+  const interlinearOn = settings.study || listening;
+
   useEffect(() => {
-    if (settings.study && book?.interlinear) getInterlinear(bookId, chapter).then(setInterlinear).catch(() => {});
-  }, [settings.study, book, bookId, chapter]);
+    if (interlinearOn && book?.interlinear) getInterlinear(bookId, chapter).then(setInterlinear).catch(() => {});
+  }, [interlinearOn, book, bookId, chapter]);
+
+  useEffect(() => {
+    const y = verseY.current[spokenVerse];
+    if (!listening || !spokenVerse || y === undefined || !getPlayer().playing) return;
+    scroll.current?.scrollTo({ y: Math.max(0, y - insets.top - HEADER_HEIGHT - 24), animated: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar de versículo
+  }, [listening, spokenVerse]);
 
   /** Capítulo siguiente (1) o anterior (-1), saltando de libro; null en el principio o el final de la Biblia. */
   const neighbor = (delta: 1 | -1) => {
@@ -157,6 +189,26 @@ export default function Reader() {
   usePageSwipe(neighbor);
 
   const select = (n: number) => setSelected(selected === n ? null : n);
+  const openFicha = (f: { id: string; nombre: string }) => navigate(() => router.push(fichaHref(f) as never), 'forward');
+  /** En el versículo elegido, los nombres con ficha se pueden tocar (solo en la RV1909, que es la de los nombres). */
+  const withNames = (n: number, text: string) =>
+    n !== selected || settings.version !== 'rv1909'
+      ? text
+      : marcarNombres(text, fichasDelVersiculo(fichas, n)).map((t, i) =>
+          t.ficha ? (
+            <Text
+              key={i}
+              onPress={() => openFicha({ id: t.ficha![0], nombre: t.ficha![1] })}
+              style={{ color: colors.accent, fontWeight: '700', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: colors.accent }}
+              accessibilityRole="link"
+              accessibilityLabel={`Ficha de ${t.ficha[1]}`}
+            >
+              {t.texto}
+            </Text>
+          ) : (
+            t.texto
+          ),
+        );
   const scrollToY = (y: number) => {
     autoHide.pause();
     scroll.current?.scrollTo({ y: Math.max(0, y - 80), animated: false });
@@ -224,7 +276,7 @@ export default function Reader() {
     ) : null;
   };
 
-  const verseBlocks = settings.study || settings.layout === 'versiculo';
+  const verseBlocks = interlinearOn || settings.layout === 'versiculo';
   const selectedText = verses?.find(([n]) => n === selected)?.[1] ?? '';
   const title = book ? `${book.name} ${chapter}` : '';
   const version = versions.find((v) => v.id === settings.version);
@@ -237,6 +289,17 @@ export default function Reader() {
       icon: (c: string) => <ListenIcon color={c} size={22} />,
       onPress: () => playChapter(bookId, chapter, title),
     },
+    ...(catalog.original.includes(recordingId(bookId, chapter)) && book
+      ? [
+          {
+            key: 'original',
+            label: original(book).rtl ? 'Hebreo' : 'Griego',
+            hint: `Escuchar el capítulo en ${original(book).name}, con cada palabra iluminada en el interlineal`,
+            icon: (c: string) => <OriginalIcon color={c} size={22} letter={original(book).icon} />,
+            onPress: () => playOriginal(bookId, chapter, title),
+          },
+        ]
+      : []),
     ...(catalog.dramatizado.includes(recordingId(bookId, chapter))
       ? [
           {
@@ -245,6 +308,19 @@ export default function Reader() {
             hint: 'Escuchar el capítulo dramatizado, con voces, efectos y música',
             icon: (c: string) => <DramaIcon color={c} size={22} />,
             onPress: () => playDramatized(bookId, chapter, title),
+          },
+        ]
+      : []),
+    ...(placeCount || journeysFor(bookId, chapter).length
+      ? [
+          {
+            key: 'recorrido',
+            label: journeysFor(bookId, chapter).length ? 'Recorrido' : 'En el mapa',
+            hint: journeysFor(bookId, chapter).length
+              ? `Seguir en el mapa: ${journeysFor(bookId, chapter)[0].title}`
+              : 'Seguir en el mapa los lugares del capítulo mientras lees o escuchas',
+            icon: (c: string) => <RouteIcon color={c} size={22} />,
+            onPress: () => navigate(() => router.push(recorridoHref(bookId, chapter) as never), 'forward'),
           },
         ]
       : []),
@@ -271,6 +347,7 @@ export default function Reader() {
     },
   ];
 
+  const promesas = selected === null ? [] : hilosEn(bookId, chapter, selected);
   const verseActions =
     selected === null || !book
       ? []
@@ -299,8 +376,21 @@ export default function Reader() {
             icon: (c: string) => <LinkIcon color={c} size={21} />,
             onPress: () => setPanelTab('referencias'),
           },
+          // Un hilo de promesa que pasa por este versículo: se abre; con varios, la pestaña de referencias los lista
+          ...(promesas.length
+            ? [
+                {
+                  key: 'promesa',
+                  label: 'Promesa',
+                  badge: promesas.length > 1 ? promesas.length : undefined,
+                  icon: (c: string) => <PromiseIcon color={c} size={21} />,
+                  onPress: () => (promesas.length > 1 ? setPanelTab('referencias') : abrirHilo(promesas[0].hilo)),
+                },
+              ]
+            : []),
           { key: 'comentario', label: 'Comentario', icon: (c: string) => <CommentaryIcon color={c} size={21} />, onPress: () => setPanelTab('comentario') },
           { key: 'nota', label: notes[selected] ? 'Mi nota' : 'Nota', icon: (c: string) => <PencilIcon color={c} size={21} />, onPress: () => setWriting(true) },
+          { key: 'orar', label: 'Orar', icon: (c: string) => <PrayIcon color={c} size={21} />, onPress: () => setPraying(true) },
           { key: 'compartir', label: 'Compartir', icon: (c: string) => <ShareIcon color={c} size={21} />, onPress: () => setSharing(true) },
           {
             key: 'memorizar',
@@ -400,9 +490,11 @@ export default function Reader() {
                 <ToolButton key={t.key} index={i + 2} label={t.label} hint={t.hint} icon={t.icon} colors={colors} onPress={t.onPress} />
               ))}
             </ScrollView>
-            {settings.study && (
+            {interlinearOn && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
-                {`Toca una ${original(book).word} para ver su significado y gramática.`}
+                {listening
+                  ? `Cada ${original(book).word} se ilumina mientras suena. Tócala para saltar a ella.`
+                  : `Toca una ${original(book).word} para ver su significado y gramática.`}
               </Text>
             )}
           </View>
@@ -451,7 +543,7 @@ export default function Reader() {
                       {label ?? n}
                       {'\u2009'}
                     </Text>
-                    {text}
+                    {withNames(n, text)}
                     {footMark(n)}
                     {noteMark(n)}
                   </Text>
@@ -464,9 +556,16 @@ export default function Reader() {
         {verses &&
           verseBlocks &&
           verses.map(([n, text, label]) =>
-            settings.study ? (
-              <View key={n} onLayout={(e) => n === target && scrollToY(e.nativeEvent.layout.y)}>
+            interlinearOn ? (
+              <View
+                key={n}
+                onLayout={(e) => {
+                  verseY.current[n] = e.nativeEvent.layout.y;
+                  if (n === target) scrollToY(e.nativeEvent.layout.y);
+                }}
+              >
                 <StudyVerse
+                  listening={listening}
                   n={n}
                   text={text}
                   words={interlinear[String(n)]}
@@ -478,7 +577,10 @@ export default function Reader() {
                   fontFamily={fontFamily}
                   colors={colors}
                   onSelect={() => select(n)}
-                  onWord={(i) => setWord({ verse: n, index: i })}
+                  onWord={(i) => {
+                    // Mientras suena la lectura original, tocar una palabra salta a ella; en pausa, abre su ficha.
+                    if (!(listening && getPlayer().playing && seekWord(n, i))) setWord({ verse: n, index: i });
+                  }}
                   onRefs={() => {
                     setSelected(n);
                     setPanelTab('referencias');
@@ -498,7 +600,7 @@ export default function Reader() {
               >
                 <Text style={{ fontFamily, fontSize: size, lineHeight: size * 1.6, color: colors.text }}>
                   <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>{label ?? n} </Text>
-                  {text}
+                  {withNames(n, text)}
                   {footMark(n)}
                   {noteMark(n)}
                 </Text>
@@ -587,6 +689,7 @@ export default function Reader() {
               <CloseIcon color={colors.muted} size={16} />
             </Pressable>
           </View>
+          <FichaChips rows={fichasDelVersiculo(fichas, selected)} colors={colors} onOpen={openFicha} />
           {/* Todas las acciones a la vista, en una rejilla de cuatro columnas */}
           <View style={styles.actions}>
             {verseActions.map((t, i) => (
@@ -668,6 +771,12 @@ export default function Reader() {
             version: version?.abbr ?? 'RV1909',
           }}
           onClose={() => setSharing(false)}
+        />
+      )}
+      {praying && book && selected !== null && (
+        <OrarConVersiculo
+          versiculo={{ book: book.id, chapter, verse: selected, reference: `${book.name} ${chapter}:${selected}`, text: selectedText }}
+          onClose={() => setPraying(false)}
         />
       )}
       {writing && book && selected !== null && (

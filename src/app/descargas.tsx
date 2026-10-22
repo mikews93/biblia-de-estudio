@@ -82,9 +82,9 @@ export default function Descargas() {
       {d.ready && !d.supported && (
         <Appear delay={40}>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Muy pronto en la app del teléfono</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Este navegador no guarda descargas</Text>
             <Text style={[text.body, { color: colors.muted, marginTop: 6 }]}>
-              Por ahora las descargas funcionan en la web, abierta en el navegador o instalada en la pantalla de inicio. Los capítulos que ya leíste se pueden volver a abrir sin conexión.
+              Ábrela en Chrome, Safari, Edge o Firefox, o usa la app del teléfono. Los capítulos que ya leíste se pueden volver a abrir sin conexión.
             </Text>
           </View>
         </Appear>

@@ -4,9 +4,12 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconText } from '@/components/comunidad/ui';
-import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from '@/components/icons';
+import { LiveDot } from '@/components/evento/piezas';
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon } from '@/components/icons';
+import { useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { dinamica } from '@/lib/dinamicas';
+import { codigoLegible, moverEvento, useMisEventos } from '@/lib/eventos';
 import { enPasaje, ideaCentral, pasajeLabel, tituloDe, useTaller } from '@/lib/taller';
 import { sans, serif, useColors } from '@/lib/theme';
 
@@ -27,6 +30,18 @@ export default function PresentarScreen() {
   const [verses, setVerses] = useState<Verse[] | null>(null);
   const [showPassage, setShowPassage] = useState(false);
   const [size, setSize] = useState(22);
+  // Si el mensaje se publicó como evento, al avanzar aquí avanza también en los teléfonos de la congregación.
+  const { usuario } = useAccount();
+  const { eventos } = useMisEventos(!!usuario);
+  const evento = m?.evento ? eventos?.find((e) => e.codigo === m.evento!.codigo) : undefined;
+  const [vivo, setVivo] = useState(false);
+  const [fallo, setFallo] = useState(false);
+  const enVivo = vivo || evento?.estado === 'en-vivo';
+  const sincronizar = (punto: number, estado?: 'en-vivo') => {
+    if (!evento) return;
+    setFallo(false);
+    moverEvento(evento.codigo, { punto, ...(estado ? { estado } : {}) }).catch(() => setFallo(true));
+  };
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
@@ -48,8 +63,10 @@ export default function PresentarScreen() {
   const sections = m.secciones;
   const s = index >= 0 ? sections[index] : null;
   const go = (n: number) => {
-    setIndex(Math.max(-1, Math.min(sections.length - 1, n)));
+    const next = Math.max(-1, Math.min(sections.length - 1, n));
+    setIndex(next);
     setSectionStart(elapsed);
+    if (enVivo) sincronizar(next);
   };
   const inSection = elapsed - sectionStart;
   const over = s && s.minutos ? inSection > s.minutos * 60 : false;
@@ -77,6 +94,31 @@ export default function PresentarScreen() {
           </Pressable>
         </View>
       </View>
+
+      {evento && (
+        <View style={styles.eventRow}>
+          {enVivo ? (
+            <View style={[styles.eventChip, { backgroundColor: colors.warmSoft }]}>
+              <LiveDot color={colors.warm} size={6} />
+              <Text style={{ color: colors.warm, fontWeight: '800', fontSize: 12, letterSpacing: 0.8 }}>
+                {fallo ? 'SIN CONEXIÓN CON EL EVENTO' : `EN VIVO · ${codigoLegible(evento.codigo)}`}
+              </Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => {
+                setVivo(true);
+                sincronizar(index, 'en-vivo');
+              }}
+              accessibilityRole="button"
+              style={[styles.eventChip, { borderWidth: 1, borderColor: colors.border }]}
+            >
+              <LiveIcon color={colors.accent} size={15} strokeWidth={2} />
+              <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>Empezar el evento en vivo · {codigoLegible(evento.codigo)}</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.body}>
         {s ? (
@@ -180,6 +222,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 8 },
   timer: { alignItems: 'center' },
+  eventRow: { alignItems: 'center', paddingBottom: 4 },
+  eventChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 5 },
   body: { padding: 24, paddingBottom: 40, maxWidth: 820, width: '100%', alignSelf: 'center' },
   counter: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   title: { fontFamily: serif, fontSize: 30, fontWeight: '700', marginTop: 6 },
