@@ -200,6 +200,14 @@ export function SelloIcono({ dibujo, color }: { dibujo: Dibujo; color: string })
           <Path d="M10.5 11h3.5M10.5 14h3" />
         </>
       );
+    case 'cordon': // dos hilos que se cruzan alrededor de uno firme en el centro
+      return (
+        <>
+          <Path d="M12 3v18" />
+          <Path d="M7.5 3c0 4.5 9 4.5 9 9s-9 4.5-9 9" />
+          <Path d="M16.5 3c0 4.5-9 4.5-9 9s9 4.5 9 9" />
+        </>
+      );
     case 'dos': // dos personas lado a lado
       return (
         <>

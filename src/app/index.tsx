@@ -12,6 +12,7 @@ import {
   DownloadIcon,
   HeartIcon,
   LecternIcon,
+  RingsIcon,
   MicIcon,
   PencilIcon,
   PeopleIcon,
@@ -359,6 +360,7 @@ function Today() {
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
+        <Tile icon={RingsIcon} label="En pareja" colors={colors} onPress={() => navigate(() => router.push('/pareja' as never), 'forward')} />
         <Tile
           icon={LecternIcon}
           label="Del sermón"

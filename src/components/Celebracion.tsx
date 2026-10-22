@@ -21,8 +21,8 @@ import { navigate } from '@/lib/transition';
 /** Cuánto se queda a la vista (ms). */
 const DURA = 7000;
 
-/** Pantallas donde no se interrumpe: se proyectan o se siguen en grupo. */
-const SIN_FIESTA = [/^\/vivo\/./, /\/proyectar$/, /\/presentar$/, /^\/evento\//];
+/** Pantallas donde no se interrumpe: se proyectan o se siguen en grupo, o la ayuda en caso de abuso. */
+const SIN_FIESTA = [/^\/vivo\/./, /\/proyectar$/, /\/presentar$/, /^\/evento\//, /^\/pareja\/ayuda/];
 
 export default function Celebracion() {
   const colors = useColors();

@@ -27,6 +27,8 @@ export type Tipo =
   | 'celula' // una lectura en vivo de la célula
   | 'evento' // un evento de la iglesia seguido en vivo
   | 'grupo' // la meta semanal de un grupo cumplida entre todos
+  | 'pareja-dia' // un día de un plan en pareja respondido por los dos
+  | 'pareja' // un plan en pareja terminado juntos
   | 'dia' // un día con la Palabra
   | 'meta' // una semana con la meta de 5 de 7 días
   | 'mision' // una misión del Modo Jóvenes (src/lib/jovenes.ts)
@@ -87,7 +89,9 @@ export type Dibujo =
   // Los del Espacio Niños
   | 'arcoiris'
   | 'oveja'
-  | 'corazon';
+  | 'corazon'
+  // En pareja
+  | 'cordon';
 
 export type Sello = {
   id: string;
@@ -306,6 +310,45 @@ const CATALOGO: Sello[] = [
     dibujo: 'dos',
     versiculo: v('Eclesiastés 4:9', 'ecc', 4, 9, 'Mejores son dos que uno; porque tienen mejor paga de su trabajo.'),
     ir: { label: 'Ir a la comunidad', href: '/comunidades' },
+    publico: 'todos',
+  },
+  {
+    id: 'pareja-primero',
+    familia: 'juntos',
+    titulo: 'El primer nudo',
+    como: 'Respondan juntos el primer día de un plan en pareja.',
+    logro: 'Respondieron juntos su primer día en pareja.',
+    tipo: 'pareja-dia',
+    meta: 1,
+    dibujo: 'cordon',
+    versiculo: v('Génesis 2:18', 'gen', 2, 18, 'Y dijo Jehová Dios: No es bueno que el hombre esté solo; haréle ayuda idónea para él.'),
+    ir: { label: 'Ir a En pareja', href: '/pareja' },
+    publico: 'todos',
+  },
+  {
+    id: 'pareja-plan',
+    familia: 'juntos',
+    titulo: 'Cordón de tres dobleces',
+    como: 'Terminen juntos un plan en pareja.',
+    logro: 'Terminaron juntos un plan en pareja.',
+    tipo: 'pareja',
+    meta: 1,
+    dibujo: 'cordon',
+    versiculo: v('Eclesiastés 4:12', 'ecc', 4, 12, 'Y si alguno prevaleciere contra el uno, dos estarán contra él; y cordón de tres dobleces no presto se rompe.'),
+    ir: { label: 'Ir a En pareja', href: '/pareja' },
+    publico: 'todos',
+  },
+  {
+    id: 'pareja-30',
+    familia: 'juntos',
+    titulo: 'Donde tú vayas',
+    como: 'Respondan juntos 30 días de planes en pareja.',
+    logro: 'Respondieron juntos 30 días en pareja.',
+    tipo: 'pareja-dia',
+    meta: 30,
+    dibujo: 'cordon',
+    versiculo: v('Rut 1:16', 'rut', 1, 16, 'Respondió Ruth: No me ruegues que te deje, y que me aparte de ti: porque donde quiera que tú fueres, iré yo; y donde quiera que vivieres, viviré. Tu pueblo será mi pueblo, y tu Dios mi Dios.'),
+    ir: { label: 'Ir a En pareja', href: '/pareja' },
     publico: 'todos',
   },
   {
