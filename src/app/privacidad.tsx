@@ -53,6 +53,7 @@ const PARTES: Parte[] = [
       'Para preparar estudios y responder preguntas, enviamos el pasaje y lo que escribes a Anthropic (Claude). No enviamos tu nombre ni tu correo.',
       'Anthropic no usa esos datos para entrenar sus modelos. Los estudios generales de cada pasaje se guardan para que todos los lean sin volver a pedirlos.',
       'En el teléfono te pedimos permiso antes de la primera vez.',
+      'Tus preguntas sobre un pasaje pueden ayudar a otros: se guardan sin tu nombre ni tu cuenta, después de borrar correos, teléfonos y enlaces. Una pregunta solo se publica si la hicieron al menos cinco personas, con otras palabras y revisada. Lo apagas con «No compartir» en el estudio. En el Modo Jóvenes nunca se guardan.',
     ],
   },
   {

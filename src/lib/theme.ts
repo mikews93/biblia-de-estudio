@@ -64,11 +64,13 @@ export type Settings = {
   comparar: string[];
   /** Para quién se ve la app: para todos, el Modo Jóvenes (src/lib/jovenes.ts) o el Espacio Niños (src/lib/ninos.ts). */
   modo: Modo;
+  /** Dejar que las preguntas al estudio se guarden limpias y sin nombre para las preguntas frecuentes (api/_preguntas.ts). */
+  compartirPreguntas: boolean;
 };
 
 export type Modo = 'general' | 'jovenes' | 'ninos';
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general' };
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general', compartirPreguntas: true };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };

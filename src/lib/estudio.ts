@@ -72,6 +72,10 @@ export async function askStudy(
       ...req,
       messages: req.messages.map(({ role, text }) => ({ role, text })),
       ...(getSettings().modo === 'jovenes' ? { publico: 'jovenes' } : {}),
+      // Las preguntas sobre el pasaje pueden ayudar a otros, limpias y sin nombre. Nunca en el Modo Jóvenes.
+      ...(getSettings().modo === 'general' && getSettings().compartirPreguntas && req.messages.length > 0 && !req.taller && !req.semana
+        ? { compartir: true }
+        : {}),
     }),
     signal,
   });

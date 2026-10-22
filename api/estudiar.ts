@@ -21,6 +21,7 @@ import postgres from 'postgres';
 
 import { Section, sections } from './_comentarios';
 import { gastarLampara, needsAccount } from './_cuenta';
+import { guardarPregunta } from './_preguntas';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
@@ -65,6 +66,8 @@ type Body = {
   palabra?: string;
   /** «jovenes»: la app está en el Modo Jóvenes (12 a 17 años). */
   publico?: 'jovenes';
+  /** La persona deja que su pregunta se guarde limpia y sin su nombre para las preguntas frecuentes (api/_preguntas.ts). */
+  compartir?: boolean;
 };
 // Del sermón a tu semana: lo que la persona anotó del sermón del domingo, para cinco días de devocional.
 type Semana = { notas: string; desde?: number; hasta?: number; predicador?: string };
@@ -917,6 +920,10 @@ export async function POST(request: Request) {
   if (!compartido) {
     const vacia = await gastarLampara(request);
     if (vacia) return vacia;
+  }
+  // Una pregunta sobre el pasaje (no del Taller ni de la semana, nunca del Modo Jóvenes) que la persona deja compartir.
+  if (body.compartir === true && turns.length > 0 && !taller && !semana && !jovenes && body.publico === undefined) {
+    await guardarPregunta(request, book.id, chapter, verse, turns[turns.length - 1].text);
   }
 
   let docs;

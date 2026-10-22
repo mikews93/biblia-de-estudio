@@ -422,6 +422,26 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
 
             {peek && <SourcePeek source={peek} colors={colors} onOpen={open} onClose={() => setPeek(null)} />}
 
+            {settings.modo === 'general' && !!first?.text && turns.length <= 1 && (
+              <View style={[styles.shareRow, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+                <Text style={[styles.shareText, { color: colors.muted }]}>
+                  {settings.compartirPreguntas
+                    ? 'Tus preguntas pueden ayudar a otros a estudiar este pasaje: se guardan limpias y sin tu nombre.'
+                    : 'Tus preguntas no se comparten.'}
+                </Text>
+                <Pressable
+                  onPress={() => update({ compartirPreguntas: !settings.compartirPreguntas })}
+                  hitSlop={8}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.compartirPreguntas }}
+                >
+                  <Text style={[styles.shareText, { color: colors.accent, fontWeight: '700' }]}>
+                    {settings.compartirPreguntas ? 'No compartir' : 'Compartir'}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
             {(mode === 'profundo' || !!first?.text) && (
               <AskBar
                 value={question}
@@ -547,6 +567,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
+  shareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  shareText: { fontSize: 12, lineHeight: 16, flexShrink: 1 },
   disclaimer: {
     fontSize: 12,
     lineHeight: 17,
