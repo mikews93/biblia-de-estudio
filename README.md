@@ -147,3 +147,9 @@ La web está en https://biblia.migueblanco.com (proyecto `biblia-de-estudio` en 
 - `api/estudiar.ts`: función de Vercel que genera el estudio.
 - `api/comunidades.ts`, `src/lib/comunidad.ts`, `src/app/comunidades/` y `src/components/comunidad/`: comunidades.
 - `pipeline/`: generación de datos.
+
+## Licencia
+
+© 2026 Miguel Blanco. Todos los derechos reservados. El código es público para leerlo y revisarlo, pero no se puede copiar, modificar, publicar como otra app ni usar con fines comerciales sin permiso escrito: ver [LICENSE](LICENSE).
+
+Esa licencia cubre solo la obra propia. Los textos bíblicos, comentarios, datos, fotos y grabaciones de terceros conservan su licencia (dominio público, CC BY, CC BY-SA, CC BY-NC), y lo que se deriva de una fuente CC BY-SA, como la traducción de las notas de Tyndale, sigue siendo CC BY-SA 4.0. El detalle está en [NOTICE.md](NOTICE.md).
