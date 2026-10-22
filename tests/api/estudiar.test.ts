@@ -375,6 +375,32 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(aiRequests.slice(before).map((r) => r.model)).toEqual(['claude-opus-5-5', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5-5']);
   });
 
+  it('el estudio para todos se termina y se guarda aunque la persona se vaya (iPhone corta la conexión)', async () => {
+    const base = { book: 'jhn', chapter: 6, verse: 35 };
+    const before = aiRequests.length;
+    const salir = new AbortController();
+    const res = await estudiar(new Request(request('/api/estudiar', base, llave), { signal: salir.signal }));
+    expect(res.status).toBe(200);
+    // Se va sin leer nada: bloquea la pantalla o cierra el panel
+    salir.abort();
+    await res.body?.cancel().catch(() => {});
+
+    const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
+    let guardado = false;
+    for (let i = 0; i < 50 && !guardado; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      guardado = (await sql`select 1 from estudios_ia where clave = 'c1:profundo:jhn:6:35:'`).length > 0;
+    }
+    await sql.end();
+    expect(guardado).toBe(true);
+    expect(aiRequests.length).toBe(before + 1);
+
+    // Al volver, sale el guardado al momento
+    const again = await events(await ask(base));
+    expect(aiRequests.length).toBe(before + 1);
+    expect(textOf(again)).toContain('Estudio simulado del pasaje');
+  });
+
   it('las herramientas devuelven un texto que la app sabe leer', async () => {
     const podcast = textOf(await events(await ask({ book: 'jhn', chapter: 3, herramienta: 'podcast' })));
     expect(parseScript(podcast).map((l) => l.speaker)).toEqual(['ana', 'tomas', 'ana']);

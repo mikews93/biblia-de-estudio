@@ -22,6 +22,7 @@ import path from 'node:path';
 import postgres from 'postgres';
 
 import { Section, sections } from './_comentarios';
+import { waitUntil } from './_seguir';
 import { ACTIVAS, Fuente } from '../src/lib/comentarioFuentes';
 
 const MODEL = process.env.COMENTARIO_MODEL ?? 'claude-sonnet-5-5';
@@ -275,14 +276,6 @@ async function review(sql: Sql, k: Key, original: string, draft: string, ctx: st
   } catch (err) {
     console.error('comentario: revisión', err);
   }
-}
-
-// Vercel deja terminar trabajo después de la respuesta con waitUntil (lo mismo que hace @vercel/functions).
-function waitUntil(promise: Promise<unknown>) {
-  const ctx = (globalThis as Record<symbol, { get?: () => { waitUntil?: (p: Promise<unknown>) => void } }>)[
-    Symbol.for('@vercel/request-context')
-  ]?.get?.();
-  if (ctx?.waitUntil) ctx.waitUntil(promise);
 }
 
 async function translate(request: Request, body: Record<string, unknown>) {

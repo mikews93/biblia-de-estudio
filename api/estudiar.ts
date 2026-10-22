@@ -43,6 +43,7 @@ import {
 } from './_investigar';
 import { guardarPregunta } from './_preguntas';
 import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
+import { waitUntil } from './_seguir';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { original } from '../src/lib/original';
@@ -838,7 +839,7 @@ async function palabraPost(request: Request, body: Body) {
       ],
     },
   ];
-  return streamAnswer(request, docs, messages, SYSTEM + PALABRA_SYSTEM, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved));
+  return streamAnswer(request, docs, messages, SYSTEM + PALABRA_SYSTEM, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true);
 }
 
 function badRequest(message: string, status = 400) {
@@ -1018,6 +1019,7 @@ export async function POST(request: Request) {
       else if (clave) await saveStudy(clave, saved);
     },
     investiga ? biblia : undefined,
+    compartido,
   );
 }
 
@@ -1026,6 +1028,8 @@ type Doc = ReturnType<typeof doc>;
 /**
  * Pide la respuesta a Claude y la envía por partes; «save» guarda la respuesta completa. Con «biblia», la IA puede
  * usar las herramientas de api/_investigar.ts: cada vuelta envía lo que consulta y sigue hasta que responde.
+ * Con «compartido» (lo que se guarda para todos) sigue hasta guardarla aunque la persona se vaya: en iPhone, al
+ * bloquear la pantalla o salir de la app, Safari corta la conexión, y sin esto el estudio nunca quedaba guardado.
  */
 function streamAnswer(
   request: Request,
@@ -1035,122 +1039,144 @@ function streamAnswer(
   model: string,
   save: (saved: Saved) => Promise<void>,
   biblia?: Biblia,
+  compartido = false,
 ) {
   const encoder = new TextEncoder();
+  // Si la persona cierra la conexión, lo que queda por enviar se descarta.
+  let abierto = true;
   const stream = new ReadableStream<Uint8Array>({
+    cancel() {
+      abierto = false;
+    },
     async start(controller) {
-      const send = (event: object) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
-      const sources = new Map<string, number>();
-      // Bloques de cada search_result que devolvieron las herramientas, en el orden en que la IA los recibió.
-      const results: BlockMeta[][] = [];
-      // Lo enviado, para guardar la herramienta tal cual la recibió la persona
-      let texto = '';
-      const fuentes: Saved['fuentes'] = [];
-      const cite = (metas: BlockMeta[], from: number, to: number, into: Set<number>) => {
-        for (let i = from; i < to; i++) {
-          const meta = metas[i];
-          if (!meta) continue;
-          let n = sources.get(meta.label);
-          if (n === undefined) {
-            n = sources.size + 1;
-            sources.set(meta.label, n);
-            fuentes.push({ n, ...meta });
-            send({ type: 'source', n, ...meta });
-          }
-          into.add(n);
+      const send = (event: object) => {
+        if (!abierto) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
+        } catch {
+          abierto = false;
         }
       };
-      const history = [...messages];
-      try {
-        for (let round = 0; ; round++) {
-          const pending = new Map<number, Set<number>>();
-          const last = !biblia || round >= MAX_ROUNDS;
-          const response = client.beta.messages.stream(
-            {
-              model,
-              max_tokens: 16000,
-              system,
-              messages: history,
-              // En la última vuelta las herramientas siguen declaradas (la conversación las usó), pero ya no se pueden pedir.
-              ...(biblia && { tools: TOOLS, tool_choice: { type: last ? 'none' : 'auto' } as const }),
-              cache_control: { type: 'ephemeral' },
-              output_config: { effort: 'medium' },
-              betas: ['server-side-fallback-2026-07-01'],
-              fallbacks: 'default',
-            },
-            { signal: request.signal },
-          );
-          for await (const event of response) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              texto += event.delta.text;
-              send({ type: 'text', text: event.delta.text });
-            } else if (event.type === 'content_block_delta' && event.delta.type === 'citations_delta') {
-              const c = event.delta.citation;
-              if (!pending.has(event.index)) pending.set(event.index, new Set());
-              const into = pending.get(event.index)!;
-              if (c.type === 'content_block_location') cite(docs[c.document_index]?.metas ?? [], c.start_block_index, c.end_block_index, into);
-              else if (c.type === 'search_result_location') cite(results[c.search_result_index] ?? [], c.start_block_index, c.end_block_index, into);
-            } else if (event.type === 'content_block_stop' && pending.has(event.index)) {
-              // Las marcas van al final del fragmento citado, como notas al pie.
-              const marks = [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('');
-              if (marks) {
-                texto += marks;
-                send({ type: 'text', text: marks });
-              }
-              pending.delete(event.index);
-            }
-          }
-          const final = await response.finalMessage();
-          const calls = final.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
-          if (biblia && final.stop_reason === 'tool_use' && calls.length) {
-            // Separa lo que hubiera escrito antes de investigar de la respuesta que viene después.
-            if (texto && !texto.endsWith('\n\n')) {
-              texto += '\n\n';
-              send({ type: 'text', text: '\n\n' });
-            }
-            const inputs = calls.map((call) => (call.input && typeof call.input === 'object' ? (call.input as Record<string, unknown>) : {}));
-            calls.forEach((call, i) => send({ type: 'paso', ...pasoDe(call.name, inputs[i], biblia) }));
-            const done = await Promise.all(calls.map((call, i) => investigar(call.name, inputs[i], biblia)));
-            done.forEach((d) => results.push(...d.results));
-            history.push(
-              { role: 'assistant', content: final.content },
-              {
-                role: 'user',
-                content: calls.map((call, i) => ({
-                  type: 'tool_result' as const,
-                  tool_use_id: call.id,
-                  content: done[i].content,
-                  ...(done[i].error && { is_error: true }),
-                })),
-              },
-            );
-            continue;
-          }
-          if (final.stop_reason === 'refusal') {
-            send({ type: 'error', message: 'No puedo ayudar con esta pregunta. Prueba a formularla de otra manera.' });
-          } else {
-            // Solo se guarda una respuesta completa
-            if (final.stop_reason === 'end_turn' && texto.trim()) {
-              await save({ texto, fuentes });
-            }
-            send({ type: 'done' });
-          }
-          break;
-        }
-      } catch (err) {
-        console.error('estudiar', err);
-        const message =
-          err instanceof Anthropic.RateLimitError
-            ? 'Hay muchas consultas ahora mismo. Inténtalo en un momento.'
-            : err instanceof Anthropic.AuthenticationError
-              ? 'Falta configurar la clave de la IA en el servidor.'
-              : 'No se pudo generar el estudio. Inténtalo de nuevo.';
-        send({ type: 'error', message });
-      } finally {
+      const work = generate(send).finally(() => {
+        if (!abierto) return;
+        abierto = false;
         controller.close();
-      }
+      });
+      if (compartido) waitUntil(work);
+      await work;
     },
   });
+
+  async function generate(send: (event: object) => void) {
+    const sources = new Map<string, number>();
+    // Bloques de cada search_result que devolvieron las herramientas, en el orden en que la IA los recibió.
+    const results: BlockMeta[][] = [];
+    // Lo enviado, para guardar la herramienta tal cual la recibió la persona
+    let texto = '';
+    const fuentes: Saved['fuentes'] = [];
+    const cite = (metas: BlockMeta[], from: number, to: number, into: Set<number>) => {
+      for (let i = from; i < to; i++) {
+        const meta = metas[i];
+        if (!meta) continue;
+        let n = sources.get(meta.label);
+        if (n === undefined) {
+          n = sources.size + 1;
+          sources.set(meta.label, n);
+          fuentes.push({ n, ...meta });
+          send({ type: 'source', n, ...meta });
+        }
+        into.add(n);
+      }
+    };
+    const history = [...messages];
+    try {
+      for (let round = 0; ; round++) {
+        const pending = new Map<number, Set<number>>();
+        const last = !biblia || round >= MAX_ROUNDS;
+        const response = client.beta.messages.stream(
+          {
+            model,
+            max_tokens: 16000,
+            system,
+            messages: history,
+            // En la última vuelta las herramientas siguen declaradas (la conversación las usó), pero ya no se pueden pedir.
+            ...(biblia && { tools: TOOLS, tool_choice: { type: last ? 'none' : 'auto' } as const }),
+            cache_control: { type: 'ephemeral' },
+            output_config: { effort: 'medium' },
+            betas: ['server-side-fallback-2026-07-01'],
+            fallbacks: 'default',
+          },
+          // Lo que se guarda para todos termina aunque la persona se haya ido; lo suyo se detiene con ella.
+          { signal: compartido ? undefined : request.signal },
+        );
+        for await (const event of response) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            texto += event.delta.text;
+            send({ type: 'text', text: event.delta.text });
+          } else if (event.type === 'content_block_delta' && event.delta.type === 'citations_delta') {
+            const c = event.delta.citation;
+            if (!pending.has(event.index)) pending.set(event.index, new Set());
+            const into = pending.get(event.index)!;
+            if (c.type === 'content_block_location') cite(docs[c.document_index]?.metas ?? [], c.start_block_index, c.end_block_index, into);
+            else if (c.type === 'search_result_location') cite(results[c.search_result_index] ?? [], c.start_block_index, c.end_block_index, into);
+          } else if (event.type === 'content_block_stop' && pending.has(event.index)) {
+            // Las marcas van al final del fragmento citado, como notas al pie.
+            const marks = [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('');
+            if (marks) {
+              texto += marks;
+              send({ type: 'text', text: marks });
+            }
+            pending.delete(event.index);
+          }
+        }
+        const final = await response.finalMessage();
+        const calls = final.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
+        if (biblia && final.stop_reason === 'tool_use' && calls.length) {
+          // Separa lo que hubiera escrito antes de investigar de la respuesta que viene después.
+          if (texto && !texto.endsWith('\n\n')) {
+            texto += '\n\n';
+            send({ type: 'text', text: '\n\n' });
+          }
+          const inputs = calls.map((call) => (call.input && typeof call.input === 'object' ? (call.input as Record<string, unknown>) : {}));
+          calls.forEach((call, i) => send({ type: 'paso', ...pasoDe(call.name, inputs[i], biblia) }));
+          const done = await Promise.all(calls.map((call, i) => investigar(call.name, inputs[i], biblia)));
+          done.forEach((d) => results.push(...d.results));
+          history.push(
+            { role: 'assistant', content: final.content },
+            {
+              role: 'user',
+              content: calls.map((call, i) => ({
+                type: 'tool_result' as const,
+                tool_use_id: call.id,
+                content: done[i].content,
+                ...(done[i].error && { is_error: true }),
+              })),
+            },
+          );
+          continue;
+        }
+        if (final.stop_reason === 'refusal') {
+          send({ type: 'error', message: 'No puedo ayudar con esta pregunta. Prueba a formularla de otra manera.' });
+        } else {
+          // Solo se guarda una respuesta completa
+          if (final.stop_reason === 'end_turn' && texto.trim()) {
+            await save({ texto, fuentes });
+          }
+          send({ type: 'done' });
+        }
+        break;
+      }
+    } catch (err) {
+      console.error('estudiar', err);
+      const message =
+        err instanceof Anthropic.RateLimitError
+          ? 'Hay muchas consultas ahora mismo. Inténtalo en un momento.'
+          : err instanceof Anthropic.AuthenticationError
+            ? 'Falta configurar la clave de la IA en el servidor.'
+            : 'No se pudo generar el estudio. Inténtalo de nuevo.';
+      send({ type: 'error', message });
+    }
+  }
 
   return new Response(stream, {
     headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
