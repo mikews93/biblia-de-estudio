@@ -2,7 +2,8 @@
 // notas compartidas en un versículo, peticiones de oración, preguntas para la reunión sugeridas por la IA y
 // guías de encuentro preparadas en el Taller.
 // También la red de la pestaña Comunidad: amigos, publicaciones (lo que cada quien lee, versículos resaltados,
-// imágenes de versículos y preguntas), «me gusta» y comentarios.
+// imágenes de versículos y preguntas), «me gusta» y comentarios. Y «En pareja» (api/_pareja.ts): dos cuentas unidas
+// por un código que hacen juntas un plan de devocionales.
 //
 // Todo va por POST con {"accion": "...", ...}. Para empezar basta un nombre: al registrarse se recibe una
 // llave de sesión que la app guarda y envía como "Authorization: Bearer <llave>" (en la base solo queda su
@@ -22,6 +23,7 @@ import { promisify } from 'node:util';
 import postgres from 'postgres';
 
 import { downloadPhoto, facebookDialog, facebookPage, facebookProfile, facebookReady, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
+import { PAREJA_SCHEMA, parejaActions } from './_pareja';
 import { notifyUser, PUSH_SCHEMA } from './_push';
 import { planById } from '../src/lib/planesCatalogo';
 import { parseRetoId, seasonRun } from '../src/lib/temporadas';
@@ -270,7 +272,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -1297,6 +1299,9 @@ const actions: Record<string, Handler> = {
     };
   },
 };
+
+// «En pareja» (api/_pareja.ts): sus acciones empiezan por «pareja» y usan la misma cuenta.
+Object.assign(actions, parejaActions({ auth, fail: (message, status) => new Fail(message, status) }));
 
 // --- Avisos push de la comunidad (api/_push.ts). Solo llegan a quien los activó en la pantalla de notificaciones. ---
 

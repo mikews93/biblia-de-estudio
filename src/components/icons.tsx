@@ -472,3 +472,12 @@ export const RouteIcon = (p: Props) => (
     <Path d="M8.3 17.2c3.4-1 1.2-4.6 4.6-5.2 1.3-.2 2.4 0 3.4-.3" strokeDasharray="2 2.6" />
   </Line>
 );
+
+/** Dos anillos enlazados: «En pareja». */
+export const RingsIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={9} cy={13} r={5.2} />
+    <Circle cx={15} cy={13} r={5.2} />
+    <Path d="M10.6 4.6 12 6l1.4-1.4" />
+  </Line>
+);

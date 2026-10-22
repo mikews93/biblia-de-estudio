@@ -9,6 +9,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Sello from './Sello';
+import { lanzarConfeti } from '@/lib/confeti';
 import { CloseIcon } from './icons';
 import { hechos, DIAS, useSemanas } from '@/lib/semanas';
 import { useOraciones } from '@/lib/oraciones';
@@ -21,8 +22,8 @@ import { navigate } from '@/lib/transition';
 /** Cuánto se queda a la vista (ms). */
 const DURA = 7000;
 
-/** Pantallas donde no se interrumpe: se proyectan o se siguen en grupo. */
-const SIN_FIESTA = [/^\/vivo\/./, /\/proyectar$/, /\/presentar$/, /^\/evento\//];
+/** Pantallas donde no se interrumpe: se proyectan o se siguen en grupo, o la ayuda en caso de abuso. */
+const SIN_FIESTA = [/^\/vivo\/./, /\/proyectar$/, /\/presentar$/, /^\/evento\//, /^\/pareja\/ayuda/];
 
 export default function Celebracion() {
   const colors = useColors();
@@ -71,6 +72,7 @@ export default function Celebracion() {
           Animated.spring(giro, { toValue: 1, friction: 4, tension: 50, delay: 120, useNativeDriver: native }),
         ]).start();
       });
+    lanzarConfeti('confeti');
     AccessibilityInfo.announceForAccessibility?.(`Nuevo sello: ${sello.titulo}. ${sello.logro}`);
     // Se va sola: celebra sin interrumpir la lectura ni el audio
     const id = setTimeout(() => cerrar(sello.id), DURA);

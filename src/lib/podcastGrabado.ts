@@ -7,7 +7,7 @@ import { aiDenied, aiHeaders } from './comunidad';
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const POLL_MS = 8000;
 
-export type Grabacion = { url: string; duracion: number; credito: string };
+export type Grabacion = { url: string; duracion: number; credito: string; tiempos?: number[] };
 export type EstadoGrabacion =
   | { estado: 'cargando' }
   | { estado: 'ninguno' }

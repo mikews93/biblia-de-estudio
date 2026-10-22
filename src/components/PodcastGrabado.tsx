@@ -1,40 +1,21 @@
-// Tarjeta de la versión del pódcast con voces naturales: la escucha si ya está grabada (en la app o bajo demanda),
-// la graba si nadie lo ha hecho todavía, o muestra que se está grabando.
+// Tarjeta para grabar el pódcast con voces naturales si nadie lo ha hecho todavía, o que muestra que se está
+// grabando. Cuando ya está grabado no aparece: el reproductor de la pantalla pasa a sonar con esas voces.
 import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { PlayIcon, TalkIcon } from '@/components/audioIcons';
-import { playRecordedPodcast } from '@/lib/audio';
+import { TalkIcon } from '@/components/audioIcons';
 import { usePodcastGrabado } from '@/lib/podcastGrabado';
 import { useColors } from '@/lib/theme';
 
 type Props = {
-  book: string;
-  chapter: number;
-  title: string;
-  inApp: boolean;
+  grabado: ReturnType<typeof usePodcastGrabado>;
   scriptReady: boolean;
-  /** El pódcast de «La historia de una palabra» (book es entonces su clave en el reproductor y chapter, 0). */
-  palabra?: string;
 };
 
-export function PodcastGrabado({ book, chapter, title, inApp, scriptReady, palabra }: Props) {
+export function PodcastGrabado({ grabado, scriptReady }: Props) {
   const colors = useColors();
-  const grabado = usePodcastGrabado(book, chapter, palabra);
 
-  if (inApp || grabado.estado === 'listo') {
-    return (
-      <Card
-        onPress={() => playRecordedPodcast(book, chapter, title, grabado.estado === 'listo' && !inApp ? grabado : undefined)}
-        label="Escuchar la versión grabada con voces naturales"
-        title="Versión grabada"
-        detail="Con voces naturales, lista para escuchar"
-        icon={<TalkIcon color={colors.surface} size={20} />}
-        end={<PlayIcon color={colors.accent} size={22} />}
-        filled
-      />
-    );
-  }
+  if (grabado.estado === 'listo') return null;
   if (grabado.estado === 'grabando') {
     return (
       <Card
@@ -62,7 +43,7 @@ export function PodcastGrabado({ book, chapter, title, inApp, scriptReady, palab
   );
 }
 
-function Card(props: { onPress?: () => void; label: string; title: string; detail: string; icon: ReactNode; end?: ReactNode; filled?: boolean }) {
+function Card(props: { onPress?: () => void; label: string; title: string; detail: string; icon: ReactNode; end?: ReactNode }) {
   const colors = useColors();
   return (
     <Pressable
@@ -72,9 +53,7 @@ function Card(props: { onPress?: () => void; label: string; title: string; detai
       accessibilityLabel={props.label}
       style={({ pressed }) => [
         styles.card,
-        props.filled
-          ? { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }
-          : { backgroundColor: colors.surface, borderColor: colors.border },
+        { backgroundColor: colors.surface, borderColor: colors.border },
         pressed && styles.pressed,
       ]}
     >

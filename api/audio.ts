@@ -1,14 +1,17 @@
 // Función de Vercel: lectura en audio de un capítulo.
 // - Bible Brain (Faith Comes By Hearing): audio dramatizado en español. La clave (BIBLE_BRAIN_KEY) solo vive
 //   aquí; la app recibe las URL firmadas, que caducan en un día. Gratis mientras la app sea gratis.
-// - LibriVox: la Reina-Valera 1909 leída por voluntarios, de dominio público. Siempre disponible, y es la
+// - Samuel Montoya: la Reina-Valera 1909 entera, un archivo por capítulo (archive.org, dominio público). Es la
 //   que suena si no hay clave o Bible Brain no tiene el capítulo.
+// - LibriVox: la Reina-Valera 1909 leída por voluntarios, de dominio público. Respaldo si falta un capítulo.
 //   GET /api/audio?versiones=1                 versiones disponibles
 //   GET /api/audio?book=jhn&chapter=3[&bible=] pistas del capítulo, tiempos por versículo y créditos
 
 import { librivoxChapter } from './_librivox';
+import { montoyaChapter } from './_montoya';
 
 const API = 'https://4.dbt.io/api';
+const MONTOYA = { id: 'rv1909-montoya', name: 'Reina-Valera 1909 (Samuel Montoya)' };
 const LIBRIVOX = { id: 'rv1909', name: 'Reina-Valera 1909 (LibriVox)' };
 const KEY = process.env.BIBLE_BRAIN_KEY;
 // Orden de preferencia de versiones (ids de Bible Brain separados por comas); si no hay, se elige por nombre.
@@ -133,14 +136,19 @@ async function chapterAudio(book: string, chapter: number, bibleId?: string) {
   return { version: { id: version.id, name: version.name }, testament, tracks, timestamps, credit: text };
 }
 
-/** Bible Brain si hay clave; LibriVox si se elige, si no hay clave o si Bible Brain no tiene el capítulo. */
+/** Bible Brain si hay clave; si no, o si no tiene el capítulo, Samuel Montoya y luego LibriVox (o la que se elija). */
 async function anyAudio(book: string, chapter: number, bibleId?: string) {
-  if (KEY && bibleId !== LIBRIVOX.id) {
+  const free = bibleId === LIBRIVOX.id || bibleId === MONTOYA.id;
+  if (KEY && !free) {
     try {
       return await chapterAudio(book, chapter, bibleId);
     } catch (err) {
       if (bibleId) throw err; // la persona eligió esa versión: se le dice por qué no suena
     }
+  }
+  if (bibleId !== LIBRIVOX.id) {
+    const audio = await montoyaChapter(book, chapter).catch(() => null);
+    if (audio) return { version: MONTOYA, testament: testamentOf(book), timestamps: [], ...audio };
   }
   const audio = await librivoxChapter(book, chapter);
   if (!audio) throw new HttpError(404, 'Este capítulo todavía no tiene audio.');
@@ -160,6 +168,7 @@ export async function GET(request: Request) {
       const dramatized = KEY ? await getVersions().catch(() => []) : [];
       const versions = [
         ...dramatized.map(({ id, name, nt, ot }) => ({ id, name, nt: !!nt, ot: !!ot })),
+        { ...MONTOYA, nt: true, ot: true },
         { ...LIBRIVOX, nt: true, ot: true },
       ];
       return json(

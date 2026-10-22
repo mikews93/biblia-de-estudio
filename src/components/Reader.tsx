@@ -111,6 +111,10 @@ export default function Reader() {
   const [placeCount, setPlaceCount] = useState(0);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const paragraphHeight = useRef(0);
+  const scrollY = useRef(0);
+  /** Al soltar la hoja sin pasarla: donde estaba el lector en el capítulo al que se vuelve. */
+  const restoreY = useRef<number | null>(null);
+  const shown = useRef(`${bookId}/${chapter}`);
 
   useEffect(() => {
     getBooks().then(setBooks).catch((e) => setError(String(e.message)));
@@ -128,6 +132,9 @@ export default function Reader() {
     setProgress(0);
     setChromeHidden(false);
     setExtras(null);
+    // Pasar la hoja con el dedo cambia de capítulo en el mismo lector (ver swap abajo): el nuevo empieza arriba.
+    if (shown.current !== `${bookId}/${chapter}` && restoreY.current === null) scroll.current?.scrollTo({ y: 0, animated: false });
+    shown.current = `${bookId}/${chapter}`;
     getChapter(bookId, chapter, settings.version)
       .then((v) => {
         setVerses(v);
@@ -186,7 +193,24 @@ export default function Reader() {
     if (href) navigate(() => router.replace(href), delta > 0 ? 'turn-forward' : 'turn-back');
   };
 
-  usePageSwipe(neighbor);
+  usePageSwipe(neighbor, (delta) => {
+    const href = neighbor(delta);
+    // En /juan/3/16 el versículo es parte de la ruta y setParams no lo puede quitar: ahí se navega como siempre.
+    if (!href || params.verse || params.v) return null;
+    const [, nextBook, nextChapter] = href.split('/');
+    const from = { book: params.book, chapter: params.chapter };
+    const y = scrollY.current;
+    return {
+      go: () => {
+        restoreY.current = null;
+        router.setParams({ book: nextBook, chapter: nextChapter });
+      },
+      back: () => {
+        restoreY.current = y;
+        router.setParams(from);
+      },
+    };
+  });
 
   const select = (n: number) => setSelected(selected === n ? null : n);
   const openFicha = (f: { id: string; nombre: string }) => navigate(() => router.push(fichaHref(f) as never), 'forward');
@@ -418,8 +442,16 @@ export default function Reader() {
         style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : undefined}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + 10 }]}
         scrollEventThrottle={16}
+        onContentSizeChange={(_, height) => {
+          // De vuelta al capítulo de antes, en cuanto el texto ocupa lo bastante se deja donde estaba.
+          const y = restoreY.current;
+          if (y === null || !verses || height < y) return;
+          restoreY.current = null;
+          scroll.current?.scrollTo({ y, animated: false });
+        }}
         onScroll={(e) => {
           const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+          scrollY.current = contentOffset.y;
           const max = contentSize.height - layoutMeasurement.height;
           setProgress(max > 0 ? Math.min(1, Math.max(0, contentOffset.y / max)) : 1);
           autoHide.onScroll(e);
@@ -698,7 +730,8 @@ export default function Reader() {
           </View>
         </Appear>
       ) : (
-        verses && (
+        // Sigue montada mientras carga otro capítulo: si desapareciera, se cortaría la hoja al pasarla (fixedInTransition).
+        book && (
           <Animated.View
             style={[
               styles.navWrap,

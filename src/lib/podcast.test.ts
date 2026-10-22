@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { minutes, parseScript } from './podcast';
+import { lineStarts } from './podcastTiempos';
 
 describe('parseScript', () => {
   it('reparte las intervenciones de ANA y TOMÁS, con o sin acento y en cualquier caja', () => {
@@ -31,5 +32,12 @@ describe('minutes', () => {
     expect(minutes([])).toBe(1);
     const line = (n: number) => ({ speaker: 'ana' as const, text: Array(n).fill('palabra').join(' '), cites: [] });
     expect(minutes([line(450), line(450)])).toBe(6);
+  });
+});
+
+describe('lineStarts', () => {
+  it('reparte la duración por la longitud de cada intervención', () => {
+    const starts = lineStarts(['a'.repeat(82), 'b'.repeat(182), 'c'.repeat(82)], 40, 10);
+    expect(starts).toEqual([10, 20, 40]);
   });
 });

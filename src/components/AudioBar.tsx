@@ -31,6 +31,7 @@ import { getInterlinear, getPlaces, Word } from '@/lib/data';
 import { journeysFor, recorridoHref } from '@/lib/recorridos';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { fixedInTransition, navigate } from '@/lib/transition';
+import { SPEAKERS } from '@/lib/podcast';
 
 import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, OriginalIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon, TalkIcon } from './audioIcons';
 
@@ -113,7 +114,7 @@ function Bar() {
             {audio.title}
             {verse ? <Text style={{ color: colors.accent, fontFamily: undefined, fontSize: 13 }}>{`  ·  v. ${verse}`}</Text> : null}
           </Text>
-          <Subtitle audio={audio} colors={colors} canPick={others.length > 0} onPick={() => setPicking(!picking)} />
+          <Subtitle audio={audio} now={now} colors={colors} canPick={others.length > 0} onPick={() => setPicking(!picking)} />
         </View>
         {mappable && !onMap && audio.kind !== 'podcast' && (
           <Pressable
@@ -300,8 +301,14 @@ function SpokenWord({ book, chapter, hebrew, colors }: { book: string; chapter: 
 }
 
 /** Debajo del título: la versión (que se puede cambiar en la lectura), «Audio dramatizado» o quién habla en el pódcast. */
-function Subtitle({ audio, colors, canPick, onPick }: { audio: AudioState; colors: Colors; canPick: boolean; onPick: () => void }) {
-  const text = audio.speech ? `Pódcast · habla ${speakerNow(audio.speech)}` : audio.audio?.label;
+function Subtitle({ audio, now, colors, canPick, onPick }: { audio: AudioState; now: number; colors: Colors; canPick: boolean; onPick: () => void }) {
+  // En el pódcast grabado, quién habla sale de los tiempos de cada intervención.
+  const line = audio.audio?.lines?.[currentVerse(now) ?? -1];
+  const text = audio.speech
+    ? `Pódcast · habla ${speakerNow(audio.speech)}`
+    : line
+      ? `Pódcast · habla ${SPEAKERS[line.speaker]}`
+      : audio.audio?.label;
   if (!text) return null;
   return (
     <Pressable
