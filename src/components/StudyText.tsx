@@ -1,7 +1,19 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ArrowRightIcon, BooksIcon, ChevronRightIcon, CloseIcon, CompassIcon, CrossIcon, EyeIcon, type IconProps, LampIcon, LinkIcon } from '@/components/icons';
+import {
+  ArrowRightIcon,
+  BooksIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  CompassIcon,
+  CrossIcon,
+  ExternalIcon,
+  EyeIcon,
+  type IconProps,
+  LampIcon,
+  LinkIcon,
+} from '@/components/icons';
 import Appear from '@/components/Appear';
 import { getChapter, getChapterExtras, parseRef } from '@/lib/data';
 import { licensedById } from '@/lib/licenciadas';
@@ -13,10 +25,15 @@ export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors
     <View style={[styles.sources, { borderColor: colors.border }]}>
       <Text style={[styles.sourcesTitle, { color: colors.muted }]}>FUENTES</Text>
       {sources.map((s) => (
-        <Pressable key={s.n} onPress={() => s.ref && onOpen(s.ref)} style={styles.sourceRow} disabled={!s.ref}>
+        <Pressable
+          key={s.n}
+          onPress={() => (s.ref ? onOpen(s.ref) : s.url && Linking.openURL(s.url))}
+          style={styles.sourceRow}
+          disabled={!s.ref && !s.url}
+        >
           <Text style={[styles.sourceNumber, { color: colors.accent }]}>{s.n}</Text>
           <Text style={{ color: colors.text, flex: 1 }}>{s.label}</Text>
-          {s.ref && <ChevronRightIcon color={colors.muted} size={16} />}
+          {s.ref ? <ChevronRightIcon color={colors.muted} size={16} /> : s.url ? <ExternalIcon color={colors.muted} size={15} /> : null}
         </Pressable>
       ))}
     </View>
@@ -235,6 +252,27 @@ export function SourcePeek({
             <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>Leer en su capítulo ›</Text>
           </Pressable>
         </>
+      ) : source.url ? (
+        // Una obra clásica (teología, historia del canon): no se muestra su inglés, solo de quién es y dónde leerla.
+        <>
+          {!!source.nota && (
+            <View style={styles.peekObra}>
+              <BooksIcon color={colors.accent} size={14} strokeWidth={2} />
+              <Text style={[styles.peekObraText, { color: colors.muted }]}>{source.nota}</Text>
+            </View>
+          )}
+          <Text style={[styles.peekHint, { color: colors.muted }]}>
+            Una obra humana, no la Escritura. La IA la leyó en su inglés original y la explica con sus palabras.
+          </Text>
+          <Pressable
+            onPress={() => Linking.openURL(source.url!)}
+            accessibilityRole="link"
+            style={({ pressed }) => [styles.peekOpen, styles.peekOpenRow, { borderColor: colors.accent }, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>Leer la obra original</Text>
+            <ExternalIcon color={colors.accent} size={14} strokeWidth={2.2} />
+          </Pressable>
+        </>
       ) : (
         <Text style={[styles.peekHint, { color: colors.muted }]}>Uno de los datos de la app que la IA usó para esta idea.</Text>
       )}
@@ -267,6 +305,9 @@ const styles = StyleSheet.create({
   peekVerse: { fontSize: 11, fontWeight: '700' },
   peekHint: { fontSize: 13, lineHeight: 18, marginTop: 8 },
   peekCredit: { fontSize: 11, lineHeight: 15, marginTop: 8 },
+  peekObra: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10 },
+  peekObraText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  peekOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   peekOpen: { alignSelf: 'flex-start', marginTop: 12, borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 7 },
   citeTap: { borderRadius: 8, overflow: 'hidden' },
   ornate: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 6 },

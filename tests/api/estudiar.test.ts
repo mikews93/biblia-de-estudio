@@ -10,7 +10,7 @@ import { parseScript } from '../../src/lib/podcast';
 import { parseCards } from '../../src/lib/tarjetas';
 import { client, DATA_DIR, DB_URL, ensureSchema, HAS_DATA, Post, prepareEnv, request } from './helpers';
 
-type Event = { type: string; text?: string; n?: number; label?: string; ref?: string; message?: string };
+type Event = { type: string; text?: string; n?: number; label?: string; ref?: string; url?: string; nota?: string; message?: string };
 
 let estudiar: Post;
 let comunidades: Post;
@@ -21,6 +21,8 @@ beforeAll(async () => {
   ({ requests: aiRequests } = await prepareEnv({ ai: true }));
   // Dos comentarios de muestra (Tyndale y Matthew Henry); los demás no están y se dejan fuera.
   process.env.COMENTARIOS_DIR = path.resolve(import.meta.dirname, '../fixtures/comentarios');
+  // Las obras de teología ya divididas, tal como van en el repositorio
+  process.env.TEOLOGIA_DIR = path.resolve(import.meta.dirname, '../../pipeline/teologia');
   ({ POST: estudiar } = await import('../../api/estudiar'));
   ({ POST: comunidades } = await import('../../api/comunidades'));
   if (DB_URL && HAS_DATA) {
@@ -163,7 +165,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(henry.source.content).toEqual([{ type: 'text', text: 'The love of God\nHere is the great gospel truth.' }]);
   });
 
-  it('las preguntas pueden investigar: lee y busca, envía los pasos y cita lo que encontró', async () => {
+  it('las preguntas pueden investigar: lee, busca y consulta teología, envía los pasos y cita lo que encontró', async () => {
     const messages = [
       { role: 'assistant', text: 'Estudio anterior' },
       { role: 'user', text: '¿Cómo se definió el canon?' },
@@ -173,10 +175,15 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(evs.filter((e) => e.type === 'paso')).toEqual([
       { type: 'paso', tipo: 'leer', texto: '2 Timoteo 3:14-17' },
       { type: 'paso', tipo: 'buscar', texto: '«escritur»' },
+      { type: 'paso', tipo: 'teologia', texto: 'el canon del Nuevo Testamento' },
     ]);
     // La cita del resultado de la herramienta se convierte en una fuente que se puede abrir
-    expect(evs.find((e) => e.type === 'source')).toEqual({ type: 'source', n: 1, label: '2 Timoteo 3:16', ref: '2ti.3.16' });
-    expect(textOf(evs)).toBe('Pablo dice que toda Escritura es inspirada por Dios.⟦1⟧');
+    const sources = evs.filter((e) => e.type === 'source');
+    expect(sources[0]).toEqual({ type: 'source', n: 1, label: '2 Timoteo 3:16', ref: '2ti.3.16' });
+    // Una obra de teología no se abre en la app: lleva su enlace y de quién es
+    expect(sources[1]).toMatchObject({ type: 'source', n: 2, url: expect.stringMatching(/^https:\/\//), nota: expect.stringContaining('dominio público') });
+    expect(sources[1].ref).toBeUndefined();
+    expect(textOf(evs)).toBe('Pablo dice que toda Escritura es inspirada por Dios.⟦1⟧ Eusebio distingue los libros aceptados de los discutidos.⟦2⟧');
     expect(evs.at(-1)).toEqual({ type: 'done' });
 
     // Dos llamadas a la IA: la que pide las herramientas y la que responde con sus resultados
@@ -184,7 +191,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(first.tools.map((t: { name: string }) => t.name)).toContain('leer_pasaje');
     expect(JSON.stringify(first.system)).toContain('Herramientas: puedes investigar');
     const results = second.messages.at(-1).content;
-    expect(results.map((r: { tool_use_id: string }) => r.tool_use_id)).toEqual(['toolu_0', 'toolu_1']);
+    expect(results.map((r: { tool_use_id: string }) => r.tool_use_id)).toEqual(['toolu_0', 'toolu_1', 'toolu_2']);
     const leido = results[0].content[0];
     expect(leido.type).toBe('search_result');
     expect(leido.title).toBe('2 Timoteo 3:14-17 · Reina-Valera 1909');
@@ -192,6 +199,14 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     // La búsqueda dice cuántos versículos hay y en qué libros, con una muestra
     expect(results[1].content[0].text).toMatch(/^«escritur» aparece en \d+ versículos de la RV1909 \(Nuevo Testamento\)/);
     expect(results[1].content[1].type).toBe('search_result');
+    // Teología: el aviso de que son obras humanas en inglés y hasta tres secciones, una por obra, del área pedida
+    const teologia = results[2].content;
+    expect(teologia[0].text).toMatch(/^Obras humanas de dominio público/);
+    const titles = teologia.slice(1).map((r: { title: string }) => r.title);
+    expect(titles.length).toBeGreaterThan(0);
+    expect(titles.length).toBeLessThanOrEqual(3);
+    expect(titles.some((t: string) => /Eusebio|Westcott|Atanasio|Muratori|Anónimo/.test(t))).toBe(true);
+    expect(titles.every((t: string) => !/Hodge|Strong|Calvino/.test(t))).toBe(true);
   });
 
   it('el primer estudio no investiga: se basta con el pasaje', async () => {

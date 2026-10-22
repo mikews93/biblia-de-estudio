@@ -187,8 +187,9 @@ const message = (content: unknown[]) => ({
 });
 
 /**
- * Preguntas con herramientas (api/_investigar.ts): si la pregunta habla del canon, primero pide leer un pasaje y buscar
- * en la Biblia; con los resultados, responde citando el segundo versículo del primer resultado.
+ * Preguntas con herramientas (api/_investigar.ts): si la pregunta habla del canon, primero pide leer un pasaje, buscar
+ * en la Biblia y consultar las obras de teología; con los resultados, responde citando el segundo versículo del primer
+ * resultado y la primera sección de teología (el tercer resultado).
  */
 function investigates(body: Body) {
   const last = body.messages[body.messages.length - 1];
@@ -202,6 +203,7 @@ function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) =
   const calls = [
     { name: 'leer_pasaje', input: { cita: '2 Timoteo 3:14-17' } },
     { name: 'buscar_en_la_biblia', input: { palabras: 'escritur', testamento: 'NT' } },
+    { name: 'teologia', input: { tema: 'el canon del Nuevo Testamento', busqueda: 'canon New Testament books accepted disputed', area: 'canon' } },
   ];
   calls.forEach((c, index) => {
     send({ type: 'content_block_start', index, content_block: { type: 'tool_use', id: `toolu_${index}`, name: c.name, input: {} } });
@@ -231,6 +233,17 @@ function sse(res: ServerResponse, body: Body) {
       },
     });
     send({ type: 'content_block_stop', index: 0 });
+    send({ type: 'content_block_start', index: 1, content_block: { type: 'text', text: '', citations: [] } });
+    send({ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: ' Eusebio distingue los libros aceptados de los discutidos.' } });
+    send({
+      type: 'content_block_delta',
+      index: 1,
+      delta: {
+        type: 'citations_delta',
+        citation: { type: 'search_result_location', cited_text: '', search_result_index: 2, source: '', title: null, start_block_index: 0, end_block_index: 1 },
+      },
+    });
+    send({ type: 'content_block_stop', index: 1 });
     send({ type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: 10 } });
     send({ type: 'message_stop' });
     return res.end();

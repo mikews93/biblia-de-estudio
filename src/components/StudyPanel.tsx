@@ -446,7 +446,8 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               {mode === 'profundo' && (
               <Text style={[styles.disclaimer, { color: colors.muted }]}>
                 Generado con IA solo a partir de la {aiVersion.name}, el {original(book).name} de STEPBible, las referencias de
-                OpenBible.info y los comentarios de la app. Toca los números para ver de dónde sale cada idea.
+                OpenBible.info y los comentarios de la app; al responder preguntas también consulta teologías clásicas de dominio
+                público (Hodge, Strong, Calvino…). Toca los números para ver de dónde sale cada idea.
                 {licensed && ` La ${licensed.abbr} tiene derechos de autor y no se le pasa a la IA: al tocar una cita ves el versículo en tu ${licensed.abbr}.`}
               </Text>
               )}

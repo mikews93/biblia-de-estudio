@@ -14,6 +14,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Section, sections } from './_comentarios';
+import { Area, buscarTeologia } from './_teologia';
 import { parseCita } from '../src/lib/cita';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
 import { LICENSED } from '../src/lib/licenciadas';
@@ -29,7 +30,7 @@ export type Word = [string, string, string, string, string, string, string, stri
 // [referencia, forma original, glosa]: concordancia por número de Strong generada por el pipeline
 export type Use = [string, string, string];
 /** Cada bloque de un documento o resultado lleva su etiqueta y, si se puede abrir en la app, su referencia. */
-export type BlockMeta = { label: string; ref?: string };
+export type BlockMeta = { label: string; ref?: string; url?: string; nota?: string };
 export type Block = { text: string; meta: BlockMeta };
 
 export async function load<T>(rel: string, fallback?: T): Promise<T> {
@@ -253,7 +254,7 @@ export async function searchVerses(query: string, books: Book[], testamento?: 'A
 
 // ---------------------------------------------------------------- Las herramientas
 
-export type Paso = { tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia'; texto: string };
+export type Paso = { tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia'; texto: string };
 
 const cita = (description: string) => ({
   type: 'object' as const,
@@ -317,6 +318,29 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
     },
     strict: true,
   },
+  {
+    name: 'teologia',
+    description:
+      'Busca en obras clásicas de teología y de historia de la Iglesia, de dominio público y en su inglés original: las teologías sistemáticas de Charles Hodge (presbiteriano, 1872), A. H. Strong (bautista, 1907), W. G. T. Shedd (presbiteriano, 1888) y John Miley (metodista arminiano, 1892), la Institución de Calvino, los credos y confesiones (Apostólico, Calcedonia, Westminster, Heidelberg, Belga, Treinta y Nueve Artículos, Dort, confesiones bautistas y metodistas), y para la historia del canon la Historia eclesiástica de Eusebio, la Carta festal 39 de Atanasio, el fragmento de Muratori y la historia del canon del NT de Westcott. Úsala para preguntas de doctrina o de historia (cómo se definió el canon, qué es la justificación, cómo se entiende la Trinidad). Devuelve hasta tres secciones, como mucho una por obra.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tema: { type: 'string', description: 'El tema en español, corto, para enseñárselo a la persona: «el canon del Nuevo Testamento».' },
+        busqueda: {
+          type: 'string',
+          description: 'Palabras clave en inglés, como las escribirían esos autores: «canon New Testament disputed books», «justification imputation righteousness», «Trinity eternal generation Son».',
+        },
+        area: {
+          type: 'string',
+          enum: ['sistematicas', 'canon', 'credos', 'todo'],
+          description: 'sistematicas: las teologías y Calvino; canon: Eusebio, Atanasio, Muratori y Westcott; credos: credos y confesiones; todo: todas.',
+        },
+      },
+      required: ['tema', 'busqueda', 'area'],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
 ];
 
 export type Resultado = {
@@ -343,11 +367,19 @@ function result(title: string, source: string, blocks: Block[]): { param: Anthro
   };
 }
 
+/** «Vol. I › Part I › Chapter VI. The Trinity › 1. Preliminary Remarks (2/3)» → «I, Chapter VI. The Trinity, 1. Preliminary Remarks». */
+function lugar(titulo: string): string {
+  const parts = titulo.replace(/\s*\(\d+\/\d+\)$/, '').split(' › ');
+  const vol = parts[0].match(/^Vol\. (\w+)$/)?.[1];
+  const rest = parts.slice(vol ? 1 : 0).slice(-2).map((p) => (p.length > 60 ? `${p.slice(0, 57).replace(/\s+\S*$/, '')}…` : p));
+  return [vol, ...rest].filter(Boolean).join(', ');
+}
+
 const fail = (paso: Paso, message: string): Resultado => ({ content: message, results: [], paso, error: true });
 
 /** Qué va a hacer la herramienta, para enseñarlo mientras busca. */
 export function pasoDe(name: string, input: Record<string, unknown>, biblia: Biblia): Paso {
-  const raw = String(input.cita ?? input.palabras ?? input.strong ?? '').slice(0, 80);
+  const raw = String(input.cita ?? input.palabras ?? input.strong ?? input.tema ?? '').slice(0, 80);
   const c = typeof input.cita === 'string' ? biblia.cita(input.cita) : null;
   const where = c ? `${c.book.name} ${c.chapter}${c.verse ? `:${c.verse}${c.verseEnd ? `-${c.verseEnd}` : ''}` : ''}` : raw;
   switch (name) {
@@ -361,6 +393,8 @@ export function pasoDe(name: string, input: Record<string, unknown>, biblia: Bib
       return { tipo: 'comentarios', texto: where };
     case 'texto_original':
       return { tipo: 'original', texto: where };
+    case 'teologia':
+      return { tipo: 'teologia', texto: raw };
     default:
       return { tipo: 'concordancia', texto: raw.toUpperCase() };
   }
@@ -389,6 +423,27 @@ export async function investigar(name: string, input: Record<string, unknown>, b
         hits.map((h) => ({ text: `${biblia.label(h.ref)}: ${h.text}`, meta: { label: biblia.label(h.ref), ref: h.ref } })),
       );
       return { content: [{ type: 'text', text: summary }, r.param], results: [r.metas], paso };
+    }
+
+    if (name === 'teologia') {
+      const busqueda = String(input.busqueda ?? '').slice(0, 200);
+      const area = (['sistematicas', 'canon', 'credos'].includes(String(input.area)) ? input.area : 'todo') as Area | 'todo';
+      const found = await buscarTeologia(biblia.request, busqueda, area);
+      if (!found) return fail(paso, 'Las obras de teología no están disponibles ahora. Sigue con lo que tienes.');
+      if (!found.length) return { content: `Nada en esas obras sobre «${busqueda}». Prueba con otras palabras en inglés o con otra área.`, results: [], paso };
+      const rs = found.map((h) => {
+        const where = lugar(h.titulo);
+        const label = `${h.obra.corto}${where ? `, ${where}` : ''}`;
+        const nota = `${h.obra.autor} · ${h.obra.año < 1000 ? `hacia el año ${h.obra.año}` : h.obra.año} · ${h.obra.tradicion} · dominio público`;
+        return result(
+          `${h.obra.autor}, ${h.obra.titulo} (${h.obra.año}, ${h.obra.tradicion}) · ${h.titulo}`,
+          h.url,
+          h.parrafos.map((p) => ({ text: p, meta: { label, url: h.url, nota } })),
+        );
+      });
+      const aviso =
+        'Obras humanas de dominio público, en inglés: explícalas en español con tus palabras, sin traducir párrafos enteros, di de quién es cada idea y su tradición, y no las pongas al nivel de la Escritura.';
+      return { content: [{ type: 'text', text: aviso }, ...rs.map((r) => r.param)], results: rs.map((r) => r.metas), paso };
     }
 
     if (name === 'concordancia') {

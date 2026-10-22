@@ -44,6 +44,7 @@
   "scripts": {
     "data": "python3 pipeline/build_data.py",
     "comentarios": "python3 pipeline/build_comentarios.py && python3 pipeline/importar_comentario.py --entorno",
+    "teologia": "python3 pipeline/build_teologia.py --publicar",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

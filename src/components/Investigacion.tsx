@@ -3,6 +3,7 @@ import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View 
 
 import Appear from '@/components/Appear';
 import {
+  BooksIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -23,6 +24,7 @@ const TIPOS: Record<Paso['tipo'], { icon: ((p: IconProps) => ReactNode) | string
   comentarios: { icon: CommentaryIcon, haciendo: 'Consultando los comentarios de', hecho: 'Comentarios de' },
   original: { icon: 'α', haciendo: 'Mirando el original de', hecho: 'Original de' },
   concordancia: { icon: ConcordanceIcon, haciendo: 'Buscando dónde más aparece', hecho: 'Concordancia de' },
+  teologia: { icon: BooksIcon, haciendo: 'Consultando teologías clásicas sobre', hecho: 'Teología sobre' },
 };
 
 function Icon({ tipo, color, size = 14 }: { tipo: Paso['tipo']; color: string; size?: number }) {

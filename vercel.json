@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "npm run data && npm run comentarios && npx expo export --platform web && python3 pipeline/seo_pages.py dist",
+  "buildCommand": "npm run data && npm run comentarios && npm run teologia && npx expo export --platform web && python3 pipeline/seo_pages.py dist",
   "outputDirectory": "dist",
   "ignoreCommand": "sh pipeline/vercel_ignorar.sh",
   "functions": {

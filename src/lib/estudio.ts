@@ -7,9 +7,10 @@ import { getSettings } from './theme';
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
-export type Source = { n: number; label: string; ref?: string };
+/** Una fuente de la respuesta: un pasaje que se abre en la app («ref») o una obra que se lee fuera («url»). */
+export type Source = { n: number; label: string; ref?: string; url?: string; nota?: string };
 /** Lo que la IA consultó para responder una pregunta (las herramientas de api/_investigar.ts). */
-export type Paso = { tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia'; texto: string };
+export type Paso = { tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia'; texto: string };
 export type Turn = { role: 'user' | 'assistant'; text: string; sources?: Source[]; pasos?: Paso[] };
 
 type Event =
@@ -94,7 +95,7 @@ export async function askStudy(
     if (!line.trim()) return;
     const event = JSON.parse(line) as Event;
     if (event.type === 'text') text += event.text;
-    else if (event.type === 'source') sources.push({ n: event.n, label: event.label, ref: event.ref });
+    else if (event.type === 'source') sources.push({ n: event.n, label: event.label, ref: event.ref, url: event.url, nota: event.nota });
     else if (event.type === 'paso') pasos.push({ tipo: event.tipo, texto: event.texto });
     else if (event.type === 'error') failure = event.message;
   };

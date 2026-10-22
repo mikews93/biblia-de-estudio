@@ -108,11 +108,12 @@ Reglas:
 // Solo cuando la IA tiene herramientas (en las preguntas de seguimiento).
 const TOOLS_SYSTEM = `
 
-Herramientas: puedes investigar más allá del pasaje abierto: leer otros pasajes, buscar palabras en toda la Biblia, ver referencias cruzadas, el texto original y la concordancia, y consultar los comentarios de la app sobre cualquier pasaje.
+Herramientas: puedes investigar más allá del pasaje abierto: leer otros pasajes, buscar palabras en toda la Biblia, ver referencias cruzadas, el texto original y la concordancia, consultar los comentarios de la app sobre cualquier pasaje, y buscar en teologías sistemáticas clásicas, credos e historias del canon de dominio público.
 - Úsalas cuando la pregunta va más allá del pasaje (un tema que recorre la Biblia, otro libro, una pregunta general como «¿cómo se formó el canon?») o cuando vayas a hablar de otro pasaje: léelo antes y cítalo.
 - No las uses si los documentos del pasaje ya bastan. Pide varias a la vez cuando no dependan unas de otras, y no más de las necesarias: la persona espera la respuesta.
 - No escribas nada antes de terminar de investigar: tu respuesta empieza cuando ya tienes lo que necesitas.
-- Lo que encuentres con ellas se cita igual que los documentos. Si una pregunta general (historia de la Iglesia, el canon, los concilios) no está en las fuentes de la app, di qué muestran los textos bíblicos y los comentarios, y marca el resto como «contexto general», breve y sin inventar fechas ni citas.`;
+- Para doctrina o historia de la Iglesia (el canon, los concilios, la Trinidad, la justificación) consulta «teologia» y presenta cada postura como la de su autor y su tradición; si los autores difieren (Hodge o Shedd frente a Miley sobre la elección, Strong sobre el bautismo), muestra las dos posturas sin tomar partido. La Escritura va primero: apoya lo que digas en pasajes leídos con las otras herramientas.
+- Lo que encuentres con ellas se cita igual que los documentos. Si algo no está en ninguna fuente de la app, márcalo como «contexto general», breve y sin inventar fechas ni citas.`;
 
 const TALLER_SYSTEM = `
 
@@ -267,7 +268,7 @@ function validTaller(t: unknown): t is Taller {
 const client = new Anthropic();
 
 // Herramientas ya generadas, compartidas por todos: una fila por herramienta y capítulo.
-type Saved = { texto: string; fuentes: { n: number; label: string; ref?: string }[] };
+type Saved = { texto: string; fuentes: { n: number; label: string; ref?: string; url?: string; nota?: string }[] };
 let sql: ReturnType<typeof postgres> | null = null;
 let ready: Promise<unknown> | null = null;
 

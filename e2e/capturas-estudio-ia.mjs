@@ -30,16 +30,37 @@ const PASOS = [
   { type: 'paso', tipo: 'leer', texto: '2 Timoteo 3:14-17' },
   { type: 'paso', tipo: 'leer', texto: '2 Pedro 3:14-18' },
   { type: 'paso', tipo: 'comentarios', texto: '2 Pedro 3' },
+  { type: 'paso', tipo: 'teologia', texto: 'el canon del Nuevo Testamento' },
 ];
 
 const RESPUESTA = [
   { type: 'source', n: 1, label: '2 Timoteo 3:16', ref: '2ti.3.16' },
   { type: 'source', n: 2, label: '2 Pedro 3:16', ref: '2pe.3.16' },
   { type: 'source', n: 3, label: 'Notas de estudio de Tyndale, 2 Pedro 3:15-16', ref: '2pe.3.15' },
-  { type: 'source', n: 4, label: 'Lucas 24:44', ref: 'luk.24.44' },
+  {
+    type: 'source',
+    n: 4,
+    label: 'Eusebio, Historia eclesiástica, Book III, The Divine Scriptures that are accepted and those that…',
+    url: 'https://ccel.org/ccel/schaff/npnf201/npnf201.iii.viii.xxv.html',
+    nota: 'Eusebio de Cesarea · hacia el año 325 · historia de la Iglesia antigua · dominio público',
+  },
+  {
+    type: 'source',
+    n: 5,
+    label: 'Fragmento de Muratori, Canon Muratorianus: the Muratorian fragment on the canon…',
+    url: 'https://ccel.org/ccel/schaff/anf05/anf05.v.iii.iii.html',
+    nota: 'Anónimo (siglo II) · hacia el año 170 · Padres de la Iglesia · dominio público',
+  },
+  {
+    type: 'source',
+    n: 6,
+    label: 'Shedd, Teología dogmática, I, Chapter IV. The canonicity of Scripture',
+    url: 'https://archive.org/details/dogmatictheology01sheduoft/page/141',
+    nota: 'William G. T. Shedd · 1888 · presbiteriana · dominio público',
+  },
   {
     type: 'text',
-    text: '## Lo que muestra la Biblia\n\nLa Biblia no trae una lista de sus libros, pero deja ver cómo se reconocían. Pablo llama «Escritura» a lo que Timoteo conocía desde niño y dice que es inspirada por Dios.⟦1⟧ Pedro ya pone las cartas de Pablo junto a «las otras Escrituras».⟦2⟧\n\n## Lo que dicen los comentarios\n\nLas notas de Tyndale explican que esa frase de Pedro muestra que las cartas de Pablo se leían con la misma autoridad que el Antiguo Testamento.⟦3⟧\n\n## Contexto general\n\nLas iglesias fueron reconociendo, no inventando, los libros que ya leían como Palabra de Dios. Jesús mismo habla de «la ley de Moisés, los profetas y los salmos», las tres partes de la Biblia hebrea.⟦4⟧',
+    text: '## Lo que muestra la Biblia\n\nLa Biblia no trae una lista de sus libros, pero deja ver cómo se reconocían. Pablo llama «Escritura» a lo que Timoteo conocía desde niño y dice que es inspirada por Dios.⟦1⟧ Pedro ya pone las cartas de Pablo junto a «las otras Escrituras».⟦2⟧ Las notas de Tyndale explican que se leían con la misma autoridad que el Antiguo Testamento.⟦3⟧\n\n## Los testigos antiguos\n\n- Hacia el año 170, el fragmento de Muratori ya enumera casi todos los libros del Nuevo Testamento que se leían en las iglesias y rechaza otros escritos.⟦5⟧\n- Hacia el 325, Eusebio separa los libros que todas las iglesias aceptaban de unos pocos que algunas todavía discutían, como Santiago, 2 Pedro o Judas.⟦4⟧\n\n## Cómo lo explica un teólogo\n\nShedd, presbiteriano del siglo XIX, insiste en que la Iglesia no hizo canónicos esos libros: reconoció la autoridad que ya tenían.⟦6⟧',
   },
   { type: 'done' },
 ];
@@ -108,7 +129,7 @@ async function preguntar(p) {
   await p.getByPlaceholder(/Pregunta sobre/).fill('¿Cómo se definió el canon de la Biblia?');
   await p.getByRole('button', { name: 'Enviar pregunta' }).click();
   await p.getByText('Comentarios de').first().waitFor().catch(() => {});
-  await p.getByText(/Consultando los comentarios/).waitFor();
+  await p.getByText(/Consultando teologías clásicas/).waitFor();
 }
 
 async function serie(prefijo, opts) {
@@ -136,6 +157,8 @@ async function serie(prefijo, opts) {
   const p = await serie('m', {});
   await p.getByRole('link', { name: /Fuente 2: 2 Pedro 3:16/ }).click();
   await shot(p, 'm-4-cita-pdt');
+  await p.getByRole('link', { name: /Fuente 4: Eusebio/ }).click();
+  await shot(p, 'm-7-fuente-teologia');
   await p.close();
 }
 {
