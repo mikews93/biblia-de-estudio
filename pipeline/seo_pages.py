@@ -75,23 +75,23 @@ def main():
         body = (
             f"<h1>{name} {ch}</h1><p>{text}</p><nav>{''.join(links)}</nav>"
             "<p><small>Reina-Valera 1909 · dominio público. Con griego, referencias cruzadas y estudio con IA en "
-            "Biblia de estudio.</small></p>"
+            "Zarza · Biblia de estudio.</small></p>"
         )
         description = f"{name} {ch} (Reina-Valera 1909): {first[:130]}… Lee con griego, referencias y estudio."
         out = dist / path.lstrip("/") / "index.html"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(
-            page(shell, title=f"{name} {ch} · Biblia de estudio", description=description, url=url, body=body),
+            page(shell, title=f"{name} {ch} · Zarza", description=description, url=url, body=body),
             encoding="utf-8",
         )
 
     root = page(
         shell,
-        title="Biblia de estudio · Reina-Valera, griego y estudio con IA",
+        title="Zarza · Biblia de estudio con griego, hebreo y IA",
         description="Lee y estudia la Biblia en español: texto, griego del Nuevo Testamento, referencias cruzadas "
         "y un estudio con IA que cita sus fuentes. Gratis.",
         url=f"{site}/",
-        body="<h1>Biblia de estudio</h1><nav>"
+        body="<h1>Zarza · Biblia de estudio</h1><nav>"
         + "".join(f'<a href="/{slug(b[1])}/1">{b[1]}</a> ' for b in BOOKS)
         + "</nav>",
     )

@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import { requireConnection } from './conexion';
+import { pedirPermisoIa } from './permisoIa';
 import { chapterHref as routeToChapter, verseHref } from './routes';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
@@ -117,8 +118,18 @@ export const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+/** La iglesia anfitriona de la persona («Zarza para Iglesias», api/_iglesias.ts). */
+export type IglesiaAnfitriona = { nombre: string; codigo: string; lampara: number };
+
 // Estado de la cuenta compartido por todas las pantallas, como el progreso de lectura.
-type Account = { llave: string | null; usuario: Usuario | null; grupos: ResumenGrupo[] | null };
+type Account = {
+  llave: string | null;
+  usuario: Usuario | null;
+  grupos: ResumenGrupo[] | null;
+  iglesia?: IglesiaAnfitriona | null;
+  /** Si la persona cuida Zarza (/cuidar): lo decide el servidor con CUIDADORES. */
+  cuidador?: boolean;
+};
 let account: Account = { llave: null, usuario: null, grupos: null };
 let loaded: Promise<void> | null = null;
 let isLoaded = false;
@@ -177,7 +188,7 @@ export async function api<T = Record<string, unknown>>(accion: string, body: Rec
   if (!res.ok) {
     // La sesión ya no vale (se cerró o se borró la cuenta): se olvida en este dispositivo.
     if (res.status === 401 && account.llave) {
-      set({ llave: null, usuario: null, grupos: null });
+      set({ llave: null, usuario: null, grupos: null, iglesia: null, cuidador: false });
       save();
     }
     throw new ApiError(json.error ?? `Algo falló (${res.status})`, res.status);
@@ -192,7 +203,7 @@ export function updateUser(usuario: Usuario) {
 }
 
 export async function startSession(r: { usuario: Usuario; llave: string }) {
-  set({ llave: r.llave, usuario: r.usuario, grupos: null });
+  set({ llave: r.llave, usuario: r.usuario, grupos: null, iglesia: null, cuidador: false });
   save();
   await refreshGroups();
 }
@@ -203,13 +214,13 @@ export const signIn = async (correo: string, clave: string) => startSession(awai
 
 export async function signOut() {
   await api('salirCuenta').catch(() => {});
-  set({ llave: null, usuario: null, grupos: null });
+  set({ llave: null, usuario: null, grupos: null, iglesia: null, cuidador: false });
   save();
 }
 
 export async function deleteAccount() {
   await api('borrarCuenta');
-  set({ llave: null, usuario: null, grupos: null });
+  set({ llave: null, usuario: null, grupos: null, iglesia: null, cuidador: false });
   save();
 }
 
@@ -228,8 +239,8 @@ export async function rename(nombre: string) {
 export async function refreshGroups() {
   await load();
   if (!account.llave) return;
-  const r = await api<{ usuario: Usuario; grupos: ResumenGrupo[] }>('yo');
-  set({ usuario: r.usuario, grupos: r.grupos });
+  const r = await api<{ usuario: Usuario; grupos: ResumenGrupo[]; iglesia?: IglesiaAnfitriona | null; cuidador?: boolean }>('yo');
+  set({ usuario: r.usuario, grupos: r.grupos, iglesia: r.iglesia ?? null, cuidador: !!r.cuidador });
   save();
 }
 
@@ -244,6 +255,7 @@ export async function aiHeaders(): Promise<Record<string, string>> {
   requireConnection();
   await load();
   if (!account.llave) throw new Error(NEEDS_ACCOUNT);
+  await pedirPermisoIa();
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${account.llave}` };
 }
 
@@ -255,7 +267,7 @@ export async function sessionKey() {
 
 /** Respuesta 401 de una función con IA: la sesión ya no vale y se olvida en este dispositivo. */
 export function aiDenied(): never {
-  set({ llave: null, usuario: null, grupos: null });
+  set({ llave: null, usuario: null, grupos: null, iglesia: null, cuidador: false });
   save();
   throw new Error(NEEDS_ACCOUNT);
 }

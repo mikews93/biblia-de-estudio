@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { buildEstado, cuentaCambio, sincronizar, useAvisos } from '@/lib/avisos';
+import { buildEstado, cuentaCambio, revisar, sincronizar, useAvisos } from '@/lib/avisos';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import { todayKey, usePlans } from '@/lib/planes';
@@ -14,7 +14,7 @@ import { navigate } from '@/lib/transition';
 /**
  * Sin interfaz: con las notificaciones activas, mantiene al día lo que el servidor sabe para el recordatorio
  * diario (lo leído, las tarjetas y los planes), une o separa la suscripción de la cuenta al entrar o salir,
- * y abre la pantalla de un aviso tocado con la app ya abierta.
+ * rehace la suscripción si se perdió y abre la pantalla de un aviso tocado con la app ya abierta.
  */
 export default function AvisosSync() {
   const { endpoint } = useAvisos();
@@ -45,6 +45,11 @@ export default function AvisosSync() {
     if (account.current !== undefined && account.current !== llave) cuentaCambio();
     account.current = llave;
   }, [ready, llave]);
+
+  // Al abrir la app, si reinstalarla o borrar sus datos rompió la suscripción, se rehace.
+  useEffect(() => {
+    revisar().catch(() => {});
+  }, []);
 
   // Al tocar un aviso con la app abierta, el service worker pide abrir su pantalla.
   useEffect(() => {

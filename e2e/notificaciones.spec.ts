@@ -8,10 +8,10 @@ import { conSesion, cuentaNueva, expect, test, type Page } from './support/fixtu
 
 const v = (l: Locator) => l.filter({ visible: true });
 
-async function pushSimulado(page: Page) {
-  await page.addInitScript(() => {
+async function pushSimulado(page: Page, inicial: NotificationPermission = 'default') {
+  await page.addInitScript((inicial) => {
     // Chromium sin ventana responde «denied» siempre: el permiso también se simula.
-    let permission: NotificationPermission = 'default';
+    let permission: NotificationPermission = inicial;
     Object.defineProperty(Notification, 'permission', { get: () => permission });
     Notification.requestPermission = async () => (permission = 'granted');
     let current: unknown = null;
@@ -29,7 +29,7 @@ async function pushSimulado(page: Page) {
       current = fake(await (await fetch('/__push/nueva')).json());
       return current as PushSubscription;
     };
-  });
+  }, inicial);
 }
 
 type Entrega = { id: string; aviso: { title: string; body: string; url: string } | null };
@@ -83,6 +83,26 @@ test.describe('Notificaciones', () => {
     await v(page.getByRole('button', { name: 'Desactivar' })).click();
     await expect(v(page.getByRole('button', { name: 'Activar notificaciones' }))).toBeVisible();
     expect(await endpointGuardado(page)).toBe('');
+  });
+
+  test('tras reinstalar la app, la suscripción perdida se rehace sola al abrirla', async ({ page }) => {
+    // El permiso sigue concedido, pero el navegador ya no tiene la suscripción que la app recordaba.
+    await pushSimulado(page, 'granted');
+    const vieja = 'https://fcm.googleapis.com/fcm/send/vieja';
+    await page.addInitScript((endpoint) => {
+      if (!sessionStorage.getItem('sembrado')) {
+        sessionStorage.setItem('sembrado', '1');
+        localStorage.setItem('avisos', JSON.stringify({ endpoint, hora: 21 * 60 }));
+      }
+    }, vieja);
+    await page.goto('/');
+    await expect.poll(() => endpointGuardado(page)).toContain('/__push/');
+    await page.goto('/notificaciones');
+    await expect(v(page.getByText('Activas en este dispositivo', { exact: true }))).toBeVisible();
+    await expect(v(page.getByTestId('hora-recordatorio'))).toHaveText('9:00');
+    await v(page.getByRole('button', { name: 'Enviarme una de prueba' })).click();
+    const e = await entregaA(page, await endpointGuardado(page));
+    expect(e.aviso?.body).toBe('Te recordaremos tu lectura cada día a las 9:00 de la noche.');
   });
 
   test('sin cuenta, los avisos de la comunidad piden entrar; con cuenta se pueden activar', async ({ page, request }) => {

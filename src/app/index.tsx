@@ -129,7 +129,6 @@ function Today() {
               accessibilityLabel="Notificaciones"
             >
               <BellIcon color={colors.accent} />
-              {avisos.endpoint && <View style={[styles.bellDot, { backgroundColor: colors.warm, borderColor: colors.surface }]} />}
             </Pressable>
           )}
           <Pressable
@@ -529,7 +528,6 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingTop: 48, paddingBottom: 64, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bell: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  bellDot: { position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5, borderWidth: 2 },
   invite: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   inviteIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   date: { fontSize: 14 },

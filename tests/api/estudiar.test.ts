@@ -370,6 +370,9 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     await events(await ask({ ...base, messages }));
     await events(await ask({ ...base, messages }));
     expect(aiRequests.length).toBe(before + 4);
+
+    // Lo que se guarda para todos va con Opus; lo de cada persona, con Sonnet
+    expect(aiRequests.slice(before).map((r) => r.model)).toEqual(['claude-opus-5-5', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5-5']);
   });
 
   it('las herramientas devuelven un texto que la app sabe leer', async () => {

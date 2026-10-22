@@ -50,6 +50,8 @@ type Request = {
   semana?: { notas: string; desde?: number; hasta?: number; predicador?: string };
   /** La versión que lee la persona: la IA cita esa (o la RV1909 si es una con derechos; ver api/_investigar.ts). */
   version?: string;
+  /** Una pregunta frecuente del pasaje (src/lib/senales.ts): su respuesta es la misma para todos. */
+  frecuente?: number;
 };
 
 /** Los dos modos de la pestaña de estudio: un devocional guiado o el estudio profundo del texto. */
@@ -78,6 +80,10 @@ export async function askStudy(
       ...req,
       messages: req.messages.map(({ role, text }) => ({ role, text })),
       ...(getSettings().modo === 'jovenes' ? { publico: 'jovenes' } : {}),
+      // Las preguntas sobre el pasaje pueden ayudar a otros, limpias y sin nombre. Nunca en el Modo Jóvenes.
+      ...(getSettings().modo === 'general' && getSettings().compartirPreguntas && req.messages.length > 0 && !req.taller && !req.semana
+        ? { compartir: true }
+        : {}),
     }),
     signal,
   });

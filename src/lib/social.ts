@@ -7,7 +7,7 @@ import { api } from './comunidad';
 
 export type TipoPublicacion = 'lectura' | 'resaltado' | 'imagen' | 'pregunta' | 'reflexion';
 export type Audiencia = 'amigos' | 'todos';
-export type Relacion = 'yo' | 'amigos' | 'enviada' | 'recibida' | null;
+export type Relacion = 'yo' | 'amigos' | 'enviada' | 'recibida' | 'bloqueada' | null;
 
 export type Publicacion = {
   id: string;
@@ -49,6 +49,8 @@ export type Red = {
   recibidas: PersonaBreve[];
   enviadas: PersonaBreve[];
   sugerencias: (PersonaBreve & { grupo: string })[];
+  /** Las personas que bloqueaste (servidores viejos no la envían). */
+  bloqueadas?: PersonaBreve[];
 };
 export type Persona = PersonaBreve & {
   bio: string | null;
@@ -86,6 +88,8 @@ export const askFriend = (to: { usuario: string } | { codigo: string }) =>
   api<{ id: string; relacion: Relacion }>('pedirAmistad', to);
 export const answerFriend = (usuario: string, aceptar: boolean) => api('responderAmistad', { usuario, aceptar });
 export const removeFriend = (usuario: string) => api('quitarAmigo', { usuario });
+export const block = (usuario: string) => api<{ relacion: Relacion }>('bloquear', { usuario });
+export const unblock = (usuario: string) => api<{ relacion: Relacion }>('desbloquear', { usuario });
 export const setShareReadings = (si: boolean) => api('compartirLecturas', { si });
 export const getPerson = (usuario: string) =>
   api<{ persona: Persona; publicaciones: Publicacion[] }>('persona', { usuario });

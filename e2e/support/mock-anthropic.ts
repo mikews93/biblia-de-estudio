@@ -86,7 +86,7 @@ const RELATO: Segment[] = [
 ];
 
 /** Texto de la respuesta y, si corresponde, una cita al primer documento. */
-function answer(body: Body): { text: string; cite: boolean; segments?: Segment[] } {
+function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]; slow?: boolean } {
   const system = systemText(body.system);
   const first = text(body.messages[0].content);
   const last = body.messages[body.messages.length - 1];
@@ -157,6 +157,11 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
       cite: true,
     };
   }
+  // Una respuesta larga que llega despacio, para leerla mientras aún se escribe.
+  if (followUp?.includes('despacio')) {
+    const parrafos = Array.from({ length: 40 }, (_, i) => `Párrafo ${i + 1} de la respuesta lenta: Dios ama al mundo.`);
+    return { text: parrafos.join('\n\n'), cite: false, slow: true };
+  }
   if (followUp) return { text: `Respuesta simulada a «${followUp}».`, cite: true };
   return { text: 'Estudio simulado del pasaje: Dios ama al mundo y da a su Hijo.', cite: true };
 }
@@ -165,6 +170,15 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
 function structured(body: Body) {
   const props = body.output_config?.format?.schema?.properties ?? {};
   if ('candidates' in props) return { candidates: ['php.4.6', 'mat.6.34', 'gen.99.1', 'jhn.3.16'] };
+  // Preguntas frecuentes de /cuidar (api/_cuidar.ts): una que hicieron cinco personas y otra de una sola.
+  if ('propuestas' in props) {
+    return {
+      propuestas: [
+        { texto: '¿Por qué Abdías anuncia juicio contra Edom?', versiculo: null, personas: ['P1', 'P2', 'P3', 'P4', 'P5', 'P5'] },
+        { texto: '¿Quién era Abdías?', versiculo: 1, personas: ['P1', 'P99'] },
+      ],
+    };
+  }
   return {
     keep: [
       { n: 1, reason: 'Pide no estar afanosos y presentar todo a Dios en oración.' },
@@ -215,7 +229,7 @@ function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) =
   res.end();
 }
 
-function sse(res: ServerResponse, body: Body) {
+async function sse(res: ServerResponse, body: Body) {
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
   const send = (event: Record<string, unknown>) => res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
   send({ type: 'message_start', message: { ...message([]), stop_reason: null } });
@@ -248,12 +262,13 @@ function sse(res: ServerResponse, body: Body) {
     send({ type: 'message_stop' });
     return res.end();
   }
-  const { text: out, cite, segments } = answer(body);
+  const { text: out, cite, segments, slow } = answer(body);
   if (segments) return sendSegments(res, send, body, segments);
   send({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '', citations: cite ? [] : null } });
   // Por partes, como la API real
   for (const piece of out.match(/.{1,20}/gs) ?? []) {
     send({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: piece } });
+    if (slow) await new Promise((r) => setTimeout(r, 120));
   }
   if (cite) {
     send({
