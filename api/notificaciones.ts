@@ -143,6 +143,15 @@ const actions: Record<string, Action> = {
     return { cuenta: Boolean(usuario) };
   },
 
+  /** Las preferencias guardadas de un dispositivo, para recuperarlas si la app perdió sus datos. */
+  async leer({ sql, body }) {
+    const [s] = await sql<{ hora: number; lectura: boolean; tarjetas: boolean; reto: boolean; comunidad: boolean }[]>`
+      select hora, lectura, tarjetas, reto, comunidad from suscripciones where endpoint = ${endpointOf(body.endpoint)}`;
+    if (!s) return { existe: false };
+    const { hora, ...avisos } = s;
+    return { existe: true, hora, avisos };
+  },
+
   /** Al leer, repasar o cambiar de plan, el dispositivo pone al día lo que sabe el servidor. */
   async estado({ sql, body }) {
     const endpoint = endpointOf(body.endpoint);

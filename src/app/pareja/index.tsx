@@ -162,7 +162,7 @@ function Esperando({ pareja, colors }: { pareja: Pareja; colors: Colors }) {
   const { usuario } = useAccount();
   const [copied, setCopied] = useState(false);
   const url = enlacePareja(pareja.codigo!);
-  const message = `${usuario?.nombre ?? 'Tu pareja'} te invita a hacer devocionales en pareja en Biblia de estudio. Acepta aquí: ${url}`;
+  const message = `${usuario?.nombre ?? 'Tu pareja'} te invita a hacer devocionales en pareja en Zarza. Acepta aquí: ${url}`;
   const canShare = Platform.OS !== 'web' || (typeof navigator !== 'undefined' && 'share' in navigator);
 
   const copy = async () => {

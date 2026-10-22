@@ -161,6 +161,13 @@ export async function activar() {
         : 'No diste permiso para las notificaciones.',
     );
   }
+  const json = (await suscribir()).toJSON();
+  await save(json, state);
+  set({ endpoint: json.endpoint ?? null });
+}
+
+/** La suscripción push de este navegador con la clave del servidor (la rehace si era de otra clave). */
+async function suscribir() {
   const { clave } = await api<{ clave: string }>('clave');
   const key = keyBytes(clave);
   const reg = await registration();
@@ -170,10 +177,37 @@ export async function activar() {
     await sub.unsubscribe().catch(() => {});
     sub = null;
   }
-  sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-  const json = sub.toJSON();
-  await save(json, state);
-  set({ endpoint: json.endpoint ?? sub.endpoint });
+  return sub ?? reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+}
+
+/**
+ * Al abrir la app: comprueba que las notificaciones sigan funcionando en este dispositivo. Reinstalar la app o
+ * borrar sus datos puede quitar la suscripción del navegador o los ajustes guardados aquí; con el permiso aún
+ * concedido, se arregla sola. Si el permiso se perdió, se apagan y Hoy vuelve a invitar a activarlas.
+ */
+export async function revisar() {
+  await load();
+  if (soporte() !== 'si') return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = (await reg?.pushManager.getSubscription()) ?? null;
+  const granted = permiso() === 'granted';
+  if (!state.endpoint) {
+    // Se borraron los ajustes de la app, pero el navegador conserva la suscripción: se recuperan del servidor.
+    if (!sub || !granted) return;
+    const r = await api<{ existe: boolean; hora?: number; avisos?: Record<Tipo, boolean> }>('leer', { endpoint: sub.endpoint });
+    if (r.existe) set({ endpoint: sub.endpoint, hora: r.hora ?? state.hora, avisos: { ...state.avisos, ...r.avisos } });
+    return;
+  }
+  if (sub?.endpoint === state.endpoint) return;
+  const old = state.endpoint;
+  if (!granted) {
+    set({ endpoint: null, invitacionVista: false });
+  } else {
+    const json = (await suscribir()).toJSON();
+    await save(json, state);
+    set({ endpoint: json.endpoint ?? null });
+  }
+  if (old !== state.endpoint) await api('quitar', { endpoint: old }).catch(() => {});
 }
 
 export async function desactivar() {

@@ -1,0 +1,40 @@
+# Compila la app para las tiendas con EAS (Expo) y, si se pide, la sube a Google Play como borrador de prueba interna.
+# Solo a mano: cada compilación cuenta en el cupo gratis de Expo (unas 30 al mes, 15 de iOS).
+# Necesita el secreto EXPO_TOKEN (expo.dev → Account settings → Access tokens). Para subir a Google Play, la
+# clave de la cuenta de servicio se guarda una vez en EAS (`eas credentials`), no en GitHub.
+name: App para tiendas
+
+on:
+  workflow_dispatch:
+    inputs:
+      plataforma:
+        description: android, ios o all
+        default: android
+      perfil:
+        description: preview (APK para probar) o production (para la tienda)
+        default: preview
+      subir:
+        description: Subir a la tienda al terminar (solo production)
+        type: boolean
+        default: false
+
+jobs:
+  eas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Compilar
+        run: >
+          eas build --non-interactive --no-wait
+          --platform ${{ inputs.plataforma }}
+          --profile ${{ inputs.perfil }}
+          ${{ inputs.subir && inputs.perfil == 'production' && '--auto-submit' || '' }}

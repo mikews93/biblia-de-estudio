@@ -8,7 +8,7 @@ import { Button, ErrorText, Field } from '@/components/comunidad/ui';
 import { BooksIcon, CheckIcon, HeartIcon, ListenIcon, LockIcon, PeopleIcon, SparkIcon, StarIcon, type IconProps } from '@/components/icons';
 import { pinValido, ponerPin, revisarPin, tienePin } from '@/lib/jovenes';
 import { preguntaAdulto } from '@/lib/ninos';
-import { Modo, serif, useColors, useSettings } from '@/lib/theme';
+import { ESPACIO_NINOS, Modo, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 // Elegir para quién se ve la app. Al entrar al Modo Jóvenes o al Espacio Niños la Biblia pasa al Español Sencillo;
@@ -145,23 +145,25 @@ export default function ModoScreen() {
       </Appear>
       {puerta('jovenes')}
 
-      <Appear delay={120}>
-        <Opcion
-          titulo="Niños"
-          etiqueta="6 a 11 años"
-          detalle="Historias de la Biblia para escuchar con un adulto al lado."
-          activo={modo === 'ninos'}
-          onPress={() => elegir('ninos')}
-          testID="modo-ninos"
-          puntos={[
-            { icon: ListenIcon, texto: '12 historias ilustradas que se leen en voz alta' },
-            { icon: (p) => <StarIcon {...p} />, texto: 'Un camino de estrellas y preguntas con dibujos' },
-            { icon: HeartIcon, texto: 'Un versículo por semana para guardar en el corazón' },
-            { icon: LockIcon, texto: 'Sin IA ni comunidad. Para salir hace falta un adulto' },
-          ]}
-        />
-      </Appear>
-      {puerta('ninos')}
+      {ESPACIO_NINOS && (
+        <Appear delay={120}>
+          <Opcion
+            titulo="Niños"
+            etiqueta="6 a 11 años"
+            detalle="Historias de la Biblia para escuchar con un adulto al lado."
+            activo={modo === 'ninos'}
+            onPress={() => elegir('ninos')}
+            testID="modo-ninos"
+            puntos={[
+              { icon: ListenIcon, texto: '12 historias ilustradas que se leen en voz alta' },
+              { icon: (p) => <StarIcon {...p} />, texto: 'Un camino de estrellas y preguntas con dibujos' },
+              { icon: HeartIcon, texto: 'Un versículo por semana para guardar en el corazón' },
+              { icon: LockIcon, texto: 'Sin IA ni comunidad. Para salir hace falta un adulto' },
+            ]}
+          />
+        </Appear>
+      )}
+      {ESPACIO_NINOS && puerta('ninos')}
 
       {modo !== 'general' && !destino && (
         <Appear delay={160}>

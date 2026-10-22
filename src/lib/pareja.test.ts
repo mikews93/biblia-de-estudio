@@ -102,6 +102,7 @@ describe('planes en pareja', () => {
 
   it('novios y casados tienen planes propios y compartidos', () => {
     expect(planesPara('novios').map((p) => p.id)).toContain('antes-del-si');
+    expect(planesPara('novios').map((p) => p.id)).toContain('hacia-el-hogar');
     expect(planesPara('novios').map((p) => p.id)).not.toContain('honra');
     expect(planesPara('casados').map((p) => p.id)).toContain('honra');
     expect(planesPara('casados')[0].para).toBe('ambos');

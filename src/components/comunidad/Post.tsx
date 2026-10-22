@@ -58,7 +58,7 @@ export default function Post({ post, detail, onRemoved }: Props) {
     } else {
       const ok = await confirm(
         '¿Reportar esta publicación?',
-        'Dejarás de verla. Si varias personas la reportan, se oculta para toda la comunidad.',
+        'Dejarás de verla. Si varias personas la reportan, se oculta para toda la comunidad. Si quien la publicó te molesta, puedes bloquearlo desde su perfil.',
         'Reportar',
       );
       if (!ok) return;

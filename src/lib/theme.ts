@@ -64,16 +64,23 @@ export type Settings = {
   comparar: string[];
   /** Para quién se ve la app: para todos, el Modo Jóvenes (src/lib/jovenes.ts) o el Espacio Niños (src/lib/ninos.ts). */
   modo: Modo;
+  /** Dejar que las preguntas al estudio se guarden limpias y sin nombre para las preguntas frecuentes (api/_preguntas.ts). */
+  compartirPreguntas: boolean;
 };
 
 export type Modo = 'general' | 'jovenes' | 'ninos';
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general' };
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general', compartirPreguntas: true };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };
 
 const SettingsContext = createContext<Ctx>({ settings: DEFAULTS, update: () => {} });
+
+// El Espacio Niños (6 a 11 años) solo está en la web: en las tiendas la app se publica para mayores de 13 y el modo
+// para niños irá en una app aparte. Si unos ajustes de la cuenta piden ese modo en el teléfono, se usa la app para todos.
+export const ESPACIO_NINOS = Platform.OS === 'web';
+const ajustar = (s: Settings): Settings => (!ESPACIO_NINOS && s.modo === 'ninos' ? { ...s, modo: 'general' } : s);
 
 /** En la web los ajustes se leen ya en el primer render: si no, la app se pinta un instante con el tema por defecto. */
 function initialSettings(): Settings {
@@ -94,7 +101,7 @@ const listeners = new Set<() => void>();
 function load() {
   loaded ??= AsyncStorage.getItem(KEY)
     .then((raw) => {
-      if (raw) current = { ...current, ...JSON.parse(raw) };
+      if (raw) current = ajustar({ ...current, ...JSON.parse(raw) });
     })
     .catch(() => {})
     .then(() => listeners.forEach((l) => l()));
@@ -102,7 +109,7 @@ function load() {
 }
 
 function write(next: Settings) {
-  current = next;
+  current = ajustar(next);
   AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
   listeners.forEach((l) => l());
 }
