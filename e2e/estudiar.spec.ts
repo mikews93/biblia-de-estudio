@@ -293,3 +293,41 @@ test('en el teléfono, deslizar dentro del estudio no pasa la hoja; fuera de él
   await deslizar(page, vp.width - 20, vp.height * 0.25, -(vp.width - 40));
   await expect(page).toHaveURL(/\/juan\/4$/);
 });
+
+test('mientras la IA responde, tocar el texto deja de seguirlo y «Ir al final» vuelve', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Lectora'));
+  await page.goto('/juan/3/16');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  const estudio = panel(page);
+  await expect(estudio.getByText(ESTUDIO)).toBeVisible();
+
+  // Una respuesta larga que llega despacio (e2e/support/mock-anthropic.ts)
+  await estudio.getByPlaceholder('Pregunta sobre Juan 3:16').fill('Explícalo despacio');
+  await estudio.getByLabel('Enviar pregunta').click();
+  const primero = estudio.getByText(/^Párrafo 6 de la respuesta lenta/);
+  await expect(primero).toBeVisible();
+
+  // El contenedor que desplaza el estudio
+  const desplazador = await primero.evaluateHandle((el) => {
+    let n: HTMLElement | null = el as HTMLElement;
+    while (n && !(n.scrollHeight > n.clientHeight && /auto|scroll/.test(getComputedStyle(n).overflowY))) n = n.parentElement;
+    return n!;
+  });
+  const alto = () => desplazador.evaluate((n) => n.scrollTop);
+  const alFinal = () => desplazador.evaluate((n) => n.scrollHeight - n.scrollTop - n.clientHeight < 80);
+
+  // Al tocar y subir, la app no vuelve a bajar aunque siga llegando texto
+  await primero.dispatchEvent('touchstart');
+  await desplazador.evaluate((n) => (n.scrollTop = 0));
+  const irAlFinal = estudio.getByRole('button', { name: 'Ir al final de la respuesta' });
+  await expect(irAlFinal).toBeVisible();
+  await expect(estudio.getByText(/^Párrafo 14 de la respuesta lenta/)).toBeAttached();
+  expect(await alto()).toBeLessThan(10);
+  await expect(estudio.getByText(ESTUDIO)).toBeInViewport();
+
+  // «Ir al final» vuelve a seguir la respuesta hasta que termina
+  await irAlFinal.click();
+  await expect(irAlFinal).toHaveCount(0);
+  await expect(estudio.getByText(/^Párrafo 40 de la respuesta lenta/)).toBeAttached({ timeout: 30_000 });
+  await expect.poll(alFinal).toBe(true);
+});

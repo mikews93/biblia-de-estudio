@@ -17,7 +17,7 @@ import Appear from '@/components/Appear';
 import { IconText } from '@/components/comunidad/ui';
 import AskBar from '@/components/AskBar';
 import Devotional from '@/components/Devotional';
-import { CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
+import { ArrowDownIcon, CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
 import StudyContext from '@/components/StudyContext';
 import { Book, original, parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
@@ -166,9 +166,27 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   // preguntar (para cambiar de modo o cerrar) y ese desplazamiento, ni lo que queda de la animación al
   // terminar, no la aparta.
   const following = busy && turns.length > 1;
+  // Si la persona toca o arrastra mientras llega la respuesta, la app deja de bajar sola: puede quedarse
+  // leyendo donde va. «Ir al final» vuelve a seguir el texto; cada pregunta nueva empieza siguiéndolo.
+  const [detached, setDetached] = useState(false);
+  const detachedRef = useRef(false);
+  const setDetach = (on: boolean) => {
+    if (on === detachedRef.current) return;
+    detachedRef.current = on;
+    setDetached(on);
+  };
+  const grab = () => {
+    if (following) setDetach(true);
+  };
+  const toEnd = () => {
+    setDetach(false);
+    autoHide.pause(FOLLOW_PAUSE);
+    scroll.current?.scrollToEnd({ animated: true });
+  };
   useEffect(() => {
     autoHide.pause(FOLLOW_PAUSE);
     if (following) setBarHidden(false);
+    setDetach(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [following]);
 
@@ -183,7 +201,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
     }
     // Mientras llega la respuesta a una pregunta, se sigue el final. Ese desplazamiento lo hace la app:
     // no aparta la cabecera (con ella, el botón de cerrar).
-    if (following) {
+    if (following && !detachedRef.current) {
       autoHide.pause(FOLLOW_PAUSE);
       scroll.current?.scrollToEnd({ animated: true });
     }
@@ -320,15 +338,22 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               </View>
             </Animated.View>
 
+            <View style={{ flex: 1, minHeight: 0 }}>
             <ScrollView
               ref={scroll}
               style={{ flex: 1, minHeight: 0 }}
               contentContainerStyle={styles.body}
               scrollEventThrottle={16}
               onLayout={(e) => (viewHeight.current = e.nativeEvent.layout.height)}
+              onTouchStart={grab}
+              onScrollBeginDrag={grab}
+              {...(Platform.OS === 'web' ? ({ onWheel: grab } as object) : null)}
               onScroll={(e) => {
-                scrollY.current = e.nativeEvent.contentOffset.y;
-                if (following) autoHide.pause(FOLLOW_PAUSE);
+                const y = e.nativeEvent.contentOffset.y;
+                // Subir con la barra o el teclado también suelta el seguimiento: la app solo baja.
+                if (following && y < scrollY.current - 2) setDetach(true);
+                scrollY.current = y;
+                if (following && !detachedRef.current) autoHide.pause(FOLLOW_PAUSE);
                 autoHide.onScroll(e);
               }}
               onContentSizeChange={onContentSizeChange}
@@ -419,6 +444,23 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               </Text>
               )}
             </ScrollView>
+            {following && detached && (
+              <Appear style={styles.toEndWrap}>
+                <Pressable
+                  onPress={toEnd}
+                  style={({ pressed }) => [
+                    styles.toEnd,
+                    { backgroundColor: colors.accent, opacity: pressed ? 0.85 : 1 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ir al final de la respuesta"
+                >
+                  <ArrowDownIcon color={colors.background} size={14} />
+                  <Text style={[styles.toEndText, { color: colors.background }]}>Ir al final</Text>
+                </Pressable>
+              </Appear>
+            )}
+            </View>
 
             {peek && <SourcePeek source={peek} colors={colors} onOpen={open} onClose={() => setPeek(null)} />}
 
@@ -484,6 +526,21 @@ function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: E
 }
 
 const styles = StyleSheet.create({
+  toEndWrap: { position: 'absolute', bottom: 12, left: 0, right: 0, alignItems: 'center' },
+  toEnd: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  toEndText: { fontSize: 13, fontWeight: '700' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   backdropTop: { height: '6%', minHeight: 32 },
   sheet: {
