@@ -46,7 +46,7 @@ import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import ReaderHeader, { HEADER_HEIGHT, TOOLBAR_HEIGHT } from '@/components/ReaderHeader';
 import ToolButton from '@/components/ToolButton';
-import ChapterTools, { type ChapterTool, type ToolGroup, type Variant } from '@/components/ChapterTools';
+import ChapterTools, { type ChapterTool, type ToolGroup } from '@/components/ChapterTools';
 import {
   CardsIcon,
   CheckIcon,
@@ -342,7 +342,7 @@ export default function Reader() {
                 key: 'interlineal',
                 label: 'Interlineal',
                 hint: `Ver cada palabra en ${original(book).name} debajo del texto, con su significado`,
-                icon: (c: string) => <InterlinearIcon color={c} size={20} />,
+                icon: (c: string) => <InterlinearIcon color={c} size={22} letter={original(book).icon} />,
                 onPress: () => update({ study: !settings.study }),
                 on: settings.study,
               },
@@ -390,9 +390,6 @@ export default function Reader() {
       onPress: () => tool('tarjetas'),
     },
   ];
-  // Prototipo: ?herramientas=pestanas|puertas|mesa
-  const toolVariant: Variant =
-    (Platform.OS === 'web' && (new URLSearchParams(globalThis.location?.search).get('herramientas') as Variant)) || 'barra';
   const toolGroups: ToolGroup[] = [
     { key: 'escuchar', title: 'Escuchar', tools: listenTools },
     { key: 'original', title: book ? (original(book).rtl ? 'Hebreo' : 'Griego') : 'Original', tools: originalTools },
@@ -466,14 +463,14 @@ export default function Reader() {
         title={title}
         progress={progress}
         onSettings={() => setShowSettings(true)}
-        toolbar={toolVariant === 'barra' && book ? <ChapterTools groups={toolGroups} onStudy={() => setStudy({})} colors={colors} variant="barra" /> : undefined}
+        toolbar={book ? <ChapterTools groups={toolGroups} onStudy={() => setStudy({})} colors={colors} /> : undefined}
       />
 
       <ScrollView
         ref={scroll}
         // En la web el gesto horizontal es para pasar la hoja (usePageSwipe): el navegador solo desplaza en vertical.
         style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : undefined}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + (toolVariant === 'barra' ? TOOLBAR_HEIGHT : 0) + 10 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + TOOLBAR_HEIGHT + 10 }]}
         scrollEventThrottle={16}
         onContentSizeChange={(_, height) => {
           // De vuelta al capítulo de antes, en cuanto el texto ocupa lo bastante se deja donde estaba.
@@ -520,7 +517,6 @@ export default function Reader() {
               </Pressable>
             </View>
 
-            {toolVariant === 'dock' && <ChapterTools groups={toolGroups} onStudy={() => setStudy({})} colors={colors} variant="dock" />}
             {interlinearOn && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
                 {listening
@@ -847,22 +843,6 @@ const styles = StyleSheet.create({
   versionRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   compare: { paddingLeft: 10, paddingRight: 12, gap: 5 },
   versionText: { fontSize: 12.5, fontWeight: '700', letterSpacing: 0.4, lineHeight: 16 },
-  studyWrap: { width: '100%', maxWidth: 420, marginTop: 18 },
-  study: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingLeft: 10,
-    paddingRight: 14,
-  },
-  studyIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  studyTitle: { fontSize: 15, fontWeight: '700' },
-  studySub: { fontSize: 12.5, marginTop: 1 },
-  toolsScroll: { alignSelf: 'stretch', marginHorizontal: -24, marginTop: 16, flexGrow: 0 },
-  tools: { flexGrow: 1, flexDirection: 'row', justifyContent: 'center', gap: 2, paddingHorizontal: 16 },
   studyHint: { fontSize: 13, textAlign: 'center', marginTop: 12, maxWidth: 360 },
   verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
   creditBox: { marginTop: 24, gap: 8, alignItems: 'center' },

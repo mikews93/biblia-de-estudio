@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import type { Locator, Page } from '@playwright/test';
 
-import { expect, test } from './support/fixtures';
+import { abrirHoja, expect, test } from './support/fixtures';
 
 // El mapa que sigue la lectura: a mano, parada por parada, y al escuchar el capítulo, donde el mapa avanza solo
 // según los tiempos de cada versículo.
@@ -28,6 +28,7 @@ test.describe('Mapa que sigue la lectura', () => {
   test('desde el lector se sigue el recorrido a mano y luego con el audio dramatizado', async ({ page }) => {
     await conDramatizado(page);
     await page.goto('/marcos/1');
+    await abrirHoja(page, 'mas');
     await v(page.getByRole('button', { name: 'Seguir en el mapa: Jesús en Galilea' })).click();
     await expect(page).toHaveURL(/\/recorrido\/marcos\/1$/);
 

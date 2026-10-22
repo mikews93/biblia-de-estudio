@@ -18,16 +18,14 @@ export type ChapterTool = {
 
 export type ToolGroup = { key: 'escuchar' | 'original' | 'explorar'; title: string; tools: ChapterTool[] };
 
-/** «barra»: fija en la cabecera del lector; «dock»: una tarjeta bajo el título del capítulo. */
-export type Variant = 'barra' | 'dock';
-
-type Props = { groups: ToolGroup[]; onStudy: () => void; colors: Colors; variant: Variant };
+type Props = { groups: ToolGroup[]; onStudy: () => void; colors: Colors };
 
 /**
- * La barra de herramientas del capítulo: Estudiar con IA, Escuchar, Pódcast, Interlineal y Más. Lo de escuchar
- * (lectura, dramatizado, en el idioma original) se elige en una hoja; lo demás (mapa, mapa mental, tarjetas) va en «Más».
+ * La barra de herramientas del capítulo, bajo la cabecera del lector: Estudiar con IA, Escuchar, Pódcast, Interlineal
+ * y Más. Lo de escuchar (lectura, dramatizado, en el idioma original) se elige en una hoja; lo demás (mapa, mapa mental,
+ * tarjetas) va en «Más». Se aparta con la cabecera al bajar leyendo.
  */
-export default function ChapterTools({ groups, onStudy, colors, variant }: Props) {
+export default function ChapterTools({ groups, onStudy, colors }: Props) {
   const [sheet, setSheet] = useState<'escuchar' | 'mas' | null>(null);
   const all = groups.flatMap((g) => g.tools);
   const podcast = all.find((t) => t.key === 'podcast');
@@ -50,14 +48,9 @@ export default function ChapterTools({ groups, onStudy, colors, variant }: Props
   ];
 
   return (
-    <View
-      style={[
-        variant === 'dock' ? [styles.dock, { backgroundColor: colors.surface, borderColor: colors.border }] : styles.barra,
-      ]}
-      accessibilityRole="toolbar"
-    >
+    <View style={styles.bar} accessibilityRole="toolbar">
       {items.map((t, i) => (
-        <Item key={t.key} tool={t} strong={t.strong} colors={colors} index={i} compact={variant === 'barra'} />
+        <Item key={t.key} tool={t} strong={t.strong} colors={colors} index={i} />
       ))}
       {sheet && (
         <Sheet
@@ -71,7 +64,7 @@ export default function ChapterTools({ groups, onStudy, colors, variant }: Props
   );
 }
 
-function Item({ tool, strong, colors, index, compact }: { tool: ChapterTool; strong?: boolean; colors: Colors; index: number; compact: boolean }) {
+function Item({ tool, strong, colors, index }: { tool: ChapterTool; strong?: boolean; colors: Colors; index: number }) {
   const scale = useRef(new Animated.Value(1)).current;
   const spring = (toValue: number) =>
     Animated.spring(scale, { toValue, speed: 40, bounciness: toValue === 1 ? 10 : 0, useNativeDriver: Platform.OS !== 'web' }).start();
@@ -97,7 +90,6 @@ function Item({ tool, strong, colors, index, compact }: { tool: ChapterTool; str
               <Animated.View
                 style={[
                   styles.icon,
-                  compact && styles.iconCompact,
                   {
                     backgroundColor: strong ? colors.accent : on ? colors.warmSoft : hovered ? colors.accentSoft : 'transparent',
                     borderColor: on ? colors.warm : 'transparent',
@@ -109,7 +101,7 @@ function Item({ tool, strong, colors, index, compact }: { tool: ChapterTool; str
                 {on && <View style={[styles.dot, { backgroundColor: colors.warm, borderColor: colors.background }]} />}
               </Animated.View>
               <Text
-                style={[styles.label, compact && styles.labelCompact, { color: on ? colors.warm : strong || hovered ? colors.text : colors.muted }, strong && styles.labelStrong]}
+                style={[styles.label, { color: on ? colors.warm : strong || hovered ? colors.text : colors.muted }, strong && styles.labelStrong]}
                 numberOfLines={1}
               >
                 {tool.label}
@@ -160,28 +152,12 @@ function Sheet({ colors, title, tools, onClose }: { colors: Colors; title: strin
 }
 
 const styles = StyleSheet.create({
-  dock: {
-    flexDirection: 'row',
-    width: '100%',
-    maxWidth: 420,
-    marginTop: 18,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    ...Platform.select({
-      web: { boxShadow: '0 4px 18px rgba(0,0,0,0.06)' } as object,
-      default: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-    }),
-  },
-  barra: { flexDirection: 'row', alignSelf: 'center', width: '100%', maxWidth: 460, paddingHorizontal: 6 },
+  bar: { flexDirection: 'row', alignSelf: 'center', width: '100%', maxWidth: 460, paddingHorizontal: 6 },
   slot: { flex: 1 },
   item: { alignItems: 'center', gap: 5 },
-  icon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  iconCompact: { width: 40, height: 34, borderRadius: 12 },
+  icon: { width: 40, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   dot: { position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
-  label: { fontSize: 11.5, fontWeight: '600', letterSpacing: -0.1 },
-  labelCompact: { fontSize: 10.5 },
+  label: { fontSize: 10.5, fontWeight: '600', letterSpacing: -0.1 },
   labelStrong: { fontWeight: '700' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: {

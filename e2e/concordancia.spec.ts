@@ -20,7 +20,7 @@ test('la palabra «amó» de Juan 3:16 abre todas las veces que aparece ἀγα�
   const amo = jn3['16'].find((w) => w[6] === 'G0025')!;
 
   await page.goto('/juan/3/16');
-  await visible(page.getByRole('button', { name: 'Original' })).click();
+  await visible(page.getByRole('button', { name: 'Original', exact: true })).click();
   await visible(page.getByText(amo[0], { exact: true })).click();
   const enlace = visible(page.getByRole('link', { name: /Todas las veces en la Biblia/ }));
   await expect(enlace).toContainText(`${agapao.uses.length} veces`);

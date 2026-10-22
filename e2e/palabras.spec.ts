@@ -78,7 +78,7 @@ test('desde el interlineal, una palabra del catálogo abre su historia', async (
   const res = await request.get('/data/interlinear/rut/2.json');
   const jesed = ((await res.json())['20'] as string[][]).find((w) => w[6] === 'H2617A')!;
   await page.goto('/rut/2/20');
-  await v(page.getByRole('button', { name: 'Original' })).click();
+  await v(page.getByRole('button', { name: 'Original', exact: true })).click();
   await v(page.getByText(jesed[0], { exact: true })).first().click();
   await expect(v(page.getByText('jésed por toda la Biblia, con pódcast'))).toBeVisible();
   await v(page.getByRole('link', { name: /La historia de esta palabra/ })).click();

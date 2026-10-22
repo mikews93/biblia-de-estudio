@@ -142,7 +142,7 @@ test('el panel del versículo muestra el griego de Juan 3:16 con lema y Strong',
   const amo = (await original(request, 'jhn', 3, 16)).find((w) => w[6] === 'G0025')!;
   await page.goto('/juan/3/16');
   await expect(texto(page, 'Juan 3:16')).toBeVisible();
-  await visible(page.getByRole('button', { name: 'Original' })).click();
+  await visible(page.getByRole('button', { name: 'Original', exact: true })).click();
 
   await expect(texto(page, 'Toca una palabra para ver su lema, significado y gramática.')).toBeVisible();
   // Palabra a palabra: «ἠγάπησεν» (amó) es el verbo ἀγαπάω, G0025
@@ -156,7 +156,7 @@ test('el panel del versículo muestra el griego de Juan 3:16 con lema y Strong',
 test('en modo estudio cada palabra hebrea de Génesis 1:1 abre su ficha, y el modo se recuerda', async ({ page, request }) => {
   const creo = (await original(request, 'gen', 1, 1)).find((w) => w[6] === 'H1254A')!;
   await page.goto('/genesis/1');
-  await visible(page.getByRole('switch', { name: 'Modo estudio' })).click();
+  await visible(page.getByRole('switch', { name: /^Ver cada palabra en hebreo/ })).click();
   await expect(texto(page, 'Toca una palabra hebrea para ver su significado y gramática.')).toBeVisible();
 
   // «בָּרָא» (creó): lema, significado y Strong
