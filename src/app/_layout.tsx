@@ -25,7 +25,7 @@ const fixedHeader = {
 };
 
 // En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
-const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes)(\/|$)/;
+const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja)(\/|$)/;
 
 function GuardaNinos() {
   const path = usePathname();
@@ -131,6 +131,10 @@ function AppStack() {
           <Stack.Screen name="semana/[id]/[dia]" options={{ title: '' }} />
           <Stack.Screen name="eventos" options={{ title: 'Eventos' }} />
           <Stack.Screen name="sellos" options={{ title: 'Mis sellos' }} />
+          <Stack.Screen name="pareja/index" options={{ title: 'En pareja' }} />
+          <Stack.Screen name="pareja/[plan]/[dia]" options={{ title: '' }} />
+          <Stack.Screen name="pareja/unirse/[codigo]" options={{ title: 'Invitación' }} />
+          <Stack.Screen name="pareja/ayuda" options={{ title: 'Ayuda' }} />
           <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
           <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
         </Stack>
