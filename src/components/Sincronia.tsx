@@ -14,7 +14,9 @@ import { useCards } from '@/lib/tarjetas';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 // Los almacenes se registran al importarse: este archivo se carga con la app, así que todos están desde el inicio.
+import '@/lib/eventos';
 import '@/lib/misPreguntas';
+import { useOraciones } from '@/lib/oraciones';
 import '@/lib/taller';
 
 /** Cada cuánto se mira si otro dispositivo cambió algo, con la app abierta. */
@@ -131,6 +133,7 @@ export function ProgresoCuenta() {
   const plans = usePlans();
   const cards = useCards();
   const diario = useDiario();
+  const oraciones = useOraciones();
   const [, setTick] = useState(0);
   const girando = estado === 'guardando' || estado === 'pendiente';
 
@@ -150,6 +153,7 @@ export function ProgresoCuenta() {
   const extra = [
     Object.keys(cards).length ? `${Object.keys(cards).length} tarjetas` : null,
     diario.length ? `${diario.length} ${diario.length === 1 ? 'entrada' : 'entradas'} del diario` : null,
+    oraciones.length ? `${oraciones.length} ${oraciones.length === 1 ? 'oración' : 'oraciones'}` : null,
   ].filter(Boolean);
   const t = estado === 'sin-cuenta' ? TEXTOS['al-dia'] : TEXTOS[estado];
   const detalle =
@@ -197,7 +201,7 @@ export function ProgresoCuenta() {
       <View style={styles.foot}>
         <DevicesIcon color={colors.muted} size={18} />
         <Text style={{ flex: 1, color: colors.muted, fontSize: 13, lineHeight: 19 }}>
-          {extra.length ? `También ${extra.join(' y ')}, ` : 'También '}
+          {extra.length ? `También ${extra.slice(0, -1).join(', ')}${extra.length > 1 ? ' y ' : ''}${extra[extra.length - 1]}, ` : 'También '}
           tus ajustes de lectura, el Taller y tus preguntas del Estudio. Solo tú los ves.
         </Text>
       </View>

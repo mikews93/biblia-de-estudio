@@ -6,8 +6,8 @@
   "ignoreCommand": "sh pipeline/vercel_ignorar.sh",
   "functions": {
     "api/estudiar.ts": {
-      "includeFiles": "dist/data/{books.json,text/rv1909/**,interlinear/**,xrefs/**,concordance/**}",
-      "maxDuration": 120,
+      "includeFiles": "dist/data/{books.json,text/rv1909/**,interlinear/**,xrefs/**,concordance/**,palabras/**}",
+      "maxDuration": 300,
       "excludeFiles": "dist/**"
     },
     "api/comunidades.ts": {
@@ -39,6 +39,11 @@
     },
     "api/facebook.ts": {
       "maxDuration": 30
+    },
+    "api/vivo.ts": {
+      "includeFiles": "dist/data/books.json",
+      "maxDuration": 15,
+      "excludeFiles": "dist/**"
     }
   },
   "rewrites": [

@@ -1,5 +1,5 @@
 import { router, useIsFocused } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import {
@@ -18,11 +18,14 @@ import {
 import Commentary from '@/components/Commentary';
 import { CompareVerse } from '@/components/Comparar';
 import GroupNotes from '@/components/comunidad/GroupNotes';
-import { CloseIcon } from '@/components/icons';
+import { ChevronRightIcon, CloseIcon, PromiseIcon } from '@/components/icons';
 import PlaceMap from '@/components/PlaceMap';
+import { PromesasDelPasaje, abrirHilo } from '@/components/Promesas';
 import StudyPanel from '@/components/StudyPanel';
-import { WhyButton } from '@/components/WordCard';
+import { ConcordanceButton, PalabraButton, WhyButton } from '@/components/WordCard';
 import { describeMorph } from '@/lib/morph';
+import { fichaHref, getFichaDeLugar } from '@/lib/fichas';
+import { Encontrado, ROLES, hilosEn, pasoEnRef } from '@/lib/promesas';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
@@ -46,6 +49,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
   // En pantallas anchas la hoja flota como una tarjeta centrada, separada del borde inferior.
   const wide = useWindowDimensions().width >= 900;
   const [tab, setTab] = useState<Tab>(initialTab ?? (book.interlinear ? 'interlineal' : 'referencias'));
+  const promesas = useMemo(() => hilosEn(book.id, chapter, verse), [book, chapter, verse]);
 
   const tabs: [Tab, string][] = [
     ['interlineal', 'Interlineal'],
@@ -84,6 +88,25 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
             <Text style={[styles.verseText, { color: colors.text }]} numberOfLines={3}>
               {text}
             </Text>
+          )}
+          {promesas.length > 0 && tab !== 'referencias' && (
+            <Pressable
+              onPress={() => {
+                // Con varios hilos, la pestaña de referencias los muestra todos
+                if (promesas.length > 1) return setTab('referencias');
+                onClose();
+                abrirHilo(promesas[0].hilo);
+              }}
+              accessibilityRole="link"
+              style={({ pressed }) => [styles.promesaChip, { backgroundColor: colors.warmSoft }, pressed && { opacity: 0.7 }]}
+            >
+              <PromiseIcon color={colors.warm} size={16} />
+              <Text style={{ color: colors.warm, fontWeight: '700', fontSize: 12.5, flexShrink: 1 }} numberOfLines={1}>
+                {ROLES[promesas[0].paso.rol]}: {promesas[0].hilo.titulo}
+                {promesas.length > 1 ? ` y ${promesas.length - 1} más` : ''}
+              </Text>
+              <ChevronRightIcon color={colors.warm} size={15} />
+            </Pressable>
           )}
           <ScrollView
             horizontal
@@ -150,6 +173,8 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
           <Text style={{ color: colors.muted, marginTop: 4, fontSize: 13 }}>
             {describeMorph(w[7])} · Strong {w[6]}
           </Text>
+          <ConcordanceButton strong={w[6]} from={`${book.id}.${chapter}.${verse}`} />
+          <PalabraButton strong={w[6]} />
           <WhyButton onPress={() => setWhy(true)} />
         </View>
       ) : (
@@ -200,18 +225,31 @@ function CrossRefs({
   onNavigate: () => void;
 }) {
   const [refs, setRefs] = useState<CrossRef[] | null>(null);
+  const promesas = useMemo(() => hilosEn(book.id, chapter, verse), [book, chapter, verse]);
 
   useEffect(() => {
     getCrossRefs(book.id, chapter).then((c) => setRefs(c[String(verse)] ?? []));
   }, [book, chapter, verse]);
 
+  const arriba = promesas.length > 0 && (
+    <View style={{ marginBottom: 12 }}>
+      <PromesasDelPasaje encontrados={promesas} books={books} colors={colors} onNavigate={onNavigate} />
+    </View>
+  );
   if (!refs) return <ActivityIndicator color={colors.accent} />;
-  if (!refs.length) return <Text style={{ color: colors.muted }}>No hay referencias cruzadas para este versículo.</Text>;
+  if (!refs.length)
+    return (
+      <View>
+        {arriba}
+        <Text style={{ color: colors.muted }}>No hay referencias cruzadas para este versículo.</Text>
+      </View>
+    );
 
   return (
     <View>
+      {arriba}
       {refs.map(([ref]) => (
-        <RefRow key={ref} refId={ref} books={books} colors={colors} onNavigate={onNavigate} />
+        <RefRow key={ref} refId={ref} books={books} colors={colors} onNavigate={onNavigate} promesa={pasoEnRef(promesas, ref)} />
       ))}
       <Text style={[styles.credit, { color: colors.muted }]}>
         Referencias: OpenBible.info (CC BY), ordenadas por relevancia
@@ -220,7 +258,20 @@ function CrossRefs({
   );
 }
 
-function RefRow({ refId, books, colors, onNavigate }: { refId: string; books: Book[]; colors: Colors; onNavigate: () => void }) {
+function RefRow({
+  refId,
+  books,
+  colors,
+  onNavigate,
+  promesa,
+}: {
+  refId: string;
+  books: Book[];
+  colors: Colors;
+  onNavigate: () => void;
+  /** La referencia es el otro extremo de un hilo de promesa que pasa por este versículo. */
+  promesa?: Encontrado;
+}) {
   const { start, end } = parseRef(refId);
   const [preview, setPreview] = useState('');
 
@@ -240,7 +291,16 @@ function RefRow({ refId, books, colors, onNavigate }: { refId: string; books: Bo
       }}
       style={[styles.refRow, { borderColor: colors.border }]}
     >
-      <Text style={{ color: colors.accent, fontWeight: '600' }}>{formatRef(refId, books)}</Text>
+      {promesa ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Text style={{ color: colors.accent, fontWeight: '600' }}>{formatRef(refId, books)}</Text>
+          <View style={[styles.promesaBadge, { backgroundColor: colors.warmSoft }]}>
+            <Text style={{ color: colors.warm, fontSize: 10.5, fontWeight: '700' }}>{ROLES[promesa.paso.rol].toUpperCase()}</Text>
+          </View>
+        </View>
+      ) : (
+        <Text style={{ color: colors.accent, fontWeight: '600' }}>{formatRef(refId, books)}</Text>
+      )}
       <Text style={{ color: colors.text, marginTop: 2, fontFamily: serif }} numberOfLines={2}>
         {preview}
       </Text>
@@ -262,9 +322,11 @@ function Places({
   onNavigate: () => void;
 }) {
   const [places, setPlaces] = useState<Place[] | null>(null);
+  const [fichas, setFichas] = useState<Record<string, string>>({});
 
   useEffect(() => {
     getPlaces(book.id, chapter).then(setPlaces);
+    getFichaDeLugar().then(setFichas, () => {});
   }, [book, chapter]);
 
   if (!places) return <ActivityIndicator color={colors.accent} />;
@@ -285,6 +347,13 @@ function Places({
         onVerse={(v) => {
           onNavigate();
           navigate(() => router.push(verseHref(book.id, chapter, v)), 'forward');
+        }}
+        canOpen={(id) => !!fichas[id]}
+        onOpen={(id) => {
+          const p = places.find((x) => x.id === id);
+          if (!fichas[id] || !p) return;
+          onNavigate();
+          navigate(() => router.push(fichaHref({ id: fichas[id], nombre: p.name }) as never), 'forward');
         }}
       />
     </View>
@@ -334,4 +403,16 @@ const styles = StyleSheet.create({
   hint: { fontSize: 13, marginBottom: 12 },
   credit: { fontSize: 11, marginTop: 16 },
   refRow: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  promesaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginTop: 10,
+  },
+  promesaBadge: { borderRadius: 7, paddingHorizontal: 6, paddingVertical: 2 },
 });

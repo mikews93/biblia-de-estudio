@@ -4,21 +4,30 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import PlanIcon from '@/components/PlanIcon';
+import Sello from '@/components/Sello';
 import {
   BellIcon,
   BooksIcon,
+  RouteIcon,
   DownloadIcon,
   HeartIcon,
+  LecternIcon,
+  RingsIcon,
   MicIcon,
   PencilIcon,
   PeopleIcon,
   PersonIcon,
   PlansIcon,
+  PromiseIcon,
   SearchIcon,
   SparkIcon,
+  WordJourneyIcon,
+  StarIcon,
   type IconProps,
 } from '@/components/icons';
 import PlanCard from '@/components/PlanCard';
+import HoyJovenes from '@/components/jovenes/HoyJovenes';
+import HoyNinos from '@/components/ninos/HoyNinos';
 import { Avatar } from '@/components/comunidad/ui';
 import { InvitacionCuenta, NubeEstado, useEstadoNube } from '@/components/Sincronia';
 import StudyPanel from '@/components/StudyPanel';
@@ -27,17 +36,30 @@ import { useAccount } from '@/lib/comunidad';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
 import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
+import { Ruta } from '@/components/SemanaSermon';
+import { palabraDeLaSemana, palabraHref, palabrasHref } from '@/lib/palabras';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { seasonTint } from '@/lib/retos';
+import { ganadosRecientes, sellosPara, siguienteSello, useSellos } from '@/lib/sellos';
+import { diaDeHoy, semanaActiva, siguiente, useSemanas } from '@/lib/semanas';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { dueCards, useCards } from '@/lib/tarjetas';
 import { serif, useColors, useLastRead, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { voiceSupported } from '@/lib/voz';
 
-/** Inicio («Hoy»): seguir leyendo, el versículo del día, la semana y accesos. */
-export default function Today() {
+/**
+ * Inicio («Hoy»). En el Modo Jóvenes, su propio Hoy con la misión del día (src/components/jovenes/HoyJovenes.tsx);
+ * en el Espacio Niños, la historia que sigue y el versículo de la semana (src/components/ninos/HoyNinos.tsx).
+ */
+export default function Hoy() {
+  const { settings } = useSettings();
+  return settings.modo === 'jovenes' ? <HoyJovenes /> : settings.modo === 'ninos' ? <HoyNinos /> : <Today />;
+}
+
+/** Inicio para todos: seguir leyendo, el versículo del día, la semana y accesos. */
+function Today() {
   const colors = useColors();
   const { usuario } = useAccount();
   const { settings } = useSettings();
@@ -45,6 +67,7 @@ export default function Today() {
   const plans = usePlans();
   const words = useWords();
   const due = dueCards(useCards()).length;
+  const semana = semanaActiva(useSemanas().semanas);
   const [books, setBooks] = useState<Book[]>([]);
   const last = useLastRead();
   const nube = useEstadoNube();
@@ -196,6 +219,8 @@ export default function Today() {
         </View>
       </Appear>
 
+      {semana && <SemanaCard semana={semana} colors={colors} />}
+
       {activePlans.map((p, i) => (
         <Appear key={p.id} delay={100 + i * 20}>
           <PlanCard plan={p} books={books} words={words} colors={colors} />
@@ -299,6 +324,14 @@ export default function Today() {
         </View>
       </Appear>
 
+      <Appear delay={130}>
+        <SellosCard colors={colors} />
+      </Appear>
+
+      <Appear delay={140}>
+        <PalabraSemana colors={colors} />
+      </Appear>
+
       <Appear delay={160} style={styles.grid}>
         <Tile icon={BooksIcon} label="Libros" colors={colors} onPress={() => navigate(() => router.push('/libros'))} />
         <Tile
@@ -316,12 +349,28 @@ export default function Today() {
           onPress={() => navigate(() => router.push(chapterHref(continueTo.book, continueTo.chapter)), 'forward')}
         />
         <Tile
+          icon={PromiseIcon}
+          label="Promesas"
+          colors={colors}
+          onPress={() => navigate(() => router.push('/promesas' as never), 'forward')}
+        />
+        <Tile
           icon={PeopleIcon}
           label="Comunidad"
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
+        <Tile icon={RingsIcon} label="En pareja" colors={colors} onPress={() => navigate(() => router.push('/pareja' as never), 'forward')} />
+        <Tile
+          icon={LecternIcon}
+          label="Del sermón"
+          colors={colors}
+          onPress={() => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward')}
+        />
+        <Tile icon={RouteIcon} label="Recorridos" colors={colors} onPress={() => navigate(() => router.push('/recorridos' as never), 'forward')} />
         <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
+        <Tile icon={WordJourneyIcon} label="Palabras" colors={colors} onPress={() => navigate(() => router.push(palabrasHref() as never), 'forward')} />
+        <Tile icon={(p) => <StarIcon {...p} />} label="Niños y jóvenes" colors={colors} onPress={() => navigate(() => router.push('/modo' as never), 'forward')} />
       </Appear>
       {devotional && books.find((b) => b.id === daily.book) && (
         <StudyPanel
@@ -365,6 +414,98 @@ function SmallButton({ label, colors, onPress }: { label: string; colors: C; onP
   );
 }
 
+/** La semana del sermón en curso: el día que toca y el camino de los cinco días. */
+function SemanaCard({ semana, colors }: { semana: NonNullable<ReturnType<typeof semanaActiva>>; colors: C }) {
+  const sig = siguiente(semana)!;
+  const hoy = diaDeHoy(semana);
+  return (
+    <Appear delay={90}>
+      <Pressable
+        onPress={() => navigate(() => router.push(`/semana/${semana.id}/${sig + 1}` as never), 'forward')}
+        style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+        accessibilityRole="button"
+      >
+        <Text style={[styles.kicker, { color: colors.warm }]}>Del sermón · {semana.referencia}</Text>
+        <Text style={[styles.continueTitle, { color: colors.text, fontFamily: serif, fontSize: 22 }]} numberOfLines={2}>
+          Día {sig + 1} · {semana.dias[sig].titulo}
+        </Text>
+        {!!semana.dias[sig].domingo && (
+          <Text style={{ color: colors.muted, fontFamily: serif, fontStyle: 'italic', fontSize: 15, lineHeight: 22, marginTop: 6 }} numberOfLines={2}>
+            «{semana.dias[sig].domingo}»
+          </Text>
+        )}
+        <View style={{ marginTop: 16 }}>
+          <Ruta semana={semana} colors={colors} size={26} />
+        </View>
+        <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 14 }}>
+          {sig === hoy ? 'Hacer el día de hoy' : `Seguir con el día ${sig + 1}`} · 10 min ›
+        </Text>
+      </Pressable>
+    </Appear>
+  );
+}
+
+/** Mis sellos: los últimos ganados y el que está más cerca, sin presionar. */
+function SellosCard({ colors }: { colors: C }) {
+  const estado = useSellos();
+  const lista = sellosPara();
+  const ganados = ganadosRecientes(estado, lista);
+  const proximo = siguienteSello(estado, lista);
+  const muestra = ganados.length ? ganados.slice(0, 3) : lista.filter((s) => s.id === 'palabras-10');
+  return (
+    <Pressable
+      onPress={() => navigate(() => router.push('/sellos' as never), 'forward')}
+      style={({ pressed }) => [styles.card, styles.sellos, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+      accessibilityRole="button"
+      testID="tarjeta-sellos"
+    >
+      <View style={styles.sellosPila} aria-hidden>
+        {muestra.map((s, i) => (
+          <View key={s.id} style={{ marginLeft: i ? -30 : 0, zIndex: 3 - i, transform: [{ rotate: `${i * 9 - 4}deg` }] }}>
+            <Sello dibujo={s.dibujo} colors={colors} ganado={!!ganados.length} parte={ganados.length ? 1 : (proximo?.parte ?? 0)} size={i ? 50 : 60} />
+          </View>
+        ))}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.kicker, { color: ganados.length ? colors.warm : colors.accent }]}>Mis sellos</Text>
+        <Text style={{ color: colors.text, fontSize: 17, fontFamily: serif, marginTop: 4 }}>
+          {ganados.length ? `${ganados.length} de ${lista.length} · el último: ${ganados[0].titulo}` : 'Explora una palabra, un lugar o una promesa'}
+        </Text>
+        {proximo ? (
+          <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>
+            Más cerca: {proximo.sello.titulo} ({proximo.n} de {proximo.meta})
+          </Text>
+        ) : (
+          !ganados.length && <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>Cada sello celebra lo que vives con la Palabra.</Text>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+/** La palabra de la semana de «La historia de una palabra»: la misma para todos de lunes a domingo. */
+function PalabraSemana({ colors }: { colors: C }) {
+  const p = palabraDeLaSemana();
+  return (
+    <Pressable
+      onPress={() => navigate(() => router.push(palabraHref(p.id) as never), 'forward')}
+      style={({ pressed }) => [styles.card, styles.palabra, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+      accessibilityRole="link"
+      accessibilityLabel={`Palabra de la semana: ${p.nombre}. ${p.resumen}`}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.kicker, { color: colors.accent }]}>Palabra de la semana</Text>
+        <Text style={[styles.palabraNombre, { color: colors.text, fontFamily: serif }]}>{p.nombre}</Text>
+        <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>{p.resumen}</Text>
+        <Text style={{ color: colors.accent, fontWeight: '700', marginTop: 10 }}>Seguir su historia ›</Text>
+      </View>
+      <Text style={[styles.palabraOriginal, { color: colors.greek, fontFamily: serif }]} numberOfLines={1}>
+        {p.original}
+      </Text>
+    </Pressable>
+  );
+}
+
 function Tile({ icon: Icon, label, colors, onPress }: { icon: (p: IconProps) => React.ReactNode; label: string; colors: C; onPress: () => void }) {
   return (
     <Pressable
@@ -401,6 +542,11 @@ const styles = StyleSheet.create({
   continueTitle: { fontSize: 28, marginTop: 6 },
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20 },
   reto: { overflow: 'hidden' },
+  palabra: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sellos: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  sellosPila: { flexDirection: 'row', alignItems: 'center', minWidth: 64 },
+  palabraNombre: { fontSize: 24, fontStyle: 'italic', marginTop: 4 },
+  palabraOriginal: { fontSize: 44, lineHeight: 58, maxWidth: '45%' },
   retoGlyph: { position: 'absolute', right: -14, top: -18, opacity: 0.12 },
   retoButton: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 9, marginTop: 14 },
   verse: { fontSize: 21, lineHeight: 31, marginTop: 10 },

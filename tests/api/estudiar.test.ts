@@ -170,6 +170,35 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(text).toContain('La persona tocó la palabra griega οὕτως');
   });
 
+  it('valida las notas del sermón', async () => {
+    const base = { book: 'jhn', chapter: 3 };
+    const semana = { notas: 'Dios nos busca de noche', desde: 1, hasta: 21 };
+    expect(await bad({ ...base, semana: { ...semana, notas: 'corta' } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana: { ...semana, notas: 'x'.repeat(8001) } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana: { ...semana, desde: 5, hasta: 2 } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana: { ...semana, hasta: undefined, desde: undefined, predicador: 'x'.repeat(81) } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, verse: 3, semana })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana, taller: { modo: 'sugerir', tipo: 'sermon', paso: 'bosquejo' } })).toBe('Notas del sermón no válidas');
+    expect(await bad({ ...base, semana, herramienta: 'mapa' })).toBe('Herramienta no válida');
+  });
+
+  it('la semana del sermón usa sus reglas, lleva las notas y no se guarda para todos', async () => {
+    const semana = { notas: 'Nicodemo vino de noche. Hay que nacer de nuevo.', desde: 1, hasta: 21, predicador: 'Pastor Luis' };
+    const first = textOf(await events(await ask({ book: 'jhn', chapter: 3, semana })));
+    expect(first).toContain('## Día 5');
+    const sent = aiRequests.at(-1)!;
+    expect(sent.system).toContain('Reglas de la semana');
+    expect(sent.system).toContain('No juzgues ni corrijas a quien predicó');
+    const task = sent.messages[0].content.at(-1).text as string;
+    expect(task).toContain('el sermón del domingo sobre Juan 3:1-21, que predicó Pastor Luis');
+    expect(task).toContain('<notas>\nNicodemo vino de noche. Hay que nacer de nuevo.\n</notas>');
+    expect(task).toContain('Prepara cinco días de devocional');
+    // Cada semana es personal: la siguiente vuelve a pedirse a la IA
+    const before = aiRequests.length;
+    await events(await ask({ book: 'jhn', chapter: 3, semana }));
+    expect(aiRequests.length).toBe(before + 1);
+  });
+
   it('el Taller usa sus reglas y lleva el borrador', async () => {
     await events(
       await ask({ book: 'jhn', chapter: 3, taller: { modo: 'revisar', tipo: 'encuentro', paso: 'revisar', desde: 1, hasta: 8, borrador: 'Mi idea' } }),
@@ -207,6 +236,38 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(aiRequests.length).toBe(before + 2);
     await events(await ask(base));
     expect(aiRequests.length).toBe(before + 2);
+  });
+
+  it('la historia de una palabra: pide cuenta para prepararla, cita los pasajes y luego se lee sin cuenta', async () => {
+    const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
+    await sql`delete from herramientas_ia where libro = 'jesed'`.catch(() => {});
+    await sql.end();
+    expect(await bad({ palabra: 'inventada' })).toBe('Palabra no válida');
+    expect(await bad({ palabra: 'jesed', book: 'jhn', chapter: 3 })).toBe('Pedido no válido');
+    expect(await bad({ palabra: 'jesed', herramienta: 'mapa' })).toBe('Herramienta no válida');
+    // Sin nada guardado y sin cuenta no se llama a la IA
+    expect((await estudiar(request('/api/estudiar', { palabra: 'jesed' }))).status).toBe(401);
+
+    const before = aiRequests.length;
+    const first = await events(await ask({ palabra: 'jesed' }));
+    expect(aiRequests.length).toBe(before + 1);
+    const sent = lastAiText();
+    expect(sent).toContain('Léxico breve de STEPBible');
+    expect(sent).toContain('aparece 245 veces');
+    expect(sent).toContain('éleos (ἔλεος)');
+    expect(sent).toContain('Cuenta la historia de la palabra *jésed*');
+    const sources = first.filter((e) => e.type === 'source');
+    expect(sources).toContainEqual(expect.objectContaining({ label: 'Génesis 24:27', ref: 'gen.24.27' }));
+    expect(textOf(first)).toContain('## Una oración respondida');
+
+    // Ya guardada, se lee sin cuenta y sin otra llamada
+    const anon = await events(await estudiar(request('/api/estudiar', { palabra: 'jesed' })));
+    expect(aiRequests.length).toBe(before + 1);
+    expect(textOf(anon)).toBe(textOf(first));
+    // El guion del pódcast es otra cosa guardada aparte
+    await events(await ask({ palabra: 'jesed', herramienta: 'podcast' }));
+    expect(aiRequests.length).toBe(before + 2);
+    expect(lastAiText()).toContain('guion de un pódcast sobre la historia de la palabra jésed');
   });
 
   it('el primer estudio y el devocional de un pasaje se guardan para todos; las preguntas no', async () => {

@@ -13,8 +13,17 @@ const IGNORE = 'input, textarea, [contenteditable="true"], [aria-modal="true"], 
 
 type HrefFor = (delta: 1 | -1) => Href | null;
 
+/**
+ * Pasar la hoja sin cambiar de pantalla: go() muestra el capítulo nuevo en el mismo lector y back() lo
+ * devuelve al de antes. Si la hoja vuelve, el lector no se vuelve a montar, así que la View Transition
+ * no se corta (se corta si desaparece un elemento con nombre, como la cabecera) y no hay parpadeo.
+ */
+export type Swap = (delta: 1 | -1) => { go: () => void; back: () => void } | null;
+
+type Lector = { hrefFor: HrefFor; swap?: Swap };
+
 /** El lector enfocado; el gesto sigue vivo aunque al pasar la hoja se monte otro lector. */
-let focused: { current: HrefFor } | null = null;
+let focused: { current: Lector } | null = null;
 let installed = false;
 
 /**
@@ -22,11 +31,12 @@ let installed = false;
  * nativo el lector cambia de capítulo con sus botones). Con el ratón arrastrar es para seleccionar
  * texto, así que en el computador la hoja pasa con las flechas ← → del teclado o los botones. hrefFor(1) es el capítulo siguiente y
  * hrefFor(-1) el anterior, o null si no hay. Al soltar, la hoja termina de pasar si se arrastró lo
- * bastante o se lanzó rápido; si no, vuelve a su sitio.
+ * bastante o se lanzó rápido; si no, vuelve a su sitio. Con swap el gesto cambia de capítulo en el mismo
+ * lector (ver Swap); sin él, o si devuelve null, navega con router.replace.
  */
-export function usePageSwipe(hrefFor: HrefFor) {
-  const latest = useRef(hrefFor);
-  latest.current = hrefFor;
+export function usePageSwipe(hrefFor: HrefFor, swap?: Swap) {
+  const latest = useRef<Lector>({ hrefFor, swap });
+  latest.current = { hrefFor, swap };
 
   useFocusEffect(
     useCallback(() => {
@@ -69,15 +79,16 @@ function install() {
         if (Math.abs(dy) > SLOP && Math.abs(dy) > Math.abs(dx)) start = null;
         if (!start || Math.abs(dx) < SLOP || Math.abs(dx) < Math.abs(dy) * 1.4) return;
         delta = dx < 0 ? 1 : -1;
-        const href = focused?.current(delta);
+        const href = focused?.current.hrefFor(delta);
         if (!href) {
           start = null;
           return;
         }
         const from = (location.pathname + location.search) as Href;
+        const swapped = focused?.current.swap?.(delta);
         gesture = startTurnGesture(
-          () => router.replace(href),
-          () => router.replace(from),
+          swapped?.go ?? (() => router.replace(href)),
+          swapped?.back ?? (() => router.replace(from)),
           delta > 0 ? 'turn-forward' : 'turn-back',
         );
         root.dataset.swipe = '';
@@ -117,7 +128,7 @@ function install() {
     if (!focused || gesture || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
     if ((e.target as Element | null)?.closest?.(IGNORE) || document.querySelector('[aria-modal="true"]')) return;
-    const href = focused.current(e.key === 'ArrowRight' ? 1 : -1);
+    const href = focused.current.hrefFor(e.key === 'ArrowRight' ? 1 : -1);
     if (!href) return;
     e.preventDefault();
     navigate(() => router.replace(href), e.key === 'ArrowRight' ? 'turn-forward' : 'turn-back');

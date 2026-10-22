@@ -50,14 +50,17 @@ beforeAll(async () => {
   ({ POST: comunidades } = await import('../../api/comunidades'));
   await ensureSchema(comunidades);
   const call = client(comunidades, '2026-10-18');
-  for (const nombre of ['Ana', 'Tomás']) llaves.push((await call('registrarse', { nombre })).json.llave);
+  for (const nombre of ['Ana', 'Tomás', 'Rut']) llaves.push((await call('registrarse', { nombre })).json.llave);
   sql = postgres(DB_URL, { max: 1, onnotice: () => {} });
   await sql`create table if not exists herramientas_ia (
     herramienta text not null, libro text not null, capitulo int not null, texto text not null,
     fuentes jsonb not null, modelo text, creado timestamptz not null default now(),
     primary key (herramienta, libro, capitulo))`;
   await api.GET(new Request('http://localhost/api/podcast-grabado?book=oba&chapter=1')); // crea la tabla
-  await sql`delete from podcast_grabado where libro in ('oba', 'phm', 'jud', '2jn', '3jn')`;
+  await sql`delete from podcast_grabado where libro in ('oba', 'phm', 'jud', '2jn', '3jn', 'palabra:jesed')`;
+  await sql`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes)
+    values ('palabra-podcast', 'jesed', 0, ${SCRIPT}, '[]') on conflict (herramienta, libro, capitulo) do update set texto = excluded.texto`;
+  await sql`delete from herramientas_ia where herramienta = 'palabra-podcast' and libro = 'agape'`;
   for (const libro of ['oba', 'phm', 'jud', '2jn']) {
     await sql`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes)
       values ('podcast', ${libro}, 1, ${SCRIPT}, '[]') on conflict do nothing`;
@@ -66,6 +69,12 @@ beforeAll(async () => {
 
 afterAll(async () => {
   eleven.close();
+  // Las e2e usan la misma base de datos en CI: no dejar grabado ni guardado lo que estas pruebas prepararon.
+  if (sql) {
+    await sql`delete from podcast_grabado where libro in ('oba', 'phm', 'jud', '2jn', '3jn', 'palabra:jesed')`;
+    await sql`delete from herramientas_ia where (herramienta = 'palabra-podcast' and libro in ('jesed', 'agape'))
+      or (herramienta = 'podcast' and libro in ('oba', 'phm', 'jud', '2jn', '3jn'))`;
+  }
   await sql?.end();
 });
 
@@ -106,6 +115,11 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     expect(nuevas[0].model_id).toBe('eleven_v4');
     expect(nuevas[0].inputs[1].text).toBe('Respuesta 1.');
     expect(nuevas[0].inputs[0].voice_id).not.toBe(nuevas[0].inputs[1].voice_id);
+    // Dónde empieza cada intervención: el segundo tramo empieza justo en el segundo 1.
+    expect(listo.tiempos).toHaveLength(10);
+    expect(listo.tiempos[0]).toBe(0);
+    expect(listo.tiempos[8]).toBe(1);
+    expect(listo.tiempos[7]).toBeLessThan(1);
     const mp3 = await readFile(new URL(listo.url));
     expect(mp3.length).toBe(16000);
 
@@ -127,5 +141,20 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     const res = await post({ book: '2jn', chapter: 1 }, llaves[1]);
     expect(res.status).toBe(429);
     expect((await res.json()).error).toContain('2 pódcasts al día');
+  });
+
+  it('el pódcast de una palabra se graba con su guion y queda listo para todos', async () => {
+    const palabra = (q: string) => api.GET(new Request(`http://localhost/api/podcast-grabado?${q}`));
+    expect(await (await palabra('palabra=jesed')).json()).toEqual({ estado: 'ninguno' });
+    expect((await palabra('palabra=inventada')).status).toBe(400);
+    expect((await post({ palabra: 'jesed', book: 'oba', chapter: 1 }, llaves[2])).status).toBe(400);
+    expect((await post({ palabra: 'agape' }, llaves[2])).status).toBe(409); // sin guion todavía
+
+    const res = await post({ palabra: 'jesed' }, llaves[2]);
+    expect(res.status).toBe(200);
+    const listo = await res.json();
+    expect(listo).toMatchObject({ estado: 'listo', duracion: 2 });
+    expect(path.basename(new URL(listo.url).pathname)).toMatch(/^palabra-jesed-[0-9a-f]{10}\.mp3$/);
+    expect(await (await palabra('palabra=jesed')).json()).toEqual(listo);
   });
 });

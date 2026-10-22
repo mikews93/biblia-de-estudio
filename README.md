@@ -20,7 +20,7 @@ npm run data      # descarga las fuentes y genera public/data (unos 26 MB)
 npm run web       # abre la app en el navegador
 ```
 
-En el teléfono (Expo Go o una build de desarrollo) los datos se leen de una URL: publica la web (`npm run build:web` genera `dist/`) y define `EXPO_PUBLIC_DATA_URL=https://tu-sitio/data` antes de `npm start`. Los paquetes descargables para leer sin conexión llegan en una fase posterior.
+En el teléfono (Expo Go o una build de desarrollo) los datos se leen de la web publicada (https://biblia.migueblanco.com/data); para usar otra, publica la web (`npm run build:web` genera `dist/`) y define `EXPO_PUBLIC_DATA_URL=https://tu-sitio/data` antes de `npm start`. Las traducciones libres, el interlineal y las referencias se pueden descargar completos desde «Sin conexión» (en la web con Cache Storage y en el teléfono con expo-file-system, ver `src/lib/almacen.native.ts`).
 
 ## Datos y licencias
 
@@ -33,6 +33,7 @@ En el teléfono (Expo Go o una build de desarrollo) los datos se leen de una URL
 | Referencias cruzadas | [OpenBible.info](https://www.openbible.info/labs/cross-references/) | CC BY |
 | Fotos de lugares | [OpenBible.info Bible Geocoding Data](https://github.com/openbibleinfo/Bible-Geocoding-Data), fotos de Wikimedia Commons | Solo las de licencia libre (dominio público, CC0, CC BY, CC BY-SA), con autor y licencia |
 | Fotos de objetos y mapas históricos | Imagen principal de artículos de Wikipedia, alojada en Wikimedia Commons (`pipeline/imagenes.py`) | Solo libres; se comprueba la licencia en cada build |
+| Fichas de personas y lugares | [STEPBible TIPNR](https://github.com/STEPBible/STEPBible-Data/tree/master/Proper%20Nouns), Tyndale House (`pipeline/fichas.py`, commit fijado) | CC BY 4.0; con cambios: nombres de la RV1909 y descripción traducida con IA |
 | Medidas antiguas | Tabla propia (`pipeline/medidas.py`) con los valores aproximados habituales | — |
 
 El interlineal muestra las palabras del texto tradicional (Textus Receptus), que es el que traduce la RV1909, con la versificación de la KJV. Las glosas españolas de STEPBible vienen del proyecto Marvel Bible y usan términos de la Traducción del Nuevo Mundo («madero de ejecución», «bondad inmerecida»). El pipeline los sustituye por los de la tradición cristiana histórica (`fix_gloss` en `pipeline/build_data.py`), pero las glosas necesitan una revisión completa antes del lanzamiento.
@@ -66,6 +67,13 @@ Debajo de los botones de la cabecera del capítulo, con las mismas fuentes y cit
 - **Mapa mental** (`/mapa-mental/juan/3`): idea central, partes del capítulo e ideas con su versículo. Se dibuja en SVG (a los dos lados en pantallas anchas, en columna en el teléfono) y también se puede ver como lista.
 - **Tarjetas** (`/tarjetas/juan/3`): la IA propone preguntas de repaso y la persona elige cuáles guardar. «Memorizar» en la barra del versículo crea una tarjeta del versículo. `/repaso` las muestra con repetición espaciada (una versión de SM-2) y Hoy avisa cuando hay tarjetas pendientes. Todo queda en el dispositivo.
 
+### La historia de una palabra
+
+`/palabras` sigue una palabra del hebreo o del griego por toda la Biblia. El catálogo (`src/lib/palabras.json`) tiene 17 temas, cada uno con su palabra hebrea y su palabra griega (jésed y éleos, ahavá y ágape, shalóm y eiréne…), y cada palabra con sus números de Strong de la concordancia. `/palabras/jesed` muestra cuántas veces aparece, su recorrido de Génesis a Apocalipsis y cómo se lee en la RV1909; Hoy propone una palabra cada semana y la ficha de una palabra del interlineal lleva a su historia.
+
+- **El relato:** `api/estudiar.ts` con `palabra` pasa a Claude la entrada del léxico breve de STEPBible (TBESH/TBESG, CC BY 4.0, que `build_data.py` guarda en `palabras/<id>.json`), el resumen de la concordancia y unos 70 pasajes repartidos por todos los libros con su RV1909, más los de la palabra hermana. Responde con «Qué significa», de 4 a 6 momentos en el orden de la Biblia, «El hilo» y «Para pensar», todo con citas. Se guarda en `herramientas_ia` (`palabra`, capítulo 0) y, ya preparado, se lee sin cuenta.
+- **Pódcast:** `/palabras/jesed/podcast`, con el guion de Ana y Tomás (`palabra-podcast`) y la grabación con voces naturales de `api/podcast-grabado.ts` (`palabra`), con los mismos límites diarios que los capítulos.
+
 ## Versiones
 
 Además de la RV1909 hay cinco versiones libres. `pipeline/fetch_versions.py` las descarga una vez y las guarda en `pipeline/versions/`, así la compilación no depende de miles de descargas. El griego, el hebreo, las referencias y el estudio con IA siguen la numeración de la RV1909.
@@ -82,6 +90,14 @@ El estudio de cada capítulo (o versículo) muestra arriba dos secciones fijas, 
 
 - **El mundo en …**: el periodo bíblico del capítulo con sus fechas y lo que pasaba en Egipto, Mesopotamia, Persia, Grecia, Roma, India, China o América en esos años, con enlaces a los pasajes relacionados. `/historia` es la línea de tiempo completa. Los datos están en `src/lib/historia.ts`: fechas bíblicas según la cronología conservadora habitual (éxodo c. 1446 a.C., reyes según Thiele, crucifixión c. 30 d.C., con la alternativa en la nota cuando hay una seria) y una selección propia de eventos con las fechas de la historia académica.
 - **Familias y genealogías**: las personas del pasaje con familia conocida. `/genealogia/994-david` dibuja el árbol (abuelos, padres, hermanos, cónyuges e hijos) y el linaje hasta Adán; `/genealogia` busca por nombre. `pipeline/genealogias.py` toma las relaciones de [Theographic Bible Metadata](https://github.com/robertrouse/theographic-bible-metadata) (CC BY-SA 4.0, commit fijado) y busca el nombre de cada persona en la RV1909. No usa las fechas de Theographic (cronología de Ussher/Jones) ni su diccionario.
+
+## Fichas de personas y lugares
+
+`/ficha/h1732-david` junta en una página lo que la app sabe de una persona o un lugar: quién fue, su familia (con enlace al árbol de las genealogías), cuándo vivió (periodos de la línea de tiempo y qué pasaba en el mundo), los lugares de su historia en el mapa, sus versículos clave y en qué libros aparece. Los lugares muestran su ubicación (OpenBible.info), la foto libre de la zona y la gente que vivió allí.
+
+- **Datos:** `pipeline/fichas.py` (al final de `build_data.py`) lee TIPNR de STEPBible, que distingue a cada persona o lugar en cada versículo (los varios Zacarías, las dos Belén), y lo junta con las genealogías de Theographic (por los versículos en común) y con OpenBible (por el nombre que da TIPNR). Los nombres en español son los de la RV1909, como en los mapas. Salida: `fichas/f/<id>.json`, `fichas/indice.json` (buscador) y `fichas/cap/<libro>/<cap>.json` (lector).
+- **Descripción:** el artículo de TIPNR está en inglés. `api/comentario.ts` (`?ficha=` y `{ ficha }`) lo traduce la primera vez que alguien abre la ficha, con un glosario de nombres de la RV1909, y lo guarda en `fichas_es` para todos. Tope diario de fichas nuevas: `FICHAS_DIA` (300). Va en la misma función que los comentarios porque el plan Hobby de Vercel admite 12 funciones.
+- **Cómo se llega:** al elegir un versículo, la barra muestra a las personas y lugares que nombra y, en la RV1909, sus nombres se pueden tocar; el buscador encuentra fichas por nombre; el mapa del versículo y la genealogía enlazan a la ficha.
 
 ## Rutas y Google
 
@@ -131,3 +147,9 @@ La web está en https://biblia.migueblanco.com (proyecto `biblia-de-estudio` en 
 - `api/estudiar.ts`: función de Vercel que genera el estudio.
 - `api/comunidades.ts`, `src/lib/comunidad.ts`, `src/app/comunidades/` y `src/components/comunidad/`: comunidades.
 - `pipeline/`: generación de datos.
+
+## Licencia
+
+© 2026 Miguel Blanco. Todos los derechos reservados. El código es público para leerlo y revisarlo, pero no se puede copiar, modificar, publicar como otra app ni usar con fines comerciales sin permiso escrito: ver [LICENSE](LICENSE).
+
+Esa licencia cubre solo la obra propia. Los textos bíblicos, comentarios, datos, fotos y grabaciones de terceros conservan su licencia (dominio público, CC BY, CC BY-SA, CC BY-NC), y lo que se deriva de una fuente CC BY-SA, como la traducción de las notas de Tyndale, sigue siendo CC BY-SA 4.0. El detalle está en [NOTICE.md](NOTICE.md).

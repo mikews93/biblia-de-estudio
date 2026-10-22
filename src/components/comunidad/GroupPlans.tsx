@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ChevronRightIcon, LiveIcon } from '@/components/icons';
 import { ResumenGrupo, tipoLabel, useAccount } from '@/lib/comunidad';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -21,7 +22,9 @@ export default function GroupPlans() {
 
   const join = () => {
     const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (clean) navigate(() => router.push(`/unirse/${clean}`), 'forward');
+    // Los códigos de una lectura en vivo tienen 6 letras; los de un grupo, 8.
+    if (clean.length === 6) navigate(() => router.push(`/vivo/${clean}`), 'forward');
+    else if (clean) navigate(() => router.push(`/unirse/${clean}`), 'forward');
   };
 
   if (!ready) return <ActivityIndicator color={colors.accent} style={{ marginTop: 20 }} />;
@@ -65,6 +68,20 @@ export default function GroupPlans() {
         ) : (
           <Button label="Unirme con un código" kind="outline" onPress={() => setJoining(true)} />
         )}
+        <Pressable
+          onPress={() => navigate(() => router.push('/vivo'), 'forward')}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.live, { backgroundColor: colors.warmSoft }, pressed && { opacity: 0.85 }]}
+        >
+          <View style={[styles.liveIcon, { backgroundColor: colors.surface }]}>
+            <LiveIcon color={colors.warm} size={20} strokeWidth={2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Lectura en vivo</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 1 }}>Guía la lectura de la reunión o entra con un código</Text>
+          </View>
+          <ChevronRightIcon color={colors.muted} size={18} />
+        </Pressable>
       </View>
     </View>
   );
@@ -105,4 +122,6 @@ const styles = StyleSheet.create({
   groupName: { fontFamily: serif, fontSize: 21, fontWeight: '700', marginTop: 4 },
   actions: { gap: 12, marginTop: 28 },
   joinRow: { gap: 10 },
+  live: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginTop: 4 },
+  liveIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 });

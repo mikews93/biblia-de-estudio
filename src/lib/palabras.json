@@ -1,0 +1,70 @@
+[
+  { "tema": "Misericordia", "palabras": [
+    { "id": "jesed", "nombre": "jésed", "original": "חֶסֶד", "strongs": ["H2617A"], "resumen": "Bondad leal, el amor que cumple el pacto" },
+    { "id": "eleos", "nombre": "éleos", "original": "ἔλεος", "strongs": ["G1656"], "resumen": "Misericordia, compasión que actúa" }
+  ] },
+  { "tema": "Amor", "palabras": [
+    { "id": "ahava", "nombre": "ahavá", "original": "אַהֲבָה", "strongs": ["H0160", "H0157G"], "resumen": "Amar y el amor, entre Dios y su pueblo" },
+    { "id": "agape", "nombre": "ágape", "original": "ἀγάπη", "strongs": ["G0026", "G0025"], "resumen": "El amor que se entrega" }
+  ] },
+  { "tema": "Gracia", "palabras": [
+    { "id": "jen", "nombre": "jen", "original": "חֵן", "strongs": ["H2580"], "resumen": "Favor, hallar gracia ante alguien" },
+    { "id": "jaris", "nombre": "járis", "original": "χάρις", "strongs": ["G5485"], "resumen": "Gracia, el favor que se regala" }
+  ] },
+  { "tema": "Paz", "palabras": [
+    { "id": "shalom", "nombre": "shalóm", "original": "שָׁלוֹם", "strongs": ["H7965G", "H7965H", "H7965I", "H7965J", "H7965K", "H7965L"], "resumen": "Paz, plenitud, que todo esté bien" },
+    { "id": "eirene", "nombre": "eiréne", "original": "εἰρήνη", "strongs": ["G1515"], "resumen": "Paz con Dios y entre las personas" }
+  ] },
+  { "tema": "Espíritu", "palabras": [
+    { "id": "ruaj", "nombre": "rúaj", "original": "רוּחַ", "strongs": ["H7307G", "H7307H"], "resumen": "Espíritu, aliento y viento" },
+    { "id": "pneuma", "nombre": "pneúma", "original": "πνεῦμα", "strongs": ["G4151G", "G4151H"], "resumen": "Espíritu, soplo y viento" }
+  ] },
+  { "tema": "Gloria", "palabras": [
+    { "id": "kavod", "nombre": "kavód", "original": "כָּבוֹד", "strongs": ["H3519"], "resumen": "Gloria, peso y honra" },
+    { "id": "doxa", "nombre": "dóxa", "original": "δόξα", "strongs": ["G1391"], "resumen": "Gloria, esplendor que se deja ver" }
+  ] },
+  { "tema": "Justicia", "palabras": [
+    { "id": "tsedaqa", "nombre": "tsedaqá", "original": "צְדָקָה", "strongs": ["H6666"], "resumen": "Justicia, lo que es recto" },
+    { "id": "dikaiosyne", "nombre": "dikaiosýne", "original": "δικαιοσύνη", "strongs": ["G1343"], "resumen": "Justicia, estar en lo recto ante Dios" }
+  ] },
+  { "tema": "Pacto", "palabras": [
+    { "id": "berit", "nombre": "berít", "original": "בְּרִית", "strongs": ["H1285"], "resumen": "Pacto, alianza con promesa" },
+    { "id": "diatheke", "nombre": "diathéke", "original": "διαθήκη", "strongs": ["G1242"], "resumen": "Pacto, testamento" }
+  ] },
+  { "tema": "Verdad", "palabras": [
+    { "id": "emet", "nombre": "emét", "original": "אֱמֶת", "strongs": ["H0571G", "H0571H", "H0571I"], "resumen": "Verdad, firmeza, lo que no falla" },
+    { "id": "aletheia", "nombre": "alétheia", "original": "ἀλήθεια", "strongs": ["G0225"], "resumen": "Verdad" }
+  ] },
+  { "tema": "Fe", "palabras": [
+    { "id": "emuna", "nombre": "emuná", "original": "אֱמוּנָה", "strongs": ["H0530"], "resumen": "Fidelidad, firmeza" },
+    { "id": "pistis", "nombre": "pístis", "original": "πίστις", "strongs": ["G4102G", "G4102H"], "resumen": "Fe, confianza y fidelidad" }
+  ] },
+  { "tema": "Esperanza", "palabras": [
+    { "id": "tiqva", "nombre": "tiqvá", "original": "תִּקְוָה", "strongs": ["H8615B"], "resumen": "Esperanza, lo que se aguarda" },
+    { "id": "elpis", "nombre": "elpís", "original": "ἐλπίς", "strongs": ["G1680"], "resumen": "Esperanza" }
+  ] },
+  { "tema": "Salvación", "palabras": [
+    { "id": "yeshua", "nombre": "yeshuá", "original": "יְשׁוּעָה", "strongs": ["H3444"], "resumen": "Salvación, rescate" },
+    { "id": "soteria", "nombre": "sotería", "original": "σωτηρία", "strongs": ["G4991"], "resumen": "Salvación, liberación" }
+  ] },
+  { "tema": "Volverse a Dios", "palabras": [
+    { "id": "shuv", "nombre": "shuv", "original": "שׁוּב", "strongs": ["H7725O"], "resumen": "Volverse, arrepentirse" },
+    { "id": "metanoia", "nombre": "metánoia", "original": "μετάνοια", "strongs": ["G3341"], "resumen": "Cambio de mente, arrepentimiento" }
+  ] },
+  { "tema": "Redención", "palabras": [
+    { "id": "goel", "nombre": "goél", "original": "גָּאַל", "strongs": ["H1350A", "H1350B", "H1350I"], "resumen": "Redimir, el pariente que rescata" },
+    { "id": "apolytrosis", "nombre": "apolýtrosis", "original": "ἀπολύτρωσις", "strongs": ["G0629"], "resumen": "Redención, liberación por rescate" }
+  ] },
+  { "tema": "Santidad", "palabras": [
+    { "id": "qodesh", "nombre": "qódesh", "original": "קֹדֶשׁ", "strongs": ["H6944G", "H6944H", "H6944J"], "resumen": "Santidad, lo apartado para Dios" },
+    { "id": "hagios", "nombre": "hágios", "original": "ἅγιος", "strongs": ["G0040G", "G0040H"], "resumen": "Santo, apartado para Dios" }
+  ] },
+  { "tema": "Palabra", "palabras": [
+    { "id": "davar", "nombre": "davar", "original": "דָּבָר", "strongs": ["H1697G", "H1697H"], "resumen": "Palabra, lo que se dice y se cumple" },
+    { "id": "logos", "nombre": "lógos", "original": "λόγος", "strongs": ["G3056"], "resumen": "Palabra, mensaje, razón" }
+  ] },
+  { "tema": "Ley", "palabras": [
+    { "id": "tora", "nombre": "torá", "original": "תּוֹרָה", "strongs": ["H8451"], "resumen": "Instrucción, la ley de Dios" },
+    { "id": "nomos", "nombre": "nómos", "original": "νόμος", "strongs": ["G3551"], "resumen": "Ley" }
+  ] }
+]

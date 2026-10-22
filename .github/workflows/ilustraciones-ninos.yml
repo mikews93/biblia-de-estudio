@@ -1,0 +1,37 @@
+name: Ilustraciones del Espacio Niños
+
+# Genera con Cloudflare AI Gateway (como en deusrex) las candidatas de las ilustraciones de las historias para niños
+# (pipeline/ilustraciones/) y las deja como artefacto de la ejecución para elegir. Las elegidas van a public/ninos/.
+# Necesita los secretos CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_AI_API_TOKEN (los mismos del audio dramatizado).
+
+# Se lanza a mano (Actions › Run workflow) para no fallar en cada push mientras los secretos no estén.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ilustraciones-ninos-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_AI_API_TOKEN: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q pillow
+      - name: Generar
+        run: python3 pipeline/ilustraciones/generar.py
+      - name: Guardar las candidatas
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidatas
+          path: pipeline/ilustraciones/candidatas

@@ -89,10 +89,20 @@ test.describe('Reproductor único', () => {
     await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
     await v(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' })).click();
     await expect(v(page.getByText('Grabando con voces naturales…'))).toBeVisible();
-    await v(page.getByRole('button', { name: 'Escuchar la versión grabada con voces naturales' })).click();
 
-    await expect(v(page.getByText('Pódcast · Ana y Tomás'))).toBeVisible();
+    // Ya grabado, el reproductor de la pantalla suena con esas voces: no queda la voz del dispositivo.
+    await expect(v(page.getByText(/^1 de \d+ · voces naturales$/))).toBeVisible();
+    await expect(page.getByText(/voz del dispositivo/)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' })).toHaveCount(0);
+    await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
+
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
     await expect(v(page.getByText('Voces de prueba'))).toBeVisible();
-    await expect(v(page.getByRole('button', { name: 'Pausa' }))).toBeVisible();
+    await expect(v(page.getByRole('button', { name: 'Pausa', exact: true }))).toBeVisible();
+    // La transcripción sigue a la grabación
+    await expect(v(page.getByText(/^2 de \d+ · voces naturales$/))).toBeVisible({ timeout: 15_000 });
+    // Tocar una intervención salta a ella
+    await v(page.getByText('Este capítulo empieza con una sorpresa.')).click();
+    await expect(v(page.getByText(/^1 de \d+ · voces naturales$/))).toBeVisible();
   });
 });

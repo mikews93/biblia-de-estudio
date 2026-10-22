@@ -2,6 +2,8 @@
 // lo graba a partir del guion guardado por /api/estudiar, y desde ahí queda listo para todos.
 //   GET  ?book=jhn&chapter=3  → {estado: 'listo', url, duracion, credito} | {estado: 'grabando'} | {estado: 'ninguno'}
 //   POST {book, chapter}      → lo graba (necesita cuenta) y responde como GET. Tarda uno o dos minutos.
+// Con ?palabra=jesed (o {palabra} en el POST) es el pódcast de «La historia de una palabra»: se guarda con el libro
+// «palabra:jesed» y el capítulo 0, y cuenta en los mismos límites diarios.
 // El MP3 se guarda en Vercel Blob y su ficha en Neon (tabla podcast_grabado). Hay un límite diario por cuenta y
 // otro para toda la app, para que nadie gaste los créditos de ElevenLabs abriendo capítulos.
 
@@ -10,6 +12,9 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import postgres from 'postgres';
+
+import { palabraAudioId, palabraPorId } from '../src/lib/palabras';
+import { lineStarts } from '../src/lib/podcastTiempos';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const ELEVEN_URL = process.env.ELEVENLABS_BASE_URL ?? 'https://api.elevenlabs.io';
@@ -35,7 +40,13 @@ const BLOB_TOKEN =
   process.env.BLOB_READ_WRITE_TOKEN ??
   Object.entries(process.env).find(([k, v]) => /^BLOB.*READ_WRITE_TOKEN$/.test(k) && v)?.[1];
 
-type Row = { estado: 'grabando' | 'listo' | 'error'; url: string | null; duracion: number | null; credito: string | null };
+type Row = {
+  estado: 'grabando' | 'listo' | 'error';
+  url: string | null;
+  duracion: number | null;
+  credito: string | null;
+  tiempos: number[] | null;
+};
 type Line = { voice: string; text: string };
 
 let sql: ReturnType<typeof postgres> | null = null;
@@ -57,7 +68,10 @@ async function db() {
       creado timestamptz not null default now(),
       actualizado timestamptz not null default now(),
       primary key (libro, capitulo)
-    )`.catch((err) => {
+    )`
+    // Las grabaciones anteriores no guardaban dónde empieza cada intervención.
+    .then(() => sql!`alter table podcast_grabado add column if not exists tiempos jsonb`)
+    .catch((err) => {
     ready = null;
     throw err;
   });
@@ -68,25 +82,35 @@ async function db() {
 const json = (body: object, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
-function place(book: unknown, chapter: unknown): { book: string; chapter: number } | null {
+/** Dónde se guarda la grabación (libro y capítulo) y de dónde sale su guion (la fila de herramientas_ia). */
+type Target = { book: string; chapter: number; guion: { herramienta: string; libro: string; capitulo: number } };
+
+function place(book: unknown, chapter: unknown, palabra?: unknown): Target | null {
+  if (palabra !== undefined && palabra !== null) {
+    const p = typeof palabra === 'string' ? palabraPorId(palabra) : null;
+    if (!p || book !== undefined || chapter !== undefined) return null;
+    return { book: palabraAudioId(p.id), chapter: 0, guion: { herramienta: 'palabra-podcast', libro: p.id, capitulo: 0 } };
+  }
   const ch = Number(chapter);
   if (typeof book !== 'string' || !/^[0-9a-z]{3}$/.test(book) || !Number.isInteger(ch) || ch < 1 || ch > 150) return null;
-  return { book, chapter: ch };
+  return { book, chapter: ch, guion: { herramienta: 'podcast', libro: book, capitulo: ch } };
 }
 
 function answer(row: Row | undefined) {
-  if (row?.estado === 'listo') return { estado: 'listo', url: row.url, duracion: row.duracion, credito: row.credito };
+  if (row?.estado === 'listo') {
+    return { estado: 'listo', url: row.url, duracion: row.duracion, credito: row.credito, ...(row.tiempos ? { tiempos: row.tiempos } : {}) };
+  }
   if (row?.estado === 'grabando') return { estado: 'grabando' };
   return { estado: 'ninguno' };
 }
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const where = place(params.get('book'), params.get('chapter'));
+  const where = place(params.get('book') ?? undefined, params.get('chapter') ?? undefined, params.get('palabra'));
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const s = await db().catch(() => null);
   if (!s) return json({ estado: 'ninguno' });
-  const [row] = await s<Row[]>`select estado, url, duracion, credito from podcast_grabado
+  const [row] = await s<Row[]>`select estado, url, duracion, credito, tiempos from podcast_grabado
     where libro = ${where.book} and capitulo = ${where.chapter}`;
   return json(answer(row));
 }
@@ -127,8 +151,13 @@ async function dialogue(lines: Line[]): Promise<Uint8Array> {
   return new Uint8Array(await res.arrayBuffer());
 }
 
-/** Graba el guion por tramos (varios a la vez) y los une: los MP3 del mismo formato se pueden concatenar. */
-async function record(lines: Line[]): Promise<Uint8Array> {
+const seconds = (bytes: number) => (bytes * 8) / (KBPS * 1000);
+
+/**
+ * Graba el guion por tramos (varios a la vez) y los une: los MP3 del mismo formato se pueden concatenar. Como se sabe
+ * cuánto dura cada tramo, dentro de él se reparte el tiempo de cada intervención: así la app sigue el texto.
+ */
+async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: number[] }> {
   const groups: Line[][] = [];
   for (let i = 0; i < lines.length; i += TURNS_PER_CHUNK) groups.push(lines.slice(i, i + TURNS_PER_CHUNK));
   const parts: Uint8Array[] = new Array(groups.length);
@@ -141,12 +170,14 @@ async function record(lines: Line[]): Promise<Uint8Array> {
   };
   await Promise.all(Array.from({ length: Math.min(PARALLEL, groups.length) }, worker));
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  const tiempos: number[] = [];
   let at = 0;
-  for (const p of parts) {
+  parts.forEach((p, i) => {
+    tiempos.push(...lineStarts(groups[i].map((l) => l.text), seconds(p.length), seconds(at)));
     out.set(p, at);
     at += p.length;
-  }
-  return out;
+  });
+  return { audio: out, tiempos };
 }
 
 async function store(name: string, audio: Uint8Array): Promise<string> {
@@ -175,17 +206,17 @@ export async function POST(request: Request) {
   const user = await account(s, request);
   if (!user) return json({ error: 'Necesitas una cuenta', cuenta: true }, 401);
 
-  let body: { book?: unknown; chapter?: unknown };
+  let body: { book?: unknown; chapter?: unknown; palabra?: unknown };
   try {
     body = await request.json();
   } catch {
     return json({ error: 'Pedido no válido' }, 400);
   }
-  const where = place(body.book, body.chapter);
+  const where = place(body.book, body.chapter, body.palabra);
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const { book, chapter } = where;
 
-  const [current] = await s<(Row & { viejo: boolean })[]>`select estado, url, duracion, credito,
+  const [current] = await s<(Row & { viejo: boolean })[]>`select estado, url, duracion, credito, tiempos,
       actualizado < now() - make_interval(mins => ${STALE_MINUTES}) as viejo
     from podcast_grabado where libro = ${book} and capitulo = ${chapter}`;
   if (current?.estado === 'listo' || (current?.estado === 'grabando' && !current.viejo)) return json(answer(current));
@@ -195,7 +226,9 @@ export async function POST(request: Request) {
   }
 
   const [guion] = await s<{ texto: string }[]>`select texto from herramientas_ia
-    where herramienta = 'podcast' and libro = ${book} and capitulo = ${chapter}`.catch(() => []);
+    where herramienta = ${where.guion.herramienta} and libro = ${where.guion.libro} and capitulo = ${where.guion.capitulo}`.catch(
+    () => [],
+  );
   const lines = guion ? scriptLines(guion.texto) : [];
   if (!lines.length) return json({ error: 'Primero hay que preparar el guion del pódcast.' }, 409);
 
@@ -220,13 +253,13 @@ export async function POST(request: Request) {
   if (!mine) return json({ estado: 'grabando' });
 
   try {
-    const audio = await record(lines);
+    const { audio, tiempos } = await record(lines);
     const tag = createHash('sha256').update(guion.texto).digest('hex').slice(0, 10);
-    const url = await store(`${book}-${chapter}-${tag}.mp3`, audio);
-    const duracion = Math.round((audio.length * 8) / (KBPS * 1000));
+    const url = await store(`${chapter ? `${book}-${chapter}` : book.replace(':', '-')}-${tag}.mp3`, audio);
+    const duracion = Math.round(seconds(audio.length));
     await s`update podcast_grabado set estado = 'listo', url = ${url}, duracion = ${duracion}, credito = ${CREDIT},
-      actualizado = now() where libro = ${book} and capitulo = ${chapter}`;
-    return json({ estado: 'listo', url, duracion, credito: CREDIT });
+      tiempos = ${s.json(tiempos)}, actualizado = now() where libro = ${book} and capitulo = ${chapter}`;
+    return json({ estado: 'listo', url, duracion, credito: CREDIT, tiempos });
   } catch (err) {
     console.error('podcast-grabado: grabar', err);
     await s`update podcast_grabado set estado = 'error', actualizado = now()

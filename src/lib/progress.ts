@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import { reportReading } from './comunidad';
+import { lanzarConfeti } from './confeti';
 import { markPlanReading } from './planes';
 import { cambio, registrar } from './sincronia';
 
@@ -32,15 +33,33 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+/** Días con la Palabra en la semana de hoy (de lunes a domingo). */
+const diasDeLaSemana = (days: string[]) => weekDays(days).filter((d) => d.read).length;
+
+/** Al sumar el día que completa la meta de la semana, una pequeña fiesta (una vez por semana). */
+function nuevoDia(days: string[]) {
+  const next = [...days, today()].slice(-120);
+  if (diasDeLaSemana(days) < WEEKLY_GOAL && diasDeLaSemana(next) >= WEEKLY_GOAL) lanzarConfeti('fuegos');
+  return next;
+}
+
 export async function markChapterRead(book: string, chapter: number) {
   await load();
   const read = new Set(state.chapters[book] ?? []);
   read.add(chapter);
-  const days = state.days.includes(today()) ? state.days : [...state.days, today()].slice(-120);
+  const days = state.days.includes(today()) ? state.days : nuevoDia(state.days);
   write({ chapters: { ...state.chapters, [book]: [...read].sort((a, b) => a - b) }, days });
   cambio();
   reportReading(book, chapter);
   markPlanReading(book, chapter);
+}
+
+/** Un día con la Palabra sin terminar un capítulo: explorar una palabra original, un lugar, una promesa… */
+export async function markStudyDay() {
+  await load();
+  if (state.days.includes(today())) return;
+  write({ ...state, days: nuevoDia(state.days) });
+  cambio();
 }
 
 function write(next: Progress) {

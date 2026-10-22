@@ -9,12 +9,14 @@ import Notes from '@/components/comunidad/Notes';
 import Prayer from '@/components/comunidad/Prayer';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
+import EnVivoGrupo from '@/components/vivo/EnVivoGrupo';
 import { Avatar, Button, Card, Meter, SectionTitle, text } from '@/components/comunidad/ui';
 import { Grupo, Miembro, api, chapterHref, refreshGroups, tipoLabel, useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import { planById } from '@/lib/planesCatalogo';
 import { seasonTint } from '@/lib/retos';
-import { parseRetoId } from '@/lib/temporadas';
+import { parseRetoId, todayKey } from '@/lib/temporadas';
+import { huella, semanasConMeta } from '@/lib/sellos';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -44,6 +46,12 @@ export default function GroupScreen() {
 
   // Al volver del lector (o de editar el grupo) se actualiza quién leyó.
   useFocusEffect(load);
+
+  // La meta de la semana cumplida entre todos es un sello de Mis sellos (uno por grupo y semana)
+  const metaCumplida = !!group && group.semana.meta > 0 && group.semana.dias >= group.semana.meta;
+  useEffect(() => {
+    if (metaCumplida) huella('grupo', `${id}.${semanasConMeta([todayKey()], 1)[0]}`);
+  }, [metaCumplida, id]);
 
   const leave = async (m?: Miembro) => {
     const self = !m || m.soyYo;
@@ -178,6 +186,13 @@ export default function GroupScreen() {
               : `${readCount} de ${group.miembros.length} ya leyeron hoy.`}
         </Text>
       </Card>
+
+      {/* La lectura en vivo de la reunión: entrar si ya empezó, o empezarla */}
+      <EnVivoGrupo
+        group={group.id}
+        books={books}
+        passage={reading?.estado === 'activo' && firstChapter ? { book: reading.libro, chapter: firstChapter } : undefined}
+      />
 
       {/* Meta compartida de la semana: compañía, no competencia */}
       <SectionTitle>Semana en compañía</SectionTitle>

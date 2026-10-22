@@ -3,13 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HomeIcon, LecternIcon, OpenBookIcon, PeopleIcon, PlansIcon } from '@/components/icons';
+import { HeartIcon, HomeIcon, LecternIcon, OpenBookIcon, PeopleIcon, PlansIcon, StarIcon } from '@/components/icons';
 import { chrome, setChromeHidden } from '@/lib/chrome';
 import { chapterHref } from '@/lib/routes';
-import { Colors, getLastRead, useColors } from '@/lib/theme';
+import { Colors, getLastRead, useColors, useSettings } from '@/lib/theme';
 import { fixedInTransition, navigate } from '@/lib/transition';
 
-type Tab = { key: 'hoy' | 'leer' | 'planes' | 'taller' | 'comunidad'; label: string; icon: typeof HomeIcon };
+type Tab = { key: 'hoy' | 'leer' | 'planes' | 'taller' | 'misiones' | 'comunidad' | 'historias' | 'memoria'; label: string; icon: typeof HomeIcon };
 
 const TABS: Tab[] = [
   { key: 'hoy', label: 'Hoy', icon: HomeIcon },
@@ -19,11 +19,25 @@ const TABS: Tab[] = [
   { key: 'comunidad', label: 'Comunidad', icon: PeopleIcon },
 ];
 
+// En el Modo Jóvenes el Taller (preparar mensajes) deja su lugar a las misiones.
+const TABS_JOVENES: Tab[] = TABS.map((t) => (t.key === 'taller' ? { key: 'misiones', label: 'Misiones', icon: (p) => <StarIcon {...p} /> } : t));
+
+// En el Espacio Niños, solo lo suyo: las historias, el versículo de la semana y la Biblia. Sin planes ni comunidad.
+const TABS_NINOS: Tab[] = [
+  { key: 'hoy', label: 'Hoy', icon: HomeIcon },
+  { key: 'historias', label: 'Historias', icon: (p) => <StarIcon {...p} /> },
+  { key: 'memoria', label: 'Versículo', icon: HeartIcon },
+  { key: 'leer', label: 'Biblia', icon: OpenBookIcon },
+];
+
 function current(path: string): Tab['key'] {
-  if (path === '/' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas') return 'hoy';
-  if (/^\/(planes|grupos|unirse)(\/|$)/.test(path)) return 'planes';
-  if (/^\/(comunidades|amigo|cuenta)(\/|$)/.test(path)) return 'comunidad';
+  if (path === '/' || path === '/modo' || path === '/sellos' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas' || path.startsWith('/semana') || path.startsWith('/pareja')) return 'hoy';
+  if (/^\/(planes|grupos|unirse|vivo)(\/|$)/.test(path)) return 'planes';
+  if (/^\/(comunidades|amigo|cuenta|eventos?)(\/|$)/.test(path)) return 'comunidad';
   if (path.startsWith('/taller')) return 'taller';
+  if (path.startsWith('/jovenes')) return 'misiones';
+  if (path === '/ninos/memoria') return 'memoria';
+  if (path.startsWith('/ninos')) return 'historias';
   return 'leer';
 }
 
@@ -32,14 +46,17 @@ export default function TabBar() {
   const colors = useColors();
   const path = usePathname();
   const insets = useSafeAreaInsets();
+  const { modo } = useSettings().settings;
   const active = current(path);
   const [height, setHeight] = useState(0);
 
   // Las barras ocultas al leer vuelven en cuanto se cambia de pantalla.
   useEffect(() => setChromeHidden(false), [path]);
 
-  // Al presentar un mensaje la pantalla es toda para el texto.
-  if (path.endsWith('/presentar')) return null;
+  // Al presentar un mensaje (o proyectarlo en la iglesia) la pantalla es toda para el texto.
+  if (path.endsWith('/presentar') || path.endsWith('/proyectar')) return null;
+  // La lectura en vivo también: abajo van los mandos de quien guía.
+  if (/^\/vivo\/[^/]+$/.test(path)) return null;
 
   const go = async (key: Tab['key']) => {
     if (key === active && key !== 'leer' && (key !== 'hoy' || path === '/')) return;
@@ -47,6 +64,9 @@ export default function TabBar() {
     if (key === 'planes') navigate(() => router.push('/planes'), 'fade');
     if (key === 'comunidad') navigate(() => router.push('/comunidades' as never), 'fade');
     if (key === 'taller') navigate(() => router.push('/taller'), 'fade');
+    if (key === 'misiones') navigate(() => router.push('/jovenes' as never), 'fade');
+    if (key === 'historias') navigate(() => router.push('/ninos' as never), 'fade');
+    if (key === 'memoria') navigate(() => router.push('/ninos/memoria' as never), 'fade');
     if (key === 'leer') {
       if (active === 'leer') return;
       const last = await getLastRead();
@@ -75,7 +95,7 @@ export default function TabBar() {
         ]}
         accessibilityRole="tablist"
       >
-        {TABS.map((t) => (
+        {(modo === 'jovenes' ? TABS_JOVENES : modo === 'ninos' ? TABS_NINOS : TABS).map((t) => (
           <TabButton key={t.key} tab={t} on={t.key === active} colors={colors} onPress={() => go(t.key)} />
         ))}
       </Animated.View>

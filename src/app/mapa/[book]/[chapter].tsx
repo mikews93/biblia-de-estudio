@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import PlaceMap from '@/components/PlaceMap';
+import { RouteIcon } from '@/components/icons';
+import { recorridoHref } from '@/lib/recorridos';
 import { Book, Place, getBooks, getPlaces } from '@/lib/data';
 import { bookIdFromParam, verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
@@ -34,6 +36,17 @@ export default function ChapterMap() {
       ) : (
         <>
           <PlaceMap places={places} colors={colors} height={380} onVerse={open} />
+          <Pressable
+            onPress={() => navigate(() => router.push(recorridoHref(bookId, chapter) as never), 'forward')}
+            style={({ pressed }) => [styles.follow, { backgroundColor: colors.warmSoft }, pressed && { opacity: 0.8 }]}
+            accessibilityRole="button"
+          >
+            <RouteIcon color={colors.warm} size={22} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Seguir la lectura en el mapa</Text>
+              <Text style={{ color: colors.muted, fontSize: 13 }}>El mapa va a cada lugar mientras lees o escuchas</Text>
+            </View>
+          </Pressable>
           <View style={{ marginTop: 20 }}>
             {places.map((p) => (
               <Pressable
@@ -56,6 +69,7 @@ export default function ChapterMap() {
 
 const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
+  follow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, padding: 14, marginTop: 14 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',

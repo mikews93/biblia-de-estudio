@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { lanzarConfeti } from './confeti';
 import { Book, getWords } from './data';
 import { PLANS, PlanDef } from './planesCatalogo';
 import { cambio, Entradas, registrar } from './sincronia';
@@ -256,7 +257,11 @@ export async function markPlanReading(book: string, chapter: number) {
     const finished = Object.keys(done).length === p.readings.length ? today : undefined;
     return { ...p, done, finished };
   });
-  if (changed) save(plans);
+  if (!changed) return;
+  // Terminar un plan o un reto de temporada: fuegos artificiales
+  const terminado = plans.some((p, i) => p.finished && !state.plans[i].finished);
+  save(plans);
+  if (terminado) lanzarConfeti('fuegos');
 }
 
 /** Planes activos que tienen este capítulo pendiente. */

@@ -1,12 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+import { readDownloaded, refreshDownloaded } from './almacen';
+import { parseConcordance } from './concordancia';
+import { isOnline } from './conexion';
+import type { VerseVariants } from './diferencias';
 import { reportView } from './fums';
 import { OFFLINE_DAYS, OFFLINE_MAX_VERSES, licensedById } from './licenciadas';
 
-// En web los datos se sirven desde public/data; en el teléfono, desde EXPO_PUBLIC_DATA_URL
-// (por ejemplo la web publicada) hasta que lleguen los paquetes descargables sin conexión.
-const BASE = process.env.EXPO_PUBLIC_DATA_URL ?? (Platform.OS === 'web' ? '/data' : '');
+// En web los datos se sirven desde public/data; en el teléfono, desde EXPO_PUBLIC_DATA_URL o la web publicada.
+// Lo que el teléfono tiene descargado para leer sin conexión (almacen.native.ts) se lee del dispositivo.
+const BASE = process.env.EXPO_PUBLIC_DATA_URL ?? (Platform.OS === 'web' ? '/data' : 'https://biblia.migueblanco.com/data');
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
 export type Book = {
@@ -49,23 +53,45 @@ export const NOT_DOWNLOADED = 'Sin conexión, y esto no está descargado en este
 
 const cache = new Map<string, Promise<unknown>>();
 
+function fetchData(path: string, optional: boolean): Promise<unknown> {
+  return fetch(dataUrl(path)).then(
+    (res) => {
+      if (res.ok) return res.json();
+      if (optional && res.status === 404) return {};
+      throw new Error(`No se pudo cargar ${path} (${res.status})`);
+    },
+    () => {
+      // Sin red (y sin copia guardada): lo opcional queda vacío y lo demás avisa. No se recuerda, para
+      // volver a pedirlo cuando haya conexión.
+      cache.delete(path);
+      if (optional) return {};
+      throw new Error(NOT_DOWNLOADED);
+    },
+  );
+}
+
+/**
+ * En el teléfono, lo descargado se lee del dispositivo al momento y, con conexión, se pone al día por detrás
+ * (como hace public/sw.js en la web). Lo que no está descargado se pide a la red.
+ */
+async function fromDevice(path: string, optional: boolean): Promise<unknown> {
+  const saved = await readDownloaded(path);
+  if (saved == null) return fetchData(path, optional);
+  if (isOnline())
+    fetch(dataUrl(path))
+      .then((res) => (res.ok ? refreshDownloaded(path, res) : undefined))
+      .catch(() => {});
+  try {
+    return JSON.parse(saved);
+  } catch {
+    return fetchData(path, optional);
+  }
+}
+
 export function load<T>(path: string, optional = false): Promise<T> {
   let p = cache.get(path);
   if (!p) {
-    p = fetch(dataUrl(path)).then(
-      (res) => {
-        if (res.ok) return res.json();
-        if (optional && res.status === 404) return {};
-        throw new Error(`No se pudo cargar ${path} (${res.status})`);
-      },
-      () => {
-        // Sin red (y sin copia guardada): lo opcional queda vacío y lo demás avisa. No se recuerda, para
-        // volver a pedirlo cuando haya conexión.
-        cache.delete(path);
-        if (optional) return {};
-        throw new Error(NOT_DOWNLOADED);
-      },
-    );
+    p = Platform.OS === 'web' ? fetchData(path, optional) : fromDevice(path, optional);
     p.catch(() => cache.delete(path));
     cache.set(path, p);
   }
@@ -174,8 +200,28 @@ export const getChapter = (book: string, chapter: number, version = 'rv1909') =>
     : load<Verse[]>(`text/${version}/${book}/${chapter}.json`);
 export const getInterlinear = (book: string, chapter: number) =>
   load<Record<string, Word[]>>(`interlinear/${book}/${chapter}.json`, true);
+/** Diferencias entre manuscritos griegos de un capítulo del NT, por versículo (src/lib/diferencias.ts). */
+export const getVariants = (book: string, chapter: number) =>
+  load<Record<string, VerseVariants>>(`variantes/${book}/${chapter}.json`, true);
 export const getCrossRefs = (book: string, chapter: number) =>
   load<Record<string, CrossRef[]>>(`xrefs/${book}/${chapter}.json`, true);
+
+/** Todas las apariciones de un número de Strong (src/lib/concordancia.ts); null si no existe. */
+export const getConcordance = (strong: string) =>
+  load<unknown>(`concordance/${strong}.json`, true).then((d) =>
+    d && !Array.isArray(d) && !Object.keys(d as object).length ? null : parseConcordance(d),
+  );
+
+/** Cuántas veces aparece cada palabra de «La historia de una palabra»: [total, AT, NT] (pipeline/build_data.py). */
+export const getPalabrasIndex = () =>
+  load<Record<string, [number, number, number]>>('palabras/index.json', true).then((r) => r ?? {});
+
+/** Las apariciones de todos los números de Strong de una palabra, en una sola concordancia. */
+export async function getPalabraConcordance(strongs: string[]) {
+  const all = await Promise.all(strongs.map((s) => getConcordance(s)));
+  const first = all.find((c) => c);
+  return first ? { ...first, uses: all.flatMap((c) => c?.uses ?? []) } : null;
+}
 
 export { formatRef, parseRef } from './refs';
 export type { RefTarget } from './refs';

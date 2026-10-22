@@ -6,6 +6,7 @@ import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
 import { compareHref } from '@/components/Comparar';
 import NoteEditor from '@/components/NoteEditor';
+import { OrarConVersiculo } from '@/components/Oraciones';
 import ReaderSettings from '@/components/ReaderSettings';
 import { NeedsConnection } from '@/components/SinConexion';
 import StudyPanel from '@/components/StudyPanel';
@@ -27,9 +28,11 @@ import {
   getCrossRefs,
   getInterlinear,
   getParagraphEnds,
+  getPlaces,
   getVersions,
   original,
 } from '@/lib/data';
+import { journeysFor, recorridoHref } from '@/lib/recorridos';
 import { getPlayer, playChapter, playDramatized, playOriginal, recordingId, seekWord, useAudioSelect, useCatalog, useSpoken } from '@/lib/audio';
 import { OriginalIcon } from '@/components/audioIcons';
 import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
@@ -37,6 +40,8 @@ import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } 
 import { useChapterNotes } from '@/lib/notas';
 import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
+import { CapituloRow, fichaHref, fichasDelVersiculo, getFichasCapitulo, marcarNombres } from '@/lib/fichas';
+import FichaChips from '@/components/FichaChips';
 import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import ReaderHeader, { HEADER_HEIGHT } from '@/components/ReaderHeader';
@@ -56,10 +61,15 @@ import {
   ListenIcon,
   MindMapIcon,
   PencilIcon,
+  PrayIcon,
+  PromiseIcon,
+  RouteIcon,
   ShareIcon,
   SparkIcon,
   TalkIcon,
 } from '@/components/icons';
+import { abrirHilo } from '@/components/Promesas';
+import { hilosEn } from '@/lib/promesas';
 import { chrome, setChromeHidden, useAutoHide } from '@/lib/chrome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -94,10 +104,17 @@ export default function Reader() {
   const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState(0);
   const [sharing, setSharing] = useState(false);
+  const [praying, setPraying] = useState(false);
   const [study, setStudy] = useState<{ verse?: number } | null>(null);
   const [writing, setWriting] = useState(false);
+  const [fichas, setFichas] = useState<CapituloRow[]>([]);
+  const [placeCount, setPlaceCount] = useState(0);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const paragraphHeight = useRef(0);
+  const scrollY = useRef(0);
+  /** Al soltar la hoja sin pasarla: donde estaba el lector en el capítulo al que se vuelve. */
+  const restoreY = useRef<number | null>(null);
+  const shown = useRef(`${bookId}/${chapter}`);
 
   useEffect(() => {
     getBooks().then(setBooks).catch((e) => setError(String(e.message)));
@@ -115,6 +132,9 @@ export default function Reader() {
     setProgress(0);
     setChromeHidden(false);
     setExtras(null);
+    // Pasar la hoja con el dedo cambia de capítulo en el mismo lector (ver swap abajo): el nuevo empieza arriba.
+    if (shown.current !== `${bookId}/${chapter}` && restoreY.current === null) scroll.current?.scrollTo({ y: 0, animated: false });
+    shown.current = `${bookId}/${chapter}`;
     getChapter(bookId, chapter, settings.version)
       .then((v) => {
         setVerses(v);
@@ -123,6 +143,10 @@ export default function Reader() {
       .catch((e) => setError(String(e.message)));
     getCrossRefs(bookId, chapter).then(setXrefs).catch(() => {});
     getParagraphEnds(bookId, chapter).then(setParagraphEnds).catch(() => {});
+    setFichas([]);
+    getFichasCapitulo(bookId, chapter).then(setFichas).catch(() => {});
+    setPlaceCount(0);
+    getPlaces(bookId, chapter).then((p) => setPlaceCount(p.length), () => {});
     saveLastRead(bookId, chapter);
   }, [bookId, chapter, target, settings.version]);
 
@@ -169,9 +193,46 @@ export default function Reader() {
     if (href) navigate(() => router.replace(href), delta > 0 ? 'turn-forward' : 'turn-back');
   };
 
-  usePageSwipe(neighbor);
+  usePageSwipe(neighbor, (delta) => {
+    const href = neighbor(delta);
+    // En /juan/3/16 el versículo es parte de la ruta y setParams no lo puede quitar: ahí se navega como siempre.
+    if (!href || params.verse || params.v) return null;
+    const [, nextBook, nextChapter] = href.split('/');
+    const from = { book: params.book, chapter: params.chapter };
+    const y = scrollY.current;
+    return {
+      go: () => {
+        restoreY.current = null;
+        router.setParams({ book: nextBook, chapter: nextChapter });
+      },
+      back: () => {
+        restoreY.current = y;
+        router.setParams(from);
+      },
+    };
+  });
 
   const select = (n: number) => setSelected(selected === n ? null : n);
+  const openFicha = (f: { id: string; nombre: string }) => navigate(() => router.push(fichaHref(f) as never), 'forward');
+  /** En el versículo elegido, los nombres con ficha se pueden tocar (solo en la RV1909, que es la de los nombres). */
+  const withNames = (n: number, text: string) =>
+    n !== selected || settings.version !== 'rv1909'
+      ? text
+      : marcarNombres(text, fichasDelVersiculo(fichas, n)).map((t, i) =>
+          t.ficha ? (
+            <Text
+              key={i}
+              onPress={() => openFicha({ id: t.ficha![0], nombre: t.ficha![1] })}
+              style={{ color: colors.accent, fontWeight: '700', textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: colors.accent }}
+              accessibilityRole="link"
+              accessibilityLabel={`Ficha de ${t.ficha[1]}`}
+            >
+              {t.texto}
+            </Text>
+          ) : (
+            t.texto
+          ),
+        );
   const scrollToY = (y: number) => {
     autoHide.pause();
     scroll.current?.scrollTo({ y: Math.max(0, y - 80), animated: false });
@@ -274,6 +335,19 @@ export default function Reader() {
           },
         ]
       : []),
+    ...(placeCount || journeysFor(bookId, chapter).length
+      ? [
+          {
+            key: 'recorrido',
+            label: journeysFor(bookId, chapter).length ? 'Recorrido' : 'En el mapa',
+            hint: journeysFor(bookId, chapter).length
+              ? `Seguir en el mapa: ${journeysFor(bookId, chapter)[0].title}`
+              : 'Seguir en el mapa los lugares del capítulo mientras lees o escuchas',
+            icon: (c: string) => <RouteIcon color={c} size={22} />,
+            onPress: () => navigate(() => router.push(recorridoHref(bookId, chapter) as never), 'forward'),
+          },
+        ]
+      : []),
     {
       key: 'podcast',
       label: 'Pódcast',
@@ -297,6 +371,7 @@ export default function Reader() {
     },
   ];
 
+  const promesas = selected === null ? [] : hilosEn(bookId, chapter, selected);
   const verseActions =
     selected === null || !book
       ? []
@@ -325,8 +400,21 @@ export default function Reader() {
             icon: (c: string) => <LinkIcon color={c} size={21} />,
             onPress: () => setPanelTab('referencias'),
           },
+          // Un hilo de promesa que pasa por este versículo: se abre; con varios, la pestaña de referencias los lista
+          ...(promesas.length
+            ? [
+                {
+                  key: 'promesa',
+                  label: 'Promesa',
+                  badge: promesas.length > 1 ? promesas.length : undefined,
+                  icon: (c: string) => <PromiseIcon color={c} size={21} />,
+                  onPress: () => (promesas.length > 1 ? setPanelTab('referencias') : abrirHilo(promesas[0].hilo)),
+                },
+              ]
+            : []),
           { key: 'comentario', label: 'Comentario', icon: (c: string) => <CommentaryIcon color={c} size={21} />, onPress: () => setPanelTab('comentario') },
           { key: 'nota', label: notes[selected] ? 'Mi nota' : 'Nota', icon: (c: string) => <PencilIcon color={c} size={21} />, onPress: () => setWriting(true) },
+          { key: 'orar', label: 'Orar', icon: (c: string) => <PrayIcon color={c} size={21} />, onPress: () => setPraying(true) },
           { key: 'compartir', label: 'Compartir', icon: (c: string) => <ShareIcon color={c} size={21} />, onPress: () => setSharing(true) },
           {
             key: 'memorizar',
@@ -354,8 +442,16 @@ export default function Reader() {
         style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : undefined}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + 10 }]}
         scrollEventThrottle={16}
+        onContentSizeChange={(_, height) => {
+          // De vuelta al capítulo de antes, en cuanto el texto ocupa lo bastante se deja donde estaba.
+          const y = restoreY.current;
+          if (y === null || !verses || height < y) return;
+          restoreY.current = null;
+          scroll.current?.scrollTo({ y, animated: false });
+        }}
         onScroll={(e) => {
           const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+          scrollY.current = contentOffset.y;
           const max = contentSize.height - layoutMeasurement.height;
           setProgress(max > 0 ? Math.min(1, Math.max(0, contentOffset.y / max)) : 1);
           autoHide.onScroll(e);
@@ -479,7 +575,7 @@ export default function Reader() {
                       {label ?? n}
                       {'\u2009'}
                     </Text>
-                    {text}
+                    {withNames(n, text)}
                     {footMark(n)}
                     {noteMark(n)}
                   </Text>
@@ -536,7 +632,7 @@ export default function Reader() {
               >
                 <Text style={{ fontFamily, fontSize: size, lineHeight: size * 1.6, color: colors.text }}>
                   <Text style={{ fontSize: size * 0.6, color: colors.accent, fontWeight: '700' }}>{label ?? n} </Text>
-                  {text}
+                  {withNames(n, text)}
                   {footMark(n)}
                   {noteMark(n)}
                 </Text>
@@ -625,6 +721,7 @@ export default function Reader() {
               <CloseIcon color={colors.muted} size={16} />
             </Pressable>
           </View>
+          <FichaChips rows={fichasDelVersiculo(fichas, selected)} colors={colors} onOpen={openFicha} />
           {/* Todas las acciones a la vista, en una rejilla de cuatro columnas */}
           <View style={styles.actions}>
             {verseActions.map((t, i) => (
@@ -633,7 +730,8 @@ export default function Reader() {
           </View>
         </Appear>
       ) : (
-        verses && (
+        // Sigue montada mientras carga otro capítulo: si desapareciera, se cortaría la hoja al pasarla (fixedInTransition).
+        book && (
           <Animated.View
             style={[
               styles.navWrap,
@@ -706,6 +804,12 @@ export default function Reader() {
             version: version?.abbr ?? 'RV1909',
           }}
           onClose={() => setSharing(false)}
+        />
+      )}
+      {praying && book && selected !== null && (
+        <OrarConVersiculo
+          versiculo={{ book: book.id, chapter, verse: selected, reference: `${book.name} ${chapter}:${selected}`, text: selectedText }}
+          onClose={() => setPraying(false)}
         />
       )}
       {writing && book && selected !== null && (

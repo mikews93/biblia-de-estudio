@@ -5,7 +5,7 @@ import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
 import { verseOfTheDay } from '../src/lib/daily';
 import { BOOK_SLUGS } from '../src/lib/routes';
-import { expect, test } from './support/fixtures';
+import { deslizar, expect, test } from './support/fixtures';
 
 type Book = { id: string; name: string; chapters: number };
 type Verse = [number, string, string?];
@@ -362,4 +362,60 @@ test('en el computador el ratón selecciona texto sin pasar la hoja, y las flech
   await expect(visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }))).toHaveText('Juan 4');
   await page.keyboard.press('ArrowLeft');
   await expect(page).toHaveURL(url('jhn', 3));
+});
+
+test('en el teléfono, si la hoja se suelta a medio pasar vuelve sin parpadeo y el capítulo sigue donde estaba', async ({
+  page,
+  request,
+}, info) => {
+  test.skip(info.project.name !== 'movil', 'el dedo es del teléfono');
+  await page.goto('/juan/3');
+  await expect(visible(page.getByLabel('Capítulo siguiente'))).toBeVisible();
+  await expect(texto(page, (await capitulo(request, 'jhn', 3))[0][1].slice(0, 40))).toBeVisible();
+
+  // Se baja a mitad del capítulo y se marca el lector para saber si se vuelve a montar
+  const bajar = () =>
+    page.evaluate(() => {
+      const el = [...document.querySelectorAll<HTMLElement>('div')]
+        .filter((e) => e.scrollHeight > e.clientHeight + 200 && /auto|scroll/.test(getComputedStyle(e).overflowY))
+        .sort((a, b) => b.scrollHeight - a.scrollHeight)[0];
+      (el as HTMLElement & { marca?: boolean }).marca = true;
+      el.scrollTop = 900;
+      return el.scrollTop;
+    });
+  const antes = await bajar();
+  const lector = () =>
+    page.evaluate(() => {
+      const el = [...document.querySelectorAll<HTMLElement & { marca?: boolean }>('div')].find((e) => e.marca);
+      return el ? el.scrollTop : null;
+    });
+
+  // Arrastre lento (sin lanzar) de un cuarto de pantalla, y se suelta
+  const vp = page.viewportSize()!;
+  const cdp = await page.context().newCDPSession(page);
+  const y = vp.height * 0.4;
+  const toque = (type: 'touchStart' | 'touchMove' | 'touchEnd', x: number) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+  const x0 = vp.width - 40;
+  await toque('touchStart', x0);
+  for (let i = 1; i <= 12; i++) {
+    await toque('touchMove', x0 - (vp.width * 0.25 * i) / 12);
+    await page.waitForTimeout(30);
+  }
+  await page.waitForTimeout(250);
+  await toque('touchEnd', x0 - vp.width * 0.25);
+  await cdp.detach();
+
+  await page.waitForFunction(() => !('nav' in document.documentElement.dataset));
+  await expect(page).toHaveURL(url('jhn', 3));
+  await expect(visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }))).toHaveText('Juan 3');
+  // El mismo lector, en el mismo sitio: antes se volvía a montar arriba del todo y se veía un destello
+  expect(await lector()).toBe(antes);
+
+  // Pasar la hoja entera sí cambia de capítulo, y el nuevo empieza arriba
+  await deslizar(page, vp.width - 20, y, -(vp.width - 40));
+  await expect(page).toHaveURL(url('jhn', 4));
+  await page.waitForFunction(() => !('nav' in document.documentElement.dataset));
+  await expect(visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }))).toHaveText('Juan 4');
+  expect(await lector()).toBe(0);
 });

@@ -53,6 +53,12 @@ type Props = {
   verse?: number;
   height?: number;
   onVerse?: (verse: number) => void;
+  /** Lugares que se destacan, en vez de los de un versículo (la ficha de un lugar destaca el suyo). */
+  focusIds?: string[];
+  /** Con esto la tarjeta del lugar elegido lleva a su ficha. */
+  onOpen?: (id: string) => void;
+  /** Si el lugar tiene ficha (por defecto, todos). */
+  canOpen?: (id: string) => boolean;
 };
 
 type View2 = { lon: number; lat: number; span: number };
@@ -70,13 +76,17 @@ function fit(places: Place[]): View2 {
 }
 
 /** Mapa de los lugares de un pasaje dibujado sobre costas, lagos y ríos (sin teselas: funciona sin conexión a otros servidores). */
-export default function PlaceMap({ places, colors, verse, height = 280, onVerse }: Props) {
+export default function PlaceMap({ places, colors, verse, height = 280, onVerse, focusIds, onOpen, canOpen }: Props) {
   const [base, setBase] = useState<Basemap | null>(null);
   const [width, setWidth] = useState(0);
   const focus = useMemo(() => {
-    const inVerse = verse ? places.filter((p) => p.verses.includes(verse)) : [];
+    const inVerse = focusIds
+      ? places.filter((p) => focusIds.includes(p.id))
+      : verse
+        ? places.filter((p) => p.verses.includes(verse))
+        : [];
     return inVerse.length ? inVerse : places;
-  }, [places, verse]);
+  }, [places, verse, focusIds]);
   const [view, setView] = useState<View2 | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -262,7 +272,7 @@ export default function PlaceMap({ places, colors, verse, height = 280, onVerse 
         <View style={[styles.card, { backgroundColor: colors.accentSoft }]}>
           <Text style={[styles.name, { color: colors.text }]}>{sel.name}</Text>
           <Text style={{ color: colors.muted, fontSize: 13 }}>
-            {TYPES[sel.type] ?? 'Lugar'} · {confidenceLabel(sel.conf, sel.alt.length)}
+            {TYPES[sel.type] ?? (sel.type || 'Lugar')} · {confidenceLabel(sel.conf, sel.alt.length)}
           </Text>
           {sel.alt.length > 0 && (
             <Text style={{ color: colors.text, fontSize: 13, marginTop: 6 }}>
@@ -270,19 +280,30 @@ export default function PlaceMap({ places, colors, verse, height = 280, onVerse 
               punteado en el mapa.
             </Text>
           )}
-          <View style={styles.verses}>
-            <Text style={{ color: colors.muted, fontSize: 13 }}>Versículos:</Text>
-            {sel.verses.map((v) => (
-              <Pressable
-                key={v}
-                onPress={() => onVerse?.(v)}
-                disabled={!onVerse}
-                style={[styles.verseChip, { borderColor: v === verse ? colors.accent : colors.border }]}
-              >
-                <Text style={{ color: v === verse ? colors.accent : colors.text, fontSize: 13, fontWeight: '600' }}>{v}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {onOpen && !focusIds?.includes(sel.id) && (canOpen?.(sel.id) ?? true) && (
+            <Pressable
+              onPress={() => onOpen(sel.id)}
+              style={({ pressed }) => [styles.open, pressed && { opacity: 0.6 }]}
+              accessibilityRole="link"
+            >
+              <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>Ver la ficha de {sel.name} ›</Text>
+            </Pressable>
+          )}
+          {sel.verses.length > 0 && (
+            <View style={styles.verses}>
+              <Text style={{ color: colors.muted, fontSize: 13 }}>Versículos:</Text>
+              {sel.verses.map((v) => (
+                <Pressable
+                  key={v}
+                  onPress={() => onVerse?.(v)}
+                  disabled={!onVerse}
+                  style={[styles.verseChip, { borderColor: v === verse ? colors.accent : colors.border }]}
+                >
+                  <Text style={{ color: v === verse ? colors.accent : colors.text, fontSize: 13, fontWeight: '600' }}>{v}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
       ) : (
         <Text style={[styles.hint, { color: colors.muted }]}>Toca un punto para ver el lugar y dónde se menciona.</Text>
@@ -311,5 +332,6 @@ const styles = StyleSheet.create({
   verses: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 8 },
   verseChip: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 3 },
   hint: { fontSize: 13, marginTop: 10 },
+  open: { marginTop: 8, alignSelf: 'flex-start' },
   credit: { fontSize: 11, marginTop: 12 },
 });

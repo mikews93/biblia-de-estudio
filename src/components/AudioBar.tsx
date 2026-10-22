@@ -1,5 +1,5 @@
 import { useAudioPlayerStatus } from 'expo-audio';
-import { usePathname } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -26,9 +26,12 @@ import {
   useCatalog,
   useSpoken,
 } from '@/lib/audio';
-import { getInterlinear, Word } from '@/lib/data';
+import { RouteIcon } from '@/components/icons';
+import { getInterlinear, getPlaces, Word } from '@/lib/data';
+import { journeysFor, recorridoHref } from '@/lib/recorridos';
 import { Colors, serif, useColors } from '@/lib/theme';
-import { fixedInTransition } from '@/lib/transition';
+import { fixedInTransition, navigate } from '@/lib/transition';
+import { SPEAKERS } from '@/lib/podcast';
 
 import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, OriginalIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon, TalkIcon } from './audioIcons';
 
@@ -51,6 +54,8 @@ export default function AudioBar() {
   useEffect(() => setLocation(path), [path]);
 
   if (!audio.open) return null;
+  // El mapa que sigue la lectura ya trae sus controles para el capítulo que suena
+  if (audio.book && audio.kind !== 'podcast' && path === recorridoHref(audio.book, audio.chapter)) return null;
   return <Bar />;
 }
 
@@ -61,6 +66,15 @@ function Bar() {
   const status = useAudioPlayerStatus(getPlayer());
   const [width, setWidth] = useState(0);
   const [picking, setPicking] = useState(false);
+  const path = usePathname();
+  const [mappable, setMappable] = useState(false);
+  useEffect(() => {
+    setMappable(false);
+    if (!audio.book) return;
+    if (journeysFor(audio.book, audio.chapter).length) setMappable(true);
+    else getPlaces(audio.book, audio.chapter).then((p) => setMappable(p.length > 0), () => {});
+  }, [audio.book, audio.chapter]);
+  const onMap = path.startsWith('/recorrido/');
 
   const speech = audio.speech;
   const file = audio.audio;
@@ -100,8 +114,20 @@ function Bar() {
             {audio.title}
             {verse ? <Text style={{ color: colors.accent, fontFamily: undefined, fontSize: 13 }}>{`  ·  v. ${verse}`}</Text> : null}
           </Text>
-          <Subtitle audio={audio} colors={colors} canPick={others.length > 0} onPick={() => setPicking(!picking)} />
+          <Subtitle audio={audio} now={now} colors={colors} canPick={others.length > 0} onPick={() => setPicking(!picking)} />
         </View>
+        {mappable && !onMap && audio.kind !== 'podcast' && (
+          <Pressable
+            onPress={() => navigate(() => router.push(recorridoHref(audio.book!, audio.chapter) as never), 'forward')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Seguir en el mapa"
+            style={({ pressed }) => [styles.mapBtn, { borderColor: colors.border }, pressed && styles.pressed]}
+          >
+            <RouteIcon color={colors.text} size={17} />
+            <Text style={[styles.mapText, { color: colors.text }]}>Mapa</Text>
+          </Pressable>
+        )}
         <Pressable
           onPress={closeAudio}
           hitSlop={12}
@@ -275,8 +301,14 @@ function SpokenWord({ book, chapter, hebrew, colors }: { book: string; chapter: 
 }
 
 /** Debajo del título: la versión (que se puede cambiar en la lectura), «Audio dramatizado» o quién habla en el pódcast. */
-function Subtitle({ audio, colors, canPick, onPick }: { audio: AudioState; colors: Colors; canPick: boolean; onPick: () => void }) {
-  const text = audio.speech ? `Pódcast · habla ${speakerNow(audio.speech)}` : audio.audio?.label;
+function Subtitle({ audio, now, colors, canPick, onPick }: { audio: AudioState; now: number; colors: Colors; canPick: boolean; onPick: () => void }) {
+  // En el pódcast grabado, quién habla sale de los tiempos de cada intervención.
+  const line = audio.audio?.lines?.[currentVerse(now) ?? -1];
+  const text = audio.speech
+    ? `Pódcast · habla ${speakerNow(audio.speech)}`
+    : line
+      ? `Pódcast · habla ${SPEAKERS[line.speaker]}`
+      : audio.audio?.label;
   if (!text) return null;
   return (
     <Pressable
@@ -307,6 +339,8 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   badge: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 16, fontWeight: '700' },
+  mapBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, height: 30 },
+  mapText: { fontSize: 12.5, fontWeight: '700' },
   close: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   switch: {
     flexDirection: 'row',
