@@ -57,7 +57,9 @@ export default function AccountForm({ mode }: { mode: Mode }) {
   const fb = useAction();
 
   useEffect(() => {
-    facebookAvailable().then(setFbReady);
+    // En iPhone, Apple pide ofrecer «Iniciar sesión con Apple» junto a otro inicio con terceros (regla 4.8):
+    // hasta tenerlo, allí se entra solo con correo.
+    if (Platform.OS !== 'ios') facebookAvailable().then(setFbReady);
     // Al volver de Facebook en esta misma pestaña (si el navegador no dejó abrir otra ventana).
     fb.run(async () => {
       if (await resumeFacebook()) leave();
@@ -193,6 +195,12 @@ export default function AccountForm({ mode }: { mode: Mode }) {
                   </Pressable>
                 </>
               )}
+              <Text style={[text.small, { color: colors.muted, textAlign: 'center', marginTop: 4 }]}>
+                {signingUp ? 'Al crear tu cuenta aceptas cómo cuidamos tus datos: ' : 'Cómo cuidamos tus datos: '}
+                <Link href="/privacidad" style={{ color: colors.accent, fontWeight: '600' }}>
+                  Privacidad
+                </Link>
+              </Text>
             </View>
           )}
         </View>

@@ -6,7 +6,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, 
 import Welcome from '@/components/comunidad/Welcome';
 import { Avatar, Button, Card, ErrorText, Field, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { useAccount } from '@/lib/comunidad';
-import { PersonaBreve, Red, answerFriend, askFriend, friendUrl, network, removeFriend, setShareReadings } from '@/lib/social';
+import { PersonaBreve, Red, answerFriend, askFriend, friendUrl, network, removeFriend, setShareReadings, unblock } from '@/lib/social';
 import { useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -160,6 +160,13 @@ export default function Amigos() {
             <>
               <SectionTitle>Esperando respuesta</SectionTitle>
               {red.enviadas.map((p) => person(p, small('Cancelar', () => act(() => removeFriend(p.id)))))}
+            </>
+          )}
+
+          {(red.bloqueadas?.length ?? 0) > 0 && (
+            <>
+              <SectionTitle>Personas bloqueadas</SectionTitle>
+              {red.bloqueadas!.map((p) => person(p, small('Desbloquear', () => act(() => unblock(p.id)))))}
             </>
           )}
 

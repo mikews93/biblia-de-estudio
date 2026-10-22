@@ -225,6 +225,14 @@ export const LockIcon = (p: Props) => (
   </Line>
 );
 
+/** Banderín: «Algo suena raro» en un estudio. */
+export const FlagIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M6.5 21V4.5" />
+    <Path d="M6.5 5h10.5l-2.3 4 2.3 4H6.5" />
+  </Line>
+);
+
 /** Globo de diálogo: comentarios. */
 export const CommentIcon = (p: Props) => (
   <Line {...p}>

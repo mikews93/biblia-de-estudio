@@ -12,7 +12,7 @@ import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
 import { init as initDownloads } from '@/lib/descargas';
 import { fixedInTransition } from '@/lib/transition';
-import { SettingsProvider, isDark, useColors, useSettings } from '@/lib/theme';
+import { ESPACIO_NINOS, SettingsProvider, isDark, useColors, useSettings } from '@/lib/theme';
 
 // La cabecera queda quieta en las transiciones (src/lib/transition.ts). headerStyle descarta los estilos
 // que no conoce, así que se fija cada parte por separado; el Stack de la web pasa estas opciones a Header
@@ -25,13 +25,15 @@ const fixedHeader = {
 };
 
 // En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
-const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja)(\/|$)/;
+const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|iglesia|cuidar)(\/|$)/;
 
 function GuardaNinos() {
   const path = usePathname();
   const { modo } = useSettings().settings;
   useEffect(() => {
     if (modo === 'ninos' && SIN_NINOS.test(path)) router.replace('/');
+    // En el teléfono no hay Espacio Niños (ver ESPACIO_NINOS en src/lib/theme.ts).
+    else if (!ESPACIO_NINOS && /^\/ninos(\/|$)/.test(path)) router.replace('/');
   }, [modo, path]);
   return null;
 }
@@ -114,6 +116,11 @@ function AppStack() {
           <Stack.Screen name="notas" options={{ title: 'Mis resaltados y notas' }} />
           <Stack.Screen name="diario" options={{ title: 'Mi diario' }} />
           <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
+          <Stack.Screen name="privacidad" options={{ title: 'Privacidad' }} />
+          <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
+          <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
+          <Stack.Screen name="iglesia/[codigo]" options={{ title: 'Iglesia anfitriona' }} />
+          <Stack.Screen name="cuidar" options={{ title: 'Cuidar Zarza' }} />
           <Stack.Screen name="modo" options={{ title: '' }} />
           <Stack.Screen name="jovenes/index" options={{ title: 'Misiones' }} />
           <Stack.Screen name="jovenes/[ruta]/index" options={{ title: '' }} />

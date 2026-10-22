@@ -7,7 +7,7 @@ import { confirm } from '@/components/comunidad/confirm';
 import { ChurchIcon, PeopleIcon, PinIcon } from '@/components/icons';
 import { Avatar, Button, ErrorText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { CheckIcon } from '@/components/icons';
-import { Persona, Publicacion, answerFriend, askFriend, getPerson, removeFriend } from '@/lib/social';
+import { Persona, Publicacion, answerFriend, askFriend, block, getPerson, removeFriend, unblock } from '@/lib/social';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -35,6 +35,15 @@ export default function PersonScreen() {
     run(() => removeFriend(id).then(load));
   };
 
+  const blockPerson = async () => {
+    const ok = await confirm(
+      `¿Bloquear a ${person?.nombre}?`,
+      'Dejarán de verse: sus publicaciones, comentarios y solicitudes no te llegarán, y tampoco verá las tuyas. Si son amigos, la amistad se quita. No se le avisa.',
+      'Bloquear',
+    );
+    if (ok) run(() => block(id).then(load));
+  };
+
   if (!person) {
     return (
       <View style={styles.page}>
@@ -50,6 +59,7 @@ export default function PersonScreen() {
     enviada: <Button label="Solicitud enviada" kind="outline" onPress={() => run(() => removeFriend(id).then(load))} busy={busy} />,
     recibida: <Button label="Aceptar amistad" onPress={() => run(() => answerFriend(id, true).then(load))} busy={busy} />,
     none: <Button label="Agregar como amigo" onPress={() => run(() => askFriend({ usuario: id }).then(load))} busy={busy} />,
+    bloqueada: <Button label="Desbloquear" kind="outline" onPress={() => run(() => unblock(id).then(load))} busy={busy} />,
   }[person.relacion ?? 'none'];
 
   return (
@@ -91,6 +101,25 @@ export default function PersonScreen() {
         <ErrorText>{error}</ErrorText>
       </View>
 
+      {person.relacion === 'bloqueada' ? (
+        <Text style={[text.body, styles.blocked, { color: colors.muted }]}>
+          Bloqueaste a esta persona. No ves lo que comparte y ella no ve lo tuyo.
+        </Text>
+      ) : (
+        <PersonPosts person={person} posts={posts} />
+      )}
+      {person.relacion !== 'yo' && person.relacion !== 'bloqueada' && (
+        <Button label="Bloquear a esta persona" kind="quiet" onPress={blockPerson} busy={busy} style={styles.block} />
+      )}
+    </ScrollView>
+  );
+}
+
+/** Lo que la persona comparte contigo. */
+function PersonPosts({ person, posts }: { person: Persona; posts: Publicacion[] }) {
+  const colors = useColors();
+  return (
+    <>
       <SectionTitle>{person.relacion === 'yo' ? 'Lo que has compartido' : 'Lo que comparte'}</SectionTitle>
       {posts.length === 0 ? (
         <Text style={[text.body, { color: colors.muted }]}>
@@ -105,7 +134,7 @@ export default function PersonScreen() {
           ))}
         </View>
       )}
-    </ScrollView>
+    </>
   );
 }
 
@@ -116,4 +145,6 @@ const styles = StyleSheet.create({
   bio: { fontFamily: serif, fontStyle: 'italic', fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 440 },
   facts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 16, rowGap: 6, marginTop: 4 },
   fact: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  blocked: { marginTop: 24, textAlign: 'center' },
+  block: { alignSelf: 'center', marginTop: 32 },
 });
