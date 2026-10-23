@@ -17,6 +17,7 @@ import {
   type ModoRepaso,
   NOMBRES_EQUIPOS,
   type PreguntaRepaso,
+  GIROS,
   acertoElGrupo,
   conSolucion,
   parseRepaso,
@@ -27,6 +28,7 @@ import { isDark, serif, useColors } from '@/lib/theme';
 import { type Persona, type Respuestas, type Tarjeta, TONOS } from '@/lib/vivo';
 
 import { Progreso } from './Estudio';
+import { CasillaPill, Leyenda, Rueda, useParada } from './Ruleta';
 import { LIVE_RED, vivoText } from './piezas';
 
 const BIEN = TONOS[1];
@@ -161,10 +163,12 @@ type Props = {
   onAnswer: (respuesta: number | string) => Promise<boolean>;
   onReveal: () => void;
   onNext: (paso: number) => void;
+  /** Ruleta: quien guía gira (el servidor elige la casilla). */
+  onSpin?: () => void;
   onClose: () => void;
 };
 
-export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lead, respondieron, quien = 'El grupo', onAnswer, onReveal, onNext, onClose }: Props) {
+export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lead, respondieron, quien = 'El grupo', onAnswer, onReveal, onNext, onSpin, onClose }: Props) {
   const colors = useColors();
   const dark = isDark(colors);
   const preguntas = t.preguntas ?? [];
@@ -175,7 +179,11 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
   const reveladas = t.reveladas ?? [];
   const revealed = reveladas.includes(t.paso);
   const votos = respuestas?.votos?.[t.paso] ?? [0, 0, 0, 0];
-  const last = t.paso === preguntas.length - 1;
+  const ruleta = t.juego === 'ruleta';
+  const giro = t.giro ?? 0;
+  const casilla = t.casillas?.[t.paso] ?? null;
+  const { parado, parar } = useParada(giro);
+  const last = ruleta ? giro >= Math.min(GIROS, preguntas.length) : t.paso === preguntas.length - 1;
   const done = last && revealed;
   // Lo que eligió cada uno se queda en su teléfono (el servidor no lo publica hasta revelar).
   const [elegidas, setElegidas] = useState<Record<string, number>>({});
@@ -207,10 +215,12 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
   const aciertosGrupo = reveladas.filter((p) => acertoElGrupo(respuestas?.votos?.[p] ?? [], preguntas[p]?.correcta ?? -1)).length;
   const yo = respuestas?.marcador?.find((f) => f.usuario === me);
   const puntosEquipo = useMemo(() => {
+    if (respuestas?.puntaje) return respuestas.puntaje.equipos;
     const n = [0, 0];
     for (const f of respuestas?.marcador ?? []) if (f.equipo === 0 || f.equipo === 1) n[f.equipo] += f.puntos;
     return n;
-  }, [respuestas?.marcador]);
+  }, [respuestas?.marcador, respuestas?.puntaje]);
+  const puntosGrupo = respuestas?.puntaje?.grupo ?? 0;
   const miEquipo = me && t.equipos ? t.equipos[me] : undefined;
 
   // Al terminar, confeti en todos los teléfonos (una vez por repaso).
@@ -222,7 +232,9 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
     }
   }, [done]);
 
-  if (!q) return null;
+  if (!q && !ruleta) return null;
+  // En la ruleta, la pregunta aparece cuando la ruleta de este teléfono paró.
+  const verPregunta = !!q && (!ruleta || parado);
 
   return (
     <Appear from={10}>
@@ -244,8 +256,23 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
           )}
         </View>
 
+        {ruleta && (
+          <View style={styles.dots}>
+            {Array.from({ length: Math.min(GIROS, preguntas.length) }, (_, i) => (
+              <View key={i} style={[styles.spin, { backgroundColor: i < giro ? colors.warm : colors.accentSoft }]} />
+            ))}
+            <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: '700', marginLeft: 'auto' }}>
+              {giro === 0 ? 'Sin girar' : `Giro ${giro} de ${Math.min(GIROS, preguntas.length)}`}
+              {modo === 'grupo' && reveladas.length > 0 ? ` · ${puntosGrupo.toLocaleString('es')} pts` : ''}
+            </Text>
+          </View>
+        )}
+        {ruleta && verPregunta && casilla !== null && <CasillaPill casilla={casilla} />}
+
+        {verPregunta && q && (
+        <>
         {/* Una marca por pregunta: verde si el grupo la acertó, la de ahora con borde */}
-        <View style={styles.dots} accessibilityLabel={`Pregunta ${t.paso + 1} de ${preguntas.length}`}>
+        {!ruleta && <View style={styles.dots} accessibilityLabel={`Pregunta ${t.paso + 1} de ${preguntas.length}`}>
           {preguntas.map((p, i) => {
             const shown = reveladas.includes(i);
             const ok = shown && acertoElGrupo(respuestas?.votos?.[i] ?? [], p.correcta);
@@ -268,7 +295,7 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
           <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: '700', marginLeft: 'auto' }}>
             {t.paso + 1} de {preguntas.length}
           </Text>
-        </View>
+        </View>}
 
         {mentira && <Text style={[vivoText.kicker, { color: colors.muted, marginTop: 14 }]}>{q.texto.toUpperCase()}</Text>}
         <Text style={[styles.question, { color: colors.text }, mentira && { marginTop: 4 }]}>{mentira ? '¿Cuál es la mentira?' : q.texto}</Text>
@@ -348,7 +375,12 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
           <Appear from={6}>
             <View style={[styles.result, { borderColor: colors.border }]}>
               {!!q.cita && !solucion && <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: '700' }}>{q.cita}</Text>}
-              {modo === 'grupo' && (
+              {modo === 'grupo' && ruleta && (
+                <Text style={[styles.resultText, { color: acertoElGrupo(votos, q.correcta) ? BIEN.ink : colors.text }]}>
+                  {votos[q.correcta]} de {votos.reduce((a, b) => a + b, 0)} acertaron · {quien.toLowerCase()} lleva {puntosGrupo.toLocaleString('es')} puntos
+                </Text>
+              )}
+              {modo === 'grupo' && !ruleta && (
                 <Text style={[styles.resultText, { color: acertoElGrupo(votos, q.correcta) ? BIEN.ink : colors.text }]}>
                   {acertoElGrupo(votos, q.correcta)
                     ? `¡${quien} ${mentira ? 'descubrió la mentira' : 'acertó'}!`
@@ -366,10 +398,29 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
           </Appear>
         )}
 
-        {done && <Final quien={quien} modo={modo} aciertos={aciertosGrupo} total={preguntas.length} marcador={respuestas?.marcador ?? []} equipos={puntosEquipo} me={me} />}
+        </>
+        )}
+
+        {/* Una sola ruleta, siempre en el mismo lugar: así gira la misma cuando el guía vuelve a girar */}
+        {ruleta && !done && (!verPregunta || revealed) && (
+          <View style={{ marginTop: 10 }}>
+            <Rueda casilla={casilla} giro={giro} onParada={parar} size={verPregunta ? 170 : 220} />
+            {giro === 0 && <Leyenda />}
+            {giro === 0 && (
+              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, textAlign: 'center', marginTop: 10 }}>
+                Cada casilla es una categoría y un nivel: las difíciles valen más.{lead ? '' : ' Espera a que se gire.'}
+              </Text>
+            )}
+            {lead && (t.paso < 0 || (revealed && parado)) && (
+              <Button label={giro === 0 ? 'Girar la ruleta' : 'Girar otra vez'} icon={StarIcon} onPress={() => onSpin?.()} style={{ marginTop: 14 }} />
+            )}
+          </View>
+        )}
+
+        {done && <Final quien={quien} ruleta={ruleta} puntosGrupo={puntosGrupo} modo={modo} aciertos={aciertosGrupo} total={preguntas.length} marcador={respuestas?.marcador ?? []} equipos={puntosEquipo} me={me} />}
         {revealed && modo === 'puntos' && !done && <Podio marcador={respuestas?.marcador ?? []} me={me} compact />}
 
-        {lead && revealed && !last && (
+        {lead && revealed && !last && !ruleta && (
           <Button label="Siguiente pregunta" icon={ArrowRightIcon} iconAfter onPress={() => onNext(t.paso + 1)} style={{ marginTop: 14 }} />
         )}
       </View>
@@ -581,6 +632,8 @@ function Podio({ marcador, me, compact }: { marcador: NonNullable<Respuestas['ma
 /** El final del repaso: lo que acertó el grupo, el podio o el equipo que ganó. */
 function Final({
   quien,
+  ruleta,
+  puntosGrupo,
   modo,
   aciertos,
   total,
@@ -589,6 +642,8 @@ function Final({
   me,
 }: {
   quien: string;
+  ruleta?: boolean;
+  puntosGrupo?: number;
   modo: ModoRepaso;
   aciertos: number;
   total: number;
@@ -604,7 +659,7 @@ function Final({
         <Text style={[vivoText.kicker, { color: colors.warm }]}>RESULTADO</Text>
         {modo === 'grupo' && (
           <Text style={[styles.finalTitle, { color: colors.text }]}>
-            {quien} acertó {aciertos} de {total}
+            {ruleta ? `${quien} sumó ${(puntosGrupo ?? 0).toLocaleString('es')} puntos` : `${quien} acertó ${aciertos} de ${total}`}
           </Text>
         )}
         {modo === 'equipos' && (
@@ -653,6 +708,7 @@ const styles = StyleSheet.create({
   answer: { borderRadius: 14, padding: 12, marginTop: 12 },
   verses: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   verse: { width: 42, height: 38, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  spin: { width: 18, height: 6, borderRadius: 3 },
   contados: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
   launch: { borderRadius: 16, padding: 14, marginBottom: 14 },
   modes: { flexDirection: 'row', gap: 6, marginVertical: 12 },

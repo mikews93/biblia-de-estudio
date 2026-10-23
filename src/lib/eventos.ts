@@ -56,6 +56,11 @@ export type Interaccion = {
   preguntas?: PreguntaRepaso[];
   paso: number;
   reveladas: number[];
+  /** La ruleta del mensaje (en grupo o por equipos). */
+  juego?: 'ruleta';
+  modo?: 'grupo' | 'equipos';
+  casillas?: Record<string, number>;
+  giro?: number;
 };
 export type Resultados = {
   /** Cuántos respondieron la pregunta de ahora. */
@@ -64,6 +69,8 @@ export type Resultados = {
   votos?: Record<number, number[]>;
   /** Las respuestas de la pregunta abierta: para quien predica siempre (con las ocultas), para los demás al revelar. */
   muro?: { id: number; texto: string; oculta: boolean }[];
+  /** Ruleta: lo que suma la iglesia y cada equipo. */
+  puntaje?: { grupo: number; equipos: number[] };
 };
 
 export const CODIGO_LARGO = 6;
@@ -179,7 +186,13 @@ export const verMiEvento = async (codigo: string) => ponerMio((await accion<{ ev
 
 export const interactuarEvento = async (
   codigo: string,
-  cambio: { nueva?: { tipo: 'pregunta' | 'repaso'; titulo: string; preguntas?: PreguntaRepaso[] }; revelar?: true; paso?: number; quitar?: true },
+  cambio: {
+    nueva?: { tipo: 'pregunta' | 'repaso'; titulo: string; preguntas?: PreguntaRepaso[]; juego?: 'ruleta'; modo?: 'grupo' | 'equipos' };
+    revelar?: true;
+    paso?: number;
+    girar?: true;
+    quitar?: true;
+  },
 ) => ponerMio((await accion<{ evento: Evento }>('interactuar', { codigo, ...cambio })).evento);
 
 export const ocultarRespuesta = async (codigo: string, id: number, oculta: boolean) =>
@@ -223,8 +236,9 @@ const repasosMensaje = new Map<string, Promise<PreguntaRepaso[]>>();
  * El repaso de un mensaje: la IA del Taller prepara las preguntas con el bosquejo y el texto de todas sus citas
  * (un sermón suele recorrer varios pasajes, no un solo capítulo). Se pide una vez por evento mientras la app está abierta.
  */
-export function repasoDelMensaje(e: Evento, books: Book[]) {
-  let p = repasosMensaje.get(e.codigo);
+export function repasoDelMensaje(e: Evento, books: Book[], juego: 'repaso' | 'ruleta' = 'repaso') {
+  const clave = `${juego}:${e.codigo}`;
+  let p = repasosMensaje.get(clave);
   if (p) return p;
   p = (async () => {
     const citas = [...new Set(e.puntos.flatMap((x) => x.citas))].slice(0, 20);
@@ -257,7 +271,7 @@ export function repasoDelMensaje(e: Evento, books: Book[]) {
         book: pasaje.book,
         chapter: pasaje.chapter,
         messages: [],
-        taller: { modo: 'repaso', tipo: 'sermon', paso: 'bosquejo', borrador },
+        taller: { modo: juego, tipo: 'sermon', paso: 'bosquejo', borrador },
       },
       () => {},
     );
@@ -265,8 +279,8 @@ export function repasoDelMensaje(e: Evento, books: Book[]) {
     if (!qs.length) throw new Error('No salió bien el repaso. Inténtalo otra vez.');
     return qs;
   })();
-  p.catch(() => repasosMensaje.delete(e.codigo));
-  repasosMensaje.set(e.codigo, p);
+  p.catch(() => repasosMensaje.delete(clave));
+  repasosMensaje.set(clave, p);
   return p;
 }
 

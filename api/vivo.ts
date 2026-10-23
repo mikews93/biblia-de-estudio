@@ -20,7 +20,7 @@
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 
-import { LETRAS, MAX_PREGUNTAS, type PreguntaRepaso } from '../src/lib/repaso';
+import { CATEGORIAS, GIROS, LETRAS, MAX_PREGUNTAS, type PreguntaRepaso, equipoDe, girarRuleta, puntajeRuleta } from '../src/lib/repaso';
 import { celulaGET, celulaPOST, isCelulaAction } from './_celula';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -87,6 +87,11 @@ type Interaccion = {
   preguntas?: PreguntaRepaso[];
   paso: number;
   reveladas: number[];
+  /** La ruleta del mensaje: se juega en grupo o por equipos; `casillas` dice dónde cayó cada pregunta que salió. */
+  juego?: 'ruleta';
+  modo?: 'grupo' | 'equipos';
+  casillas?: Record<string, number>;
+  giro?: number;
 };
 type Row = {
   codigo: string;
@@ -232,7 +237,20 @@ async function resultados(sql: Sql, e: Row, propio: boolean) {
       const o = LETRAS.indexOf(r.texto);
       if (o >= 0 && votos[r.paso]) votos[r.paso][o] = r.n;
     }
-    return { respondieron: n, votos };
+    if (i.juego !== 'ruleta') return { respondieron: n, votos };
+    // La ruleta: cada pregunta vale su casilla; los equipos salen del identificador de cada teléfono.
+    const todas = i.reveladas.length
+      ? await sql<{ paso: number; participante: string; texto: string }[]>`
+          select paso, participante, texto from evento_respuestas
+          where codigo = ${e.codigo} and interaccion = ${i.id} and paso = any(${i.reveladas}::int[])`
+      : [];
+    const puntaje = puntajeRuleta(
+      todas.map((r) => ({ usuario: r.participante, paso: r.paso, opcion: LETRAS.indexOf(r.texto), equipo: equipoDe(r.participante) })),
+      i.preguntas ?? [],
+      Object.fromEntries(Object.entries(i.casillas ?? {}).map(([k, v]) => [Number(k), v])),
+      i.reveladas,
+    );
+    return { respondieron: n, votos, puntaje: { grupo: puntaje.grupo, equipos: puntaje.equipos } };
   }
   if (!propio && !i.reveladas.includes(0)) return { respondieron: n };
   const muro = await sql<Muro>`
@@ -252,7 +270,16 @@ function preguntasDe(value: unknown): PreguntaRepaso[] {
     const opciones = Array.isArray(q?.opciones) ? q.opciones.map((o) => text(o, 120, 'una opción')) : [];
     const correcta = Number(q?.correcta);
     if (opciones.length !== 4 || !Number.isInteger(correcta) || correcta < 0 || correcta > 3) throw new Fail('Pregunta no válida');
-    return { texto: text(q?.texto, 240, 'la pregunta'), opciones, correcta, cita: text(q?.cita, 40, 'la cita', false) || null };
+    const categoria = CATEGORIAS.find((c) => c.id === q?.categoria)?.id;
+    const nivel = Number(q?.nivel);
+    return {
+      texto: text(q?.texto, 240, 'la pregunta'),
+      opciones,
+      correcta,
+      cita: text(q?.cita, 40, 'la cita', false) || null,
+      ...(categoria && { categoria }),
+      ...(nivel >= 1 && nivel <= 3 && { nivel }),
+    };
   });
 }
 
@@ -345,17 +372,28 @@ const actions: Record<string, Handler> = {
     else if (body.nueva !== undefined) {
       const n = (body.nueva ?? {}) as Json;
       if (n.tipo !== 'pregunta' && n.tipo !== 'repaso') throw new Fail('Interacción no válida');
+      const ruleta = n.tipo === 'repaso' && n.juego === 'ruleta';
       i = {
         id: randomUUID(),
         tipo: n.tipo,
         titulo: text(n.titulo, MAX_POINT_TITLE * 2, n.tipo === 'pregunta' ? 'la pregunta' : 'el título'),
         ...(n.tipo === 'repaso' ? { preguntas: preguntasDe(n.preguntas) } : {}),
-        paso: 0,
+        // La ruleta empieza sin pregunta: sale la primera al girar.
+        paso: ruleta ? -1 : 0,
         reveladas: [],
+        ...(ruleta && { juego: 'ruleta' as const, modo: n.modo === 'equipos' ? ('equipos' as const) : ('grupo' as const), casillas: {}, giro: 0 }),
       };
     } else {
       if (!i) throw new Fail('No hay nada para responder');
-      if (body.revelar === true && !i.reveladas.includes(i.paso)) i = { ...i, reveladas: [...i.reveladas, i.paso] };
+      if (body.girar === true) {
+        if (i.juego !== 'ruleta') throw new Fail('Esto no es una ruleta');
+        if (i.paso >= 0 && !i.reveladas.includes(i.paso)) throw new Fail('Primero revela la respuesta');
+        const casillas = i.casillas ?? {};
+        const giro = (i.giro ?? 0) >= GIROS ? null : girarRuleta(i.preguntas ?? [], Object.keys(casillas).map(Number));
+        if (!giro) throw new Fail('La ruleta ya terminó');
+        i = { ...i, paso: giro.paso, casillas: { ...casillas, [giro.paso]: giro.casilla }, giro: (i.giro ?? 0) + 1 };
+      }
+      if (body.revelar === true && i.paso >= 0 && !i.reveladas.includes(i.paso)) i = { ...i, reveladas: [...i.reveladas, i.paso] };
       if (body.paso !== undefined) {
         const paso = Number(body.paso);
         if (i.tipo !== 'repaso' || !Number.isInteger(paso) || paso < 0 || paso >= (i.preguntas?.length ?? 0)) throw new Fail('Pregunta no válida');
@@ -399,6 +437,7 @@ const actions: Record<string, Handler> = {
     const participante = typeof body.participante === 'string' ? body.participante : '';
     if (!/^[a-z0-9-]{16,40}$/i.test(participante)) throw new Fail('Participante no válido');
     const paso = i.paso;
+    if (paso < 0) throw new Fail('Todavía no hay pregunta', 409);
     if (i.reveladas.includes(paso)) throw new Fail('Esta pregunta ya se reveló', 409);
     const [{ n }] = await sql<{ n: number }[]>`
       select count(*)::int as n from evento_respuestas where codigo = ${e.codigo} and interaccion = ${i.id} and paso = ${paso}`;

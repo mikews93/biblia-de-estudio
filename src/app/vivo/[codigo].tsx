@@ -356,6 +356,7 @@ export default function SalaEnVivo() {
             }
             onReveal={() => act('moverSala', { revelar: true })}
             onNext={(paso) => act('moverSala', { paso })}
+            onSpin={() => act('moverSala', { girar: true })}
             onClose={() => act('moverSala', { tarjeta: null })}
           />
         ) : tarjeta?.tipo === 'ronda' ? (

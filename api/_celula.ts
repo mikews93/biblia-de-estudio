@@ -22,6 +22,7 @@ import postgres from 'postgres';
 
 import { dinamica } from '../src/lib/dinamicas';
 import {
+  GIROS,
   JUEGOS,
   type Juego,
   LETRAS,
@@ -29,9 +30,12 @@ import {
   type ModoRepaso,
   type PreguntaRepaso,
   conSolucion,
+  CATEGORIAS,
   equipoPara,
+  girarRuleta,
   marcador,
   mismaRespuesta,
+  puntajeRuleta,
 } from '../src/lib/repaso';
 import { notifyUser } from './_push';
 
@@ -142,6 +146,9 @@ export type Tarjeta = {
   desdes?: (string | null)[];
   modo?: ModoRepaso;
   juego?: Juego;
+  /** Ruleta: la casilla en que cayó cada pregunta que salió, y cuántas veces se giró. */
+  casillas?: Record<string, number>;
+  giro?: number;
   /** Con equipos: el equipo (0 o 1) de cada persona. */
   equipos?: Record<string, number>;
 };
@@ -308,8 +315,11 @@ function quizCard(v: Json): Tarjeta {
     }
     const cuantas = juego === 'mentira' ? 3 : LETRAS.length;
     if (opciones.length !== cuantas) throw new Fail(`Cada pregunta lleva ${cuantas} opciones`);
-    return { texto, opciones, correcta: int(x.correcta, 'Respuesta correcta', 0, cuantas - 1), cita };
+    const categoria = CATEGORIAS.find((c) => c.id === x.categoria)?.id;
+    const nivel = x.nivel === undefined ? undefined : int(x.nivel, 'Nivel', 1, 3);
+    return { texto, opciones, correcta: int(x.correcta, 'Respuesta correcta', 0, cuantas - 1), cita, ...(categoria && { categoria }), ...(nivel && { nivel }) };
   });
+  const ruleta = juego === 'ruleta';
   if (!preguntas.length) throw new Fail('El repaso no tiene preguntas');
   const modo: ModoRepaso = v.modo === 'puntos' || v.modo === 'equipos' ? v.modo : 'grupo';
   return {
@@ -318,15 +328,17 @@ function quizCard(v: Json): Tarjeta {
     titulo: str(v.titulo, MAX_CARD_TITLE, 'el título', true) ?? JUEGOS.find((j) => j.id === juego)!.nombre,
     texto: null,
     pasos: preguntas.map((q) => q.texto),
-    paso: 0,
+    // La ruleta empieza sin pregunta: sale la primera al girar.
+    paso: ruleta ? -1 : 0,
     dinamica: null,
     minutos: null,
     fin: null,
     preguntas,
     reveladas: [],
-    desdes: preguntas.map((_, i) => (i === 0 ? new Date().toISOString() : null)),
+    desdes: preguntas.map((_, i) => (i === 0 && !ruleta ? new Date().toISOString() : null)),
     modo,
     juego,
+    ...(ruleta && { casillas: {}, giro: 0 }),
     ...(modo === 'equipos' && { equipos: {} }),
   };
 }
@@ -449,6 +461,34 @@ function quizView(t: Tarjeta, rows: { usuario: string; nombre: string; texto: st
   const reveladas = t.reveladas ?? [];
   const votos: Record<number, number[]> = {};
   for (const p of reveladas) votos[p] = LETRAS.map((_, i) => all.filter((r) => r.paso === p && r.opcion === i).length);
+  if (t.juego === 'ruleta') {
+    // En la ruleta cada pregunta vale lo que marca su casilla (sin extra por rapidez).
+    const casillas = Object.fromEntries(Object.entries(t.casillas ?? {}).map(([k, v]) => [Number(k), v]));
+    const puntaje = puntajeRuleta(
+      all.map((r) => ({ ...r, equipo: t.equipos?.[r.usuario] ?? null })),
+      t.preguntas ?? [],
+      casillas,
+      reveladas,
+    );
+    const nombres = new Map(all.map((r) => [r.usuario, r.nombre]));
+    const tabla = [...nombres.entries()]
+      .map(([usuario, nombre]) => ({
+        usuario,
+        nombre,
+        puntos: puntaje.personas[usuario] ?? 0,
+        aciertos: 0,
+        ...(t.equipos && { equipo: t.equipos[usuario] ?? null }),
+      }))
+      .sort((a, b) => b.puntos - a.puntos || a.nombre.localeCompare(b.nombre));
+    return {
+      ronda: `${t.id}:${t.paso}`,
+      quienes: all.filter((r) => r.paso === t.paso).map((r) => r.usuario),
+      lista: null,
+      votos,
+      marcador: tabla,
+      puntaje: { grupo: puntaje.grupo, equipos: puntaje.equipos },
+    };
+  }
   const tabla = t.modo === 'grupo' ? null : marcador(all, t.preguntas ?? [], t.desdes ?? [], reveladas);
   return {
     ronda: `${t.id}:${t.paso}`,
@@ -489,6 +529,7 @@ async function answerQuiz(sql: Sql, s: SalaRow, t: Tarjeta, user: User, body: Js
   if (body.ronda !== ronda) throw new Fail('Esa pregunta ya pasó', 409);
   if (t.reveladas?.includes(t.paso)) throw new Fail('Esta pregunta ya se reveló');
   const q = t.preguntas?.[t.paso];
+  if (!q) throw new Fail('Todavía no hay pregunta', 409);
   // En ordena y espada se guarda 0 si acertó y 1 si no: así los votos y el marcador son los de siempre.
   const opcion =
     conSolucion(t.juego) && q?.solucion
@@ -657,6 +698,20 @@ export const celulaActions: Record<string, Handler> = {
     }
     if (body.revelar !== undefined && estado.tarjeta?.tipo === 'ronda') {
       estado.tarjeta = { ...estado.tarjeta, revelada: body.revelar === true };
+    }
+    if (body.girar === true && estado.tarjeta?.juego === 'ruleta') {
+      const t = estado.tarjeta;
+      if (t.paso >= 0 && !t.reveladas?.includes(t.paso)) throw new Fail('Primero revela la respuesta');
+      const casillas = t.casillas ?? {};
+      const giro = (t.giro ?? 0) >= GIROS ? null : girarRuleta(t.preguntas ?? [], Object.keys(casillas).map(Number));
+      if (!giro) throw new Fail('La ruleta ya terminó');
+      estado.tarjeta = {
+        ...t,
+        paso: giro.paso,
+        casillas: { ...casillas, [giro.paso]: giro.casilla },
+        giro: (t.giro ?? 0) + 1,
+        desdes: (t.desdes ?? []).map((d, i) => (i === giro.paso ? new Date().toISOString() : d)),
+      };
     }
     if (body.revelar === true && estado.tarjeta?.tipo === 'repaso' && !estado.tarjeta.reveladas?.includes(estado.tarjeta.paso)) {
       estado.tarjeta = { ...estado.tarjeta, reveladas: [...(estado.tarjeta.reveladas ?? []), estado.tarjeta.paso] };

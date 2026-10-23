@@ -8,7 +8,8 @@ import Appear from '@/components/Appear';
 import { Button, ErrorText, Field, useAction } from '@/components/comunidad/ui';
 import { CheckIcon, CloseIcon, CommentIcon, EyeIcon, LockIcon, StarIcon } from '@/components/icons';
 import { Contados, TarjetaRepaso } from '@/components/vivo/Repaso';
-import { Sheet, vivoText } from '@/components/vivo/piezas';
+import { Rueda, useParada } from '@/components/vivo/Ruleta';
+import { Segmented, Sheet, vivoText } from '@/components/vivo/piezas';
 import { lanzarConfeti } from '@/lib/confeti';
 import type { Book } from '@/lib/data';
 import {
@@ -19,7 +20,7 @@ import {
   repasoDelMensaje,
   responderEvento,
 } from '@/lib/eventos';
-import { LETRAS, type PreguntaRepaso, acertoElGrupo } from '@/lib/repaso';
+import { CATEGORIAS, GIROS, LETRAS, NIVELES, NOMBRES_EQUIPOS, type PreguntaRepaso, RULETA, acertoElGrupo, equipoDe } from '@/lib/repaso';
 import { isDark, serif, useColors } from '@/lib/theme';
 import type { Respuestas, Tarjeta } from '@/lib/vivo';
 
@@ -66,9 +67,16 @@ export function InteraccionEvento({ evento, propio, onCambio }: { evento: Evento
       fin: null,
       preguntas: i.preguntas,
       reveladas: i.reveladas,
-      modo: 'grupo',
+      modo: i.modo ?? 'grupo',
+      ...(i.juego === 'ruleta' && {
+        juego: 'ruleta' as const,
+        casillas: i.casillas,
+        giro: i.giro,
+        // El equipo de este teléfono sale de su identificador (src/lib/repaso.ts, equipoDe).
+        ...(i.modo === 'equipos' && me && { equipos: { [me]: equipoDe(me) } }),
+      }),
     };
-    const respuestas: Respuestas = { ronda: clave, quienes: me && clave in mias ? [me] : [], lista: null, votos: r?.votos };
+    const respuestas: Respuestas = { ronda: clave, quienes: me && clave in mias ? [me] : [], lista: null, votos: r?.votos, puntaje: r?.puntaje };
     return (
       <View style={{ marginTop: 18 }}>
         <TarjetaRepaso
@@ -93,6 +101,7 @@ export function InteraccionEvento({ evento, propio, onCambio }: { evento: Evento
           }}
           onReveal={() => cambiar({ revelar: true })}
           onNext={(paso) => cambiar({ paso })}
+          onSpin={() => cambiar({ girar: true })}
           onClose={() => cambiar({ quitar: true })}
         />
         <ErrorText>{error}</ErrorText>
@@ -279,7 +288,10 @@ export function LanzarInteraccion({ evento, books, onCambio, onClose }: { evento
   const colors = useColors();
   const dark = isDark(colors);
   const [pregunta, setPregunta] = useState('');
-  const [preguntas, setPreguntas] = useState<PreguntaRepaso[] | null>(null);
+  const [juego, setJuego] = useState<'repaso' | 'ruleta'>('repaso');
+  const [modo, setModo] = useState<'grupo' | 'equipos'>('grupo');
+  const [todas, setTodas] = useState<Partial<Record<'repaso' | 'ruleta', PreguntaRepaso[]>>>({});
+  const preguntas = todas[juego] ?? null;
   const [fuera, setFuera] = useState<number[]>([]);
   const preparar = useAction();
   const lanzar = useAction();
@@ -330,21 +342,68 @@ export function LanzarInteraccion({ evento, books, onCambio, onClose }: { evento
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <StarIcon color={colors.warm} size={20} strokeWidth={2} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 15.5 }}>Repaso del mensaje</Text>
+            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 15.5 }}>Juegos del mensaje</Text>
             <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }}>
-              Preguntas de opción múltiple sobre los puntos{citas > 0 ? ` y sus ${citas === 1 ? 'cita' : `${citas} citas`}` : ''}. La iglesia acierta junta.
+              Preguntas sobre los puntos{citas > 0 ? ` y sus ${citas === 1 ? 'cita' : `${citas} citas`}` : ''}.{' '}
+              {juego === 'repaso'
+                ? 'La iglesia acierta junta.'
+                : 'La ruleta elige la categoría y la dificultad: lo que dice, qué significa, el tema y para la vida.'}
             </Text>
           </View>
         </View>
+        <View style={{ marginTop: 12 }}>
+          <Segmented
+            options={[
+              ['repaso', 'Repaso'],
+              ['ruleta', 'Ruleta de preguntas'],
+            ]}
+            value={juego}
+            onChange={(j) => {
+              setJuego(j);
+              setFuera([]);
+            }}
+          />
+        </View>
+        {juego === 'ruleta' && (
+          <View style={styles.modes}>
+            {(
+              [
+                ['grupo', 'Toda la iglesia', 'Suman puntos juntos'],
+                ['equipos', 'Por equipos', 'Dos equipos al azar, parejos'],
+              ] as const
+            ).map(([m, label, detail]) => {
+              const on = m === modo;
+              return (
+                <Pressable
+                  key={m}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={label}
+                  onPress={() => setModo(m)}
+                  style={[styles.mode, { backgroundColor: on ? colors.surface : 'transparent', borderColor: on ? colors.warm : 'transparent' }]}
+                >
+                  <Text style={{ color: on ? colors.text : colors.muted, fontWeight: '800', fontSize: 13 }}>{label}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>{detail}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
         {!preguntas ? (
           <>
             <ErrorText>{preparar.error}</ErrorText>
             <Button
-              label={preparar.busy ? 'Preparando las preguntas…' : 'Preparar el repaso'}
+              label={preparar.busy ? 'Preparando las preguntas…' : juego === 'repaso' ? 'Preparar el repaso' : 'Preparar la ruleta'}
               icon={StarIcon}
               kind="outline"
               busy={preparar.busy}
-              onPress={() => preparar.run(async () => setPreguntas(await repasoDelMensaje(evento, books)))}
+              onPress={() => {
+                const j = juego;
+                preparar.run(async () => {
+                  const qs = await repasoDelMensaje(evento, books, j);
+                  setTodas((t) => ({ ...t, [j]: qs }));
+                });
+              }}
               style={{ marginTop: 12 }}
             />
           </>
@@ -366,6 +425,12 @@ export function LanzarInteraccion({ evento, books, onCambio, onClose }: { evento
                       {on && <CheckIcon color="#FFFFFF" size={12} strokeWidth={2.8} />}
                     </View>
                     <View style={{ flex: 1 }}>
+                      {juego === 'ruleta' && q.categoria && (
+                        <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.6, marginBottom: 2 }}>
+                          {CATEGORIAS.find((c) => c.id === q.categoria)?.nombre.toUpperCase()}
+                          {q.nivel ? ` · ${NIVELES[q.nivel - 1].toUpperCase()}` : ''}
+                        </Text>
+                      )}
                       <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14, lineHeight: 19 }}>{q.texto}</Text>
                       <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 3 }}>
                         <Text style={{ color: dark ? colors.text : colors.warm, fontWeight: '800' }}>
@@ -379,9 +444,15 @@ export function LanzarInteraccion({ evento, books, onCambio, onClose }: { evento
               })}
             </View>
             <Button
-              label={`Empezar el repaso (${elegidas.length})`}
+              label={juego === 'repaso' ? `Empezar el repaso (${elegidas.length})` : `Empezar la ruleta (${elegidas.length})`}
               icon={StarIcon}
-              onPress={() => poner({ tipo: 'repaso', titulo: evento.titulo, preguntas: elegidas })}
+              onPress={() =>
+                poner(
+                  juego === 'repaso'
+                    ? { tipo: 'repaso', titulo: evento.titulo, preguntas: elegidas }
+                    : { tipo: 'repaso', titulo: evento.titulo, preguntas: elegidas, juego: 'ruleta', modo },
+                )
+              }
               disabled={elegidas.length === 0}
               busy={lanzar.busy}
               style={{ marginTop: 12 }}
@@ -435,6 +506,7 @@ export function InteraccionProyector({ evento, width }: { evento: Evento; width:
     );
   }
 
+  if (i.juego === 'ruleta') return <RuletaProyector evento={evento} big={big} contados={contados} />;
   const q = i.preguntas?.[i.paso];
   if (!q) return null;
   const revelada = i.reveladas.includes(i.paso);
@@ -475,10 +547,73 @@ export function InteraccionProyector({ evento, width }: { evento: Evento; width:
   );
 }
 
+/** La ruleta en la pantalla grande: gira a la vez que los teléfonos, luego la pregunta y el puntaje. */
+function RuletaProyector({ evento, big, contados }: { evento: Evento; big: number; contados: string }) {
+  const i = evento.interaccion!;
+  const r = evento.resultados;
+  const giro = i.giro ?? 0;
+  const { parado, parar } = useParada(giro);
+  const q = i.preguntas?.[i.paso];
+  const revelada = i.reveladas.includes(i.paso);
+  const casilla = i.casillas?.[i.paso] ?? null;
+  const giros = Math.min(GIROS, i.preguntas?.length ?? 0);
+  const fin = revelada && giro >= giros;
+  const eq = r?.puntaje?.equipos ?? [0, 0];
+  const marcador =
+    i.modo === 'equipos'
+      ? `${NOMBRES_EQUIPOS[0]} ${eq[0].toLocaleString('es')} · ${NOMBRES_EQUIPOS[1]} ${eq[1].toLocaleString('es')}`
+      : `La iglesia: ${(r?.puntaje?.grupo ?? 0).toLocaleString('es')} puntos`;
+  const ganador = eq[0] === eq[1] ? null : eq[0] > eq[1] ? 0 : 1;
+  const verPregunta = !!q && parado && !fin;
+  const c = casilla !== null ? RULETA[casilla] : null;
+  return (
+    <View style={proy.box}>
+      <Text style={proy.kicker}>
+        RULETA DE PREGUNTAS{giro > 0 ? ` · GIRO ${giro} DE ${giros}` : ''}
+      </Text>
+      {fin ? (
+        <Text style={[proy.q, { fontSize: big, lineHeight: big * 1.22 }]}>
+          {i.modo === 'equipos' ? (ganador === null ? '¡Empate!' : `¡Ganó el ${NOMBRES_EQUIPOS[ganador]}!`) : `La iglesia sumó ${(r?.puntaje?.grupo ?? 0).toLocaleString('es')} puntos`}
+        </Text>
+      ) : verPregunta && q && c ? (
+        <>
+          <Text style={[proy.count, { marginTop: 10 }]}>
+            {CATEGORIAS.find((x) => x.id === c.categoria)?.nombre} · {NIVELES[c.nivel - 1]} · {c.puntos} puntos
+          </Text>
+          <Text style={[proy.q, { fontSize: big, lineHeight: big * 1.22 }]}>{q.texto}</Text>
+          <View style={{ gap: 12, marginTop: 22, width: '100%' }}>
+            {q.opciones.map((o, k) => {
+              const ok = revelada && q.correcta === k;
+              const votos = r?.votos?.[i.paso] ?? [];
+              return (
+                <View key={k} style={[proy.option, { borderColor: ok ? BIEN : '#3A3632', opacity: revelada && !ok ? 0.55 : 1 }]}>
+                  <Text style={[proy.letter, { color: ok ? BIEN : CALIDO }]}>{LETRAS[k]}</Text>
+                  <Text style={[proy.optText, { fontSize: Math.max(big * 0.5, 18) }]}>{o}</Text>
+                  {revelada && <Text style={[proy.votes, { color: ok ? BIEN : SUAVE }]}>{votos[k] ?? 0}</Text>}
+                </View>
+              );
+            })}
+          </View>
+        </>
+      ) : null}
+      {!fin && (!verPregunta || revelada) && (
+        <View style={{ marginTop: 18 }}>
+          <Rueda casilla={casilla} giro={giro} onParada={parar} size={verPregunta ? 220 : 380} />
+        </View>
+      )}
+      <Text style={proy.count}>{giro === 0 ? 'Prepárense: la ruleta está por girar' : verPregunta && !revelada ? contados : marcador}</Text>
+    </View>
+  );
+}
+
 /** Al terminar el repaso, fuegos en la pantalla grande. */
 export function useFuegosAlTerminar(evento: Evento | null) {
   const i = evento?.interaccion;
-  const fin = !!i && i.tipo === 'repaso' && i.paso === (i.preguntas?.length ?? 0) - 1 && i.reveladas.includes(i.paso);
+  const fin =
+    !!i &&
+    i.tipo === 'repaso' &&
+    i.reveladas.includes(i.paso) &&
+    (i.juego === 'ruleta' ? (i.giro ?? 0) >= Math.min(GIROS, i.preguntas?.length ?? 0) : i.paso === (i.preguntas?.length ?? 0) - 1);
   useEffect(() => {
     if (fin) lanzarConfeti('fuegos');
   }, [fin]);
@@ -497,6 +632,8 @@ const styles = StyleSheet.create({
   ideas: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 10 },
   idea: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
   repaso: { borderRadius: 16, padding: 14, marginTop: 22 },
+  modes: { flexDirection: 'row', gap: 6, marginTop: 10 },
+  mode: { flex: 1, borderWidth: 1.5, borderRadius: 12, padding: 9 },
   q: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderWidth: 1.5, borderRadius: 12, padding: 10 },
   check: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
 });

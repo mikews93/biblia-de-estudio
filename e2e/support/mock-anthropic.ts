@@ -143,6 +143,22 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
       cite: false,
     };
   }
+  // La ruleta: una pregunta por categoría y nivel; la correcta siempre es la B para poder jugarla en las pruebas.
+  if (first.includes('Prepara la ruleta de preguntas')) {
+    const mensaje = first.includes('de este mensaje');
+    const nombres: Record<string, string> = { texto: 'Lo que dice', sentido: 'Qué significa', tema: 'El tema', vida: 'Para la vida' };
+    return {
+      text: ['texto', 'sentido', 'tema', 'vida']
+        .flatMap((c) =>
+          [1, 2, 3].map(
+            (n) =>
+              `C: ${c}\nN: ${n}\nP: ${mensaje ? 'Del mensaje' : 'De Colosenses 3'}: ${nombres[c]}, nivel ${n}\nA) Opción falsa uno\nB) La respuesta fiel al texto\nC) Opción falsa dos\nD) Opción falsa tres\nR: B\nV: ${mensaje ? 'Lucas 15:20' : 'Colosenses 3:1'}`,
+          ),
+        )
+        .join('\n\n'),
+      cite: false,
+    };
+  }
   if (first.includes('«Dos verdades y una mentira»')) {
     return {
       text: [

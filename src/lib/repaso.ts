@@ -6,26 +6,37 @@
  * `correcta` es el índice de la opción buena (en «ordena» y «espada», 0: la respuesta se compara con `solucion`).
  * Antes de revelarse, el servidor manda `correcta` −1 y sin `cita` ni `solucion`.
  */
-export type PreguntaRepaso = { texto: string; opciones: string[]; correcta: number; cita: string | null; solucion?: string; versiculos?: number };
+export type PreguntaRepaso = {
+  texto: string;
+  opciones: string[];
+  correcta: number;
+  cita: string | null;
+  solucion?: string;
+  versiculos?: number;
+  /** Ruleta: la categoría de la pregunta (una de CATEGORIAS) y su dificultad, de 1 (fácil) a 3 (difícil). */
+  categoria?: Categoria;
+  nivel?: number;
+};
 
 /**
  * Los juegos del estudio en grupo. «repaso», «quien» y «mentira» son de opción múltiple (la IA los prepara una vez por
  * capítulo); «ordena» (las palabras de un versículo revueltas) y «espada» (encontrar el versículo de una frase) se
  * arman en el teléfono con el texto del capítulo.
  */
-export type Juego = 'repaso' | 'quien' | 'mentira' | 'ordena' | 'espada';
+export type Juego = 'repaso' | 'quien' | 'mentira' | 'ordena' | 'espada' | 'ruleta';
 export const JUEGOS: { id: Juego; nombre: string; kicker: string; detalle: string }[] = [
   { id: 'repaso', nombre: 'Repaso relámpago', kicker: 'REPASO RELÁMPAGO', detalle: 'Preguntas de opción múltiple sobre el capítulo' },
   { id: 'quien', nombre: '¿Quién lo dijo?', kicker: '¿QUIÉN LO DIJO?', detalle: 'Una frase del capítulo y cuatro personajes' },
   { id: 'mentira', nombre: 'Dos verdades y una mentira', kicker: 'DOS VERDADES Y UNA MENTIRA', detalle: 'Tres frases sobre el capítulo: ¿cuál es falsa?' },
   { id: 'ordena', nombre: 'Ordena el versículo', kicker: 'ORDENA EL VERSÍCULO', detalle: 'Las palabras revueltas: tócalas en orden' },
   { id: 'espada', nombre: 'Espada bíblica', kicker: 'ESPADA BÍBLICA', detalle: 'Una frase: el más rápido en encontrar el versículo' },
+  { id: 'ruleta', nombre: 'Ruleta de preguntas', kicker: 'RULETA DE PREGUNTAS', detalle: 'Gira la ruleta: la categoría y los puntos los decide ella' },
 ];
 /** Los que se responden escribiendo o tocando otra cosa que una opción: el servidor compara con `solucion`. */
 export const conSolucion = (j: Juego | undefined) => j === 'ordena' || j === 'espada';
 
 export const LETRAS = ['A', 'B', 'C', 'D'];
-export const MAX_PREGUNTAS = 8;
+export const MAX_PREGUNTAS = 12;
 
 /** Lee el formato «P: … / A) … / R: B / V: cita». Se salta las preguntas mal formadas. */
 export function parseRepaso(text: string): PreguntaRepaso[] {
@@ -40,9 +51,19 @@ export function parseRepaso(text: string): PreguntaRepaso[] {
       );
       const letra = lines.find((l) => /^R:/i.test(l))?.replace(/^R:\s*/i, '').trim()[0]?.toUpperCase();
       const cita = lines.find((l) => /^V:/i.test(l))?.replace(/^V:\s*/i, '') || null;
+      const cat = lines.find((l) => /^C:/i.test(l))?.replace(/^C:\s*/i, '').trim().toLowerCase();
+      const categoria = CATEGORIAS.find((c) => c.id === cat || c.nombre.toLowerCase() === cat)?.id;
+      const nivel = Number(lines.find((l) => /^N:/i.test(l))?.replace(/^N:\s*/i, '').trim()[0]);
       const correcta = letra ? LETRAS.indexOf(letra) : -1;
       if (!texto || opciones.some((o) => !o) || correcta < 0 || correcta >= opciones.length) return null;
-      return { texto, opciones: opciones as string[], correcta, cita };
+      return {
+        texto,
+        opciones: opciones as string[],
+        correcta,
+        cita,
+        ...(categoria && { categoria }),
+        ...(nivel >= 1 && nivel <= 3 && { nivel }),
+      };
     })
     .filter((q): q is PreguntaRepaso => q !== null)
     .slice(0, MAX_PREGUNTAS);
@@ -149,3 +170,89 @@ export function preguntasEspada(nombre: string, capitulo: number, versos: [numbe
 
 /** Cómo compara el servidor la respuesta de «ordena» y «espada» con la solución. */
 export const mismaRespuesta = (a: string, b: string) => limpio(a).toLowerCase() === limpio(b).toLowerCase();
+
+// Ruleta de preguntas: la ruleta cae en una casilla (una categoría y un nivel) y sale la pregunta de esa casilla. Las
+// difíciles valen más. Las categorías invitan a pensar el tema, no solo a recordar quién dijo qué.
+
+export type Categoria = 'texto' | 'sentido' | 'tema' | 'vida';
+export const CATEGORIAS: { id: Categoria; nombre: string; detalle: string }[] = [
+  { id: 'texto', nombre: 'Lo que dice', detalle: 'qué pasa, quién, en qué orden' },
+  { id: 'sentido', nombre: 'Qué significa', detalle: 'por qué lo dice, qué palabra o imagen usa y qué quiere decir' },
+  { id: 'tema', nombre: 'El tema', detalle: 'la idea central y lo que enseña de Dios' },
+  { id: 'vida', nombre: 'Para la vida', detalle: 'qué respuesta vive mejor esta enseñanza en una situación concreta' },
+];
+export const NIVELES = ['Fácil', 'Media', 'Difícil'];
+export const PUNTOS_NIVEL = [100, 200, 300];
+/** Las doce casillas en orden en el círculo: cada categoría en sus tres niveles, sin dos vecinas iguales. */
+export const RULETA: { categoria: Categoria; nivel: number; puntos: number }[] = (
+  [
+    ['texto', 1],
+    ['sentido', 2],
+    ['tema', 3],
+    ['vida', 1],
+    ['texto', 2],
+    ['sentido', 3],
+    ['tema', 1],
+    ['vida', 2],
+    ['texto', 3],
+    ['sentido', 1],
+    ['tema', 2],
+    ['vida', 3],
+  ] as [Categoria, number][]
+).map(([categoria, nivel]) => ({ categoria, nivel, puntos: PUNTOS_NIVEL[nivel - 1] }));
+/** Cuántas vueltas tiene una ruleta: luego se ve quién ganó. */
+export const GIROS = 6;
+
+/**
+ * Un giro: una casilla al azar entre las que todavía tienen pregunta, y esa pregunta (la de su categoría y nivel; si
+ * la IA no hizo esa, otra de la categoría o cualquiera sin usar). Devuelve null si ya se usaron todas.
+ */
+export function girarRuleta(preguntas: PreguntaRepaso[], usadas: number[], azar = Math.random) {
+  const libres = preguntas.map((_, i) => i).filter((i) => !usadas.includes(i));
+  if (!libres.length) return null;
+  const opciones = RULETA.map((c, casilla) => {
+    const paso =
+      libres.find((i) => preguntas[i].categoria === c.categoria && preguntas[i].nivel === c.nivel) ??
+      libres.find((i) => preguntas[i].categoria === c.categoria && !preguntas[i].nivel);
+    return paso === undefined ? null : { casilla, paso };
+  }).filter((x): x is { casilla: number; paso: number } => x !== null);
+  if (opciones.length) return opciones[Math.floor(azar() * opciones.length)];
+  // Preguntas sin categoría: cualquier casilla, cualquier pregunta libre.
+  return { casilla: Math.floor(azar() * RULETA.length), paso: libres[Math.floor(azar() * libres.length)] };
+}
+
+/** Los puntos que deja una pregunta a un conjunto de personas: el valor de la casilla por la parte que acertó. */
+const parte = (valor: number, bien: number, total: number) => (total ? Math.round(((valor * bien) / total) / 10) * 10 : 0);
+
+/**
+ * El puntaje de la ruleta en las preguntas reveladas. `grupo`: lo que suma todo el grupo junto. `equipos`: lo de
+ * cada equipo, por la parte de su gente que acertó (así un equipo más grande no gana solo por ser más). `personas`:
+ * a cada uno, el valor de la casilla de cada pregunta que acertó.
+ */
+export function puntajeRuleta(
+  respuestas: { usuario: string; paso: number; opcion: number; equipo?: number | null }[],
+  preguntas: PreguntaRepaso[],
+  casillas: Record<number, number>,
+  reveladas: number[],
+) {
+  const out = { grupo: 0, equipos: [0, 0], personas: {} as Record<string, number> };
+  for (const p of reveladas) {
+    const valor = RULETA[casillas[p]]?.puntos ?? 0;
+    const correcta = preguntas[p]?.correcta;
+    const rs = respuestas.filter((r) => r.paso === p);
+    out.grupo += parte(valor, rs.filter((r) => r.opcion === correcta).length, rs.length);
+    for (const e of [0, 1]) {
+      const de = rs.filter((r) => r.equipo === e);
+      out.equipos[e] += parte(valor, de.filter((r) => r.opcion === correcta).length, de.length);
+    }
+    for (const r of rs) out.personas[r.usuario] = (out.personas[r.usuario] ?? 0) + (r.opcion === correcta ? valor : 0);
+  }
+  return out;
+}
+
+/** En un evento no hay cuentas: el equipo sale del identificador del teléfono, siempre el mismo y parejo. */
+export function equipoDe(participante: string) {
+  let h = 0;
+  for (const ch of participante) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h % 2;
+}

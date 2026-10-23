@@ -256,3 +256,42 @@ test('juegos del capítulo: dos verdades y una mentira, ordena el versículo y e
   await expect(pb.getByText(/de 1 lo lograron|¡El grupo acertó!/)).toBeVisible();
 });
 
+test('ruleta de preguntas por equipos: girar, responder, revelar y ver qué equipo ganó', async ({ browser, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Ruleta');
+  const beto = await cuentaNueva(request, 'Beto Ruleta');
+  const res = await request.post('/api/vivo', {
+    headers: { Authorization: `Bearer ${ana.llave}` },
+    data: { accion: 'crearSala', libro: 'col', capitulo: 3 },
+  });
+  const { sala } = await res.json();
+  const pa = await navegador(browser, ana);
+  await pa.goto(`/vivo/${sala.codigo}`);
+  await expect(pa.getByText('Tú guías la lectura')).toBeVisible();
+  const pb = await navegador(browser, beto);
+  await pb.goto(`/vivo/${sala.codigo}`);
+  await expect(pb.getByText('Guía: Ana Ruleta')).toBeVisible();
+
+  await pa.getByRole('button', { name: 'Mostrar' }).click();
+  await pa.getByRole('radio', { name: 'Ruleta de preguntas' }).click();
+  await pa.getByRole('radio', { name: 'Por equipos' }).click();
+  await pa.getByRole('button', { name: 'Empezar: Ruleta de preguntas' }).click();
+  await expect(pb.getByText('RULETA DE PREGUNTAS')).toBeVisible();
+  await expect(pb.getByText(/Espera a que se gire/)).toBeVisible();
+
+  for (let giro = 1; giro <= 6; giro++) {
+    await pa.getByRole('button', { name: giro === 1 ? 'Girar la ruleta' : 'Girar otra vez' }).click();
+    // La pregunta aparece cuando la ruleta para, con su categoría, nivel y puntos.
+    // (la pregunta anterior sigue a la vista con su respuesta hasta que la ruleta para en la nueva)
+    const b = pb.getByRole('button', { name: 'B: La respuesta fiel al texto', exact: true });
+    await expect(b).toBeVisible({ timeout: 10_000 });
+    await expect(pb.getByText(/^\d00 pts$/)).toBeVisible();
+    await b.click();
+    await expect(pa.getByText('¡Respondieron todos!')).toBeVisible();
+    await pa.getByRole('button', { name: 'Revelar la respuesta' }).click();
+    await expect(pb.getByText('Equipo Lámpara (el tuyo)')).toBeVisible();
+  }
+  await expect(pb.getByText('RESULTADO')).toBeVisible();
+  await expect(pb.getByText('¡Ganó el Equipo Lámpara!')).toBeVisible();
+  await expect(pa.getByRole('button', { name: 'Girar otra vez' })).toHaveCount(0);
+});
+

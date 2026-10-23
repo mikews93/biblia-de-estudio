@@ -36,6 +36,8 @@ export type Tarjeta = {
   desdes?: (string | null)[];
   modo?: ModoRepaso;
   juego?: Juego;
+  casillas?: Record<string, number>;
+  giro?: number;
   equipos?: Record<string, number>;
 };
 export type EstadoSala = { libro: string; capitulo: number; foco: number | null; tarjeta: Tarjeta | null; recorrido: string[] };
@@ -51,6 +53,8 @@ export type Respuestas = {
   /** Repaso: cuántos eligieron cada opción en las preguntas reveladas, y el marcador si se juega con puntos o equipos. */
   votos?: Record<number, number[]>;
   marcador?: { usuario: string; nombre: string; puntos: number; aciertos: number; equipo?: number | null }[];
+  /** Ruleta: lo que suma todo el grupo y cada equipo. */
+  puntaje?: { grupo: number; equipos: number[] };
 };
 export type Sala = {
   sala: {

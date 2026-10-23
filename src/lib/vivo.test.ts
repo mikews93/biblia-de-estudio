@@ -151,3 +151,38 @@ describe('juegos del capítulo', () => {
   });
 });
 
+describe('ruleta de preguntas', () => {
+  it('lee la categoría y el nivel de cada pregunta', async () => {
+    const { parseRepaso } = await import('./repaso');
+    const [q] = parseRepaso('C: tema\nN: 3\nP: ¿Qué enseña?\nA) a\nB) b\nC) c\nD) d\nR: B\nV: Col 3:1');
+    expect(q).toMatchObject({ categoria: 'tema', nivel: 3, correcta: 1, opciones: ['a', 'b', 'c', 'd'] });
+  });
+
+  it('cada giro cae en una casilla con su pregunta, sin repetir', async () => {
+    const { girarRuleta, RULETA } = await import('./repaso');
+    const preguntas = RULETA.map((c) => ({ texto: `${c.categoria}${c.nivel}`, opciones: ['a', 'b', 'c', 'd'], correcta: 0, cita: null, categoria: c.categoria, nivel: c.nivel }));
+    const usadas: number[] = [];
+    let k = 0;
+    const azar = () => ((k++ * 7) % 10) / 10;
+    for (let n = 0; n < RULETA.length; n++) {
+      const g = girarRuleta(preguntas, usadas, azar)!;
+      expect(RULETA[g.casilla]).toMatchObject({ categoria: preguntas[g.paso].categoria, nivel: preguntas[g.paso].nivel });
+      expect(usadas).not.toContain(g.paso);
+      usadas.push(g.paso);
+    }
+    expect(girarRuleta(preguntas, usadas)).toBeNull();
+  });
+
+  it('el puntaje: el valor de la casilla por la parte que acertó, también por equipos', async () => {
+    const { puntajeRuleta, RULETA } = await import('./repaso');
+    const casilla = RULETA.findIndex((c) => c.puntos === 300);
+    const q = { texto: 'x', opciones: ['a', 'b', 'c', 'd'], correcta: 1, cita: null };
+    const r = (usuario: string, opcion: number, equipo: number) => ({ usuario, paso: 0, opcion, equipo });
+    const p = puntajeRuleta([r('a', 1, 0), r('b', 1, 0), r('c', 0, 1), r('d', 1, 1)], [q], { 0: casilla }, [0]);
+    expect(p.grupo).toBe(230);
+    expect(p.equipos).toEqual([300, 150]);
+    expect(p.personas).toEqual({ a: 300, b: 300, c: 0, d: 300 });
+    expect(puntajeRuleta([r('a', 1, 0)], [q], { 0: casilla }, []).grupo).toBe(0);
+  });
+});
+
