@@ -97,3 +97,16 @@ describe('estudio en grupo', () => {
     ]);
   });
 });
+
+describe('repaso relámpago', () => {
+  it('lee las preguntas de opción múltiple y se salta las mal formadas', async () => {
+    const { parseRepaso, acertoElGrupo } = await import('./repaso');
+    const qs = parseRepaso(
+      'P: ¿Dónde está Cristo?\nA) En el templo\nB) A la diestra de Dios\nC) En el monte\nD) Junto al mar\nR: B\nV: Colosenses 3:1\n\nP: Sin opciones\nR: A',
+    );
+    expect(qs).toEqual([{ texto: '¿Dónde está Cristo?', opciones: ['En el templo', 'A la diestra de Dios', 'En el monte', 'Junto al mar'], correcta: 1, cita: 'Colosenses 3:1' }]);
+    expect(acertoElGrupo([0, 3, 1, 0], 1)).toBe(true);
+    expect(acertoElGrupo([1, 1, 0, 0], 1)).toBe(false);
+    expect(acertoElGrupo([0, 0, 0, 0], 1)).toBe(false);
+  });
+});

@@ -65,7 +65,7 @@ const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const MAX_ROUNDS = 6;
 
 type Turn = { role: 'user' | 'assistant'; text: string };
-type Herramienta = 'podcast' | 'tarjetas' | 'mapa';
+type Herramienta = 'podcast' | 'tarjetas' | 'mapa' | 'repaso';
 /** Lo que se guarda en herramientas_ia: las herramientas de un capítulo y las de una palabra (con capítulo 0). */
 type Guardada = Herramienta | 'palabra' | 'palabra-podcast';
 type Body = {
@@ -248,6 +248,25 @@ Reglas:
   }cómo se relaciona con alguno de los pasajes de las referencias cruzadas; y 2 o 3 tarjetas de completar un versículo importante, con la pregunta «Completa: …» y la parte que falta como respuesta, copiada exacta de la RV1909.
 - Ordénalas como aparecen en el capítulo.
 - Nada de preguntas de opinión ni de sí o no.`,
+
+  // El repaso relámpago del estudio en grupo (src/lib/repaso.ts lee este formato).
+  repaso: (book, chapter, hasGreek) => `Prepara un repaso relámpago de ${book.name} ${chapter} para un grupo que acaba de estudiarlo junto: 5 preguntas de opción múltiple que todos responden a la vez en su teléfono.
+
+Formato estricto, sin títulos ni introducción, con una línea en blanco entre preguntas:
+P: la pregunta (una sola, concreta, de máximo 20 palabras)
+A) opción
+B) opción
+C) opción
+D) opción
+R: la letra de la opción correcta
+V: la cita que la respalda (por ejemplo «Juan 3:16»)
+
+Reglas:
+- Cada pregunta se responde con lo que dice el capítulo; una sola opción es correcta y las otras son creíbles pero el texto las descarta.
+- Mezcla: qué pasa y quién lo dice; ideas centrales; ${hasGreek ? 'una palabra clave del griego; ' : ''}y una de completar un versículo importante, copiado exacto de la RV1909.
+- Opciones cortas (de 1 a 12 palabras) y parecidas en largo; que la correcta no sea siempre la misma letra.
+- Nada de preguntas de opinión, de sí o no, ni de «todas las anteriores».
+- Ordénalas como aparecen en el capítulo.`,
 
   mapa: (book, chapter) => `Haz el mapa mental de ${book.name} ${chapter}.
 

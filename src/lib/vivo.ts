@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { sessionKey } from './comunidad';
+import type { ModoRepaso, PreguntaRepaso } from './repaso';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const POLL_MS = 1500;
@@ -16,7 +17,7 @@ const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export type Fuente = { n: number; label: string; ref?: string; url?: string };
 export type Tarjeta = {
   /** «estudio»: una sección del estudio o su respuesta a una duda; «ronda»: una pregunta que todos responden en secreto. */
-  tipo: 'dinamica' | 'pregunta' | 'parte' | 'estudio' | 'ronda';
+  tipo: 'dinamica' | 'pregunta' | 'parte' | 'estudio' | 'ronda' | 'repaso';
   id?: string;
   titulo: string;
   texto: string | null;
@@ -29,6 +30,12 @@ export type Tarjeta = {
   pregunta?: string | null;
   anonima?: boolean;
   revelada?: boolean;
+  /** Repaso: «correcta» es -1 hasta que se revela cada pregunta. */
+  preguntas?: PreguntaRepaso[];
+  reveladas?: number[];
+  desdes?: (string | null)[];
+  modo?: ModoRepaso;
+  equipos?: Record<string, number>;
 };
 export type EstadoSala = { libro: string; capitulo: number; foco: number | null; tarjeta: Tarjeta | null; recorrido: string[] };
 export type Persona = { id: string; nombre: string; foto: string | null };
@@ -36,7 +43,14 @@ export type Toque = { usuario: string; nombre: string; versiculo: number };
 /** Una duda del tablero de la sala; «apoyos» son quienes tocaron «yo también». */
 export type PreguntaSala = { id: string; texto: string; autor: string; nombre: string; apoyos: string[]; respondida: boolean };
 /** La ronda en pantalla: quiénes respondieron y, ya reveladas, las respuestas (sin nombre si es anónima). */
-export type Respuestas = { ronda: string; quienes: string[]; lista: { texto: string; usuario?: string; nombre?: string }[] | null };
+export type Respuestas = {
+  ronda: string;
+  quienes: string[];
+  lista: { texto: string; usuario?: string; nombre?: string }[] | null;
+  /** Repaso: cuántos eligieron cada opción en las preguntas reveladas, y el marcador si se juega con puntos o equipos. */
+  votos?: Record<number, number[]>;
+  marcador?: { usuario: string; nombre: string; puntos: number; aciertos: number; equipo?: number | null }[];
+};
 export type Sala = {
   sala: {
     codigo: string;

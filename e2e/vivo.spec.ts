@@ -138,7 +138,7 @@ test('estudio en grupo: secciones del estudio, respuestas en secreto y preguntas
   await pb.getByLabel('Tu respuesta').fill('Las preocupaciones del trabajo.');
   await pb.getByRole('button', { name: 'Enviar mi respuesta' }).click();
   await expect(pb.getByText('Tu respuesta está guardada')).toBeVisible();
-  await expect(pa.getByText('1 de 2 respondieron')).toBeVisible();
+  await expect(pa.getByText('¡Respondieron todos!')).toBeVisible();
   // Antes de revelar, nadie ve lo que escribió Beto.
   await expect(pa.getByText('Las preocupaciones del trabajo.')).toHaveCount(0);
   await pa.getByRole('button', { name: 'Revelar las respuestas' }).click();
@@ -156,4 +156,46 @@ test('estudio en grupo: secciones del estudio, respuestas en secreto y preguntas
   await expect(pb.getByText('EL ESTUDIO RESPONDE')).toBeVisible();
   await expect(pb.getByText('Respuesta simulada a «¿Qué significa estar escondido con Cristo?»', { exact: false })).toBeVisible();
   await expect(pb.getByRole('button', { name: 'Preguntas del grupo' })).toBeVisible();
+});
+
+test('repaso relámpago con puntos: responder a la vez, revelar y ver el podio', async ({ browser, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Repaso');
+  const beto = await cuentaNueva(request, 'Beto Repaso');
+  const res = await request.post('/api/vivo', {
+    headers: { Authorization: `Bearer ${ana.llave}` },
+    data: { accion: 'crearSala', libro: 'col', capitulo: 3 },
+  });
+  const { sala } = await res.json();
+  const pa = await navegador(browser, ana);
+  await pa.goto(`/vivo/${sala.codigo}`);
+  await expect(pa.getByText('Tú guías la lectura')).toBeVisible();
+  const pb = await navegador(browser, beto);
+  await pb.goto(`/vivo/${sala.codigo}`);
+  await expect(pb.getByText('Guía: Ana Repaso')).toBeVisible();
+
+  await pa.getByRole('button', { name: 'Mostrar' }).click();
+  await pa.getByRole('radio', { name: 'Con puntos' }).click();
+  await pa.getByRole('button', { name: 'Empezar el repaso' }).click();
+  await expect(pb.getByText('REPASO RELÁMPAGO')).toBeVisible();
+  await expect(pb.getByText('¿Dónde está sentado Cristo según el versículo 1?')).toBeVisible();
+
+  // Beto responde; la correcta no se ve hasta revelar.
+  await pb.getByRole('button', { name: /^B: A la diestra de Dios/ }).click();
+  await expect(pb.getByText('Elegiste la B. Espera a que se revele.')).toBeVisible();
+  await expect(pa.getByText('¡Respondieron todos!')).toBeVisible();
+  await expect(pa.getByRole('button', { name: /la correcta/ })).toHaveCount(0);
+  await pa.getByRole('button', { name: 'Revelar la respuesta' }).click();
+  await expect(pb.getByRole('button', { name: 'B: A la diestra de Dios, la correcta, tu respuesta' })).toBeVisible();
+  await expect(pb.getByText(/Llevas [\d.]+ puntos/)).toBeVisible();
+
+  // Las otras dos preguntas, y al final el podio.
+  for (const [opcion, texto] of [['C', 'Con Cristo en Dios'], ['A', 'De caridad']]) {
+    await pa.getByRole('button', { name: 'Siguiente pregunta' }).click();
+    await pb.getByRole('button', { name: new RegExp(`^${opcion}: ${texto}`) }).click();
+    await expect(pa.getByText('¡Respondieron todos!')).toBeVisible();
+    await pa.getByRole('button', { name: 'Revelar la respuesta' }).click();
+  }
+  await expect(pb.getByText('RESULTADO')).toBeVisible();
+  await expect(pb.getByText('¡Ganaste!')).toBeVisible();
+  await expect(pa.getByText('¡Ganó Beto!')).toBeVisible();
 });

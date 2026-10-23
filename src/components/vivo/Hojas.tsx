@@ -11,6 +11,7 @@ import { serif, useColors } from '@/lib/theme';
 import type { Persona, Sala } from '@/lib/vivo';
 
 import { AnonimaSwitch, EstudioTab, type TarjetaNueva } from './Estudio';
+import { LanzarRepaso } from './Repaso';
 import { Segmented, Sheet } from './piezas';
 
 /** Elegir libro y capítulo: primero el libro, luego la cuadrícula de capítulos. */
@@ -148,7 +149,12 @@ export function PantallaSheet({
         onChange={setTab}
       />
 
-      {tab === 'estudio' && <EstudioTab libro={libro} capitulo={capitulo} nombre={nombre} version={version} onPut={onPut} />}
+      {tab === 'estudio' && (
+        <>
+          <LanzarRepaso libro={libro} capitulo={capitulo} onPut={(preguntas, modo) => onPut({ tipo: 'repaso', preguntas, modo })} />
+          <EstudioTab libro={libro} capitulo={capitulo} nombre={nombre} version={version} onPut={onPut} />
+        </>
+      )}
 
       {tab === 'dinamicas' && (
         <>

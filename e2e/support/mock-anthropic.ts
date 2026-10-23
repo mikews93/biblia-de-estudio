@@ -133,6 +133,16 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
       cite: false,
     };
   }
+  if (first.includes('repaso relámpago')) {
+    return {
+      text: [
+        'P: ¿Dónde está sentado Cristo según el versículo 1?\nA) En el templo\nB) A la diestra de Dios\nC) En el monte\nD) Junto al mar\nR: B\nV: Colosenses 3:1',
+        'P: ¿Dónde está escondida nuestra vida?\nA) En la ley\nB) En la iglesia\nC) Con Cristo en Dios\nD) En el cielo nuevo\nR: C\nV: Colosenses 3:3',
+        'P: ¿De qué hay que vestirse sobre todas las cosas?\nA) De caridad\nB) De paciencia\nC) De gozo\nD) De sabiduría\nR: A\nV: Colosenses 3:14',
+      ].join('\n\n'),
+      cite: false,
+    };
+  }
   if (first.includes('Haz el mapa mental')) {
     return {
       text: '# El nuevo nacimiento y el amor de Dios\n- Jesús y Nicodemo (vv. 1-21)\n  - Hay que nacer otra vez (v. 3)\n  - Dios amó al mundo (v. 16)\n- Testimonio de Juan el Bautista (vv. 22-36)\n  - Él crece, yo mengüo (v. 30)',

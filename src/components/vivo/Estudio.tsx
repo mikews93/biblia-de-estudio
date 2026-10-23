@@ -2,7 +2,7 @@
 // las pantallas por secciones, el tablero de dudas del grupo (con «yo también») que se le preguntan al estudio,
 // y las rondas en las que cada uno responde en secreto hasta que quien guía revela las respuestas.
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
@@ -19,10 +19,13 @@ import {
   LockIcon,
   RefreshIcon,
   SparkIcon,
+  StarIcon,
   TalkIcon,
 } from '@/components/icons';
 import { Markdown } from '@/components/StudyText';
+import { lanzarConfeti } from '@/lib/confeti';
 import { parseRef } from '@/lib/data';
+import type { ModoRepaso, PreguntaRepaso } from '@/lib/repaso';
 import { type Source, type Turn, askStudy } from '@/lib/estudio';
 import { verseHref } from '@/lib/routes';
 import { isDark, serif, useColors } from '@/lib/theme';
@@ -223,12 +226,56 @@ function FuentesChips({ fuentes }: { fuentes: Fuente[] }) {
   );
 }
 
+// --- La meta del grupo: que respondan todos ---
+
+/**
+ * Cuántos respondieron de los que están, sin esperar a quien guía si no responde. Cuando responden todos, el
+ * grupo cumple su meta: confeti en cada teléfono, una sola vez por pregunta.
+ */
+export function useMetaGrupo(clave: string, presentes: Persona[], quienes: string[], guia: string) {
+  const esperados = presentes.filter((p) => p.id !== guia || quienes.includes(p.id));
+  const todos = quienes.length > 0 && esperados.length > 0 && esperados.every((p) => quienes.includes(p.id));
+  const celebrada = useRef<string | null>(null);
+  useEffect(() => {
+    if (todos && celebrada.current !== clave) {
+      celebrada.current = clave;
+      lanzarConfeti();
+    }
+  }, [todos, clave]);
+  return { esperados: Math.max(esperados.length, quienes.length), todos };
+}
+
+export function Progreso({ clave, presentes, quienes, guia }: { clave: string; presentes: Persona[]; quienes: string[]; guia: string }) {
+  const colors = useColors();
+  const { esperados, todos } = useMetaGrupo(clave, presentes, quienes, guia);
+  const answered = presentes.filter((p) => quienes.includes(p.id));
+  return (
+    <>
+      <View style={styles.progress}>
+        {answered.length > 0 && <Faces people={answered} size={22} />}
+        <Text style={{ color: todos ? colors.warm : colors.muted, fontSize: 13, fontWeight: todos ? '800' : '600', flex: 1 }} accessibilityLiveRegion="polite">
+          {quienes.length === 0
+            ? 'Nadie ha respondido todavía'
+            : todos
+              ? `¡Respondieron ${esperados === 2 ? 'los dos' : esperados > 2 ? `los ${esperados}` : 'todos'}!`
+              : `${quienes.length} de ${esperados} respondieron`}
+        </Text>
+        {todos && <StarIcon color={colors.warm} size={18} strokeWidth={2} />}
+      </View>
+      <View style={[styles.bar, { backgroundColor: colors.accentSoft }]}>
+        <View style={[styles.barFill, { backgroundColor: colors.warm, width: `${esperados ? Math.min(1, quienes.length / esperados) * 100 : 0}%` }]} />
+      </View>
+    </>
+  );
+}
+
 // --- Tarjeta: una pregunta que cada uno responde en secreto ---
 
 export function TarjetaRonda({
   tarjeta: t,
   respuestas,
   presentes,
+  guia,
   me,
   lead,
   onAnswer,
@@ -238,6 +285,8 @@ export function TarjetaRonda({
   tarjeta: Tarjeta;
   respuestas: Respuestas | null;
   presentes: Persona[];
+  /** Quien guía: no se le espera para la meta del grupo, pero si responde también cuenta. */
+  guia: string;
   me: string | null;
   lead: boolean;
   onAnswer: (texto: string) => Promise<boolean>;
@@ -252,9 +301,6 @@ export function TarjetaRonda({
   const [busy, setBusy] = useState(false);
   const quienes = useMemo(() => (respuestas && respuestas.ronda === t.id ? respuestas.quienes : []), [respuestas, t.id]);
   const lista = respuestas && respuestas.ronda === t.id ? respuestas.lista : null;
-  const answered = presentes.filter((p) => quienes.includes(p.id));
-  // Quien guía también responde, pero no se cuenta como alguien a quien esperar si no lo hace.
-  const total = Math.max(presentes.length, quienes.length);
   const mine = !!me && quienes.includes(me);
 
   const send = async () => {
@@ -378,31 +424,7 @@ export function TarjetaRonda({
               </Text>
             )}
 
-            <View style={styles.progress}>
-              {answered.length > 0 && <Faces people={answered} size={22} />}
-              <Text
-                style={{
-                  color: colors.muted,
-                  fontSize: 13,
-                  fontWeight: '600',
-                  flex: 1,
-                }}
-                accessibilityLiveRegion="polite"
-              >
-                {quienes.length === 0 ? 'Nadie ha respondido todavía' : `${quienes.length} de ${total} respondieron`}
-              </Text>
-            </View>
-            <View style={[styles.bar, { backgroundColor: colors.accentSoft }]}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    backgroundColor: colors.warm,
-                    width: `${total ? (quienes.length / total) * 100 : 0}%`,
-                  },
-                ]}
-              />
-            </View>
+            <Progreso clave={t.id ?? ''} presentes={presentes} quienes={quienes} guia={guia} />
             {lead && (
               <Button
                 label="Revelar las respuestas"
@@ -486,7 +508,8 @@ export function TarjetaRonda({
 
 export type TarjetaNueva =
   | { tipo: 'estudio'; titulo: string; texto: string; fuentes: Fuente[] }
-  | { tipo: 'ronda'; titulo: string; anonima: boolean };
+  | { tipo: 'ronda'; titulo: string; anonima: boolean }
+  | { tipo: 'repaso'; preguntas: PreguntaRepaso[]; modo: ModoRepaso };
 
 export function EstudioTab({
   libro,

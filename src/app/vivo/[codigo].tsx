@@ -8,6 +8,7 @@ import Appear from '@/components/Appear';
 import { Button } from '@/components/comunidad/ui';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon, OpenBookIcon, ShareIcon } from '@/components/icons';
 import { BotonPreguntas, PreguntasSheet, TarjetaEstudio, TarjetaRonda, preguntarAlEstudio } from '@/components/vivo/Estudio';
+import { TarjetaRepaso } from '@/components/vivo/Repaso';
 import { NuevaTarjeta, PantallaSheet, PasajeSheet, PersonasSheet } from '@/components/vivo/Hojas';
 import { Faces, LIVE_RED, LiveBadge, Sheet, vivoText } from '@/components/vivo/piezas';
 import TarjetaVivo from '@/components/vivo/TarjetaVivo';
@@ -66,6 +67,16 @@ export default function SalaEnVivo() {
     if (enSala) huella('celula', codigo);
   }, [enSala, codigo]);
 
+  // Mis sellos del estudio en grupo: tus preguntas que el grupo estudió y las que otros dos también tenían.
+  const preguntasSala = sala?.preguntas;
+  useEffect(() => {
+    for (const p of preguntasSala ?? []) {
+      if (p.autor !== me) continue;
+      if (p.respondida) huella('pregunta-estudio', p.id);
+      if (p.apoyos.length >= 2) huella('pregunta-apoyada', p.id);
+    }
+  }, [preguntasSala, me]);
+
   // El texto en la versión de cada quien (los números de versículo coinciden), con la RV1909 si no se puede.
   useEffect(() => {
     if (!libro || !capitulo) return;
@@ -119,6 +130,7 @@ export default function SalaEnVivo() {
       try {
         const next = await vivoApi<Sala>(accion, { sala: codigo, ...body });
         apply(next);
+        if (accion === 'responderSala' || accion === 'preguntarSala') huella('estudio-grupo', codigo);
         return next;
       } catch (e) {
         setPending(null);
@@ -176,7 +188,7 @@ export default function SalaEnVivo() {
 
   const put = async (t: NuevaTarjeta) => {
     setOpen(null);
-    const tarjeta = t.tipo === 'estudio' || t.tipo === 'ronda' ? t : { ...t, texto: t.texto?.slice(0, 1500) };
+    const tarjeta = t.tipo === 'estudio' || t.tipo === 'ronda' || t.tipo === 'repaso' ? t : { ...t, texto: t.texto?.slice(0, 1500) };
     await act('moverSala', { tarjeta });
   };
 
@@ -330,12 +342,27 @@ export default function SalaEnVivo() {
           />
         ) : tarjeta?.tipo === 'estudio' ? (
           <TarjetaEstudio key={tarjeta.id} tarjeta={tarjeta} lead={lead} onClose={() => act('moverSala', { tarjeta: null })} />
+        ) : tarjeta?.tipo === 'repaso' ? (
+          <TarjetaRepaso
+            key={tarjeta.id}
+            tarjeta={tarjeta}
+            respuestas={sala.respuestas}
+            presentes={sala.presentes}
+            guia={sala.sala.guia.id}
+            me={me}
+            lead={lead}
+            onAnswer={async (opcion) => !!(await act('responderSala', { ronda: `${tarjeta.id}:${tarjeta.paso}`, opcion }))}
+            onReveal={() => act('moverSala', { revelar: true })}
+            onNext={(paso) => act('moverSala', { paso })}
+            onClose={() => act('moverSala', { tarjeta: null })}
+          />
         ) : tarjeta?.tipo === 'ronda' ? (
           <TarjetaRonda
             key={tarjeta.id}
             tarjeta={tarjeta}
             respuestas={sala.respuestas}
             presentes={sala.presentes}
+            guia={sala.sala.guia.id}
             me={me}
             lead={lead}
             onAnswer={async (texto) => !!(await act('responderSala', { ronda: tarjeta.id, texto }))}
