@@ -1,7 +1,7 @@
 import { Share } from 'react-native';
 import { describe, expect, it, vi } from 'vitest';
 
-import { imageFileName, shareVerse, verseFontSize, verseUrl } from './compartir';
+import { imageFileName, shareMessage, shareVerse, verseFontSize, verseUrl } from './compartir';
 
 const v = { book: '1jn', chapter: 4, verse: 8, text: 'Dios es amor.', reference: '1 Juan 4:8', version: 'RV1909' };
 
@@ -15,6 +15,12 @@ describe('compartir un versículo', () => {
     expect(vi.mocked(Share.share)).toHaveBeenCalledWith({
       message: '«Dios es amor.» 1 Juan 4:8 (RV1909)\n\nhttps://biblia.migueblanco.com/1-juan/4/8',
     });
+  });
+
+  it('las invitaciones llevan el enlace una sola vez (sin `url` aparte)', async () => {
+    vi.mocked(Share.share).mockClear();
+    await shareMessage('Únete aquí: https://biblia.migueblanco.com/g/ABC');
+    expect(vi.mocked(Share.share)).toHaveBeenCalledWith({ message: 'Únete aquí: https://biblia.migueblanco.com/g/ABC' });
   });
 
   it('nombre de archivo de la imagen sin espacios ni dos puntos, con acentos', () => {

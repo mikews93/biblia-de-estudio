@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { CheckIcon, LockIcon, PrayIcon } from '@/components/icons';
@@ -9,6 +9,7 @@ import Trenza from '@/components/pareja/Trenza';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, Card, Chips, Field, SectionTitle, text } from '@/components/comunidad/ui';
+import { shareMessage } from '@/lib/compartir';
 import { useAccount } from '@/lib/comunidad';
 import { DIAS_SEMANA } from '@/lib/pareja';
 import {
@@ -190,7 +191,7 @@ function Esperando({ pareja, colors }: { pareja: Pareja; colors: Colors }) {
           </Text>
           <View style={styles.row}>
             <Button label={copied ? 'Enlace copiado' : 'Copiar enlace'} kind="outline" onPress={copy} style={{ flex: 1 }} />
-            {canShare && <Button label="Compartir" onPress={() => Share.share({ message, url }).catch(() => {})} style={{ flex: 1 }} />}
+            {canShare && <Button label="Compartir" onPress={() => shareMessage(message)} style={{ flex: 1 }} />}
           </View>
         </Card>
       </Appear>
