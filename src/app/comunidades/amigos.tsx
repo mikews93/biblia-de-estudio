@@ -1,10 +1,11 @@
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import Welcome from '@/components/comunidad/Welcome';
 import { Avatar, Button, Card, ErrorText, Field, SectionTitle, text, useAction } from '@/components/comunidad/ui';
+import { shareMessage } from '@/lib/compartir';
 import { useAccount } from '@/lib/comunidad';
 import { PersonaBreve, Red, answerFriend, askFriend, friendUrl, network, removeFriend, setShareReadings, unblock } from '@/lib/social';
 import { useColors } from '@/lib/theme';
@@ -107,7 +108,7 @@ export default function Amigos() {
             </Text>
             <View style={styles.buttons}>
               <Button label={copied ? 'Enlace copiado' : 'Copiar enlace'} kind="outline" onPress={copy} style={{ flex: 1 }} />
-              {canShare && <Button label="Compartir" onPress={() => Share.share({ message, url }).catch(() => {})} style={{ flex: 1 }} />}
+              {canShare && <Button label="Compartir" onPress={() => shareMessage(message)} style={{ flex: 1 }} />}
             </View>
           </Card>
 

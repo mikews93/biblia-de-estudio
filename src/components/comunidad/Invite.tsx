@@ -1,7 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
-import { Platform, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
+import { shareMessage } from '@/lib/compartir';
 import { inviteUrl } from '@/lib/comunidad';
 import { useColors } from '@/lib/theme';
 
@@ -35,7 +36,7 @@ export default function Invite({ name, code, highlight }: { name: string; code: 
       <View style={styles.row}>
         <Button label={copied ? 'Enlace copiado' : 'Copiar enlace'} kind="outline" onPress={copy} style={{ flex: 1 }} />
         {canShare && (
-          <Button label="Compartir" onPress={() => Share.share({ message, url }).catch(() => {})} style={{ flex: 1 }} />
+          <Button label="Compartir" onPress={() => shareMessage(message)} style={{ flex: 1 }} />
         )}
       </View>
     </Card>

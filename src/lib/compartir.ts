@@ -1,7 +1,7 @@
 // Compartir un versículo: como texto con enlace, o como imagen para redes (cuadrada o de historia).
 // En web la imagen se dibuja en un canvas; en el teléfono VerseImage captura su vista previa.
 
-import { Platform, Share } from 'react-native';
+import { Share } from 'react-native';
 
 import { verseHref } from './routes';
 
@@ -35,10 +35,17 @@ export const verseUrl = (v: VerseToShare) => `${SITE}${verseHref(v.book, v.chapt
 
 const caption = (v: VerseToShare) => `${v.reference}${v.version ? ` (${v.version})` : ''}`;
 
+/**
+ * Comparte un texto que ya lleva su enlace dentro. No se pasa `url` aparte: el navegador (y iOS) lo
+ * añaden al final del texto, y WhatsApp y otras apps mostraban el enlace dos veces.
+ */
+export function shareMessage(message: string) {
+  return Share.share({ message }).catch(() => {});
+}
+
 /** Comparte el versículo como texto con su enlace. */
 export function shareVerse(v: VerseToShare) {
-  const message = `«${v.text}» ${caption(v)}\n\n${verseUrl(v)}`;
-  return Share.share(Platform.OS === 'ios' ? { message, url: verseUrl(v) } : { message }).catch(() => {});
+  return shareMessage(`«${v.text}» ${caption(v)}\n\n${verseUrl(v)}`);
 }
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {

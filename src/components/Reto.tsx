@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
-import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { CheckIcon, ChevronRightIcon, MoonIcon, PeopleIcon, StarIcon } from '@/components/icons';
@@ -9,6 +9,7 @@ import { readingsLabel, shortDate } from '@/components/PlanCard';
 import PlanIcon from '@/components/PlanIcon';
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, Field, IconText, SectionTitle, text } from '@/components/comunidad/ui';
+import { shareMessage } from '@/lib/compartir';
 import { useAccount } from '@/lib/comunidad';
 import { Book } from '@/lib/data';
 import { useAllHighlights } from '@/lib/highlights';
@@ -570,7 +571,7 @@ function Company({
   const message = `Te invito a hacer conmigo el reto «${def.title}»: un capítulo al día y una pregunta para pensar. ${url}`;
   const canShare = Platform.OS !== 'web' || (typeof navigator !== 'undefined' && 'share' in navigator);
   const invite = async () => {
-    if (canShare) return Share.share({ message, url }).catch(() => {});
+    if (canShare) return shareMessage(message);
     await Clipboard.setStringAsync(message);
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);

@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
@@ -8,6 +8,7 @@ import { confirm } from '@/components/comunidad/confirm';
 import { Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { ChurchIcon, ShareIcon } from '@/components/icons';
 import TarjetaIglesia from '@/components/iglesia/TarjetaIglesia';
+import { shareMessage } from '@/lib/compartir';
 import { useAccount } from '@/lib/comunidad';
 import { IglesiaPublica, enlaceIglesia, miIglesia, salirIglesia } from '@/lib/iglesias';
 import { HAY_SOSTENER } from '@/lib/sostener';
@@ -43,7 +44,7 @@ export default function MiIglesia() {
       navigator.clipboard?.writeText(message);
       return;
     }
-    Share.share({ message, url }).catch(() => {});
+    shareMessage(message);
   };
   const salir = async () => {
     if (!(await confirm('Salir de tu iglesia', 'Vuelves a la lámpara de siempre. Puedes entrar de nuevo con el código cuando quieras.', 'Salir'))) return;
