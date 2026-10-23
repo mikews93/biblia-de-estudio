@@ -163,6 +163,18 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
     return { text: parrafos.join('\n\n'), cite: false, slow: true };
   }
   if (followUp) return { text: `Respuesta simulada a «${followUp}».`, cite: true };
+  // El estudio Profundo de Colosenses 3 con sus secciones, para el estudio en grupo de la lectura en vivo.
+  if (first.includes('## Cómo avanza') && first.includes('Colosenses 3')) {
+    return {
+      text: [
+        '## Panorama\n\nPablo pasa de lo que Cristo hizo a cómo vive quien resucitó con él: «buscad las cosas de arriba».',
+        '## Cómo avanza\n\n- Vv. 1-4: la vida escondida con Cristo.\n- Vv. 5-17: lo que se deja y lo que se viste.\n- Vv. 18-25: la casa.',
+        '## Palabras del griego\n\n**Zēteite** («buscad») está en presente: es una búsqueda que sigue cada día.',
+        '## Para aplicar\n\n- ¿Qué cosa «de la tierra» ocupa hoy más tu mente que Cristo?\n- ¿Con quién del grupo necesitas «soportaros y perdonaros»?',
+      ].join('\n\n'),
+      cite: true,
+    };
+  }
   return { text: 'Estudio simulado del pasaje: Dios ama al mundo y da a su Hijo.', cite: true };
 }
 

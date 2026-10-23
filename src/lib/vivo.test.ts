@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { type Sala, TONOS, cleanCode, newest, secondsLeft, spacedCode, toneOf, touchesByVerse } from './vivo';
+import {
+  type PreguntaSala,
+  type Sala,
+  TONOS,
+  cleanCode,
+  newest,
+  ordenPreguntas,
+  preguntasDe,
+  secondsLeft,
+  seccionesDelEstudio,
+  spacedCode,
+  toneOf,
+  touchesByVerse,
+} from './vivo';
 
 const sala = (version: number) => ({ version }) as Sala;
 
@@ -41,5 +54,46 @@ describe('lectura en vivo', () => {
     ]);
     expect(map.get(16)?.map((t) => t.nombre)).toEqual(['Ana', 'Beto']);
     expect(map.get(3)).toHaveLength(1);
+  });
+});
+
+describe('estudio en grupo', () => {
+  const estudio = [
+    'Intro sin título.',
+    '## Panorama\n\nPablo escribe desde la cárcel ⟦1⟧.',
+    '## Palabras del griego: **zēteite** está en presente ⟦2⟧.',
+    '## Para aplicar\n\n- ¿Qué buscas tú cada día? ⟦3⟧\n- **¿Con quién** necesitas perdonar?\n- Una idea que no es pregunta.',
+  ].join('\n\n');
+  const fuentes = [1, 2, 3, 4].map((n) => ({ n, label: `Fuente ${n}` }));
+
+  it('parte el estudio Profundo en sus secciones, con las fuentes que cita cada una', () => {
+    const s = seccionesDelEstudio(estudio, fuentes);
+    expect(s.map((x) => x.titulo)).toEqual(['Panorama', 'Palabras del griego', 'Para aplicar']);
+    expect(s[0].texto).toBe('Pablo escribe desde la cárcel ⟦1⟧.');
+    expect(s[0].fuentes.map((f) => f.n)).toEqual([1]);
+    // El texto en la misma línea del título («## Título: texto») queda como texto de la sección.
+    expect(s[1].texto).toBe('**zēteite** está en presente ⟦2⟧.');
+  });
+
+  it('saca las preguntas de «Para aplicar» sin citas ni negritas', () => {
+    const aplicar = seccionesDelEstudio(estudio)[2];
+    expect(preguntasDe(aplicar.texto)).toEqual(['¿Qué buscas tú cada día?', '¿Con quién necesitas perdonar?']);
+  });
+
+  it('ordena el tablero: primero las que esperan y las más apoyadas', () => {
+    const p = (id: string, apoyos: number, respondida = false): PreguntaSala => ({
+      id,
+      texto: id,
+      autor: 'a',
+      nombre: 'Ana',
+      apoyos: Array.from({ length: apoyos }, (_, i) => `u${i}`),
+      respondida,
+    });
+    expect(ordenPreguntas([p('vista', 5, true), p('una', 1), p('tres', 3), p('otra', 1)]).map((x) => x.id)).toEqual([
+      'tres',
+      'una',
+      'otra',
+      'vista',
+    ]);
   });
 });

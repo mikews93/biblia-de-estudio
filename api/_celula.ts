@@ -9,8 +9,13 @@
 // sin caché; cada cambio sube `version`, y la app descarta cualquier respuesta con una versión más vieja.
 //
 // Las cuentas, grupos y miembros son los de api/comunidades.ts (la misma base de Neon).
+//
+// Estudio en grupo: quien guía manda a todas las pantallas una sección del estudio Profundo o la respuesta del
+// estudio a una pregunta (tarjeta «estudio»), y lanza preguntas que cada uno responde en secreto hasta que las
+// revela (tarjeta «ronda», tabla vivo_respuestas). Cualquiera con cuenta deja sus dudas en el tablero de la sala
+// y apoya las de otros con «yo también» (tabla vivo_preguntas).
 
-import { createHash, randomInt } from 'node:crypto';
+import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import postgres from 'postgres';
@@ -33,6 +38,13 @@ const MAX_STEPS = 12;
 const MAX_STEP = 400;
 const MAX_MINUTES = 60;
 const MAX_ROUTE = 40;
+// Una sección del estudio o una respuesta de la IA es más larga que una tarjeta del Taller.
+const MAX_STUDY_TEXT = 8000;
+const MAX_SOURCES = 24;
+const MAX_QUESTION = 280;
+const MAX_ANSWER = 600;
+// Las dudas abiertas de cada persona en el tablero, para que nadie lo llene.
+const MAX_OPEN_QUESTIONS = 5;
 
 const SCHEMA = `
 create table if not exists vivo_salas (
@@ -61,6 +73,24 @@ create table if not exists vivo_toques (
   versiculo int not null,
   creado timestamptz not null default now(),
   primary key (sala_id, usuario_id)
+);
+create table if not exists vivo_preguntas (
+  id uuid primary key default gen_random_uuid(),
+  sala_id uuid not null references vivo_salas on delete cascade,
+  usuario_id uuid not null references usuarios on delete cascade,
+  texto text not null,
+  apoyos uuid[] not null default '{}',
+  respondida boolean not null default false,
+  creado timestamptz not null default now()
+);
+create index if not exists vivo_preguntas_sala on vivo_preguntas (sala_id);
+create table if not exists vivo_respuestas (
+  sala_id uuid not null references vivo_salas on delete cascade,
+  ronda text not null,
+  usuario_id uuid not null references usuarios on delete cascade,
+  texto text not null,
+  creado timestamptz not null default now(),
+  primary key (sala_id, ronda, usuario_id)
 );`;
 
 type Sql = ReturnType<typeof postgres>;
@@ -68,9 +98,17 @@ type Json = Record<string, unknown>;
 type Book = { id: string; name: string; chapters: number };
 type User = { id: string; nombre: string };
 
-/** Lo que se ve en pantalla: un paso de una dinámica, una pregunta o una parte del encuentro del Taller. */
+/** Una fuente de una tarjeta del estudio, para que los números ⟦n⟧ del texto se puedan abrir. */
+type Fuente = { n: number; label: string; ref?: string; url?: string };
+
+/**
+ * Lo que se ve en pantalla: un paso de una dinámica, una pregunta o una parte del encuentro del Taller; una
+ * sección del estudio («estudio»), o una pregunta que todos responden en secreto («ronda»).
+ */
 export type Tarjeta = {
-  tipo: 'dinamica' | 'pregunta' | 'parte';
+  tipo: 'dinamica' | 'pregunta' | 'parte' | 'estudio' | 'ronda';
+  /** Distingue una tarjeta de otra igual: las respuestas de una ronda van con este id. */
+  id?: string;
   titulo: string;
   texto: string | null;
   pasos: string[];
@@ -80,6 +118,12 @@ export type Tarjeta = {
   minutos: number | null;
   /** Cuándo termina el reloj (lo fija el servidor para que todos vean la misma cuenta atrás). */
   fin: string | null;
+  /** Estudio: las fuentes del texto, y la duda del tablero a la que responde, si es una. */
+  fuentes?: Fuente[];
+  pregunta?: string | null;
+  /** Ronda: sin nombres al revelar, y si ya se revelaron las respuestas. */
+  anonima?: boolean;
+  revelada?: boolean;
 };
 export type Estado = {
   libro: string;
@@ -171,6 +215,7 @@ function card(value: unknown): Tarjeta | null {
   if (!value || typeof value !== 'object') throw new Fail('Tarjeta no válida');
   const v = value as Json;
   const tipo = v.tipo;
+  if (tipo === 'estudio' || tipo === 'ronda') return studyCard(tipo, v);
   if (tipo !== 'dinamica' && tipo !== 'pregunta' && tipo !== 'parte') throw new Fail('Tarjeta no válida');
   const minutos = v.minutos == null || v.minutos === 0 ? null : int(v.minutos, 'Tiempo', 1, MAX_MINUTES);
   const d = typeof v.dinamica === 'string' ? dinamica(v.dinamica) : undefined;
@@ -182,6 +227,7 @@ function card(value: unknown): Tarjeta | null {
       : [];
   return {
     tipo,
+    id: randomUUID(),
     titulo: tipo === 'dinamica' ? d!.nombre : str(v.titulo, MAX_CARD_TITLE, 'el título')!,
     texto: str(v.texto, MAX_CARD_TEXT, 'el texto', true),
     pasos,
@@ -189,6 +235,38 @@ function card(value: unknown): Tarjeta | null {
     dinamica: d?.id ?? null,
     minutos: minutos ?? (tipo === 'dinamica' && v.minutos === undefined ? d!.minutos : null),
     fin: null,
+  };
+}
+
+function sources(value: unknown): Fuente[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, MAX_SOURCES).flatMap((f) => {
+    if (!f || typeof f !== 'object') return [];
+    const { n, label, ref, url } = f as Json;
+    if (!Number.isInteger(n) || typeof label !== 'string' || !label.trim()) return [];
+    return [
+      {
+        n: n as number,
+        label: label.trim().slice(0, 200),
+        ...(typeof ref === 'string' && ref.length <= 40 && { ref }),
+        ...(typeof url === 'string' && /^https:\/\//.test(url) && url.length <= 400 && { url }),
+      },
+    ];
+  });
+}
+
+/** Una sección del estudio o una pregunta para que todos respondan. Cada una lleva un id nuevo. */
+function studyCard(tipo: 'estudio' | 'ronda', v: Json): Tarjeta {
+  const base = { tipo, id: randomUUID(), pasos: [], paso: 0, dinamica: null, minutos: null, fin: null };
+  if (tipo === 'ronda') {
+    return { ...base, titulo: str(v.titulo, MAX_QUESTION, 'la pregunta')!, texto: null, anonima: v.anonima === true, revelada: false };
+  }
+  return {
+    ...base,
+    titulo: str(v.titulo, MAX_QUESTION, 'el título')!,
+    texto: str(v.texto, MAX_STUDY_TEXT, 'el texto')!,
+    fuentes: sources(v.fuentes),
+    pregunta: typeof v.pregunta === 'string' ? uuid(v.pregunta) : null,
   };
 }
 
@@ -226,7 +304,8 @@ async function salaByCode(sql: Sql, codigo: string) {
 /** Todo lo que ve quien sigue la sala. `ahora` deja a cada teléfono corregir su reloj para la cuenta atrás. */
 async function view(sql: Sql, s: SalaRow) {
   const live = isLive(s);
-  const [presentes, toques] = live
+  const ronda = s.estado.tarjeta?.tipo === 'ronda' ? s.estado.tarjeta : null;
+  const [presentes, toques, preguntas, respuestas] = live
     ? await Promise.all([
         sql<{ id: string; nombre: string; foto: string | null }[]>`
           select u.id, u.nombre, u.foto from vivo_presentes p join usuarios u on u.id = p.usuario_id
@@ -235,8 +314,17 @@ async function view(sql: Sql, s: SalaRow) {
         sql<{ usuario: string; nombre: string; versiculo: number }[]>`
           select t.usuario_id as usuario, u.nombre, t.versiculo from vivo_toques t join usuarios u on u.id = t.usuario_id
           where t.sala_id = ${s.id} order by t.creado`,
+        sql<{ id: string; texto: string; autor: string; nombre: string; apoyos: string[]; respondida: boolean }[]>`
+          select p.id, p.texto, p.usuario_id as autor, u.nombre, p.apoyos, p.respondida
+          from vivo_preguntas p join usuarios u on u.id = p.usuario_id
+          where p.sala_id = ${s.id} order by p.creado`,
+        ronda?.id
+          ? sql<{ usuario: string; nombre: string; texto: string }[]>`
+              select r.usuario_id as usuario, u.nombre, r.texto from vivo_respuestas r join usuarios u on u.id = r.usuario_id
+              where r.sala_id = ${s.id} and r.ronda = ${ronda.id} order by r.creado`
+          : Promise.resolve([]),
       ])
-    : [[], []];
+    : [[], [], [], []];
   const guia = s.guia ?? s.dueno;
   return {
     sala: {
@@ -252,6 +340,17 @@ async function view(sql: Sql, s: SalaRow) {
     estado: s.estado,
     presentes,
     toques,
+    preguntas,
+    // Lo que ve todo el mundo: antes de revelar, solo quiénes ya respondieron, sin lo que escribieron.
+    respuestas: ronda
+      ? {
+          ronda: ronda.id,
+          quienes: respuestas.map((r) => r.usuario),
+          lista: ronda.revelada
+            ? respuestas.map((r) => ({ texto: r.texto, ...(ronda.anonima ? {} : { usuario: r.usuario, nombre: r.nombre }) }))
+            : null,
+        }
+      : null,
   };
 }
 
@@ -402,6 +501,10 @@ export const celulaActions: Record<string, Handler> = {
     if (body.foco !== undefined) estado.foco = body.foco === null ? null : int(body.foco, 'Versículo', 1, 200);
     if (body.tarjeta !== undefined) {
       estado.tarjeta = card(body.tarjeta);
+      // La respuesta del estudio a una duda del tablero la marca como vista.
+      if (estado.tarjeta?.pregunta) {
+        await sql`update vivo_preguntas set respondida = true where id = ${estado.tarjeta.pregunta} and sala_id = ${s.id}`;
+      }
       if (estado.tarjeta?.minutos && body.reloj !== 'parar') estado.tarjeta.fin = later(estado.tarjeta.minutos);
     }
     if (estado.tarjeta && body.paso !== undefined) {
@@ -416,8 +519,67 @@ export const celulaActions: Record<string, Handler> = {
         fin: body.reloj === 'iniciar' && minutos ? later(minutos) : null,
       };
     }
+    if (body.revelar !== undefined && estado.tarjeta?.tipo === 'ronda') {
+      estado.tarjeta = { ...estado.tarjeta, revelada: body.revelar === true };
+    }
     await bump(sql, s.id, estado);
     return view(sql, { ...s, estado, version: s.version + 1 });
+  },
+
+  /** Deja una duda en el tablero de la sala para estudiarla con el grupo. */
+  async preguntarSala({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const s = await liveSala(sql, body.sala);
+    const texto = str(body.texto, MAX_QUESTION, 'la pregunta')!;
+    const [{ abiertas }] = await sql<{ abiertas: number }[]>`
+      select count(*)::int as abiertas from vivo_preguntas where sala_id = ${s.id} and usuario_id = ${user.id} and not respondida`;
+    if (abiertas >= MAX_OPEN_QUESTIONS) throw new Fail(`Ya tienes ${MAX_OPEN_QUESTIONS} preguntas esperando. Espera a que el grupo vea alguna.`);
+    await sql`insert into vivo_preguntas (sala_id, usuario_id, texto) values (${s.id}, ${user.id}, ${texto})`;
+    await present(sql, s.id, user.id);
+    await bump(sql, s.id);
+    return view(sql, { ...s, version: s.version + 1 });
+  },
+
+  /** «Yo también»: apoya una duda de otra persona; tocar otra vez lo quita. */
+  async apoyarSala({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const s = await liveSala(sql, body.sala);
+    const id = uuid(body.pregunta);
+    const [row] = await sql`
+      update vivo_preguntas set apoyos = case when ${user.id}::uuid = any(apoyos) then array_remove(apoyos, ${user.id}::uuid)
+        else array_append(apoyos, ${user.id}::uuid) end
+      where id = ${id} and sala_id = ${s.id} and usuario_id <> ${user.id} returning id`;
+    if (!row) throw new Fail('Esa pregunta ya no está', 404);
+    await bump(sql, s.id);
+    return view(sql, { ...s, version: s.version + 1 });
+  },
+
+  /** Quita una duda del tablero: quien la hizo o quien guía. */
+  async quitarPreguntaSala({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const s = await liveSala(sql, body.sala);
+    const id = uuid(body.pregunta);
+    const [row] = await sql`
+      delete from vivo_preguntas where id = ${id} and sala_id = ${s.id} and (${leads(s, user)} or usuario_id = ${user.id}) returning id`;
+    if (!row) throw new Fail('No puedes quitar esa pregunta', 403);
+    await bump(sql, s.id);
+    return view(sql, { ...s, version: s.version + 1 });
+  },
+
+  /** La respuesta de cada uno a la ronda en pantalla. Se puede cambiar hasta que quien guía las revela. */
+  async responderSala({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const s = await liveSala(sql, body.sala);
+    const t = s.estado.tarjeta;
+    if (t?.tipo !== 'ronda' || !t.id || body.ronda !== t.id) throw new Fail('Esa pregunta ya no está en pantalla', 409);
+    if (t.revelada) throw new Fail('Las respuestas ya se revelaron');
+    const texto = str(body.texto, MAX_ANSWER, 'la respuesta')!;
+    await sql`
+      insert into vivo_respuestas (sala_id, ronda, usuario_id, texto) values (${s.id}, ${t.id}, ${user.id}, ${texto})
+      on conflict (sala_id, ronda, usuario_id) do update set texto = excluded.texto`;
+    await present(sql, s.id, user.id);
+    await bump(sql, s.id);
+    return view(sql, { ...s, version: s.version + 1 });
   },
 
   /** Ilumina un versículo para todos; tocar el mismo otra vez lo apaga. Cada persona tiene uno a la vez. */

@@ -75,7 +75,7 @@ await wait(500);
 await shot(pa, 'm-3-guia');
 
 // 4. Ana elige una dinámica
-await pa.getByRole('button', { name: 'Dinámica' }).click();
+await pa.getByRole('button', { name: 'Mostrar' }).click();
 await pa.getByRole('tab', { name: 'Dinámicas' }).click();
 await wait(400);
 await shot(pa, 'm-4-elegir-dinamica');
