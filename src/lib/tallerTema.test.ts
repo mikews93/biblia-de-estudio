@@ -26,6 +26,7 @@ const MAQUETA = `## Idea central
 - Tema: «El afán» | Complemento: se vence orando con gratitud.
 
 ## Introducción: la necesidad
+= El afán por el futuro es real y Dios lo toma en serio.⟦1⟧
 ? ¿Qué preocupaciones del futuro escuchas más en tu grupo?
 > Filipenses 4:6 | el versículo que nombra el afán⟦1⟧
 
@@ -64,6 +65,8 @@ describe('leerMaqueta', () => {
     expect(m.partes[1]).toMatchObject({ titulo: 'La oración que da paz', apoyo: 'Salmos 55:22' });
     expect(m.partes[1].apoyoPasaje).toEqual({ book: 'psa', chapter: 55, from: 22, to: undefined });
     expect(m.partes[0].pregunta).toMatch(/^¿Qué preocupaciones/);
+    expect(m.partes[0].frase).toBe('El afán por el futuro es real y Dios lo toma en serio.⟦1⟧');
+    expect(m.partes[1].frase).toBe('');
   });
 });
 
@@ -95,7 +98,9 @@ describe('crearDesdeMaqueta', () => {
     expect(m.secciones[0]).toMatchObject({ titulo: 'Introducción: la necesidad', apoyo: { cita: 'Filipenses 4:6', porque: 'el versículo que nombra el afán (Filipenses 4:6)' } });
     expect(m.secciones[1]).toMatchObject({ titulo: 'La oración que da paz', ayuda: '¿Qué cambia cuando la petición va con gratitud?' });
     expect(m.secciones[2].titulo).toBe('Punto 2');
-    expect(m.secciones.every((s) => s.texto === '')).toBe(true);
+    // La frase de la maqueta abre el borrador, con sus citas como referencias; las demás partes quedan vacías.
+    expect(m.secciones[0].texto).toBe('El afán por el futuro es real y Dios lo toma en serio. (Filipenses 4:6)');
+    expect(m.secciones.slice(1).every((s) => s.texto === '')).toBe(true);
   });
 });
 

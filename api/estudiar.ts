@@ -279,12 +279,13 @@ Formato estricto, sin nada antes ni después:
 Dos opciones, cada una en la forma "- Tema: … | Complemento: …", que salgan del pasaje y respondan a lo que quiero tratar, con su cita.
 
 Después, un título "## " por cada parte de la estructura, en su orden, y bajo cada uno:
-? una sola pregunta guía para que yo piense qué decir en esa parte (máximo 30 palabras)
+= una sola frase que resume el punto de esa parte (máximo 25 palabras), que salga del texto, con su cita
+? una sola pregunta guía para que yo piense cómo desarrollarla (máximo 30 palabras)
 > la cita de un pasaje de apoyo | por qué ayuda ahí, en pocas palabras, con su cita
 
 Reglas:
 - ${t.tipo === 'sermon' ? 'Los títulos de los puntos («Punto 1», «Punto 2»…) cámbialos por un título corto (de 2 a 8 palabras) que salga del texto; las demás partes conservan su nombre exacto.' : 'Cada parte conserva su nombre exacto.'}
-- Nada de párrafos, frases para leer ni ilustraciones: solo títulos, preguntas y pasajes. Lo que se dice en cada parte lo escribo yo.
+- Una sola frase por parte, que yo voy a editar: nada de párrafos, ilustraciones ni aplicaciones desarrolladas. El desarrollo de cada parte lo escribo yo.
 - El pasaje de apoyo puede ser el mismo pasaje principal (un versículo concreto) u otro que hayas leído; uno por parte.`;
   } else if (t.modo === 'ruleta') {
     ask = `Prepara la ruleta de preguntas de este mensaje para la congregación, que la juega en vivo en su teléfono: preguntas de opción múltiple sobre lo que se predicó y sobre las citas del bosquejo (sus versículos van en lo que llevo), no solo sobre ${target}. Si el bosquejo no da para una categoría, usa los versículos citados.

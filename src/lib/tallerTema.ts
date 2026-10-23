@@ -78,10 +78,11 @@ export function leerExploracion(markdown: string, books: Book[]): Exploracion {
   return out;
 }
 
-export type ParteMaqueta = { titulo: string; pregunta: string; apoyo: string; apoyoPasaje: Pasaje | null; porque: string };
+export type ParteMaqueta = { titulo: string; frase: string; pregunta: string; apoyo: string; apoyoPasaje: Pasaje | null; porque: string };
 export type Maqueta = { ideas: { tema: string; complemento: string }[]; partes: ParteMaqueta[] };
 
-/** Lee la maqueta: las opciones de idea central y, por cada parte, su título, la pregunta guía y el pasaje de apoyo. */
+/** Lee la maqueta: las opciones de idea central y, por cada parte, su título, la frase que resume el punto (con sus
+ *  citas ⟦n⟧), la pregunta guía y el pasaje de apoyo. */
 export function leerMaqueta(markdown: string, books: Book[]): Maqueta {
   const out: Maqueta = { ideas: [], partes: [] };
   for (const { titulo, lineas } of apartados(markdown)) {
@@ -93,9 +94,10 @@ export function leerMaqueta(markdown: string, books: Book[]): Maqueta {
       }
       continue;
     }
-    const parte: ParteMaqueta = { titulo: sinMarcas(titulo), pregunta: '', apoyo: '', apoyoPasaje: null, porque: '' };
+    const parte: ParteMaqueta = { titulo: sinMarcas(titulo), frase: '', pregunta: '', apoyo: '', apoyoPasaje: null, porque: '' };
     for (const l of lineas) {
-      if (l.startsWith('?')) parte.pregunta = sinMarcas(l.slice(1));
+      if (l.startsWith('=')) parte.frase = l.slice(1).trim();
+      else if (l.startsWith('?')) parte.pregunta = sinMarcas(l.slice(1));
       else if (l.startsWith('>')) {
         const [cita, ...resto] = l.slice(1).split('|');
         parte.apoyo = sinMarcas(cita).replace(/[«»"]/g, '').replace(/[.:,;]+$/, '');
@@ -117,7 +119,8 @@ export function estructuraParaIA(plantillaId: string) {
 
 /**
  * Crea el mensaje con la maqueta: el pasaje elegido, la idea central que la persona eligió (si eligió una) y las partes
- * de la plantilla con el título, la pregunta guía y el pasaje de apoyo de la maqueta. Las notas quedan vacías.
+ * de la plantilla con el título, la pregunta guía y el pasaje de apoyo de la maqueta. El borrador de cada parte
+ * empieza con la frase que la resume; el desarrollo lo escribe la persona.
  */
 export async function crearDesdeMaqueta(o: {
   tipo: Tipo;
@@ -139,7 +142,8 @@ export async function crearDesdeMaqueta(o: {
       titulo,
       ayuda: parte?.pregunta || base.ayuda,
       apoyo: parte?.apoyo ? { cita: parte.apoyo, porque: conCitas(parte.porque, o.sources) } : undefined,
-      texto: '',
+      // La frase de la maqueta es el punto de partida del borrador: la persona la edita y sigue desde ahí.
+      texto: parte?.frase ? conCitas(parte.frase, o.sources) : '',
       minutos: base.minutos,
       dinamica: base.dinamica,
     };

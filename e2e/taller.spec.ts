@@ -302,7 +302,8 @@ test('desde un tema: la IA busca pasajes y fuentes, arma la maqueta y el mensaje
   await page.getByRole('button', { name: 'Armar la maqueta con Mateo 6:25-34' }).click();
   await expect(page.getByText('IDEA CENTRAL · ELIGE UNA')).toBeVisible();
   await expect(page.getByText('Orar en vez de afanarse')).toBeVisible();
-  await expect(page.getByText('Aquí escribes tú')).toHaveCount(5);
+  await expect(page.getByText('La frase queda en tu borrador: edítala y sigue tú')).toHaveCount(5);
+  await expect(page.getByText('Pablo no niega el afán: lo convierte en oración con gratitud.')).toBeVisible();
   const maqueta = (await peticionesIA(request, situacion)).find((r) => JSON.stringify(r.messages[0].content).includes('Arma la maqueta'))!;
   const encargo = JSON.stringify(maqueta.messages[0].content);
   expect(encargo).toContain('un sermón (20 a 45 minutos) sobre Mateo 6:25-34');
@@ -324,7 +325,8 @@ test('desde un tema: la IA busca pasajes y fuentes, arma la maqueta y el mensaje
     'Pensar en lo verdadero',
     'Conclusión',
   ]);
-  expect(mensaje.secciones.every((s: { texto: string }) => s.texto === '')).toBe(true);
+  // Cada parte empieza con la frase que la resume, para editarla
+  expect(mensaje.secciones[1].texto).toBe('Pablo no niega el afán: lo convierte en oración con gratitud.');
   // El borrador del tema se borra al crear el mensaje
   expect(await page.evaluate(() => localStorage.getItem('taller-tema'))).toBeNull();
 

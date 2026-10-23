@@ -311,8 +311,8 @@ export default function TemaScreen() {
           <>
             <Paso n={2} total={2} titulo="La maqueta" colors={colors} onBack={() => setEtapa('explorar')} backLabel="Pasajes y fuentes" />
             <Text style={[styles.lead, { color: colors.muted }]}>
-              {pasajeLabel(pedidoVisto.pasaje, books)} · {plantillaDe(pedidoVisto.plantilla)?.nombre}. El esqueleto para que escribas el mensaje
-              con tus palabras.
+              {pasajeLabel(pedidoVisto.pasaje, books)} · {plantillaDe(pedidoVisto.plantilla)?.nombre}. Cada punto en una frase para que la edites y
+              desarrolles el mensaje con tus palabras.
             </Text>
             {!!maquetaTurn?.pasos?.length && (
               <View style={{ marginBottom: 16 }}>
@@ -352,8 +352,13 @@ export default function TemaScreen() {
                   </View>
                   <Text style={[styles.parteTitulo, { color: colors.text }]}>{p.titulo}</Text>
                 </View>
+                {!!p.frase && (
+                  <View style={styles.frase}>
+                    <Markdown text={p.frase} colors={colors} sources={maquetaTurn?.sources} onCite={setPeek} />
+                  </View>
+                )}
                 {!!p.pregunta && (
-                  <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, marginTop: 8 }}>
+                  <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 8 }}>
                     <Text style={{ color: colors.accent, fontWeight: '700' }}>? </Text>
                     {p.pregunta}
                   </Text>
@@ -371,7 +376,9 @@ export default function TemaScreen() {
                     {!!p.porque && <Markdown text={p.porque} colors={colors} sources={maquetaTurn?.sources} onCite={setPeek} />}
                   </Pressable>
                 )}
-                <Text style={[styles.vacio, { color: colors.muted, borderColor: colors.border }]}>Aquí escribes tú</Text>
+                <Text style={[styles.vacio, { color: colors.muted, borderColor: colors.border }]}>
+                  {p.frase ? 'La frase queda en tu borrador: edítala y sigue tú' : 'Aquí escribes tú'}
+                </Text>
               </Appear>
             ))}
 
@@ -586,6 +593,7 @@ const styles = StyleSheet.create({
   num: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   parteTitulo: { fontFamily: serif, fontSize: 19, flex: 1 },
   apoyo: { borderLeftWidth: 3, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, marginTop: 10 },
+  frase: { marginTop: 8 },
   vacio: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingVertical: 12, textAlign: 'center', fontSize: 13, marginTop: 12 },
   disclaimer: { fontSize: 12, lineHeight: 17, marginTop: 28, textAlign: 'center' },
 });
