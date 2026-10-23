@@ -158,6 +158,19 @@ describe('ruleta de preguntas', () => {
     expect(q).toMatchObject({ categoria: 'tema', nivel: 3, correcta: 1, opciones: ['a', 'b', 'c', 'd'] });
   });
 
+  it('recorta lo largo que escribe la IA en vez de rechazar todo el juego', async () => {
+    const { parseRepaso, MAX_OPCION, MAX_TEXTO_PREGUNTA, MAX_CITA } = await import('./repaso');
+    const larga = 'Cuando un compañero del colegio se burla de su fe, responde con calma y le explica lo que cree '.repeat(4);
+    const [q] = parseRepaso(
+      `C: vida\nN: 3\nP: ${'¿Qué haría Elías? '.repeat(30)}\nA) ${larga}\nB) corta\nC) otra\nD) más\nR: A\nV: 1 Reyes 18:21; 1 Reyes 18:36-39; Santiago 5:17-18 y 1 Reyes 19:1-4 (todo el pasaje)`,
+    );
+    expect(q.opciones[0].length).toBeLessThanOrEqual(MAX_OPCION);
+    expect(q.opciones[0].endsWith('…')).toBe(true);
+    expect(q.texto.length).toBeLessThanOrEqual(MAX_TEXTO_PREGUNTA);
+    expect(q.cita).toBe('1 Reyes 18:21');
+    expect(q.cita!.length).toBeLessThanOrEqual(MAX_CITA);
+  });
+
   it('cada giro cae en una casilla con su pregunta, sin repetir', async () => {
     const { girarRuleta, RULETA } = await import('./repaso');
     const preguntas = RULETA.map((c) => ({ texto: `${c.categoria}${c.nivel}`, opciones: ['a', 'b', 'c', 'd'], correcta: 0, cita: null, categoria: c.categoria, nivel: c.nivel }));
