@@ -120,7 +120,7 @@ export default function MensajeScreen() {
 
         {step === 'pasaje' && <PasajeStep m={m} books={books} set={set} />}
         {step === 'idea' && <IdeaStep m={m} set={set} />}
-        {step === 'bosquejo' && <BosquejoStep m={m} mensajes={mensajes} set={set} />}
+        {step === 'bosquejo' && <BosquejoStep m={m} mensajes={mensajes} set={set} books={books} />}
         {step === 'revisar' && <RevisarStep m={m} set={set} onReview={() => askAI('revisar')} />}
         {step === 'compartir' && <CompartirStep m={m} books={books} />}
 
@@ -198,6 +198,14 @@ function PasajeStep({ m, books, set }: StepProps & { books: Book[] }) {
 
   return (
     <View style={{ marginTop: 16, gap: 14 }}>
+      {!!m.situacion && (
+        <View style={[styles.situacion, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>LO QUE QUERÍAS TRATAR</Text>
+          <Text style={{ color: colors.text, fontFamily: serif, fontSize: 16, lineHeight: 25, marginTop: 4 }} numberOfLines={6}>
+            {m.situacion}
+          </Text>
+        </View>
+      )}
       <Field
         label="Pasaje"
         value={input}
@@ -314,7 +322,28 @@ const MOMENTO_DE: Record<string, Momento> = {
   Evangelismo: 'aplicar',
 };
 
-function BosquejoStep({ m, mensajes, set }: StepProps & { mensajes: Mensaje[] }) {
+/** El pasaje de apoyo que la maqueta sugirió para una parte; se abre en el lector. */
+function Apoyo({ apoyo, books }: { apoyo: NonNullable<Seccion['apoyo']>; books: Book[] }) {
+  const colors = useColors();
+  const p = parsePasaje(apoyo.cita, books);
+  return (
+    <Pressable
+      disabled={!p}
+      onPress={() => p && navigate(() => router.push(p.from ? verseHref(p.book, p.chapter, p.from) : chapterHref(p.book, p.chapter)), 'forward')}
+      accessibilityRole={p ? 'link' : undefined}
+      style={({ pressed }) => [styles.apoyo, { borderColor: colors.accent, backgroundColor: colors.accentSoft }, pressed && { opacity: 0.75 }]}
+    >
+      <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>PASAJE DE APOYO</Text>
+      <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20, marginTop: 2 }}>
+        <Text style={{ fontWeight: '700' }}>{apoyo.cita}</Text>
+        {apoyo.porque ? ` · ${apoyo.porque}` : ''}
+        {p ? <Text style={{ color: colors.accent, fontWeight: '700' }}> ›</Text> : null}
+      </Text>
+    </Pressable>
+  );
+}
+
+function BosquejoStep({ m, mensajes, set, books }: StepProps & { mensajes: Mensaje[]; books: Book[] }) {
   const colors = useColors();
   const [picking, setPicking] = useState<Seccion | null>(null);
   const opciones = PLANTILLAS.filter((p) => p.tipo === m.tipo);
@@ -376,6 +405,7 @@ function BosquejoStep({ m, mensajes, set }: StepProps & { mensajes: Mensaje[] })
               </View>
             </View>
             {!!s.ayuda && <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, marginBottom: 8 }}>{s.ayuda}</Text>}
+            {s.apoyo && <Apoyo apoyo={s.apoyo} books={books} />}
             {encuentro && /mirar atr/i.test(s.titulo) && anterior && (
               <View style={[styles.previous, { backgroundColor: colors.accentSoft }]}>
                 <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.6 }}>LA VEZ ANTERIOR</Text>
@@ -637,6 +667,8 @@ function CompartirStep({ m, books }: { m: Mensaje; books: Book[] }) {
 }
 
 const styles = StyleSheet.create({
+  apoyo: { borderLeftWidth: 3, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 10 },
+  situacion: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14 },
   steps: { borderBottomWidth: StyleSheet.hairlineWidth },
   stepsInner: { paddingHorizontal: 16, gap: 20, maxWidth: 640, width: '100%', alignSelf: 'center' },
   stepTab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },

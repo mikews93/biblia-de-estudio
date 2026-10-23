@@ -268,3 +268,75 @@ test('prepara un encuentro con una dinámica y envía la hoja al grupo sin las n
   await expect(page.getByText(`¿Qué recuerdas de la semana? ${m}`)).toBeVisible();
   await expect(page.getByText(`Nota secreta del líder ${m}`)).toHaveCount(0);
 });
+
+test('desde un tema: la IA busca pasajes y fuentes, arma la maqueta y el mensaje queda listo para escribir', async ({ page, request }) => {
+  const m = marca();
+  await conSesion(page, await cuentaNueva(request, 'Temática'));
+  await page.goto('/taller');
+  await page.getByRole('button', { name: /Tengo algo de qué hablar/ }).click();
+  await expect(page).toHaveURL(/\/taller\/tema$/);
+  await expect(page.getByText('¿De qué quieres hablar?')).toBeVisible();
+
+  const buscar = page.getByRole('button', { name: 'Buscar pasajes y fuentes' });
+  await expect(buscar).toBeDisabled();
+  await page.getByRole('radio', { name: /Sermón/ }).click();
+  const situacion = `Jóvenes ansiosos por el futuro ${m}`;
+  await page.getByLabel('Lo que quieres tratar').fill(situacion);
+  // Lo contado se guarda en el dispositivo mientras se escribe
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('taller-tema') ?? '')).toContain(m);
+  await buscar.click();
+
+  // La IA investiga a la vista y devuelve pasajes para elegir, lo que dicen las fuentes y preguntas
+  await expect(page.getByText('PASAJES · ELIGE EL PRINCIPAL')).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Filipenses 4:4-9/ })).toBeVisible();
+  await expect(page.getByText(/Matthew Henry señala/)).toBeVisible();
+  await expect(page.getByText(/Hodge explica/)).toBeVisible();
+  await expect(page.getByText('PARA AFINAR')).toBeVisible();
+  await expect(page.getByText('FUENTES', { exact: true })).toBeVisible();
+  const [explorar] = await peticionesIA(request, situacion);
+  expect(JSON.stringify(explorar.system)).toContain('Esta vez la persona no llega con un pasaje');
+  expect(JSON.stringify((explorar as { tools?: unknown }).tools)).toContain('teologia');
+
+  // Elige otro pasaje y arma la maqueta con la estructura expositiva
+  await page.getByRole('radio', { name: /Mateo 6:25-34/ }).click();
+  await page.getByRole('button', { name: 'Armar la maqueta con Mateo 6:25-34' }).click();
+  await expect(page.getByText('IDEA CENTRAL · ELIGE UNA')).toBeVisible();
+  await expect(page.getByText('Orar en vez de afanarse')).toBeVisible();
+  await expect(page.getByText('Aquí escribes tú')).toHaveCount(5);
+  const maqueta = (await peticionesIA(request, situacion)).find((r) => JSON.stringify(r.messages[0].content).includes('Arma la maqueta'))!;
+  const encargo = JSON.stringify(maqueta.messages[0].content);
+  expect(encargo).toContain('un sermón (20 a 45 minutos) sobre Mateo 6:25-34');
+  expect(encargo).toContain('1. Introducción: la necesidad');
+
+  await page.getByRole('radio', { name: /El afán por el mañana/ }).click();
+  await page.getByRole('button', { name: 'Crear el mensaje con esta maqueta' }).click();
+  await expect(page).toHaveURL(/\/taller\/[a-z0-9]+$/);
+  await expect(page.getByText('LO QUE QUERÍAS TRATAR')).toBeVisible();
+  await expect(page.getByText(situacion)).toBeVisible();
+  await guardado(page, 'Orar en vez de afanarse');
+  const mensaje = JSON.parse(await page.evaluate(() => localStorage.getItem('taller') ?? '[]'))[0];
+  expect(mensaje.pasaje).toEqual({ book: 'mat', chapter: 6, from: 25, to: 34 });
+  expect(mensaje.tema).toBe('El afán por el mañana');
+  expect(mensaje.secciones.map((s: { titulo: string }) => s.titulo)).toEqual([
+    'Introducción: la necesidad',
+    'Orar en vez de afanarse',
+    'Un Padre que sabe lo que necesitamos',
+    'Pensar en lo verdadero',
+    'Conclusión',
+  ]);
+  expect(mensaje.secciones.every((s: { texto: string }) => s.texto === '')).toBe(true);
+  // El borrador del tema se borra al crear el mensaje
+  expect(await page.evaluate(() => localStorage.getItem('taller-tema'))).toBeNull();
+
+  // En el bosquejo cada parte trae su pregunta guía y su pasaje de apoyo
+  await paso(page, '3 Bosquejo').click();
+  await expect(page.getByText('¿Por qué Pablo pone «con hacimiento de gracias» junto a la petición?')).toBeVisible();
+  await expect(page.getByText('PASAJE DE APOYO').first()).toBeVisible();
+  await expect(page.getByText('Filipenses 4:6-7', { exact: false }).first()).toBeVisible();
+
+  // El acompañante sabe lo que quería tratar
+  await page.getByRole('button', { name: 'Pregúntame' }).click();
+  await expect(acompanante(page).getByText('Preguntas del Taller simuladas:')).toBeVisible();
+  const preguntas = (await peticionesIA(request, situacion)).find((r) => JSON.stringify(r.messages[0].content).includes('Hazme de 3 a 5 preguntas'))!;
+  expect(JSON.stringify(preguntas.messages[0].content)).toContain('Empecé por esto que quiero tratar');
+});

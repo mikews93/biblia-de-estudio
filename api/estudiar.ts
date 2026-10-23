@@ -1,6 +1,7 @@
 // Función de Vercel: genera un estudio de un capítulo o versículo y responde preguntas sobre él.
 // Con «word» (posición de una palabra hebrea o griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
 // Con «semana» convierte las notas de un sermón en cinco días de devocional sobre su pasaje («Del sermón a tu semana»).
+// Con «tema» (sin pasaje) investiga lo que alguien quiere tratar en el Taller: pasajes, comentarios y teologías.
 // Con «herramienta» prepara, para un capítulo, el guion de un resumen en audio a dos voces («podcast»),
 // tarjetas de repaso («tarjetas») o un mapa mental («mapa»), con el formato que la app sabe leer.
 // Con «palabra» (una del catálogo de src/lib/palabras.ts) cuenta la historia de esa palabra por toda la Biblia, o con
@@ -80,6 +81,8 @@ type Body = {
   enfoque?: 'devocional' | 'profundo';
   nueva?: boolean;
   semana?: Semana;
+  /** Taller desde un tema: lo que la persona quiere tratar, grabado o escrito, todavía sin pasaje. */
+  tema?: Tema;
   /** Id de una palabra del catálogo (src/lib/palabras.ts): su historia por toda la Biblia. */
   palabra?: string;
   /** «jovenes»: la app está en el Modo Jóvenes (12 a 17 años). */
@@ -100,15 +103,19 @@ type Semana = { notas: string; desde?: number; hasta?: number; predicador?: stri
 // Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
 // pero nunca escribe el mensaje por la persona.
 type Taller = {
-  /** «repaso»: las preguntas de opción múltiple que la congregación responde en vivo durante el evento (api/vivo.ts). */
-  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta';
+  /** «repaso»: las preguntas de opción múltiple que la congregación responde en vivo durante el evento (api/vivo.ts).
+   *  «maqueta»: el esqueleto del mensaje a partir de un tema (títulos, preguntas guía y pasajes de apoyo). */
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;
   desde?: number;
   hasta?: number;
   borrador?: string;
+  /** Lo que la persona quería tratar cuando empezó desde un tema. */
+  situacion?: string;
 };
+type Tema = { texto: string; tipo: Taller['tipo'] };
 
 const SYSTEM = `Eres el asistente de estudio de una app bíblica gratuita en español. Ayudas a entender el texto; no sustituyes la lectura de la persona ni predicas por ella.
 
@@ -144,6 +151,13 @@ Reglas del Taller:
 - No inventes anécdotas como si fueran reales. Si sugieres una ilustración, márcala como «Ejemplo, no hecho real», en una o dos frases.
 - Ayuda a que el mensaje tenga una sola idea central que salga del texto, nombre la necesidad humana que el pasaje toca y ponga la gracia de Dios en el centro, no solo consejos.
 - Sé breve: lo justo para dar el siguiente paso.`;
+
+const TEMA_SYSTEM = `
+
+Esta vez la persona no llega con un pasaje: te cuenta una situación o un tema del que quiere hablar, a veces dictado en voz alta y con errores del dictado. No hay documentos del pasaje: todo lo que digas sale de lo que investigues con las herramientas.
+- Parte de lo que la persona contó, pero deja que la Escritura defina el mensaje: propone pasajes que de verdad tratan el tema en su contexto, no versículos sueltos que solo comparten una palabra.
+- Lee cada pasaje antes de proponerlo. Consulta los comentarios de la app sobre los más fuertes y, si el tema toca doctrina (la gracia, el perdón, el sufrimiento, la soberanía de Dios), la teología.
+- Si la situación es personal o delicada (un duelo, una crisis, un conflicto en la iglesia), trátala con respeto y sin juzgar a nadie; no des consejo pastoral ni médico, ayuda a preparar el mensaje.`;
 
 const DEVOCIONAL_SYSTEM = `
 
@@ -218,16 +232,61 @@ D) opción
 R: la letra de la opción correcta
 V: la cita que la respalda (por ejemplo «Juan 3:16»)`;
 
+// La investigación de un tema sin pasaje. src/lib/tallerTema.ts lee este formato.
+function temaTask(t: Tema) {
+  return `Quiero preparar ${TIPOS[t.tipo]} sobre algo que me importa. Te lo cuento como me salió:
+
+«${t.texto.trim()}»
+
+Investiga con las herramientas antes de responder. Después responde con este formato estricto, sin nada antes ni después:
+
+## Lo que entiendo
+Una o dos frases con el tema tal como lo entiendes, sin juzgar a nadie.
+
+## Pasajes
+De 3 a 5 líneas, el pasaje más fuerte primero, cada una así:
+- Juan 14:1-6 | por qué sirve para este tema, en una frase, con su cita
+
+## Lo que dicen las fuentes
+De 2 a 5 líneas con lo que aportan los comentarios de la app y las teologías sobre esos pasajes o sobre el tema, cada una nombrando al autor («Matthew Henry…», «Hodge…»), con su cita.
+
+## Para afinar
+2 o 3 preguntas para que yo enfoque el mensaje (a quién va, qué espero que cambie, qué parte de la situación pesa más). Sin respuestas.
+
+Reglas del formato:
+- Cada pasaje dentro de un solo capítulo, de 1 a 30 versículos, con el nombre del libro completo en español («1 Corintios 13:4-7», «Salmos 46»), y antes del «|».
+- Si te respondo o te pido otra cosa, vuelve a dar la respuesta completa con este mismo formato, ajustada a lo nuevo.`;
+}
+
 function tallerTask(book: Book, chapter: number, verse: number | undefined, t: Taller) {
   const target = verse
     ? `${book.name} ${chapter}:${verse}`
     : t.desde
       ? `${book.name} ${chapter}:${t.desde}${t.hasta ? `-${t.hasta}` : ''}`
       : `${book.name} ${chapter}`;
-  const head = `Estoy preparando ${TIPOS[t.tipo]} sobre ${target}${t.plantilla ? `, con la estructura «${t.plantilla}»` : ''}. Ahora estoy en el paso de ${PASOS[t.paso]}.`;
+  const head =
+    `Estoy preparando ${TIPOS[t.tipo]} sobre ${target}${t.plantilla ? `, con la estructura «${t.plantilla}»` : ''}. Ahora estoy en el paso de ${PASOS[t.paso]}.` +
+    (t.situacion?.trim() ? `\n\nEmpecé por esto que quiero tratar, antes de tener el pasaje:\n«${t.situacion.trim()}»` : '');
   const draft = t.borrador?.trim() ? `\n\nLo que llevo:\n${t.borrador.trim()}` : '\n\nTodavía no he escrito nada.';
   let ask: string;
-  if (t.modo === 'ruleta') {
+  if (t.modo === 'maqueta') {
+    // src/lib/tallerTema.ts lee este formato y lo convierte en las partes del mensaje.
+    ask = `Arma la maqueta de este mensaje: el esqueleto para que yo lo escriba, no el mensaje. Las partes de la estructura van en lo que llevo.
+
+Formato estricto, sin nada antes ni después:
+
+## Idea central
+Dos opciones, cada una en la forma "- Tema: … | Complemento: …", que salgan del pasaje y respondan a lo que quiero tratar, con su cita.
+
+Después, un título "## " por cada parte de la estructura, en su orden, y bajo cada uno:
+? una sola pregunta guía para que yo piense qué decir en esa parte (máximo 30 palabras)
+> la cita de un pasaje de apoyo | por qué ayuda ahí, en pocas palabras, con su cita
+
+Reglas:
+- ${t.tipo === 'sermon' ? 'Los títulos de los puntos («Punto 1», «Punto 2»…) cámbialos por un título corto (de 2 a 8 palabras) que salga del texto; las demás partes conservan su nombre exacto.' : 'Cada parte conserva su nombre exacto.'}
+- Nada de párrafos, frases para leer ni ilustraciones: solo títulos, preguntas y pasajes. Lo que se dice en cada parte lo escribo yo.
+- El pasaje de apoyo puede ser el mismo pasaje principal (un versículo concreto) u otro que hayas leído; uno por parte.`;
+  } else if (t.modo === 'ruleta') {
     ask = `Prepara la ruleta de preguntas de este mensaje para la congregación, que la juega en vivo en su teléfono: preguntas de opción múltiple sobre lo que se predicó y sobre las citas del bosquejo (sus versículos van en lo que llevo), no solo sobre ${target}. Si el bosquejo no da para una categoría, usa los versículos citados.
 
 ${RULETA_FORMATO}`;
@@ -352,10 +411,11 @@ Reglas:
 - Solo dos niveles bajo la idea central.`,
 };
 
-const MODOS = ['preguntar', 'sugerir', 'revisar', 'repaso', 'ruleta'];
+const MODOS = ['preguntar', 'sugerir', 'revisar', 'repaso', 'ruleta', 'maqueta'];
 const TALLER_TIPOS = ['reflexion', 'encuentro', 'sermon'];
 const TALLER_PASOS = ['pasaje', 'idea', 'bosquejo', 'revisar'];
 const MAX_DRAFT = 12000;
+const MAX_TEMA = 4000;
 
 function validTaller(t: unknown): t is Taller {
   if (!t || typeof t !== 'object') return false;
@@ -367,9 +427,16 @@ function validTaller(t: unknown): t is Taller {
     TALLER_PASOS.includes(x.paso as string) &&
     (x.plantilla === undefined || (typeof x.plantilla === 'string' && x.plantilla.length <= 80)) &&
     (x.borrador === undefined || (typeof x.borrador === 'string' && x.borrador.length <= MAX_DRAFT)) &&
+    (x.situacion === undefined || (typeof x.situacion === 'string' && x.situacion.length <= MAX_TEMA)) &&
     optInt(x.desde) &&
     optInt(x.hasta)
   );
+}
+
+function validTema(t: unknown): t is Tema {
+  if (!t || typeof t !== 'object') return false;
+  const x = t as Record<string, unknown>;
+  return typeof x.texto === 'string' && x.texto.trim().length >= 10 && x.texto.length <= MAX_TEMA && TALLER_TIPOS.includes(x.tipo as string);
 }
 
 const client = new Anthropic();
@@ -931,6 +998,46 @@ async function palabraPost(request: Request, body: Body) {
   return streamAnswer(request, docs, messages, SYSTEM + PALABRA_SYSTEM, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true);
 }
 
+/** La conversación después del primer mensaje: respuestas de la IA y preguntas de la persona, alternadas. */
+function validTurns(turns: unknown): turns is Turn[] {
+  return (
+    Array.isArray(turns) &&
+    turns.length <= MAX_TURNS &&
+    turns.every((t, i) => t?.role === (i % 2 === 0 ? 'assistant' : 'user') && typeof t.text === 'string') &&
+    (turns.length === 0 || turns[turns.length - 1].role === 'user') &&
+    turns.every((t) => t.role !== 'user' || t.text.length <= MAX_QUESTION)
+  );
+}
+
+// El Taller desde un tema: todavía no hay pasaje, así que la IA investiga con las herramientas desde el principio.
+async function temaPost(request: Request, body: Body) {
+  if (
+    !validTema(body.tema) ||
+    body.book !== undefined ||
+    body.chapter !== undefined ||
+    body.taller !== undefined ||
+    body.herramienta !== undefined ||
+    body.semana !== undefined ||
+    body.frecuente !== undefined
+  ) {
+    return badRequest('Tema no válido');
+  }
+  const turns = body.messages ?? [];
+  if (!validTurns(turns)) return badRequest('Conversación no válida');
+  const version = await lectura(body.version);
+  if (!version) return badRequest('Versión no válida');
+  const vacia = await gastarLampara(request);
+  if (vacia) return vacia;
+  const books = await load<Book[]>('books.json');
+  const biblia = new Biblia(request, version, books);
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
+    { role: 'user', content: temaTask(body.tema) },
+    ...turns.map((t) => ({ role: t.role, content: t.text })),
+  ];
+  const system = SYSTEM + TALLER_SYSTEM + TEMA_SYSTEM + versionSystem(version) + TOOLS_SYSTEM;
+  return streamAnswer(request, [], messages, system, MODEL_PROPIO, async () => {}, biblia);
+}
+
 function badRequest(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
@@ -950,6 +1057,7 @@ export async function POST(request: Request) {
   } catch {
     return badRequest('JSON no válido');
   }
+  if (body.tema !== undefined) return temaPost(request, body);
   const books = await load<Book[]>('books.json');
   const book = books.find((b) => b.id === body.book);
   const chapter = Number(body.chapter);
@@ -964,15 +1072,7 @@ export async function POST(request: Request) {
   }
 
   const turns = body.messages ?? [];
-  if (
-    !Array.isArray(turns) ||
-    turns.length > MAX_TURNS ||
-    turns.some((t, i) => t?.role !== (i % 2 === 0 ? 'assistant' : 'user') || typeof t.text !== 'string') ||
-    (turns.length > 0 && turns[turns.length - 1].role !== 'user') ||
-    turns.some((t) => t.role === 'user' && t.text.length > MAX_QUESTION)
-  ) {
-    return badRequest('Conversación no válida');
-  }
+  if (!validTurns(turns)) return badRequest('Conversación no válida');
   if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
   const taller = body.taller;
   if (body.semana !== undefined && (!validSemana(body.semana) || taller || verse !== undefined || word !== undefined || turns.length > 0)) {
@@ -1091,7 +1191,8 @@ export async function POST(request: Request) {
   ];
 
   // Investigar otros pasajes y fuentes: en las preguntas de la persona. El primer estudio se basta con el pasaje.
-  const investiga = turns.length > 0;
+  // La maqueta de un tema también lee los pasajes de apoyo que propone.
+  const investiga = turns.length > 0 || taller?.modo === 'maqueta';
   const system =
     (frecuente ? SYSTEM : semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) +
     versionSystem(version) +

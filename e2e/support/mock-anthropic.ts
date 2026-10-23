@@ -192,6 +192,35 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
   }
   // Del sermón a tu semana: cinco días con el formato de src/lib/semanas.ts
   if (system.includes('Reglas de la semana')) return { text: SEMANA, cite: true };
+  // La maqueta de un mensaje que empezó desde un tema (src/lib/tallerTema.ts lee este formato).
+  if (system.includes('Reglas del Taller') && first.includes('Arma la maqueta')) {
+    const sermon = first.includes('un sermón');
+    return {
+      text: [
+        '## Idea central',
+        '- Tema: La paz de Dios | Complemento: guarda el corazón de quien le entrega sus cargas en oración',
+        '- Tema: El afán por el mañana | Complemento: se vence presentando todo a Dios con gratitud',
+        '',
+        '## Introducción: la necesidad',
+        '? ¿Qué preocupaciones sobre el futuro escuchas más en tus jóvenes, y qué dicen de lo que creen sobre Dios?',
+        '> Filipenses 4:6 | el versículo que nombra el afán sin minimizarlo',
+        '',
+        `## ${sermon ? 'Orar en vez de afanarse' : 'Mirar arriba'}`,
+        '? ¿Por qué Pablo pone «con hacimiento de gracias» junto a la petición?',
+        '> Filipenses 4:6-7 | la oración con gratitud y la paz que guarda',
+        '',
+        `## ${sermon ? 'Un Padre que sabe lo que necesitamos' : 'Mirar adelante'}`,
+        '? ¿Qué cambia en la ansiedad saber que el Padre ya sabe lo que necesitas?',
+        '> Mateo 6:31-34 | Jesús habla del mañana y del Padre que sabe',
+        '',
+        `## ${sermon ? 'Pensar en lo verdadero' : 'Oración'}`,
+        '? ¿Qué pensamientos verdaderos pueden reemplazar los escenarios que imaginan?',
+        '> Filipenses 4:8 | la lista de lo que hay que pensar',
+        ...(sermon ? ['', '## Conclusión', '? ¿Qué paso concreto puede dar esta semana alguien que vive con ansiedad?', '> Filipenses 4:9 | «lo que aprendisteis… esto haced»'] : []),
+      ].join('\n'),
+      cite: true,
+    };
+  }
   // Taller: una respuesta distinta por modo (preguntar, sugerir, revisar) en el primer turno.
   if (system.includes('Reglas del Taller') && !followUp) {
     if (first.includes('Hazme de 3 a 5 preguntas')) {
@@ -276,8 +305,63 @@ function investigates(body: Body) {
   return { done: results.length > 0 };
 }
 
-function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) => void) {
-  const calls = [
+// El Taller desde un tema (TEMA_SYSTEM en api/estudiar.ts): lee el pasaje, consulta los comentarios y la teología, y
+// responde con el formato de src/lib/tallerTema.ts citando un resultado de cada herramienta.
+const TEMA_CALLS = [
+  { name: 'leer_pasaje', input: { cita: 'Filipenses 4:4-9' } },
+  { name: 'comentarios', input: { cita: 'Filipenses 4:6' } },
+  { name: 'teologia', input: { tema: 'la providencia de Dios', busqueda: 'providence God care anxiety prayer', area: 'sistematicas' } },
+];
+
+const TEMA: { text: string; tool?: number }[] = [
+  { text: '## Lo que entiendo\nQuieres hablar a jóvenes que viven ansiosos por el futuro y sienten que Dios no los escucha, sin minimizar lo que sienten.\n\n## Pasajes\n' },
+  { text: '- Filipenses 4:4-9 | Pablo, preso, llama a presentar todo a Dios en oración en vez de afanarse.', tool: 0 },
+  { text: '\n- Mateo 6:25-34 | Jesús habla del mañana y de un Padre que sabe lo que necesitamos.\n- Salmos 55 | David entrega su carga cuando lo traicionan y siente que todo se derrumba.\n- 1 Pedro 5:6-7 | echar toda la ansiedad sobre Dios, porque él cuida de nosotros.\n\n## Lo que dicen las fuentes\n' },
+  { text: '- Matthew Henry señala que la oración con gratitud es el remedio contra el afán: no quita las cargas, cambia dónde las ponemos.', tool: 1 },
+  { text: '\n' },
+  { text: '- Hodge explica que la providencia de Dios alcanza también lo pequeño y lo que parece azar, y por eso se puede confiar en el mañana.', tool: 2 },
+  { text: '\n\n## Para afinar\n- ¿Qué edades tiene el grupo y qué los preocupa más: estudios, trabajo, familia?\n- ¿Qué esperas que hagan distinto esta semana?\n- ¿Lo vas a predicar a todo el grupo o es para una conversación más pequeña?' },
+];
+
+function temaTools(body: Body): 'pedir' | 'responder' | null {
+  if (!body.tools?.length || !systemText(body.system).includes('Esta vez la persona no llega con un pasaje')) return null;
+  const last = body.messages[body.messages.length - 1];
+  return typeof last.content !== 'string' && last.content.some((b) => b.type === 'tool_result') ? 'responder' : 'pedir';
+}
+
+function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) => void, body: Body) {
+  // El índice del primer search_result que devolvió cada herramienta, en el orden en que los recibió la IA.
+  const first: number[] = [];
+  let n = 0;
+  const last = body.messages[body.messages.length - 1];
+  for (const r of typeof last.content === 'string' ? [] : last.content.filter((b) => b.type === 'tool_result')) {
+    const blocks = Array.isArray(r.content) ? r.content.filter((b) => b.type === 'search_result') : [];
+    first.push(blocks.length ? n : -1);
+    n += blocks.length;
+  }
+  TEMA.forEach((seg, index) => {
+    const at = seg.tool !== undefined ? first[seg.tool] : -1;
+    send({ type: 'content_block_start', index, content_block: { type: 'text', text: '', citations: at >= 0 ? [] : null } });
+    send({ type: 'content_block_delta', index, delta: { type: 'text_delta', text: seg.text } });
+    if (at >= 0) {
+      send({
+        type: 'content_block_delta',
+        index,
+        delta: {
+          type: 'citations_delta',
+          citation: { type: 'search_result_location', cited_text: '', search_result_index: at, source: '', title: null, start_block_index: 0, end_block_index: 1 },
+        },
+      });
+    }
+    send({ type: 'content_block_stop', index });
+  });
+  send({ type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: 10 } });
+  send({ type: 'message_stop' });
+  res.end();
+}
+
+function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) => void, list?: typeof TEMA_CALLS) {
+  const calls = list ?? [
     { name: 'leer_pasaje', input: { cita: '2 Timoteo 3:14-17' } },
     { name: 'buscar_en_la_biblia', input: { palabras: 'escritur', testamento: 'NT' } },
     { name: 'teologia', input: { tema: 'el canon del Nuevo Testamento', busqueda: 'canon New Testament books accepted disputed', area: 'canon' } },
@@ -296,6 +380,9 @@ async function sse(res: ServerResponse, body: Body) {
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
   const send = (event: Record<string, unknown>) => res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
   send({ type: 'message_start', message: { ...message([]), stop_reason: null } });
+  const tema = temaTools(body);
+  if (tema === 'pedir') return sendTools(res, send, TEMA_CALLS);
+  if (tema === 'responder') return sendTema(res, send, body);
   const tools = investigates(body);
   if (tools && !tools.done) return sendTools(res, send);
   if (tools?.done) {
