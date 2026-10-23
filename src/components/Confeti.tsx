@@ -25,7 +25,9 @@ export default function Confeti() {
   if (!activos.length) return null;
   const quitar = (id: number) => setActivos((a) => a.filter((x) => x.id !== id));
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 60 }]} testID="confeti">
+    // overflow hidden: los papeles que salen por los lados o caen más abajo de la pantalla no deben ensanchar la
+    // página. En el Chrome de Android eso agrandaba el área de la página y la app se veía alejada y descuadrada.
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 60, overflow: 'hidden' }]} testID="confeti">
       {activos.map((l) =>
         l.estilo === 'fuegos' ? <Fuegos key={l.id} onFin={() => quitar(l.id)} /> : <Lluvia key={l.id} onFin={() => quitar(l.id)} />,
       )}
