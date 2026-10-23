@@ -236,7 +236,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
             <View style={[styles.insightRule, { backgroundColor: colors.accent }]} />
             <View style={{ flex: 1 }}>
               <Label colors={colors}>LO QUE DICE EL TEXTO</Label>
-              <Markdown text={d.observa} colors={colors} sources={sources} onCite={onCite} />
+              <Markdown text={d.observa} colors={colors} sources={sources} onCite={onCite} onOpenRef={onOpen} />
             </View>
           </View>
           <Label colors={colors} style={{ marginTop: 22 }}>
@@ -248,7 +248,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                 <Text style={[styles.qNumText, { color: colors.accent }]}>{i + 1}</Text>
               </View>
               <View style={{ flex: 1, paddingTop: 3 }}>
-                <Markdown text={q} colors={colors} sources={sources} onCite={onCite} />
+                <Markdown text={q} colors={colors} sources={sources} onCite={onCite} onOpenRef={onOpen} />
               </View>
             </Appear>
           ))}
@@ -288,7 +288,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                     {on && <CheckIcon color={colors.surface} size={13} strokeWidth={2.6} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Markdown text={v} colors={colors} sources={sources} onCite={onCite} />
+                    <Markdown text={v} colors={colors} sources={sources} onCite={onCite} onOpenRef={onOpen} />
                   </View>
                 </Pressable>
               </Appear>
@@ -327,7 +327,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                       <Text style={{ color: colors.muted, fontSize: 12 }}>{info.hint}</Text>
                     </View>
                   )}
-                  <Markdown text={o.text.charAt(0).toUpperCase() + o.text.slice(1)} colors={colors} sources={sources} onCite={onCite} />
+                  <Markdown text={o.text.charAt(0).toUpperCase() + o.text.slice(1)} colors={colors} sources={sources} onCite={onCite} onOpenRef={onOpen} />
                 </Appear>
               );
             })}

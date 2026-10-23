@@ -60,8 +60,23 @@ export async function lectura(version: unknown): Promise<Lectura | null> {
   return null;
 }
 
-/** Instrucciones sobre la versión: se añaden al sistema cuando no es la RV1909. */
-export function versionSystem(l: Lectura): string {
+/**
+ * Instrucciones sobre la versión: se añaden al sistema cuando no es la RV1909. Con «marcas» (el estudio y las
+ * preguntas, que se leen con src/components/StudyText.tsx) y una versión con derechos, la IA no copia versículos:
+ * escribe ⟪Juan 3:16⟫ y la app pone ahí el versículo en la versión de la persona, pedido en el momento. Así su texto
+ * nunca pasa por la IA ni se guarda con el estudio.
+ */
+export function versionSystem(l: Lectura, marcas = false): string {
+  if (l.licensed && marcas) {
+    const { abbr, name } = l.licensed;
+    return `
+
+Versión: la persona lee la Biblia en la versión «${name}» (${abbr}), que tiene derechos de autor: su texto no lo recibes porque su licencia no permite pasarlo a la IA. Trabajas con la Reina-Valera 1909, pero la persona no la lee: no copies sus palabras ni reproduzcas de memoria el texto de la ${abbr}. Cuando quieras mostrar un versículo, escribe en una línea aparte solo su marca entre ⟪ y ⟫ con el libro, el capítulo y el versículo, por ejemplo:
+
+⟪Juan 3:16⟫
+
+o un tramo del mismo capítulo de hasta tres versículos, como ⟪Romanos 8:28-30⟫. La app pone en su lugar ese versículo en la ${abbr}. Úsala solo donde la cita ayude, como mucho cuatro veces por respuesta, y sigue escribiendo tus frases alrededor sin repetir lo que dice. Para hablar de una palabra concreta, explica la del texto original (transliterada en *cursiva*) en vez de citar la traducción. Al tocar una cita ⟦n⟧, la app también le muestra ese versículo en su ${abbr}.`;
+  }
   if (l.licensed) {
     const { abbr, name } = l.licensed;
     return `

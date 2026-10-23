@@ -233,6 +233,26 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     const sent = aiRequests.at(-1)!;
     expect(sent.messages[0].content[0].title).toBe('Juan 3 · Reina-Valera 1909');
     expect(JSON.stringify(sent.system)).toContain('«Nueva Biblia de las Américas» (NBLA), que tiene derechos de autor: su texto no lo recibes');
+    // No copia la RV1909: marca el versículo y la app lo muestra en la NBLA
+    expect(JSON.stringify(sent.system)).toContain('⟪Juan 3:16⟫');
+    expect(JSON.stringify(sent.system)).not.toContain('en la RV1909: …');
+  });
+
+  it('con una versión con derechos, el estudio guardado es otro (con marcas) y el Taller sigue citando la RV1909', async () => {
+    const before = aiRequests.length;
+    await events(await ask({ book: 'jhn', chapter: 4, version: 'nbla' }));
+    expect(aiRequests.length).toBe(before + 1);
+    await events(await ask({ book: 'jhn', chapter: 4, version: 'nbla' }));
+    expect(aiRequests.length).toBe(before + 1); // el segundo es el guardado
+    await events(await ask({ book: 'jhn', chapter: 4, version: 'rv1909' }));
+    expect(aiRequests.length).toBe(before + 2); // la RV1909 tiene el suyo
+
+    await events(
+      await ask({ book: 'jhn', chapter: 4, version: 'nbla', messages: [], taller: { modo: 'sugerir', tipo: 'sermon', paso: 'bosquejo' } }),
+    );
+    const system = JSON.stringify(aiRequests.at(-1)!.system);
+    expect(system).toContain('en la RV1909: …');
+    expect(system).not.toContain('⟪Juan 3:16⟫');
   });
 
   it('rechaza versiones que no existen', async () => {

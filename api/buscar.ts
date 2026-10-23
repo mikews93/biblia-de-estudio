@@ -1,14 +1,17 @@
 // Función de Vercel: búsqueda por idea («versículos sobre la ansiedad») o por un fragmento recordado («todo lo puedo en Cristo»).
 // 1. Claude propone pasajes que tratan la idea.
-// 2. El servidor comprueba que cada referencia existe y carga su texto real de la RV1909.
+// 2. El servidor comprueba que cada referencia existe y carga su texto real en la versión que lee la persona («version»).
 // 3. Claude lee esos textos y se queda solo con los que de verdad hablan de la idea, explicando por qué con el texto delante.
-// Respuesta: { results: [{ ref, label, text, reason }], note? } | { error }
+// Con una versión con derechos (src/lib/licenciadas.ts) la IA trabaja con la RV1909, como en el estudio (ver
+// api/_investigar.ts), y la app muestra cada resultado en la versión de la persona.
+// Respuesta: { results: [{ ref, label, text, reason, version }], note? } | { error }. «version» es la versión del texto.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { needsAccount } from './_cuenta';
+import { Biblia, type Lectura, lectura } from './_investigar';
 import { formatRef, parseRef } from '../src/lib/refs';
 
 // Buscar es una tarea corta y frecuente: Sonnet cuesta la mitad que Opus y aquí rinde igual.
@@ -19,11 +22,12 @@ const MAX_CANDIDATES = 24;
 const MAX_RESULTS = 12;
 const MAX_VERSES = 6; // un pasaje propuesto no puede pasar de seis versículos
 
-type Book = { id: string; name: string; chapters: number };
+type Book = { id: string; name: string; abbr: string; chapters: number; testament: 'AT' | 'NT'; interlinear: boolean };
 type Verse = [number, string];
-type Result = { ref: string; label: string; text: string; reason: string };
+type Found = { ref: string; label: string; text: string; version: string };
+type Result = Found & { reason: string };
 
-const RULES = `Trabajas para el buscador de una app bíblica gratuita en español (Reina-Valera 1909).
+const rules = (version: Lectura) => `Trabajas para el buscador de una app bíblica gratuita en español (${version.name}).
 - Busca pasajes por lo que dicen, no solo por palabras sueltas: una idea puede aparecer sin la palabra exacta.
 - A veces la persona escribe o dicta un fragmento que recuerda de un versículo, quizá con palabras de otra traducción (NBLA, RVR1960, NVI…) o no del todo exactas. Entonces el versículo del que viene va primero, y después otros parecidos.
 - No inventes referencias. Prefiere pasajes conocidos y claros sobre el tema.
@@ -42,11 +46,11 @@ async function load<T>(rel: string, fallback?: T): Promise<T> {
   }
 }
 
-async function ask<T>(prompt: string, schema: Record<string, unknown>): Promise<T> {
+async function ask<T>(system: string, prompt: string, schema: Record<string, unknown>): Promise<T> {
   const response = await client.beta.messages.create({
     model: MODEL,
     max_tokens: 8000,
-    system: RULES,
+    system,
     messages: [{ role: 'user', content: prompt }],
     output_config: { effort: 'low', format: { type: 'json_schema', schema } },
     betas: ['server-side-fallback-2026-07-01'],
@@ -57,8 +61,11 @@ async function ask<T>(prompt: string, schema: Record<string, unknown>): Promise<
   return JSON.parse(text) as T;
 }
 
-/** Texto real de la RV1909 de una referencia, o null si no existe o es demasiado larga. */
-async function verify(ref: string, books: Book[]): Promise<{ ref: string; label: string; text: string } | null> {
+/**
+ * Texto real de una referencia en la versión de la búsqueda, o null si no existe o es demasiado larga. Si esa
+ * versión no se puede leer ahora (es un archivo de la web), el de la RV1909, que va dentro de la función.
+ */
+async function verify(ref: string, books: Book[], biblia: Biblia, rv: Biblia): Promise<Found | null> {
   if (!/^[0-9a-z]{3}\.\d+\.\d+(-[0-9a-z]{3}\.\d+\.\d+)?$/.test(ref)) return null;
   const { start, end } = parseRef(ref);
   const book = books.find((b) => b.id === start.book);
@@ -66,11 +73,13 @@ async function verify(ref: string, books: Book[]): Promise<{ ref: string; label:
   // Solo tramos dentro de un mismo capítulo
   if (end.book !== start.book || end.chapter !== start.chapter || end.verse < start.verse) return null;
   if (end.verse - start.verse >= MAX_VERSES) return null;
-  const verses = await load<Verse[]>(`text/rv1909/${start.book}/${start.chapter}.json`, []);
+  let from = biblia;
+  let verses = await biblia.chapter(start.book, start.chapter).catch(() => null);
+  if (!verses) [from, verses] = [rv, await rv.chapter(start.book, start.chapter).catch((): Verse[] => [])];
   const picked = verses.filter(([n]) => n >= start.verse && n <= end.verse);
   if (!picked.length || picked[0][0] !== start.verse || picked[picked.length - 1][0] !== end.verse) return null;
   const clean = end.verse === start.verse ? `${start.book}.${start.chapter}.${start.verse}` : ref;
-  return { ref: clean, label: formatRef(clean, books), text: picked.map(([, t]) => t).join(' ') };
+  return { ref: clean, label: formatRef(clean, books), text: picked.map(([, t]) => t).join(' '), version: from.version.id };
 }
 
 function badRequest(message: string, status = 400) {
@@ -81,20 +90,30 @@ export async function POST(request: Request) {
   const denied = await needsAccount(request);
   if (denied) return denied;
   let query: string;
+  let pedida: unknown;
   try {
-    query = String(((await request.json()) as { query?: unknown }).query ?? '').trim();
+    const body = (await request.json()) as { query?: unknown; version?: unknown };
+    query = String(body.query ?? '').trim();
+    pedida = body.version;
   } catch {
     return badRequest('JSON no válido');
   }
   if (query.length < 3) return badRequest('Escribe un poco más lo que buscas');
   if (query.length > MAX_QUERY) return badRequest('La búsqueda es demasiado larga');
+  // La versión que lee la persona; con una con derechos, la IA lee la RV1909 (lectura() la cambia).
+  const version = await lectura(pedida);
+  if (!version) return badRequest('Versión no válida');
 
   const books = await load<Book[]>('books.json');
   const ids = books.map((b) => `${b.id}=${b.name}`).join(', ');
+  const system = rules(version);
+  const biblia = new Biblia(request, version, books);
+  const rv = version.id === 'rv1909' ? biblia : new Biblia(request, (await lectura(undefined))!, books);
 
   try {
     // 1. Propuesta
     const proposal = await ask<{ candidates: string[] }>(
+      system,
       `Búsqueda de la persona: «${query}»
 
 Propón hasta ${MAX_CANDIDATES} pasajes de la Biblia que traten esa idea, del más al menos claro. Si parece un fragmento recordado de un versículo, pon primero ese versículo. Escribe cada uno como libro.capítulo.versículo con estos códigos de libro: ${ids}. Para un tramo corto del mismo capítulo usa libro.c.v-libro.c.v (máximo ${MAX_VERSES} versículos). Ejemplos: php.4.6 o mat.6.33-mat.6.34.`,
@@ -108,19 +127,20 @@ Propón hasta ${MAX_CANDIDATES} pasajes de la Biblia que traten esa idea, del m�
 
     // 2. Comprobación contra el texto real
     const unique = [...new Set(proposal.candidates)].slice(0, MAX_CANDIDATES);
-    const found = (await Promise.all(unique.map((r) => verify(r, books)))).filter(
+    const found = (await Promise.all(unique.map((r) => verify(r, books, biblia, rv)))).filter(
       (x): x is NonNullable<typeof x> => x !== null,
     );
     if (!found.length) return Response.json({ results: [] });
 
     // 3. Lectura del texto: solo quedan los pasajes que de verdad hablan de la idea
     const review = await ask<{ keep: { n: number; reason: string }[]; note: string }>(
+      system,
       `Búsqueda de la persona: «${query}»
 
-Estos son los textos reales de la Reina-Valera 1909:
-${found.map((f, i) => `[${i + 1}] ${f.label}: ${f.text}`).join('\n')}
+Estos son los textos reales de la versión «${version.name}»${found.some((f) => f.version !== version.id) ? ' (los marcados con [RV1909] son de la Reina-Valera 1909)' : ''}:
+${found.map((f, i) => `[${i + 1}]${f.version !== version.id ? ' [RV1909]' : ''} ${f.label}: ${f.text}`).join('\n')}
 
-Quédate solo con los que, leídos tal como están, hablan de verdad de esa idea, o son el versículo del que viene el fragmento que la persona recuerda aunque la RV1909 lo diga con otras palabras (máximo ${MAX_RESULTS}), ordenados del más al menos claro, con ese versículo primero. Para cada uno escribe en "reason" una frase breve en español que explique qué dice el texto sobre la idea, basada solo en sus palabras; si es el versículo del fragmento recordado, dilo («Es el versículo que recuerdas…»). En "note" escribe una frase si las tradiciones cristianas entienden el tema de maneras distintas, sin tomar partido; si no, deja "note" vacío.`,
+Quédate solo con los que, leídos tal como están, hablan de verdad de esa idea, o son el versículo del que viene el fragmento que la persona recuerda aunque la ${version.abbr} lo diga con otras palabras (máximo ${MAX_RESULTS}), ordenados del más al menos claro, con ese versículo primero. Para cada uno escribe en "reason" una frase breve en español que explique qué dice el texto sobre la idea, basada solo en sus palabras; si es el versículo del fragmento recordado, dilo («Es el versículo que recuerdas…»). En "note" escribe una frase si las tradiciones cristianas entienden el tema de maneras distintas, sin tomar partido; si no, deja "note" vacío.`,
       {
         type: 'object',
         properties: {
