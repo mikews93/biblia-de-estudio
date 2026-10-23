@@ -1,5 +1,6 @@
-// El repaso relámpago de la sala en vivo: preguntas de opción múltiple que todos responden a la vez. Se juega en
-// grupo (el grupo acierta junto), con puntos y podio, o por equipos; los puntos duran solo esa sesión.
+// Los juegos de la sala en vivo: el repaso relámpago, ¿quién lo dijo?, dos verdades y una mentira (opción múltiple),
+// ordena el versículo y espada bíblica. Todos responden a la vez; se juega en grupo (el grupo acierta junto), con
+// puntos y podio, o por equipos; los puntos duran solo esa sesión.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -7,8 +8,21 @@ import Appear from '@/components/Appear';
 import { Avatar, Button } from '@/components/comunidad/ui';
 import { ArrowRightIcon, CheckIcon, CloseIcon, EyeIcon, PeopleIcon, StarIcon } from '@/components/icons';
 import { lanzarConfeti } from '@/lib/confeti';
+import { getBooks, getChapter } from '@/lib/data';
 import { type Herramienta, askStudy } from '@/lib/estudio';
-import { LETRAS, type ModoRepaso, NOMBRES_EQUIPOS, type PreguntaRepaso, acertoElGrupo, parseRepaso } from '@/lib/repaso';
+import {
+  JUEGOS,
+  type Juego,
+  LETRAS,
+  type ModoRepaso,
+  NOMBRES_EQUIPOS,
+  type PreguntaRepaso,
+  acertoElGrupo,
+  conSolucion,
+  parseRepaso,
+  preguntasEspada,
+  preguntasOrdena,
+} from '@/lib/repaso';
 import { isDark, serif, useColors } from '@/lib/theme';
 import { type Persona, type Respuestas, type Tarjeta, TONOS } from '@/lib/vivo';
 
@@ -26,14 +40,26 @@ export const MODOS: [ModoRepaso, string, string][] = [
 
 const repasos = new Map<string, Promise<PreguntaRepaso[]>>();
 
-/** Las preguntas del repaso del capítulo: se preparan una vez y quedan guardadas para todos. */
-export function repasoDe(libro: string, capitulo: number) {
-  const key = `${libro}.${capitulo}`;
+/**
+ * Las preguntas de un juego del capítulo. Las de opción múltiple las prepara la IA una vez y quedan guardadas para
+ * todos; ordena y espada se arman aquí con el texto (distintas cada vez).
+ */
+export function repasoDe(libro: string, capitulo: number, juego: Juego = 'repaso') {
+  if (conSolucion(juego)) {
+    return Promise.all([getBooks(), getChapter(libro, capitulo)]).then(([books, versos]) => {
+      const nombre = books.find((b) => b.id === libro)?.name ?? libro;
+      const vs = versos.map(([n, t]) => [n, t] as [number, string]);
+      const qs = juego === 'ordena' ? preguntasOrdena(nombre, capitulo, vs) : preguntasEspada(nombre, capitulo, vs);
+      if (!qs.length) throw new Error('Este capítulo es muy corto para este juego.');
+      return qs;
+    });
+  }
+  const key = `${juego}:${libro}.${capitulo}`;
   let p = repasos.get(key);
   if (!p) {
-    p = askStudy({ book: libro, chapter: capitulo, messages: [], herramienta: 'repaso' as Herramienta }, () => {}).then((r) => {
-      const qs = parseRepaso(r.text);
-      if (!qs.length) throw new Error('No salió bien el repaso. Inténtalo otra vez.');
+    p = askStudy({ book: libro, chapter: capitulo, messages: [], herramienta: juego as Herramienta }, () => {}).then((r) => {
+      const qs = parseRepaso(r.text).filter((q) => q.opciones.length === (juego === 'mentira' ? 3 : 4));
+      if (!qs.length) throw new Error('No salieron bien las preguntas. Inténtalo otra vez.');
       return qs;
     });
     p.catch(() => repasos.delete(key));
@@ -42,17 +68,27 @@ export function repasoDe(libro: string, capitulo: number) {
   return p;
 }
 
-/** El botón de la pestaña Estudio para lanzar un repaso, con la forma de jugarlo. */
-export function LanzarRepaso({ libro, capitulo, onPut }: { libro: string; capitulo: number; onPut: (preguntas: PreguntaRepaso[], modo: ModoRepaso) => void }) {
+/** El panel de la pestaña Estudio para lanzar un juego, con la forma de jugarlo. */
+export function LanzarRepaso({
+  libro,
+  capitulo,
+  onPut,
+}: {
+  libro: string;
+  capitulo: number;
+  onPut: (preguntas: PreguntaRepaso[], modo: ModoRepaso, juego: Juego) => void;
+}) {
   const colors = useColors();
   const [modo, setModo] = useState<ModoRepaso>('grupo');
+  const [juego, setJuego] = useState<Juego>('repaso');
+  const elegido = JUEGOS.find((j) => j.id === juego)!;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const go = async () => {
     setBusy(true);
     setError(null);
     try {
-      onPut(await repasoDe(libro, capitulo), modo);
+      onPut(await repasoDe(libro, capitulo, juego), modo, juego);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -63,9 +99,26 @@ export function LanzarRepaso({ libro, capitulo, onPut }: { libro: string; capitu
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <StarIcon color={colors.warm} size={20} strokeWidth={2} />
         <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.text, fontWeight: '800', fontSize: 15.5 }}>Repaso relámpago</Text>
-          <Text style={{ color: colors.muted, fontSize: 13 }}>Preguntas de opción múltiple sobre el capítulo</Text>
+          <Text style={{ color: colors.text, fontWeight: '800', fontSize: 15.5 }}>Juegos del capítulo</Text>
+          <Text style={{ color: colors.muted, fontSize: 13 }}>{elegido.detalle}</Text>
         </View>
+      </View>
+      <View style={styles.games} accessibilityRole="radiogroup" accessibilityLabel="Juego">
+        {JUEGOS.map((j) => {
+          const on = j.id === juego;
+          return (
+            <Pressable
+              key={j.id}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={j.nombre}
+              onPress={() => setJuego(j.id)}
+              style={[styles.game, { backgroundColor: on ? colors.text : colors.surface, borderColor: on ? colors.text : colors.border }]}
+            >
+              <Text style={{ color: on ? colors.background : colors.text, fontWeight: '700', fontSize: 13 }}>{j.nombre}</Text>
+            </Pressable>
+          );
+        })}
       </View>
       <View style={styles.modes}>
         {MODOS.map(([m, label, detail]) => {
@@ -88,7 +141,7 @@ export function LanzarRepaso({ libro, capitulo, onPut }: { libro: string; capitu
         })}
       </View>
       {!!error && <Text style={{ color: LIVE_RED, fontSize: 13, marginBottom: 8 }}>{error}</Text>}
-      <Button label={busy ? 'Preparando las preguntas…' : 'Empezar el repaso'} icon={StarIcon} busy={busy} onPress={go} />
+      <Button label={busy ? 'Preparando el juego…' : `Empezar: ${elegido.nombre}`} icon={StarIcon} busy={busy} onPress={go} />
     </View>
   );
 }
@@ -104,7 +157,8 @@ type Props = {
   respondieron?: number;
   /** Quién juega junto: «El grupo» en la sala, «La iglesia» en un evento. */
   quien?: string;
-  onAnswer: (opcion: number) => Promise<boolean>;
+  /** La opción elegida, o en ordena y espada la respuesta (las palabras en orden, el número del versículo). */
+  onAnswer: (respuesta: number | string) => Promise<boolean>;
   onReveal: () => void;
   onNext: (paso: number) => void;
   onClose: () => void;
@@ -129,12 +183,25 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
   const elegida = elegidas[ronda];
   const answered = !!me && quienes.includes(me);
   const modo = t.modo ?? 'grupo';
+  const juego = JUEGOS.find((j) => j.id === (t.juego ?? 'repaso'))!;
+  const solucion = conSolucion(juego.id);
+  const mentira = juego.id === 'mentira';
+  // En ordena y espada, lo que respondió este teléfono (para mostrarlo al revelar).
+  const [propias, setPropias] = useState<Record<string, string>>({});
 
   const choose = async (i: number) => {
     if (!me || answered || revealed || sending !== null) return;
     setSending(i);
     if (await onAnswer(i)) setElegidas((e) => ({ ...e, [ronda]: i }));
     setSending(null);
+  };
+  const send = async (r: string) => {
+    if (!me || answered || revealed || sending !== null) return false;
+    setSending(-1);
+    const ok = await onAnswer(r);
+    if (ok) setPropias((e) => ({ ...e, [ronda]: r }));
+    setSending(null);
+    return ok;
   };
 
   const aciertosGrupo = reveladas.filter((p) => acertoElGrupo(respuestas?.votos?.[p] ?? [], preguntas[p]?.correcta ?? -1)).length;
@@ -165,7 +232,7 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
             <StarIcon color={colors.warm} size={16} strokeWidth={2} />
           </View>
           <Text style={[vivoText.kicker, { color: colors.warm, flex: 1 }]} numberOfLines={1}>
-            REPASO RELÁMPAGO
+            {juego.kicker}
           </Text>
           <View style={[styles.pill, { backgroundColor: colors.accentSoft }]}>
             <Text style={{ color: colors.muted, fontSize: 11.5, fontWeight: '800' }}>{MODOS.find(([m]) => m === modo)?.[1]}</Text>
@@ -203,9 +270,17 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
           </Text>
         </View>
 
-        <Text style={[styles.question, { color: colors.text }]}>{q.texto}</Text>
+        {mentira && <Text style={[vivoText.kicker, { color: colors.muted, marginTop: 14 }]}>{q.texto.toUpperCase()}</Text>}
+        <Text style={[styles.question, { color: colors.text }, mentira && { marginTop: 4 }]}>{mentira ? '¿Cuál es la mentira?' : q.texto}</Text>
 
-        <View style={{ gap: 8 }}>
+        {juego.id === 'ordena' && (
+          <Ordena key={ronda} q={q} revealed={revealed} propia={propias[ronda]} answered={answered} disabled={!me} busy={sending !== null} onSend={send} />
+        )}
+        {juego.id === 'espada' && (
+          <Espada key={ronda} q={q} revealed={revealed} propia={propias[ronda]} answered={answered} disabled={!me} busy={sending !== null} onSend={send} />
+        )}
+
+        {!solucion && <View style={{ gap: 8 }}>
           {q.opciones.map((o, i) => {
             const correct = revealed && q.correcta === i;
             const picked = elegida === i;
@@ -216,7 +291,7 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
               <Pressable
                 key={i}
                 accessibilityRole="button"
-                accessibilityLabel={`${LETRAS[i]}: ${o}${correct ? ', la correcta' : ''}${picked ? ', tu respuesta' : ''}`}
+                accessibilityLabel={`${LETRAS[i]}: ${o}${correct ? (mentira ? ', la mentira' : ', la correcta') : ''}${picked ? ', tu respuesta' : ''}`}
                 accessibilityState={{ selected: picked, disabled: !me || answered || revealed }}
                 onPress={() => choose(i)}
                 style={({ pressed }) => [
@@ -250,13 +325,13 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
               </Pressable>
             );
           })}
-        </View>
+        </View>}
 
         {!revealed && (
           <>
             {me && answered && (
               <Text style={{ color: colors.muted, fontSize: 13, marginTop: 12 }}>
-                {elegida !== undefined ? `Elegiste la ${LETRAS[elegida]}. ` : 'Ya respondiste. '}Espera a que se revele.
+                {elegida !== undefined && !solucion ? `Elegiste la ${LETRAS[elegida]}. ` : 'Ya respondiste. '}Espera a que se revele.
               </Text>
             )}
             {!me && <Text style={{ color: colors.muted, fontSize: 13, marginTop: 12 }}>Entra con tu cuenta para jugar.</Text>}
@@ -275,12 +350,15 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
               {!!q.cita && <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: '700' }}>{q.cita}</Text>}
               {modo === 'grupo' && (
                 <Text style={[styles.resultText, { color: acertoElGrupo(votos, q.correcta) ? BIEN.ink : colors.text }]}>
-                  {acertoElGrupo(votos, q.correcta) ? `¡${quien} acertó!` : `Esta costó: ${votos[q.correcta]} de ${votos.reduce((a, b) => a + b, 0)} acertaron`}
+                  {acertoElGrupo(votos, q.correcta)
+                    ? `¡${quien} ${mentira ? 'descubrió la mentira' : 'acertó'}!`
+                    : `Esta costó: ${votos[q.correcta]} de ${votos.reduce((a, b) => a + b, 0)} ${solucion ? 'lo lograron' : 'acertaron'}`}
                 </Text>
               )}
               {modo === 'puntos' && yo && (
                 <Text style={[styles.resultText, { color: colors.text }]}>
-                  {elegida === q.correcta ? '¡Bien! ' : ''}Llevas {yo.puntos.toLocaleString('es')} puntos
+                  {(solucion ? acerto(q, propias[ronda]) : elegida === q.correcta) ? '¡Bien! ' : ''}
+                  Llevas {yo.puntos.toLocaleString('es')} puntos
                 </Text>
               )}
               {modo === 'equipos' && <Equipos puntos={puntosEquipo} mio={miEquipo} />}
@@ -296,6 +374,145 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
         )}
       </View>
     </Appear>
+  );
+}
+
+const acerto = (q: PreguntaRepaso, r: string | undefined) => r !== undefined && !!q.solucion && r.trim().toLowerCase() === q.solucion.trim().toLowerCase();
+
+type JuegoProps = {
+  q: PreguntaRepaso;
+  revealed: boolean;
+  propia: string | undefined;
+  answered: boolean;
+  disabled: boolean;
+  busy: boolean;
+  onSend: (r: string) => Promise<boolean>;
+};
+
+/** Ordena el versículo: se tocan las palabras revueltas y van formando la frase; tocar una de la frase la devuelve. */
+function Ordena({ q, revealed, propia, answered, disabled, busy, onSend }: JuegoProps) {
+  const colors = useColors();
+  const dark = isDark(colors);
+  const [orden, setOrden] = useState<number[]>([]);
+  const lista = q.opciones;
+  const done = answered || revealed;
+  const frase = (propia ?? orden.map((i) => lista[i]).join(' ')).split(' ').filter(Boolean);
+  const ok = revealed && acerto(q, propia);
+  return (
+    <View>
+      <View style={[styles.line, { borderColor: revealed ? (ok ? BIEN.ink : colors.border) : colors.warm, backgroundColor: colors.background }]}>
+        {frase.length === 0 && <Text style={{ color: colors.muted, fontSize: 14 }}>Toca la primera palabra del versículo…</Text>}
+        {frase.map((w, k) => (
+          <Pressable
+            key={`${w}-${k}`}
+            accessibilityRole="button"
+            accessibilityLabel={`${w}, quitar`}
+            disabled={done}
+            onPress={() => setOrden((o) => o.filter((_, j) => j !== k))}
+            style={[styles.word, { backgroundColor: colors.warmSoft, borderColor: colors.warm }]}
+          >
+            <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>{w}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {!done && (
+        <>
+          <View style={styles.words} testID="ordena-palabras">
+            {lista.map((w, i) => {
+              const usada = orden.includes(i);
+              return (
+                <Pressable
+                  key={i}
+                  accessibilityRole="button"
+                  accessibilityLabel={w}
+                  accessibilityState={{ disabled: usada || disabled }}
+                  disabled={usada || disabled}
+                  onPress={() => setOrden((o) => [...o, i])}
+                  style={({ pressed }) => [
+                    styles.word,
+                    { backgroundColor: colors.surface, borderColor: colors.border, opacity: usada ? 0.25 : 1 },
+                    pressed && { transform: [{ scale: 0.95 }] },
+                  ]}
+                >
+                  <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>{w}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+            <Button label="Borrar" kind="outline" onPress={() => setOrden([])} disabled={!orden.length} />
+            <Button
+              label="Listo"
+              icon={CheckIcon}
+              busy={busy}
+              disabled={orden.length !== lista.length || disabled}
+              onPress={() => onSend(orden.map((i) => lista[i]).join(' '))}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </>
+      )}
+      {revealed && (
+        <Appear from={6}>
+          <View style={[styles.answer, { backgroundColor: dark ? BIEN.dark : BIEN.light }]}>
+            <Text style={{ color: BIEN.ink, fontWeight: '800', fontSize: 12, letterSpacing: 0.8 }}>{q.cita?.toUpperCase()}</Text>
+            <Text style={{ color: colors.text, fontFamily: serif, fontSize: 17, lineHeight: 25, marginTop: 4 }}>{q.solucion}</Text>
+            {propia !== undefined && (
+              <Text style={{ color: ok ? BIEN.ink : colors.muted, fontSize: 13, fontWeight: '700', marginTop: 6 }}>{ok ? '¡Lo ordenaste bien!' : 'Casi: compáralo con el tuyo.'}</Text>
+            )}
+          </View>
+        </Appear>
+      )}
+    </View>
+  );
+}
+
+/** Espada bíblica: la frase arriba, el capítulo en la pantalla y los números de versículo para tocar el correcto. */
+function Espada({ q, revealed, propia, answered, disabled, busy, onSend }: JuegoProps) {
+  const colors = useColors();
+  const dark = isDark(colors);
+  const n = q.versiculos ?? 0;
+  const ok = revealed && acerto(q, propia);
+  return (
+    <View>
+      {!revealed && !answered && (
+        <Text style={{ color: colors.muted, fontSize: 13.5, lineHeight: 19, marginBottom: 10 }}>
+          Búscala en el capítulo y toca el número de su versículo. ¡Gana el más rápido!
+        </Text>
+      )}
+      <View style={styles.verses} accessibilityRole="radiogroup" accessibilityLabel="Versículo">
+        {Array.from({ length: n }, (_, k) => String(k + 1)).map((v) => {
+          const mine = propia === v;
+          const correct = revealed && q.solucion === v;
+          return (
+            <Pressable
+              key={v}
+              accessibilityRole="button"
+              accessibilityLabel={`Es el versículo ${v}${correct ? ', el correcto' : ''}${mine ? ', tu respuesta' : ''}`}
+              disabled={disabled || answered || revealed || busy}
+              onPress={() => onSend(v)}
+              style={({ pressed }) => [
+                styles.verse,
+                {
+                  backgroundColor: correct ? (dark ? BIEN.dark : BIEN.light) : mine ? colors.warmSoft : colors.background,
+                  borderColor: correct ? BIEN.ink : mine ? (revealed ? LIVE_RED : colors.warm) : colors.border,
+                  opacity: (answered || revealed) && !mine && !correct ? 0.45 : 1,
+                },
+                pressed && { transform: [{ scale: 0.94 }] },
+              ]}
+            >
+              <Text style={{ color: correct ? BIEN.ink : colors.text, fontWeight: '800', fontSize: 14, fontVariant: ['tabular-nums'] }}>{v}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {revealed && (
+        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 10 }}>
+          {q.cita}
+          {propia !== undefined ? (ok ? ' · ¡La encontraste!' : ' · Esta vez no') : ''}
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -428,6 +645,14 @@ const styles = StyleSheet.create({
   place: { width: 18, fontWeight: '900', fontSize: 15, textAlign: 'center' },
   final: { borderRadius: 16, padding: 16, marginTop: 16 },
   finalTitle: { fontFamily: serif, fontSize: 22, fontWeight: '700', marginTop: 6 },
+  games: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  game: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 6 },
+  line: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, minHeight: 54, borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 14, padding: 8, alignItems: 'center' },
+  words: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  word: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
+  answer: { borderRadius: 14, padding: 12, marginTop: 12 },
+  verses: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  verse: { width: 42, height: 38, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   contados: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
   launch: { borderRadius: 16, padding: 14, marginBottom: 14 },
   modes: { flexDirection: 'row', gap: 6, marginVertical: 12 },

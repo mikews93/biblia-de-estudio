@@ -143,6 +143,21 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
       cite: false,
     };
   }
+  if (first.includes('«Dos verdades y una mentira»')) {
+    return {
+      text: [
+        'P: Sobre los versículos 1 al 4\nA) Hay que buscar las cosas de arriba\nB) Cristo está sentado a la diestra de Dios\nC) Nuestra vida está escondida en el templo\nR: C\nV: Colosenses 3:3',
+        'P: Sobre los versículos 12 al 14\nA) Hay que vestirse de caridad\nB) La caridad es el vínculo de la perfección\nC) Hay que vestirse de ira\nR: C\nV: Colosenses 3:12',
+      ].join('\n\n'),
+      cite: false,
+    };
+  }
+  if (first.includes('«¿Quién lo dijo?»')) {
+    return {
+      text: 'P: «Cuando Cristo, vuestra vida, se manifestare»\nA) Pedro\nB) Pablo\nC) Juan\nD) Santiago\nR: B\nV: Colosenses 3:4',
+      cite: false,
+    };
+  }
   if (first.includes('repaso relámpago')) {
     return {
       text: [

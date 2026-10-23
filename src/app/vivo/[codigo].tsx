@@ -351,7 +351,9 @@ export default function SalaEnVivo() {
             guia={sala.sala.guia.id}
             me={me}
             lead={lead}
-            onAnswer={async (opcion) => !!(await act('responderSala', { ronda: `${tarjeta.id}:${tarjeta.paso}`, opcion }))}
+            onAnswer={async (r) =>
+              !!(await act('responderSala', { ronda: `${tarjeta.id}:${tarjeta.paso}`, ...(typeof r === 'string' ? { respuesta: r } : { opcion: r }) }))
+            }
             onReveal={() => act('moverSala', { revelar: true })}
             onNext={(paso) => act('moverSala', { paso })}
             onClose={() => act('moverSala', { tarjeta: null })}

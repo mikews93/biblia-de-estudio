@@ -31,7 +31,7 @@ export type TallerRequest = {
 };
 
 /** Herramientas de un capítulo inspiradas en NotebookLM: resumen en audio, tarjetas de repaso y mapa mental. */
-export type Herramienta = 'podcast' | 'tarjetas' | 'mapa' | 'repaso';
+export type Herramienta = 'podcast' | 'tarjetas' | 'mapa' | 'repaso' | 'quien' | 'mentira';
 
 type Request = {
   book?: string;

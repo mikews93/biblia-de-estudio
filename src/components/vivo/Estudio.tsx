@@ -25,7 +25,7 @@ import {
 import { Markdown } from '@/components/StudyText';
 import { lanzarConfeti } from '@/lib/confeti';
 import { parseRef } from '@/lib/data';
-import type { ModoRepaso, PreguntaRepaso } from '@/lib/repaso';
+import type { Juego, ModoRepaso, PreguntaRepaso } from '@/lib/repaso';
 import { type Source, type Turn, askStudy } from '@/lib/estudio';
 import { verseHref } from '@/lib/routes';
 import { isDark, serif, useColors } from '@/lib/theme';
@@ -509,7 +509,7 @@ export function TarjetaRonda({
 export type TarjetaNueva =
   | { tipo: 'estudio'; titulo: string; texto: string; fuentes: Fuente[] }
   | { tipo: 'ronda'; titulo: string; anonima: boolean }
-  | { tipo: 'repaso'; preguntas: PreguntaRepaso[]; modo: ModoRepaso };
+  | { tipo: 'repaso'; preguntas: PreguntaRepaso[]; modo: ModoRepaso; juego: Juego };
 
 export function EstudioTab({
   libro,

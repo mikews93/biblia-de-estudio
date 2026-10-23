@@ -65,7 +65,7 @@ const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const MAX_ROUNDS = 6;
 
 type Turn = { role: 'user' | 'assistant'; text: string };
-type Herramienta = 'podcast' | 'tarjetas' | 'mapa' | 'repaso';
+type Herramienta = 'podcast' | 'tarjetas' | 'mapa' | 'repaso' | 'quien' | 'mentira';
 /** Lo que se guarda en herramientas_ia: las herramientas de un capítulo y las de una palabra (con capítulo 0). */
 type Guardada = Herramienta | 'palabra' | 'palabra-podcast';
 type Body = {
@@ -282,6 +282,32 @@ Reglas:
 - Opciones cortas (de 1 a 12 palabras) y parecidas en largo; que la correcta no sea siempre la misma letra.
 - Nada de preguntas de opinión, de sí o no, ni de «todas las anteriores».
 - Ordénalas como aparecen en el capítulo.`,
+
+  // Juegos del estudio en grupo, con el mismo formato que el repaso (src/lib/repaso.ts).
+  quien: (book, chapter) => `Prepara el juego «¿Quién lo dijo?» de ${book.name} ${chapter} para un grupo que acaba de leerlo junto: 5 frases dichas por alguien, y todos eligen en su teléfono quién la dijo.
+
+${REPASO_FORMATO}
+
+Reglas:
+- «P:» es la frase entre comillas, copiada exacta de la RV1909 (de 5 a 25 palabras); las opciones son personas o grupos.
+- Usa frases de este capítulo. Si en él habla una sola persona (una carta, un salmo), mezcla preguntas de «¿A quién se lo dijo?» o «¿De quién habla?» escritas en «P:», o frases de los pasajes de las referencias cruzadas.
+- Las otras opciones son personajes de la Biblia creíbles para esa frase, no absurdos; que la correcta no sea siempre la misma letra.
+- Ordénalas como aparecen en el capítulo.`,
+
+  mentira: (book, chapter) => `Prepara el juego «Dos verdades y una mentira» de ${book.name} ${chapter} para un grupo que acaba de leerlo junto: 5 rondas de tres frases sobre el capítulo, dos verdaderas y una falsa, y todos eligen en su teléfono la falsa.
+
+Formato estricto, sin títulos ni introducción, con una línea en blanco entre rondas:
+P: una frase corta que diga de qué parte del capítulo se trata (por ejemplo «Sobre los versículos 1 al 4»)
+A) frase
+B) frase
+C) frase
+R: la letra de la frase FALSA
+V: la cita que la desmiente
+
+Reglas:
+- Las verdaderas dicen lo que el texto dice; la falsa cambia un detalle que el texto deja claro (quién, qué, cuántos, dónde, el orden), de forma creíble.
+- Frases de 6 a 20 palabras, parecidas en largo y en tono; nada de opiniones ni de doctrina discutida.
+- Que la falsa no sea siempre la misma letra. Ordénalas como avanza el capítulo.`,
 
   mapa: (book, chapter) => `Haz el mapa mental de ${book.name} ${chapter}.
 

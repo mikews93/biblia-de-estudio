@@ -110,3 +110,44 @@ describe('repaso relámpago', () => {
     expect(acertoElGrupo([0, 0, 0, 0], 1)).toBe(false);
   });
 });
+
+describe('juegos del capítulo', () => {
+  const versos: [number, string][] = [
+    [1, 'Si habéis pues resucitado con Cristo, buscad las cosas de arriba'],
+    [2, 'Poned la mira en las cosas de arriba'],
+    [4, 'Amén.'],
+    [3, 'Porque muertos sois, y vuestra vida está escondida con Cristo en Dios.'],
+  ];
+  const azar = () => 0.42;
+
+  it('lee «dos verdades y una mentira» con tres opciones', async () => {
+    const { parseRepaso } = await import('./repaso');
+    const [q] = parseRepaso('P: Sobre el versículo 3\nA) uno\nB) dos\nC) tres\nR: C\nV: Col 3:3');
+    expect(q.opciones).toEqual(['uno', 'dos', 'tres']);
+    expect(q.correcta).toBe(2);
+    expect(parseRepaso('P: x\nA) uno\nB) dos\nR: C')).toEqual([]);
+  });
+
+  it('ordena el versículo: mismas palabras, revueltas, con la solución', async () => {
+    const { preguntasOrdena, mismaRespuesta } = await import('./repaso');
+    const qs = preguntasOrdena('Colosenses', 3, versos, 5, azar);
+    expect(qs.map((q) => q.cita)).toEqual(['Colosenses 3:1', 'Colosenses 3:2', 'Colosenses 3:3']);
+    for (const q of qs) {
+      expect([...q.opciones].sort()).toEqual(q.solucion!.split(' ').sort());
+      expect(q.opciones.join(' ')).not.toBe(q.solucion);
+    }
+    expect(mismaRespuesta('poned la mira  en las cosas de arriba', 'Poned la mira en las cosas de arriba')).toBe(true);
+  });
+
+  it('espada bíblica: un pedazo del versículo y su número como solución', async () => {
+    const { preguntasEspada } = await import('./repaso');
+    const qs = preguntasEspada('Colosenses', 3, versos, 5, azar);
+    expect(qs.length).toBe(3);
+    for (const q of qs) {
+      const v = versos.find(([n]) => String(n) === q.solucion)![1];
+      expect(v).toContain(q.texto.replace(/[«»…]/g, ''));
+      expect(q.versiculos).toBe(4);
+    }
+  });
+});
+

@@ -151,7 +151,7 @@ export function PantallaSheet({
 
       {tab === 'estudio' && (
         <>
-          <LanzarRepaso libro={libro} capitulo={capitulo} onPut={(preguntas, modo) => onPut({ tipo: 'repaso', preguntas, modo })} />
+          <LanzarRepaso libro={libro} capitulo={capitulo} onPut={(preguntas, modo, juego) => onPut({ tipo: 'repaso', preguntas, modo, juego })} />
           <EstudioTab libro={libro} capitulo={capitulo} nombre={nombre} version={version} onPut={onPut} />
         </>
       )}

@@ -175,7 +175,7 @@ test('repaso relámpago con puntos: responder a la vez, revelar y ver el podio',
 
   await pa.getByRole('button', { name: 'Mostrar' }).click();
   await pa.getByRole('radio', { name: 'Con puntos' }).click();
-  await pa.getByRole('button', { name: 'Empezar el repaso' }).click();
+  await pa.getByRole('button', { name: 'Empezar: Repaso relámpago' }).click();
   await expect(pb.getByText('REPASO RELÁMPAGO')).toBeVisible();
   await expect(pb.getByText('¿Dónde está sentado Cristo según el versículo 1?')).toBeVisible();
 
@@ -199,3 +199,60 @@ test('repaso relámpago con puntos: responder a la vez, revelar y ver el podio',
   await expect(pb.getByText('¡Ganaste!')).toBeVisible();
   await expect(pa.getByText('¡Ganó Beto!')).toBeVisible();
 });
+
+test('juegos del capítulo: dos verdades y una mentira, ordena el versículo y espada bíblica', async ({ browser, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Juegos');
+  const beto = await cuentaNueva(request, 'Beto Juegos');
+  const res = await request.post('/api/vivo', {
+    headers: { Authorization: `Bearer ${ana.llave}` },
+    data: { accion: 'crearSala', libro: 'col', capitulo: 3 },
+  });
+  const { sala } = await res.json();
+  const pa = await navegador(browser, ana);
+  await pa.goto(`/vivo/${sala.codigo}`);
+  await expect(pa.getByText('Tú guías la lectura')).toBeVisible();
+  const pb = await navegador(browser, beto);
+  await pb.goto(`/vivo/${sala.codigo}`);
+  await expect(pb.getByText('Guía: Ana Juegos')).toBeVisible();
+
+  // Dos verdades y una mentira: tres frases, se busca la falsa.
+  await pa.getByRole('button', { name: 'Mostrar' }).click();
+  await pa.getByRole('radio', { name: 'Dos verdades y una mentira' }).click();
+  await pa.getByRole('button', { name: 'Empezar: Dos verdades y una mentira' }).click();
+  await expect(pb.getByText('DOS VERDADES Y UNA MENTIRA')).toBeVisible();
+  await expect(pb.getByText('¿Cuál es la mentira?')).toBeVisible();
+  await pb.getByRole('button', { name: /^C: Nuestra vida está escondida en el templo/ }).click();
+  await expect(pa.getByText('¡Respondieron todos!')).toBeVisible();
+  await pa.getByRole('button', { name: 'Revelar la respuesta' }).click();
+  await expect(pb.getByRole('button', { name: 'C: Nuestra vida está escondida en el templo, la mentira, tu respuesta' })).toBeVisible();
+  await expect(pb.getByText('¡El grupo descubrió la mentira!')).toBeVisible();
+
+  // Ordena el versículo: las palabras revueltas se tocan en orden; al revelar se ve el versículo.
+  await pa.getByRole('button', { name: 'Mostrar' }).click();
+  await pa.getByRole('radio', { name: 'Ordena el versículo' }).click();
+  await pa.getByRole('button', { name: 'Empezar: Ordena el versículo' }).click();
+  await expect(pb.getByText('ORDENA EL VERSÍCULO')).toBeVisible();
+  await expect(pb.getByText('Toca la primera palabra del versículo…')).toBeVisible();
+  const pool = pb.getByTestId('ordena-palabras').getByRole('button');
+  const n = await pool.count();
+  for (let k = 0; k < n; k++) await pool.nth(k).click();
+  await pb.getByRole('button', { name: 'Listo' }).click();
+  await expect(pb.getByText('Ya respondiste. Espera a que se revele.')).toBeVisible();
+  await expect(pa.getByText('¡Respondieron todos!')).toBeVisible();
+  await pa.getByRole('button', { name: 'Revelar la respuesta' }).click();
+  await expect(pb.getByText(/^COLOSENSES 3:\d+$/)).toBeVisible();
+  await expect(pb.getByText(/de 1 lo lograron|¡El grupo acertó!/)).toBeVisible();
+
+  // Espada bíblica: una frase del capítulo; se toca el número de su versículo.
+  await pa.getByRole('button', { name: 'Mostrar' }).click();
+  await pa.getByRole('radio', { name: 'Espada bíblica' }).click();
+  await pa.getByRole('button', { name: 'Empezar: Espada bíblica' }).click();
+  await expect(pb.getByText('ESPADA BÍBLICA')).toBeVisible();
+  await pb.getByRole('button', { name: 'Es el versículo 1', exact: true }).click();
+  await expect(pb.getByText('Ya respondiste. Espera a que se revele.')).toBeVisible();
+  await expect(pa.getByText('¡Respondieron todos!')).toBeVisible();
+  await pa.getByRole('button', { name: 'Revelar la respuesta' }).click();
+  await expect(pb.getByRole('button', { name: /, el correcto/ })).toBeVisible();
+  await expect(pb.getByText(/de 1 lo lograron|¡El grupo acertó!/)).toBeVisible();
+});
+

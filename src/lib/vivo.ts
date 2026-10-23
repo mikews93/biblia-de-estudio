@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { sessionKey } from './comunidad';
-import type { ModoRepaso, PreguntaRepaso } from './repaso';
+import type { Juego, ModoRepaso, PreguntaRepaso } from './repaso';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const POLL_MS = 1500;
@@ -35,6 +35,7 @@ export type Tarjeta = {
   reveladas?: number[];
   desdes?: (string | null)[];
   modo?: ModoRepaso;
+  juego?: Juego;
   equipos?: Record<string, number>;
 };
 export type EstadoSala = { libro: string; capitulo: number; foco: number | null; tarjeta: Tarjeta | null; recorrido: string[] };

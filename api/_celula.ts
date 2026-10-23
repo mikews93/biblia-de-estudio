@@ -21,7 +21,18 @@ import path from 'node:path';
 import postgres from 'postgres';
 
 import { dinamica } from '../src/lib/dinamicas';
-import { LETRAS, MAX_PREGUNTAS, type ModoRepaso, type PreguntaRepaso, equipoPara, marcador } from '../src/lib/repaso';
+import {
+  JUEGOS,
+  type Juego,
+  LETRAS,
+  MAX_PREGUNTAS,
+  type ModoRepaso,
+  type PreguntaRepaso,
+  conSolucion,
+  equipoPara,
+  marcador,
+  mismaRespuesta,
+} from '../src/lib/repaso';
 import { notifyUser } from './_push';
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
@@ -130,6 +141,7 @@ export type Tarjeta = {
   reveladas?: number[];
   desdes?: (string | null)[];
   modo?: ModoRepaso;
+  juego?: Juego;
   /** Con equipos: el equipo (0 o 1) de cada persona. */
   equipos?: Record<string, number>;
 };
@@ -281,23 +293,29 @@ function studyCard(tipo: 'estudio' | 'ronda', v: Json): Tarjeta {
 
 /** El repaso relámpago: preguntas de opción múltiple que todos responden a la vez (src/lib/repaso.ts). */
 function quizCard(v: Json): Tarjeta {
-  const preguntas = (Array.isArray(v.preguntas) ? v.preguntas : []).slice(0, MAX_PREGUNTAS).map((q) => {
+  const juego: Juego = JUEGOS.some((j) => j.id === v.juego) ? (v.juego as Juego) : 'repaso';
+  const preguntas = (Array.isArray(v.preguntas) ? v.preguntas : []).slice(0, MAX_PREGUNTAS).map((q): PreguntaRepaso => {
     const x = (q ?? {}) as Json;
-    const opciones = Array.isArray(x.opciones) ? x.opciones.map((o) => str(o, 120, 'la opción')!) : [];
-    if (opciones.length !== LETRAS.length) throw new Fail('Cada pregunta lleva cuatro opciones');
-    return {
-      texto: str(x.texto, MAX_QUESTION, 'la pregunta')!,
-      opciones,
-      correcta: int(x.correcta, 'Respuesta correcta', 0, LETRAS.length - 1),
-      cita: str(x.cita, 60, 'la cita', true),
-    };
+    const opciones = Array.isArray(x.opciones) ? x.opciones.slice(0, 24).map((o) => str(o, 120, 'la opción')!) : [];
+    const texto = str(x.texto, MAX_QUESTION, 'la pregunta')!;
+    const cita = str(x.cita, 60, 'la cita', true);
+    // Ordena y espada: se acierta si la respuesta es la solución (las palabras en orden, el número del versículo).
+    if (conSolucion(juego)) {
+      const solucion = str(x.solucion, 600, 'la solución')!;
+      const versiculos = juego === 'espada' ? int(x.versiculos, 'Versículos', 1, 200) : undefined;
+      if (juego === 'ordena' && opciones.join(' ').length > 600) throw new Fail('Versículo demasiado largo');
+      return { texto, opciones, correcta: 0, cita, solucion, ...(versiculos && { versiculos }) };
+    }
+    const cuantas = juego === 'mentira' ? 3 : LETRAS.length;
+    if (opciones.length !== cuantas) throw new Fail(`Cada pregunta lleva ${cuantas} opciones`);
+    return { texto, opciones, correcta: int(x.correcta, 'Respuesta correcta', 0, cuantas - 1), cita };
   });
   if (!preguntas.length) throw new Fail('El repaso no tiene preguntas');
   const modo: ModoRepaso = v.modo === 'puntos' || v.modo === 'equipos' ? v.modo : 'grupo';
   return {
     tipo: 'repaso',
     id: randomUUID(),
-    titulo: str(v.titulo, MAX_CARD_TITLE, 'el título', true) ?? 'Repaso relámpago',
+    titulo: str(v.titulo, MAX_CARD_TITLE, 'el título', true) ?? JUEGOS.find((j) => j.id === juego)!.nombre,
     texto: null,
     pasos: preguntas.map((q) => q.texto),
     paso: 0,
@@ -308,6 +326,7 @@ function quizCard(v: Json): Tarjeta {
     reveladas: [],
     desdes: preguntas.map((_, i) => (i === 0 ? new Date().toISOString() : null)),
     modo,
+    juego,
     ...(modo === 'equipos' && { equipos: {} }),
   };
 }
@@ -315,7 +334,15 @@ function quizCard(v: Json): Tarjeta {
 /** Lo que se publica del repaso: la respuesta correcta de cada pregunta solo cuando ya se reveló. */
 function publicCard(t: Tarjeta | null): Tarjeta | null {
   if (t?.tipo !== 'repaso' || !t.preguntas) return t;
-  return { ...t, preguntas: t.preguntas.map((q, i) => (t.reveladas?.includes(i) ? q : { ...q, correcta: -1 })) };
+  return {
+    ...t,
+    preguntas: t.preguntas.map((q, i) => {
+      if (t.reveladas?.includes(i)) return q;
+      // Antes de revelar no va la respuesta, ni la cita (en la espada bíblica sería la respuesta).
+      const { solucion: _s, ...rest } = q;
+      return { ...rest, correcta: -1, cita: null };
+    }),
+  };
 }
 
 const later = (minutes: number) => new Date(Date.now() + minutes * 60_000).toISOString();
@@ -461,7 +488,14 @@ async function answerQuiz(sql: Sql, s: SalaRow, t: Tarjeta, user: User, body: Js
   const ronda = `${t.id}:${t.paso}`;
   if (body.ronda !== ronda) throw new Fail('Esa pregunta ya pasó', 409);
   if (t.reveladas?.includes(t.paso)) throw new Fail('Esta pregunta ya se reveló');
-  const opcion = int(body.opcion, 'Opción', 0, LETRAS.length - 1);
+  const q = t.preguntas?.[t.paso];
+  // En ordena y espada se guarda 0 si acertó y 1 si no: así los votos y el marcador son los de siempre.
+  const opcion =
+    conSolucion(t.juego) && q?.solucion
+      ? typeof body.respuesta === 'string' && body.respuesta.length <= 600 && mismaRespuesta(body.respuesta, q.solucion)
+        ? 0
+        : 1
+      : int(body.opcion, 'Opción', 0, (q?.opciones.length ?? LETRAS.length) - 1);
   await sql`
     insert into vivo_respuestas (sala_id, ronda, usuario_id, texto) values (${s.id}, ${ronda}, ${user.id}, ${String(opcion)})
     on conflict (sala_id, ronda, usuario_id) do nothing`;

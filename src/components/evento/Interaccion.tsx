@@ -82,6 +82,7 @@ export function InteraccionEvento({ evento, propio, onCambio }: { evento: Evento
           respondieron={r?.respondieron ?? 0}
           quien="La iglesia"
           onAnswer={async (opcion) => {
+            if (typeof opcion !== 'number') return false;
             try {
               await responderEvento(evento.codigo, i.id, { opcion });
               setMias((m) => ({ ...m, [clave]: opcion }));
