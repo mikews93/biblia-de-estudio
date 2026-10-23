@@ -133,6 +133,57 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
       cite: false,
     };
   }
+  // El repaso de un mensaje en un evento (Taller, modo «repaso»): sale del bosquejo y de sus citas.
+  if (first.includes('repaso relámpago de este mensaje')) {
+    return {
+      text: [
+        'P: ¿Qué hizo el padre cuando vio al hijo de lejos?\nA) Lo esperó en la puerta\nB) Corrió y lo besó\nC) Mandó a un siervo\nD) Lo reprendió\nR: B\nV: Lucas 15:20',
+        'P: Según Romanos 5:8, ¿cuándo murió Cristo por nosotros?\nA) Siendo aún pecadores\nB) Después de arrepentirnos\nC) Al ser bautizados\nD) Al guardar la ley\nR: A\nV: Romanos 5:8',
+      ].join('\n\n'),
+      cite: false,
+    };
+  }
+  // La ruleta: una pregunta por categoría y nivel; la correcta siempre es la B para poder jugarla en las pruebas.
+  if (first.includes('Prepara la ruleta de preguntas')) {
+    const mensaje = first.includes('de este mensaje');
+    const nombres: Record<string, string> = { texto: 'Lo que dice', sentido: 'Qué significa', tema: 'El tema', vida: 'Para la vida' };
+    return {
+      text: ['texto', 'sentido', 'tema', 'vida']
+        .flatMap((c) =>
+          [1, 2, 3].map(
+            (n) =>
+              `C: ${c}\nN: ${n}\nP: ${mensaje ? 'Del mensaje' : 'De Colosenses 3'}: ${nombres[c]}, nivel ${n}\nA) Opción falsa uno\nB) La respuesta fiel al texto\nC) Opción falsa dos\nD) Opción falsa tres\nR: B\nV: ${mensaje ? 'Lucas 15:20' : 'Colosenses 3:1'}`,
+          ),
+        )
+        .join('\n\n'),
+      cite: false,
+    };
+  }
+  if (first.includes('«Dos verdades y una mentira»')) {
+    return {
+      text: [
+        'P: Sobre los versículos 1 al 4\nA) Hay que buscar las cosas de arriba\nB) Cristo está sentado a la diestra de Dios\nC) Nuestra vida está escondida en el templo\nR: C\nV: Colosenses 3:3',
+        'P: Sobre los versículos 12 al 14\nA) Hay que vestirse de caridad\nB) La caridad es el vínculo de la perfección\nC) Hay que vestirse de ira\nR: C\nV: Colosenses 3:12',
+      ].join('\n\n'),
+      cite: false,
+    };
+  }
+  if (first.includes('«¿Quién lo dijo?»')) {
+    return {
+      text: 'P: «Cuando Cristo, vuestra vida, se manifestare»\nA) Pedro\nB) Pablo\nC) Juan\nD) Santiago\nR: B\nV: Colosenses 3:4',
+      cite: false,
+    };
+  }
+  if (first.includes('repaso relámpago')) {
+    return {
+      text: [
+        'P: ¿Dónde está sentado Cristo según el versículo 1?\nA) En el templo\nB) A la diestra de Dios\nC) En el monte\nD) Junto al mar\nR: B\nV: Colosenses 3:1',
+        'P: ¿Dónde está escondida nuestra vida?\nA) En la ley\nB) En la iglesia\nC) Con Cristo en Dios\nD) En el cielo nuevo\nR: C\nV: Colosenses 3:3',
+        'P: ¿De qué hay que vestirse sobre todas las cosas?\nA) De caridad\nB) De paciencia\nC) De gozo\nD) De sabiduría\nR: A\nV: Colosenses 3:14',
+      ].join('\n\n'),
+      cite: false,
+    };
+  }
   if (first.includes('Haz el mapa mental')) {
     return {
       text: '# El nuevo nacimiento y el amor de Dios\n- Jesús y Nicodemo (vv. 1-21)\n  - Hay que nacer otra vez (v. 3)\n  - Dios amó al mundo (v. 16)\n- Testimonio de Juan el Bautista (vv. 22-36)\n  - Él crece, yo mengüo (v. 30)',
@@ -163,6 +214,18 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
     return { text: parrafos.join('\n\n'), cite: false, slow: true };
   }
   if (followUp) return { text: `Respuesta simulada a «${followUp}».`, cite: true };
+  // El estudio Profundo de Colosenses 3 con sus secciones, para el estudio en grupo de la lectura en vivo.
+  if (first.includes('## Cómo avanza') && first.includes('Colosenses 3')) {
+    return {
+      text: [
+        '## Panorama\n\nPablo pasa de lo que Cristo hizo a cómo vive quien resucitó con él: «buscad las cosas de arriba».',
+        '## Cómo avanza\n\n- Vv. 1-4: la vida escondida con Cristo.\n- Vv. 5-17: lo que se deja y lo que se viste.\n- Vv. 18-25: la casa.',
+        '## Palabras del griego\n\n**Zēteite** («buscad») está en presente: es una búsqueda que sigue cada día.',
+        '## Para aplicar\n\n- ¿Qué cosa «de la tierra» ocupa hoy más tu mente que Cristo?\n- ¿Con quién del grupo necesitas «soportaros y perdonaros»?',
+      ].join('\n\n'),
+      cite: true,
+    };
+  }
   return { text: 'Estudio simulado del pasaje: Dios ama al mundo y da a su Hijo.', cite: true };
 }
 

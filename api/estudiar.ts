@@ -65,7 +65,7 @@ const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const MAX_ROUNDS = 6;
 
 type Turn = { role: 'user' | 'assistant'; text: string };
-type Herramienta = 'podcast' | 'tarjetas' | 'mapa';
+type Herramienta = 'podcast' | 'tarjetas' | 'mapa' | 'repaso' | 'quien' | 'mentira' | 'ruleta';
 /** Lo que se guarda en herramientas_ia: las herramientas de un capítulo y las de una palabra (con capítulo 0). */
 type Guardada = Herramienta | 'palabra' | 'palabra-podcast';
 type Body = {
@@ -100,7 +100,8 @@ type Semana = { notas: string; desde?: number; hasta?: number; predicador?: stri
 // Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
 // pero nunca escribe el mensaje por la persona.
 type Taller = {
-  modo: 'preguntar' | 'sugerir' | 'revisar';
+  /** «repaso»: las preguntas de opción múltiple que la congregación responde en vivo durante el evento (api/vivo.ts). */
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;
@@ -186,6 +187,37 @@ const PASOS = {
 
 const TIPOS = { reflexion: 'una reflexión breve (5 a 10 minutos)', encuentro: 'un encuentro de grupo pequeño (60 a 90 minutos)', sermon: 'un sermón (20 a 45 minutos)' };
 
+// El formato que lee src/lib/repaso.ts, para el repaso del capítulo y el del mensaje de un evento.
+// La ruleta de preguntas: doce preguntas, una por casilla (categoría y nivel; src/lib/repaso.ts, RULETA).
+const RULETA_FORMATO = `Formato estricto, sin títulos ni introducción, con una línea en blanco entre preguntas:
+C: la categoría, exactamente una de: texto, sentido, tema, vida
+N: la dificultad: 1 (fácil), 2 (media) o 3 (difícil)
+P: la pregunta (una sola, concreta, de máximo 25 palabras)
+A) opción
+B) opción
+C) opción
+D) opción
+R: la letra de la opción correcta
+V: la cita que la respalda
+
+Haz 12 preguntas: cada categoría en sus tres niveles (una de nivel 1, una de 2 y una de 3).
+- «texto», lo que dice: qué pasa, quién, en qué orden. Solo esta categoría pregunta por datos.
+- «sentido», qué significa: por qué se dice algo, qué quiere decir una palabra o una imagen, cómo se conecta con otra parte.
+- «tema»: la idea central y lo que enseña de Dios, de Cristo o de la gracia; que obligue a pensar el mensaje, no a recordarlo.
+- «vida», para la vida: una situación concreta de hoy (en la casa, el trabajo, el colegio, la iglesia) y cuál respuesta vive mejor esta enseñanza.
+Dificultad: el nivel 1 se responde con una lectura atenta; el 2 pide relacionar dos partes; el 3 pide pensar en serio, con opciones que se parecen y solo una fiel al texto.
+- Aunque inviten a reflexionar, cada pregunta tiene una sola respuesta correcta que el texto sostiene; las otras son creíbles pero el texto las descarta (en «vida», respuestas que suenan bien pero no son lo que enseña el pasaje). Nada de opinión personal ni de doctrina discutida entre iglesias.
+- Opciones parecidas en largo; que la correcta no sea siempre la misma letra. Nada de sí o no, ni de «todas las anteriores».`;
+
+const REPASO_FORMATO = `Formato estricto, sin títulos ni introducción, con una línea en blanco entre preguntas:
+P: la pregunta (una sola, concreta, de máximo 20 palabras)
+A) opción
+B) opción
+C) opción
+D) opción
+R: la letra de la opción correcta
+V: la cita que la respalda (por ejemplo «Juan 3:16»)`;
+
 function tallerTask(book: Book, chapter: number, verse: number | undefined, t: Taller) {
   const target = verse
     ? `${book.name} ${chapter}:${verse}`
@@ -195,7 +227,22 @@ function tallerTask(book: Book, chapter: number, verse: number | undefined, t: T
   const head = `Estoy preparando ${TIPOS[t.tipo]} sobre ${target}${t.plantilla ? `, con la estructura «${t.plantilla}»` : ''}. Ahora estoy en el paso de ${PASOS[t.paso]}.`;
   const draft = t.borrador?.trim() ? `\n\nLo que llevo:\n${t.borrador.trim()}` : '\n\nTodavía no he escrito nada.';
   let ask: string;
-  if (t.modo === 'preguntar') {
+  if (t.modo === 'ruleta') {
+    ask = `Prepara la ruleta de preguntas de este mensaje para la congregación, que la juega en vivo en su teléfono: preguntas de opción múltiple sobre lo que se predicó y sobre las citas del bosquejo (sus versículos van en lo que llevo), no solo sobre ${target}. Si el bosquejo no da para una categoría, usa los versículos citados.
+
+${RULETA_FORMATO}`;
+  } else if (t.modo === 'repaso') {
+    // Un sermón recorre varias citas y capítulos: las preguntas salen del bosquejo y de los versículos que trae.
+    ask = `Prepara un repaso relámpago de este mensaje para la congregación, que lo responde en vivo en su teléfono durante o al final: 5 preguntas de opción múltiple sobre lo que se predicó y sobre las citas del bosquejo (sus versículos van en lo que llevo), no solo sobre ${target}.
+
+${REPASO_FORMATO}
+
+Reglas:
+- Cada pregunta se responde con el bosquejo o con sus versículos; una sola opción es correcta y las otras son creíbles pero el texto las descarta.
+- Reparte las preguntas entre los puntos del mensaje, en su orden, y usa citas distintas; incluye una de completar un versículo citado, copiado exacto de lo que llevo.
+- Opciones cortas (de 1 a 12 palabras) y parecidas en largo; que la correcta no sea siempre la misma letra.
+- Nada de preguntas de opinión, de sí o no, ni de «todas las anteriores».`;
+  } else if (t.modo === 'preguntar') {
     ask =
       'Hazme de 3 a 5 preguntas para pensar este paso por mí mismo, ancladas en el texto y con sus citas. No me des las respuestas. Formato: una lista con "- ", y antes una frase corta de introducción.';
   } else if (t.modo === 'revisar') {
@@ -249,6 +296,48 @@ Reglas:
 - Ordénalas como aparecen en el capítulo.
 - Nada de preguntas de opinión ni de sí o no.`,
 
+  // El repaso relámpago del estudio en grupo (src/lib/repaso.ts lee este formato).
+  repaso: (book, chapter, hasGreek) => `Prepara un repaso relámpago de ${book.name} ${chapter} para un grupo que acaba de estudiarlo junto: 5 preguntas de opción múltiple que todos responden a la vez en su teléfono.
+
+${REPASO_FORMATO}
+
+Reglas:
+- Cada pregunta se responde con lo que dice el capítulo; una sola opción es correcta y las otras son creíbles pero el texto las descarta.
+- Mezcla: qué pasa y quién lo dice; ideas centrales; ${hasGreek ? 'una palabra clave del griego; ' : ''}y una de completar un versículo importante, copiado exacto de la RV1909.
+- Opciones cortas (de 1 a 12 palabras) y parecidas en largo; que la correcta no sea siempre la misma letra.
+- Nada de preguntas de opinión, de sí o no, ni de «todas las anteriores».
+- Ordénalas como aparecen en el capítulo.`,
+
+  ruleta: (book, chapter) => `Prepara la ruleta de preguntas de ${book.name} ${chapter} para un grupo que acaba de estudiarlo junto: la ruleta cae en una categoría y todos responden en su teléfono una pregunta de esa categoría.
+
+${RULETA_FORMATO}`,
+
+  // Juegos del estudio en grupo, con el mismo formato que el repaso (src/lib/repaso.ts).
+  quien: (book, chapter) => `Prepara el juego «¿Quién lo dijo?» de ${book.name} ${chapter} para un grupo que acaba de leerlo junto: 5 frases dichas por alguien, y todos eligen en su teléfono quién la dijo.
+
+${REPASO_FORMATO}
+
+Reglas:
+- «P:» es la frase entre comillas, copiada exacta de la RV1909 (de 5 a 25 palabras); las opciones son personas o grupos.
+- Usa frases de este capítulo. Si en él habla una sola persona (una carta, un salmo), mezcla preguntas de «¿A quién se lo dijo?» o «¿De quién habla?» escritas en «P:», o frases de los pasajes de las referencias cruzadas.
+- Las otras opciones son personajes de la Biblia creíbles para esa frase, no absurdos; que la correcta no sea siempre la misma letra.
+- Ordénalas como aparecen en el capítulo.`,
+
+  mentira: (book, chapter) => `Prepara el juego «Dos verdades y una mentira» de ${book.name} ${chapter} para un grupo que acaba de leerlo junto: 5 rondas de tres frases sobre el capítulo, dos verdaderas y una falsa, y todos eligen en su teléfono la falsa.
+
+Formato estricto, sin títulos ni introducción, con una línea en blanco entre rondas:
+P: una frase corta que diga de qué parte del capítulo se trata (por ejemplo «Sobre los versículos 1 al 4»)
+A) frase
+B) frase
+C) frase
+R: la letra de la frase FALSA
+V: la cita que la desmiente
+
+Reglas:
+- Las verdaderas dicen lo que el texto dice; la falsa cambia un detalle que el texto deja claro (quién, qué, cuántos, dónde, el orden), de forma creíble.
+- Frases de 6 a 20 palabras, parecidas en largo y en tono; nada de opiniones ni de doctrina discutida.
+- Que la falsa no sea siempre la misma letra. Ordénalas como avanza el capítulo.`,
+
   mapa: (book, chapter) => `Haz el mapa mental de ${book.name} ${chapter}.
 
 Formato estricto, sin texto antes ni después:
@@ -263,7 +352,7 @@ Reglas:
 - Solo dos niveles bajo la idea central.`,
 };
 
-const MODOS = ['preguntar', 'sugerir', 'revisar'];
+const MODOS = ['preguntar', 'sugerir', 'revisar', 'repaso', 'ruleta'];
 const TALLER_TIPOS = ['reflexion', 'encuentro', 'sermon'];
 const TALLER_PASOS = ['pasaje', 'idea', 'bosquejo', 'revisar'];
 const MAX_DRAFT = 12000;

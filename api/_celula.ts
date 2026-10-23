@@ -9,13 +9,34 @@
 // sin caché; cada cambio sube `version`, y la app descarta cualquier respuesta con una versión más vieja.
 //
 // Las cuentas, grupos y miembros son los de api/comunidades.ts (la misma base de Neon).
+//
+// Estudio en grupo: quien guía manda a todas las pantallas una sección del estudio Profundo o la respuesta del
+// estudio a una pregunta (tarjeta «estudio»), y lanza preguntas que cada uno responde en secreto hasta que las
+// revela (tarjeta «ronda», tabla vivo_respuestas). Cualquiera con cuenta deja sus dudas en el tablero de la sala
+// y apoya las de otros con «yo también» (tabla vivo_preguntas).
 
-import { createHash, randomInt } from 'node:crypto';
+import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import postgres from 'postgres';
 
 import { dinamica } from '../src/lib/dinamicas';
+import {
+  GIROS,
+  JUEGOS,
+  type Juego,
+  LETRAS,
+  MAX_PREGUNTAS,
+  type ModoRepaso,
+  type PreguntaRepaso,
+  conSolucion,
+  CATEGORIAS,
+  equipoPara,
+  girarRuleta,
+  marcador,
+  mismaRespuesta,
+  puntajeRuleta,
+} from '../src/lib/repaso';
 import { notifyUser } from './_push';
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
@@ -33,6 +54,13 @@ const MAX_STEPS = 12;
 const MAX_STEP = 400;
 const MAX_MINUTES = 60;
 const MAX_ROUTE = 40;
+// Una sección del estudio o una respuesta de la IA es más larga que una tarjeta del Taller.
+const MAX_STUDY_TEXT = 8000;
+const MAX_SOURCES = 24;
+const MAX_QUESTION = 280;
+const MAX_ANSWER = 600;
+// Las dudas abiertas de cada persona en el tablero, para que nadie lo llene.
+const MAX_OPEN_QUESTIONS = 5;
 
 const SCHEMA = `
 create table if not exists vivo_salas (
@@ -61,6 +89,24 @@ create table if not exists vivo_toques (
   versiculo int not null,
   creado timestamptz not null default now(),
   primary key (sala_id, usuario_id)
+);
+create table if not exists vivo_preguntas (
+  id uuid primary key default gen_random_uuid(),
+  sala_id uuid not null references vivo_salas on delete cascade,
+  usuario_id uuid not null references usuarios on delete cascade,
+  texto text not null,
+  apoyos uuid[] not null default '{}',
+  respondida boolean not null default false,
+  creado timestamptz not null default now()
+);
+create index if not exists vivo_preguntas_sala on vivo_preguntas (sala_id);
+create table if not exists vivo_respuestas (
+  sala_id uuid not null references vivo_salas on delete cascade,
+  ronda text not null,
+  usuario_id uuid not null references usuarios on delete cascade,
+  texto text not null,
+  creado timestamptz not null default now(),
+  primary key (sala_id, ronda, usuario_id)
 );`;
 
 type Sql = ReturnType<typeof postgres>;
@@ -68,9 +114,17 @@ type Json = Record<string, unknown>;
 type Book = { id: string; name: string; chapters: number };
 type User = { id: string; nombre: string };
 
-/** Lo que se ve en pantalla: un paso de una dinámica, una pregunta o una parte del encuentro del Taller. */
+/** Una fuente de una tarjeta del estudio, para que los números ⟦n⟧ del texto se puedan abrir. */
+type Fuente = { n: number; label: string; ref?: string; url?: string };
+
+/**
+ * Lo que se ve en pantalla: un paso de una dinámica, una pregunta o una parte del encuentro del Taller; una
+ * sección del estudio («estudio»), o una pregunta que todos responden en secreto («ronda»).
+ */
 export type Tarjeta = {
-  tipo: 'dinamica' | 'pregunta' | 'parte';
+  tipo: 'dinamica' | 'pregunta' | 'parte' | 'estudio' | 'ronda' | 'repaso';
+  /** Distingue una tarjeta de otra igual: las respuestas de una ronda van con este id. */
+  id?: string;
   titulo: string;
   texto: string | null;
   pasos: string[];
@@ -80,6 +134,23 @@ export type Tarjeta = {
   minutos: number | null;
   /** Cuándo termina el reloj (lo fija el servidor para que todos vean la misma cuenta atrás). */
   fin: string | null;
+  /** Estudio: las fuentes del texto, y la duda del tablero a la que responde, si es una. */
+  fuentes?: Fuente[];
+  pregunta?: string | null;
+  /** Ronda: sin nombres al revelar, y si ya se revelaron las respuestas. */
+  anonima?: boolean;
+  revelada?: boolean;
+  /** Repaso: las preguntas (la correcta solo sale al revelar cada una), cuáles se revelaron y cuándo empezó cada una. */
+  preguntas?: PreguntaRepaso[];
+  reveladas?: number[];
+  desdes?: (string | null)[];
+  modo?: ModoRepaso;
+  juego?: Juego;
+  /** Ruleta: la casilla en que cayó cada pregunta que salió, y cuántas veces se giró. */
+  casillas?: Record<string, number>;
+  giro?: number;
+  /** Con equipos: el equipo (0 o 1) de cada persona. */
+  equipos?: Record<string, number>;
 };
 export type Estado = {
   libro: string;
@@ -171,6 +242,8 @@ function card(value: unknown): Tarjeta | null {
   if (!value || typeof value !== 'object') throw new Fail('Tarjeta no válida');
   const v = value as Json;
   const tipo = v.tipo;
+  if (tipo === 'estudio' || tipo === 'ronda') return studyCard(tipo, v);
+  if (tipo === 'repaso') return quizCard(v);
   if (tipo !== 'dinamica' && tipo !== 'pregunta' && tipo !== 'parte') throw new Fail('Tarjeta no válida');
   const minutos = v.minutos == null || v.minutos === 0 ? null : int(v.minutos, 'Tiempo', 1, MAX_MINUTES);
   const d = typeof v.dinamica === 'string' ? dinamica(v.dinamica) : undefined;
@@ -182,6 +255,7 @@ function card(value: unknown): Tarjeta | null {
       : [];
   return {
     tipo,
+    id: randomUUID(),
     titulo: tipo === 'dinamica' ? d!.nombre : str(v.titulo, MAX_CARD_TITLE, 'el título')!,
     texto: str(v.texto, MAX_CARD_TEXT, 'el texto', true),
     pasos,
@@ -189,6 +263,97 @@ function card(value: unknown): Tarjeta | null {
     dinamica: d?.id ?? null,
     minutos: minutos ?? (tipo === 'dinamica' && v.minutos === undefined ? d!.minutos : null),
     fin: null,
+  };
+}
+
+function sources(value: unknown): Fuente[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, MAX_SOURCES).flatMap((f) => {
+    if (!f || typeof f !== 'object') return [];
+    const { n, label, ref, url } = f as Json;
+    if (!Number.isInteger(n) || typeof label !== 'string' || !label.trim()) return [];
+    return [
+      {
+        n: n as number,
+        label: label.trim().slice(0, 200),
+        ...(typeof ref === 'string' && ref.length <= 40 && { ref }),
+        ...(typeof url === 'string' && /^https:\/\//.test(url) && url.length <= 400 && { url }),
+      },
+    ];
+  });
+}
+
+/** Una sección del estudio o una pregunta para que todos respondan. Cada una lleva un id nuevo. */
+function studyCard(tipo: 'estudio' | 'ronda', v: Json): Tarjeta {
+  const base = { tipo, id: randomUUID(), pasos: [], paso: 0, dinamica: null, minutos: null, fin: null };
+  if (tipo === 'ronda') {
+    return { ...base, titulo: str(v.titulo, MAX_QUESTION, 'la pregunta')!, texto: null, anonima: v.anonima === true, revelada: false };
+  }
+  return {
+    ...base,
+    titulo: str(v.titulo, MAX_QUESTION, 'el título')!,
+    texto: str(v.texto, MAX_STUDY_TEXT, 'el texto')!,
+    fuentes: sources(v.fuentes),
+    pregunta: typeof v.pregunta === 'string' ? uuid(v.pregunta) : null,
+  };
+}
+
+/** El repaso relámpago: preguntas de opción múltiple que todos responden a la vez (src/lib/repaso.ts). */
+function quizCard(v: Json): Tarjeta {
+  const juego: Juego = JUEGOS.some((j) => j.id === v.juego) ? (v.juego as Juego) : 'repaso';
+  const preguntas = (Array.isArray(v.preguntas) ? v.preguntas : []).slice(0, MAX_PREGUNTAS).map((q): PreguntaRepaso => {
+    const x = (q ?? {}) as Json;
+    const opciones = Array.isArray(x.opciones) ? x.opciones.slice(0, 24).map((o) => str(o, 120, 'la opción')!) : [];
+    const texto = str(x.texto, MAX_QUESTION, 'la pregunta')!;
+    const cita = str(x.cita, 60, 'la cita', true);
+    // Ordena y espada: se acierta si la respuesta es la solución (las palabras en orden, el número del versículo).
+    if (conSolucion(juego)) {
+      const solucion = str(x.solucion, 600, 'la solución')!;
+      const versiculos = juego === 'espada' ? int(x.versiculos, 'Versículos', 1, 200) : undefined;
+      if (juego === 'ordena' && opciones.join(' ').length > 600) throw new Fail('Versículo demasiado largo');
+      return { texto, opciones, correcta: 0, cita, solucion, ...(versiculos && { versiculos }) };
+    }
+    const cuantas = juego === 'mentira' ? 3 : LETRAS.length;
+    if (opciones.length !== cuantas) throw new Fail(`Cada pregunta lleva ${cuantas} opciones`);
+    const categoria = CATEGORIAS.find((c) => c.id === x.categoria)?.id;
+    const nivel = x.nivel === undefined ? undefined : int(x.nivel, 'Nivel', 1, 3);
+    return { texto, opciones, correcta: int(x.correcta, 'Respuesta correcta', 0, cuantas - 1), cita, ...(categoria && { categoria }), ...(nivel && { nivel }) };
+  });
+  const ruleta = juego === 'ruleta';
+  if (!preguntas.length) throw new Fail('El repaso no tiene preguntas');
+  const modo: ModoRepaso = v.modo === 'puntos' || v.modo === 'equipos' ? v.modo : 'grupo';
+  return {
+    tipo: 'repaso',
+    id: randomUUID(),
+    titulo: str(v.titulo, MAX_CARD_TITLE, 'el título', true) ?? JUEGOS.find((j) => j.id === juego)!.nombre,
+    texto: null,
+    pasos: preguntas.map((q) => q.texto),
+    // La ruleta empieza sin pregunta: sale la primera al girar.
+    paso: ruleta ? -1 : 0,
+    dinamica: null,
+    minutos: null,
+    fin: null,
+    preguntas,
+    reveladas: [],
+    desdes: preguntas.map((_, i) => (i === 0 && !ruleta ? new Date().toISOString() : null)),
+    modo,
+    juego,
+    ...(ruleta && { casillas: {}, giro: 0 }),
+    ...(modo === 'equipos' && { equipos: {} }),
+  };
+}
+
+/** Lo que se publica del repaso: la respuesta correcta de cada pregunta solo cuando ya se reveló. */
+function publicCard(t: Tarjeta | null): Tarjeta | null {
+  if (t?.tipo !== 'repaso' || !t.preguntas) return t;
+  return {
+    ...t,
+    preguntas: t.preguntas.map((q, i) => {
+      if (t.reveladas?.includes(i)) return q;
+      // Antes de revelar no va la respuesta, ni la cita (en la espada bíblica sería la respuesta).
+      const { solucion: _s, ...rest } = q;
+      return { ...rest, correcta: -1, cita: null };
+    }),
   };
 }
 
@@ -226,7 +391,9 @@ async function salaByCode(sql: Sql, codigo: string) {
 /** Todo lo que ve quien sigue la sala. `ahora` deja a cada teléfono corregir su reloj para la cuenta atrás. */
 async function view(sql: Sql, s: SalaRow) {
   const live = isLive(s);
-  const [presentes, toques] = live
+  const ronda = s.estado.tarjeta?.tipo === 'ronda' ? s.estado.tarjeta : null;
+  const repaso = s.estado.tarjeta?.tipo === 'repaso' ? s.estado.tarjeta : null;
+  const [presentes, toques, preguntas, respuestas] = live
     ? await Promise.all([
         sql<{ id: string; nombre: string; foto: string | null }[]>`
           select u.id, u.nombre, u.foto from vivo_presentes p join usuarios u on u.id = p.usuario_id
@@ -235,8 +402,22 @@ async function view(sql: Sql, s: SalaRow) {
         sql<{ usuario: string; nombre: string; versiculo: number }[]>`
           select t.usuario_id as usuario, u.nombre, t.versiculo from vivo_toques t join usuarios u on u.id = t.usuario_id
           where t.sala_id = ${s.id} order by t.creado`,
+        sql<{ id: string; texto: string; autor: string; nombre: string; apoyos: string[]; respondida: boolean }[]>`
+          select p.id, p.texto, p.usuario_id as autor, u.nombre, p.apoyos, p.respondida
+          from vivo_preguntas p join usuarios u on u.id = p.usuario_id
+          where p.sala_id = ${s.id} order by p.creado`,
+        ronda?.id
+          ? sql<{ usuario: string; nombre: string; texto: string }[]>`
+              select r.usuario_id as usuario, u.nombre, r.texto from vivo_respuestas r join usuarios u on u.id = r.usuario_id
+              where r.sala_id = ${s.id} and r.ronda = ${ronda.id} order by r.creado`
+          : repaso?.id
+            ? sql<{ usuario: string; nombre: string; texto: string; ronda: string; creado: Date }[]>`
+                select r.usuario_id as usuario, u.nombre, r.texto, r.ronda, r.creado from vivo_respuestas r
+                join usuarios u on u.id = r.usuario_id
+                where r.sala_id = ${s.id} and r.ronda like ${repaso.id + ':%'} order by r.creado`
+            : Promise.resolve([]),
       ])
-    : [[], []];
+    : [[], [], [], []];
   const guia = s.guia ?? s.dueno;
   return {
     sala: {
@@ -249,9 +430,72 @@ async function view(sql: Sql, s: SalaRow) {
     },
     version: s.version,
     ahora: new Date().toISOString(),
-    estado: s.estado,
+    estado: { ...s.estado, tarjeta: publicCard(s.estado.tarjeta) },
     presentes,
     toques,
+    preguntas,
+    // Lo que ve todo el mundo: antes de revelar, solo quiénes ya respondieron, sin lo que escribieron.
+    respuestas: ronda
+      ? {
+          ronda: ronda.id,
+          quienes: respuestas.map((r) => r.usuario),
+          lista: ronda.revelada
+            ? respuestas.map((r) => ({ texto: r.texto, ...(ronda.anonima ? {} : { usuario: r.usuario, nombre: r.nombre }) }))
+            : null,
+        }
+      : repaso
+        ? quizView(repaso, respuestas as { usuario: string; nombre: string; texto: string; ronda: string; creado: Date }[])
+        : null,
+  };
+}
+
+/** Del repaso: quiénes respondieron la pregunta de ahora, los votos de las reveladas y, si se juega, el marcador. */
+function quizView(t: Tarjeta, rows: { usuario: string; nombre: string; texto: string; ronda: string; creado: Date }[]) {
+  const all = rows.map((r) => ({
+    usuario: r.usuario,
+    nombre: r.nombre,
+    paso: Number(r.ronda.split(':')[1]),
+    opcion: Number(r.texto),
+    creado: new Date(r.creado).toISOString(),
+  }));
+  const reveladas = t.reveladas ?? [];
+  const votos: Record<number, number[]> = {};
+  for (const p of reveladas) votos[p] = LETRAS.map((_, i) => all.filter((r) => r.paso === p && r.opcion === i).length);
+  if (t.juego === 'ruleta') {
+    // En la ruleta cada pregunta vale lo que marca su casilla (sin extra por rapidez).
+    const casillas = Object.fromEntries(Object.entries(t.casillas ?? {}).map(([k, v]) => [Number(k), v]));
+    const puntaje = puntajeRuleta(
+      all.map((r) => ({ ...r, equipo: t.equipos?.[r.usuario] ?? null })),
+      t.preguntas ?? [],
+      casillas,
+      reveladas,
+    );
+    const nombres = new Map(all.map((r) => [r.usuario, r.nombre]));
+    const tabla = [...nombres.entries()]
+      .map(([usuario, nombre]) => ({
+        usuario,
+        nombre,
+        puntos: puntaje.personas[usuario] ?? 0,
+        aciertos: 0,
+        ...(t.equipos && { equipo: t.equipos[usuario] ?? null }),
+      }))
+      .sort((a, b) => b.puntos - a.puntos || a.nombre.localeCompare(b.nombre));
+    return {
+      ronda: `${t.id}:${t.paso}`,
+      quienes: all.filter((r) => r.paso === t.paso).map((r) => r.usuario),
+      lista: null,
+      votos,
+      marcador: tabla,
+      puntaje: { grupo: puntaje.grupo, equipos: puntaje.equipos },
+    };
+  }
+  const tabla = t.modo === 'grupo' ? null : marcador(all, t.preguntas ?? [], t.desdes ?? [], reveladas);
+  return {
+    ronda: `${t.id}:${t.paso}`,
+    quienes: all.filter((r) => r.paso === t.paso).map((r) => r.usuario),
+    lista: null,
+    votos,
+    ...(tabla && { marcador: tabla.map((f) => ({ ...f, ...(t.equipos && { equipo: t.equipos[f.usuario] ?? null }) })) }),
   };
 }
 
@@ -277,6 +521,33 @@ async function present(sql: Sql, salaId: string, userId: string) {
     on conflict (sala_id, usuario_id) do update set visto = now()
     returning (select coalesce(bool_or(visto < now() - make_interval(secs => ${PRESENT_SECONDS})), true) from antes) as nuevo`;
   return row.nuevo;
+}
+
+/** Una respuesta del repaso: la primera vale (cuenta la rapidez) y se cierra al revelar la pregunta. */
+async function answerQuiz(sql: Sql, s: SalaRow, t: Tarjeta, user: User, body: Json) {
+  const ronda = `${t.id}:${t.paso}`;
+  if (body.ronda !== ronda) throw new Fail('Esa pregunta ya pasó', 409);
+  if (t.reveladas?.includes(t.paso)) throw new Fail('Esta pregunta ya se reveló');
+  const q = t.preguntas?.[t.paso];
+  if (!q) throw new Fail('Todavía no hay pregunta', 409);
+  // En ordena y espada se guarda 0 si acertó y 1 si no: así los votos y el marcador son los de siempre.
+  const opcion =
+    conSolucion(t.juego) && q?.solucion
+      ? typeof body.respuesta === 'string' && body.respuesta.length <= 600 && mismaRespuesta(body.respuesta, q.solucion)
+        ? 0
+        : 1
+      : int(body.opcion, 'Opción', 0, (q?.opciones.length ?? LETRAS.length) - 1);
+  await sql`
+    insert into vivo_respuestas (sala_id, ronda, usuario_id, texto) values (${s.id}, ${ronda}, ${user.id}, ${String(opcion)})
+    on conflict (sala_id, ronda, usuario_id) do nothing`;
+  let estado = s.estado;
+  // Con equipos, quien responde por primera vez entra al equipo con menos gente.
+  if (t.equipos && t.equipos[user.id] === undefined) {
+    estado = { ...estado, tarjeta: { ...t, equipos: { ...t.equipos, [user.id]: equipoPara(t.equipos) } } };
+  }
+  await present(sql, s.id, user.id);
+  await bump(sql, s.id, estado === s.estado ? undefined : estado);
+  return view(sql, { ...s, estado, version: s.version + 1 });
 }
 
 type Handler = (ctx: { sql: Sql; body: Json; request: Request }) => Promise<Json>;
@@ -402,10 +673,19 @@ export const celulaActions: Record<string, Handler> = {
     if (body.foco !== undefined) estado.foco = body.foco === null ? null : int(body.foco, 'Versículo', 1, 200);
     if (body.tarjeta !== undefined) {
       estado.tarjeta = card(body.tarjeta);
+      // La respuesta del estudio a una duda del tablero la marca como vista.
+      if (estado.tarjeta?.pregunta) {
+        await sql`update vivo_preguntas set respondida = true where id = ${estado.tarjeta.pregunta} and sala_id = ${s.id}`;
+      }
       if (estado.tarjeta?.minutos && body.reloj !== 'parar') estado.tarjeta.fin = later(estado.tarjeta.minutos);
     }
     if (estado.tarjeta && body.paso !== undefined) {
-      estado.tarjeta = { ...estado.tarjeta, paso: int(body.paso, 'Paso', 0, Math.max(0, estado.tarjeta.pasos.length - 1)) };
+      const paso = int(body.paso, 'Paso', 0, Math.max(0, estado.tarjeta.pasos.length - 1));
+      estado.tarjeta = { ...estado.tarjeta, paso };
+      // En el repaso, la rapidez se cuenta desde que la pregunta aparece por primera vez.
+      if (estado.tarjeta.desdes && !estado.tarjeta.desdes[paso]) {
+        estado.tarjeta.desdes = estado.tarjeta.desdes.map((d, i) => (i === paso ? new Date().toISOString() : d));
+      }
     }
     if (estado.tarjeta && body.reloj !== undefined && body.tarjeta === undefined) {
       if (body.reloj === 'iniciar') estado.tarjeta = { ...estado.tarjeta, minutos: estado.tarjeta.minutos ?? 5 };
@@ -416,8 +696,85 @@ export const celulaActions: Record<string, Handler> = {
         fin: body.reloj === 'iniciar' && minutos ? later(minutos) : null,
       };
     }
+    if (body.revelar !== undefined && estado.tarjeta?.tipo === 'ronda') {
+      estado.tarjeta = { ...estado.tarjeta, revelada: body.revelar === true };
+    }
+    if (body.girar === true && estado.tarjeta?.juego === 'ruleta') {
+      const t = estado.tarjeta;
+      if (t.paso >= 0 && !t.reveladas?.includes(t.paso)) throw new Fail('Primero revela la respuesta');
+      const casillas = t.casillas ?? {};
+      const giro = (t.giro ?? 0) >= GIROS ? null : girarRuleta(t.preguntas ?? [], Object.keys(casillas).map(Number));
+      if (!giro) throw new Fail('La ruleta ya terminó');
+      estado.tarjeta = {
+        ...t,
+        paso: giro.paso,
+        casillas: { ...casillas, [giro.paso]: giro.casilla },
+        giro: (t.giro ?? 0) + 1,
+        desdes: (t.desdes ?? []).map((d, i) => (i === giro.paso ? new Date().toISOString() : d)),
+      };
+    }
+    if (body.revelar === true && estado.tarjeta?.tipo === 'repaso' && !estado.tarjeta.reveladas?.includes(estado.tarjeta.paso)) {
+      estado.tarjeta = { ...estado.tarjeta, reveladas: [...(estado.tarjeta.reveladas ?? []), estado.tarjeta.paso] };
+    }
     await bump(sql, s.id, estado);
     return view(sql, { ...s, estado, version: s.version + 1 });
+  },
+
+  /** Deja una duda en el tablero de la sala para estudiarla con el grupo. */
+  async preguntarSala({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const s = await liveSala(sql, body.sala);
+    const texto = str(body.texto, MAX_QUESTION, 'la pregunta')!;
+    const [{ abiertas }] = await sql<{ abiertas: number }[]>`
+      select count(*)::int as abiertas from vivo_preguntas where sala_id = ${s.id} and usuario_id = ${user.id} and not respondida`;
+    if (abiertas >= MAX_OPEN_QUESTIONS) throw new Fail(`Ya tienes ${MAX_OPEN_QUESTIONS} preguntas esperando. Espera a que el grupo vea alguna.`);
+    await sql`insert into vivo_preguntas (sala_id, usuario_id, texto) values (${s.id}, ${user.id}, ${texto})`;
+    await present(sql, s.id, user.id);
+    await bump(sql, s.id);
+    return view(sql, { ...s, version: s.version + 1 });
+  },
+
+  /** «Yo también»: apoya una duda de otra persona; tocar otra vez lo quita. */
+  async apoyarSala({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const s = await liveSala(sql, body.sala);
+    const id = uuid(body.pregunta);
+    const [row] = await sql`
+      update vivo_preguntas set apoyos = case when ${user.id}::uuid = any(apoyos) then array_remove(apoyos, ${user.id}::uuid)
+        else array_append(apoyos, ${user.id}::uuid) end
+      where id = ${id} and sala_id = ${s.id} and usuario_id <> ${user.id} returning id`;
+    if (!row) throw new Fail('Esa pregunta ya no está', 404);
+    await bump(sql, s.id);
+    return view(sql, { ...s, version: s.version + 1 });
+  },
+
+  /** Quita una duda del tablero: quien la hizo o quien guía. */
+  async quitarPreguntaSala({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const s = await liveSala(sql, body.sala);
+    const id = uuid(body.pregunta);
+    const [row] = await sql`
+      delete from vivo_preguntas where id = ${id} and sala_id = ${s.id} and (${leads(s, user)} or usuario_id = ${user.id}) returning id`;
+    if (!row) throw new Fail('No puedes quitar esa pregunta', 403);
+    await bump(sql, s.id);
+    return view(sql, { ...s, version: s.version + 1 });
+  },
+
+  /** La respuesta de cada uno a la ronda en pantalla. Se puede cambiar hasta que quien guía las revela. */
+  async responderSala({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const s = await liveSala(sql, body.sala);
+    const t = s.estado.tarjeta;
+    if (t?.tipo === 'repaso') return answerQuiz(sql, s, t, user, body);
+    if (t?.tipo !== 'ronda' || !t.id || body.ronda !== t.id) throw new Fail('Esa pregunta ya no está en pantalla', 409);
+    if (t.revelada) throw new Fail('Las respuestas ya se revelaron');
+    const texto = str(body.texto, MAX_ANSWER, 'la respuesta')!;
+    await sql`
+      insert into vivo_respuestas (sala_id, ronda, usuario_id, texto) values (${s.id}, ${t.id}, ${user.id}, ${texto})
+      on conflict (sala_id, ronda, usuario_id) do update set texto = excluded.texto`;
+    await present(sql, s.id, user.id);
+    await bump(sql, s.id);
+    return view(sql, { ...s, version: s.version + 1 });
   },
 
   /** Ilumina un versículo para todos; tocar el mismo otra vez lo apaga. Cada persona tiene uno a la vez. */

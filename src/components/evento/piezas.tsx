@@ -61,7 +61,8 @@ export function useEventoEnVivo(codigo: string) {
     };
   }, []);
 
-  const cada = evento ? CADA[evento.estado] : null;
+  // Mientras la congregación responde algo, más seguido: así el conteo y lo revelado llegan casi al instante.
+  const cada = evento ? (evento.interaccion && evento.estado === 'en-vivo' ? 2500 : CADA[evento.estado]) : null;
   useEffect(() => {
     if (!cada || !activa) return;
     pedir();

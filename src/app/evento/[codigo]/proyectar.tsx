@@ -2,6 +2,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+import { InteraccionProyector, useFuegosAlTerminar } from '@/components/evento/Interaccion';
 import { LiveDot, useEventoEnVivo } from '@/components/evento/piezas';
 import { CloseIcon } from '@/components/icons';
 import Qr from '@/components/Qr';
@@ -27,7 +28,9 @@ export default function ProyectarScreen() {
     getBooks().then(setBooks).catch(() => {});
   }, []);
 
+  useFuegosAlTerminar(evento);
   const ancho = width > height * 1.1;
+  const interaccion = evento?.estado === 'en-vivo' && evento.interaccion ? evento : null;
   const qr = Math.min(ancho ? height * 0.52 : width * 0.62, 420);
   const actual = evento && evento.estado === 'en-vivo' && evento.punto >= 0 ? evento.puntos[evento.punto] : null;
   const big = Math.min(width / (ancho ? 14 : 8), 92);
@@ -38,39 +41,52 @@ export default function ProyectarScreen() {
       <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace(`/evento/${codigo}`))} hitSlop={12} style={styles.close} accessibilityLabel="Salir">
         <CloseIcon color={SUAVE} size={24} />
       </Pressable>
-      <View style={[styles.body, ancho && styles.bodyWide]}>
-        <View style={[styles.qr, { padding: qr * 0.06 }]}>
-          <Qr value={enlaceEvento(codigo)} size={qr} />
-        </View>
-        <View style={[styles.side, ancho ? { maxWidth: width * 0.45 } : { alignItems: 'center' }]}>
-          <Text style={[styles.lead, { textAlign: ancho ? 'left' : 'center' }]}>Sigue el mensaje en tu teléfono</Text>
-          <Text style={[styles.how, { textAlign: ancho ? 'left' : 'center' }]}>Apunta la cámara al código o entra en</Text>
-          <Text style={[styles.url, { textAlign: ancho ? 'left' : 'center' }]}>{enlaceCorto(codigo).replace(/\/[A-Z0-9]+$/, '')}</Text>
-          <Text style={[styles.code, { fontSize: big, textAlign: ancho ? 'left' : 'center' }]} accessibilityLabel={`Código ${codigo.split('').join(' ')}`}>
-            {codigoLegible(codigo)}
-          </Text>
-          {evento && (
-            <View style={[styles.now, !ancho && { alignItems: 'center' }]}>
-              {actual ? (
-                <>
-                  <View style={styles.liveRow}>
-                    <LiveDot color={CALIDO} size={8} />
-                    <Text style={styles.liveText}>
-                      PUNTO {evento.punto + 1} DE {evento.total}
-                    </Text>
-                  </View>
-                  <Text style={[styles.point, { textAlign: ancho ? 'left' : 'center' }]}>{actual.titulo}</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.liveText}>{pasajeLabel(evento.pasaje, books).toUpperCase()}</Text>
-                  <Text style={[styles.point, { textAlign: ancho ? 'left' : 'center' }]}>{evento.titulo}</Text>
-                </>
-              )}
+      {interaccion ? (
+        // Mientras la iglesia responde, la pregunta ocupa la pantalla; el código queda en una esquina para quien llega.
+        <View style={styles.body}>
+          <InteraccionProyector evento={interaccion} width={width} />
+          <View style={styles.corner}>
+            <View style={styles.cornerQr}>
+              <Qr value={enlaceEvento(codigo)} size={Math.min(110, width * 0.12)} />
             </View>
-          )}
+            <Text style={styles.cornerCode}>{codigoLegible(codigo)}</Text>
+          </View>
         </View>
-      </View>
+      ) : (
+        <View style={[styles.body, ancho && styles.bodyWide]}>
+          <View style={[styles.qr, { padding: qr * 0.06 }]}>
+            <Qr value={enlaceEvento(codigo)} size={qr} />
+          </View>
+          <View style={[styles.side, ancho ? { maxWidth: width * 0.45 } : { alignItems: 'center' }]}>
+            <Text style={[styles.lead, { textAlign: ancho ? 'left' : 'center' }]}>Sigue el mensaje en tu teléfono</Text>
+            <Text style={[styles.how, { textAlign: ancho ? 'left' : 'center' }]}>Apunta la cámara al código o entra en</Text>
+            <Text style={[styles.url, { textAlign: ancho ? 'left' : 'center' }]}>{enlaceCorto(codigo).replace(/\/[A-Z0-9]+$/, '')}</Text>
+            <Text style={[styles.code, { fontSize: big, textAlign: ancho ? 'left' : 'center' }]} accessibilityLabel={`Código ${codigo.split('').join(' ')}`}>
+              {codigoLegible(codigo)}
+            </Text>
+            {evento && (
+              <View style={[styles.now, !ancho && { alignItems: 'center' }]}>
+                {actual ? (
+                  <>
+                    <View style={styles.liveRow}>
+                      <LiveDot color={CALIDO} size={8} />
+                      <Text style={styles.liveText}>
+                        PUNTO {evento.punto + 1} DE {evento.total}
+                      </Text>
+                    </View>
+                    <Text style={[styles.point, { textAlign: ancho ? 'left' : 'center' }]}>{actual.titulo}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.liveText}>{pasajeLabel(evento.pasaje, books).toUpperCase()}</Text>
+                    <Text style={[styles.point, { textAlign: ancho ? 'left' : 'center' }]}>{evento.titulo}</Text>
+                  </>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -89,5 +105,8 @@ const styles = StyleSheet.create({
   now: { marginTop: 26, gap: 6 },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: -6 },
   liveText: { color: SUAVE, fontSize: 15, fontWeight: '800', letterSpacing: 1.5 },
+  corner: { position: 'absolute', left: 22, bottom: 20, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cornerQr: { backgroundColor: '#FFFFFF', borderRadius: 10, padding: 6 },
+  cornerCode: { color: CALIDO, fontSize: 22, fontWeight: '800', letterSpacing: 3 },
   point: { color: TINTA, fontFamily: serif, fontSize: 30, lineHeight: 38, fontWeight: '700' },
 });

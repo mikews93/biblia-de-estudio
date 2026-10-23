@@ -9,12 +9,18 @@
 // POST {"accion": "...", ...} con "Authorization: Bearer <llave>" (la sesión de /api/comunidades), solo para
 // quien publica: publicar (crea o actualiza el evento de un mensaje), mover (punto y estado), ver, mios, borrar.
 //
+// Mientras está en vivo, quien predica puede lanzar una interacción (interactuar): una pregunta abierta que la
+// congregación responde y se ve en un muro, o un repaso de opción múltiple sobre el mensaje. Se responde sin
+// cuenta (responderEvento), con un identificador que cada teléfono inventa; el GET publica solo cuántos
+// respondieron hasta que quien predica revela. Quien predica puede ocultar respuestas del muro (ocultarRespuesta).
+//
 // La lectura en vivo de la célula comparte la función para no gastar otra de Vercel: GET ?sala=CODIGO y sus
 // acciones (crearSala, moverSala, tocar…) están en api/_celula.ts.
 
-import { createHash, randomInt } from 'node:crypto';
+import { createHash, randomInt, randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 
+import { CATEGORIAS, GIROS, LETRAS, MAX_PREGUNTAS, type PreguntaRepaso, equipoDe, girarRuleta, puntajeRuleta } from '../src/lib/repaso';
 import { celulaGET, celulaPOST, isCelulaAction } from './_celula';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -28,6 +34,10 @@ const MAX_POINTS = 30;
 const MAX_EVENTS = 60;
 const MAX_CITAS = 12;
 const ESTADOS = ['pronto', 'en-vivo', 'terminado'] as const;
+const MAX_RESPUESTA = 280;
+const MAX_MURO = 80;
+/** Respuestas por interacción y paso: una iglesia grande cabe, un ataque con miles de identificadores no. */
+const MAX_RESPUESTAS = 3000;
 
 const SCHEMA = `
 create table if not exists eventos (
@@ -46,6 +56,18 @@ create table if not exists eventos (
   unique (usuario_id, mensaje)
 );
 create index if not exists eventos_usuario on eventos (usuario_id, actualizado desc);
+alter table eventos add column if not exists interaccion jsonb;
+create table if not exists evento_respuestas (
+  id bigint generated always as identity,
+  codigo text not null references eventos on delete cascade,
+  interaccion text not null,
+  paso int not null,
+  participante text not null,
+  texto text not null,
+  oculta boolean not null default false,
+  creado timestamptz not null default now(),
+  primary key (codigo, interaccion, paso, participante)
+);
 `;
 
 type Sql = ReturnType<typeof postgres>;
@@ -54,8 +76,26 @@ type Estado = (typeof ESTADOS)[number];
 /** `citas`: las referencias del punto («Romanos 5:8»), también las que estaban en las notas que no se muestran. */
 type Punto = { titulo: string; texto: string; citas: string[] };
 type Pasaje = { book: string; chapter: number; from?: number; to?: number };
+/**
+ * Lo que quien predica puso para que la congregación responda. «pregunta»: abierta, con muro al revelar.
+ * «repaso»: opción múltiple, una pregunta a la vez (`paso`); `reveladas` son las que ya mostraron la correcta.
+ */
+type Interaccion = {
+  id: string;
+  tipo: 'pregunta' | 'repaso';
+  titulo: string;
+  preguntas?: PreguntaRepaso[];
+  paso: number;
+  reveladas: number[];
+  /** La ruleta del mensaje: se juega en grupo o por equipos; `casillas` dice dónde cayó cada pregunta que salió. */
+  juego?: 'ruleta';
+  modo?: 'grupo' | 'equipos';
+  casillas?: Record<string, number>;
+  giro?: number;
+};
 type Row = {
   codigo: string;
+  interaccion: Interaccion | null;
   mensaje: string;
   titulo: string;
   pasaje: Pasaje | null;
@@ -147,7 +187,7 @@ function puntosDe(value: unknown): Punto[] {
   }));
 }
 
-const ROW_COLUMNS = `e.codigo, e.mensaje, e.titulo, e.pasaje, e.idea, e.puntos, e.gradual, e.estado, e.punto, e.creado, e.actualizado,
+const ROW_COLUMNS = `e.codigo, e.interaccion, e.mensaje, e.titulo, e.pasaje, e.idea, e.puntos, e.gradual, e.estado, e.punto, e.creado, e.actualizado,
   u.nombre as autor, u.iglesia`;
 
 async function find(sql: Sql, codigo: string) {
@@ -164,6 +204,83 @@ async function owned(sql: Sql, codigo: unknown, userId: string) {
   );
   if (!row) throw new Fail('Este evento no es tuyo', 403);
   return row;
+}
+
+/** La interacción sin la respuesta correcta de las preguntas que no se han revelado. */
+function interaccionPublica(i: Interaccion | null) {
+  if (!i) return null;
+  return {
+    ...i,
+    preguntas: i.preguntas?.map((q, n) => (i.reveladas.includes(n) ? q : { ...q, correcta: -1 })),
+  };
+}
+
+type Muro = { id: number; texto: string; oculta: boolean }[];
+/**
+ * Cómo va la interacción: cuántos respondieron la pregunta de ahora, los votos de las preguntas reveladas del
+ * repaso y, en una pregunta abierta, el muro de respuestas (para quien predica siempre, para los demás al revelar).
+ */
+async function resultados(sql: Sql, e: Row, propio: boolean) {
+  const i = e.interaccion;
+  if (!i) return null;
+  const [{ n }] = await sql<{ n: number }[]>`
+    select count(*)::int as n from evento_respuestas where codigo = ${e.codigo} and interaccion = ${i.id} and paso = ${i.paso}`;
+  if (i.tipo === 'repaso') {
+    const rows = i.reveladas.length
+      ? await sql<{ paso: number; texto: string; n: number }[]>`
+          select paso, texto, count(*)::int as n from evento_respuestas
+          where codigo = ${e.codigo} and interaccion = ${i.id} and paso = any(${i.reveladas}::int[]) group by paso, texto`
+      : [];
+    const votos: Record<number, number[]> = {};
+    for (const p of i.reveladas) votos[p] = [0, 0, 0, 0];
+    for (const r of rows) {
+      const o = LETRAS.indexOf(r.texto);
+      if (o >= 0 && votos[r.paso]) votos[r.paso][o] = r.n;
+    }
+    if (i.juego !== 'ruleta') return { respondieron: n, votos };
+    // La ruleta: cada pregunta vale su casilla; los equipos salen del identificador de cada teléfono.
+    const todas = i.reveladas.length
+      ? await sql<{ paso: number; participante: string; texto: string }[]>`
+          select paso, participante, texto from evento_respuestas
+          where codigo = ${e.codigo} and interaccion = ${i.id} and paso = any(${i.reveladas}::int[])`
+      : [];
+    const puntaje = puntajeRuleta(
+      todas.map((r) => ({ usuario: r.participante, paso: r.paso, opcion: LETRAS.indexOf(r.texto), equipo: equipoDe(r.participante) })),
+      i.preguntas ?? [],
+      Object.fromEntries(Object.entries(i.casillas ?? {}).map(([k, v]) => [Number(k), v])),
+      i.reveladas,
+    );
+    return { respondieron: n, votos, puntaje: { grupo: puntaje.grupo, equipos: puntaje.equipos } };
+  }
+  if (!propio && !i.reveladas.includes(0)) return { respondieron: n };
+  const muro = await sql<Muro>`
+    select id::int as id, texto, oculta from evento_respuestas
+    where codigo = ${e.codigo} and interaccion = ${i.id} and paso = 0 ${propio ? sql`` : sql`and not oculta`}
+    order by creado desc limit ${MAX_MURO}`;
+  return { respondieron: n, muro: propio ? muro : muro.map(({ id, texto }) => ({ id, texto, oculta: false })) };
+}
+
+async function conResultados(sql: Sql, e: Row, propio: boolean) {
+  return { ...publico(e, propio), resultados: await resultados(sql, e, propio) };
+}
+
+function preguntasDe(value: unknown): PreguntaRepaso[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_PREGUNTAS) throw new Fail('Preguntas no válidas');
+  return value.map((q: Json) => {
+    const opciones = Array.isArray(q?.opciones) ? q.opciones.map((o) => text(o, 120, 'una opción')) : [];
+    const correcta = Number(q?.correcta);
+    if (opciones.length !== 4 || !Number.isInteger(correcta) || correcta < 0 || correcta > 3) throw new Fail('Pregunta no válida');
+    const categoria = CATEGORIAS.find((c) => c.id === q?.categoria)?.id;
+    const nivel = Number(q?.nivel);
+    return {
+      texto: text(q?.texto, 240, 'la pregunta'),
+      opciones,
+      correcta,
+      cita: text(q?.cita, 40, 'la cita', false) || null,
+      ...(categoria && { categoria }),
+      ...(nivel >= 1 && nivel <= 3 && { nivel }),
+    };
+  });
 }
 
 /**
@@ -184,6 +301,7 @@ export function publico(e: Row, propio = false) {
     gradual: e.gradual,
     total: e.puntos.length,
     puntos: visibles,
+    interaccion: interaccionPublica(e.interaccion),
     creado: new Date(e.creado).toISOString(),
     actualizado: new Date(e.actualizado).toISOString(),
     ...(propio ? { mensaje: e.mensaje } : {}),
@@ -230,14 +348,73 @@ const actions: Record<string, Handler> = {
     if (!ESTADOS.includes(estado)) throw new Fail('Estado no válido');
     const punto = body.punto === undefined ? e.punto : Number(body.punto);
     if (!Number.isInteger(punto) || punto < -1 || punto >= e.puntos.length) throw new Fail('Punto no válido');
-    await sql`update eventos set estado = ${estado}, punto = ${punto}, actualizado = now() where codigo = ${e.codigo}`;
-    return { evento: publico({ ...e, estado, punto, actualizado: new Date() }, true) };
+    // La hora de la base de datos, la misma que devuelve «ver»: el cliente nunca vuelve a una respuesta más vieja.
+    const [{ actualizado }] = await sql<{ actualizado: Date }[]>`
+      update eventos set estado = ${estado}, punto = ${punto}, actualizado = now() where codigo = ${e.codigo} returning actualizado`;
+    return { evento: await conResultados(sql, { ...e, estado, punto, actualizado }, true) };
   },
 
   /** El evento completo para quien lo publicó (sin la caché del CDN). */
   async ver({ sql, body, request }) {
     const yo = await usuario(sql, request);
-    return { evento: publico(await owned(sql, body.codigo, yo), true) };
+    return { evento: await conResultados(sql, await owned(sql, body.codigo, yo), true) };
+  },
+
+  /**
+   * Quien predica lanza una interacción (`nueva`: {tipo, titulo, preguntas?}), revela la de ahora (`revelar`),
+   * pasa a otra pregunta del repaso (`paso`) o la quita de las pantallas (`quitar`).
+   */
+  async interactuar({ sql, body, request }) {
+    const yo = await usuario(sql, request);
+    const e = await owned(sql, body.codigo, yo);
+    let i = e.interaccion;
+    if (body.quitar === true) i = null;
+    else if (body.nueva !== undefined) {
+      const n = (body.nueva ?? {}) as Json;
+      if (n.tipo !== 'pregunta' && n.tipo !== 'repaso') throw new Fail('Interacción no válida');
+      const ruleta = n.tipo === 'repaso' && n.juego === 'ruleta';
+      i = {
+        id: randomUUID(),
+        tipo: n.tipo,
+        titulo: text(n.titulo, MAX_POINT_TITLE * 2, n.tipo === 'pregunta' ? 'la pregunta' : 'el título'),
+        ...(n.tipo === 'repaso' ? { preguntas: preguntasDe(n.preguntas) } : {}),
+        // La ruleta empieza sin pregunta: sale la primera al girar.
+        paso: ruleta ? -1 : 0,
+        reveladas: [],
+        ...(ruleta && { juego: 'ruleta' as const, modo: n.modo === 'equipos' ? ('equipos' as const) : ('grupo' as const), casillas: {}, giro: 0 }),
+      };
+    } else {
+      if (!i) throw new Fail('No hay nada para responder');
+      if (body.girar === true) {
+        if (i.juego !== 'ruleta') throw new Fail('Esto no es una ruleta');
+        if (i.paso >= 0 && !i.reveladas.includes(i.paso)) throw new Fail('Primero revela la respuesta');
+        const casillas = i.casillas ?? {};
+        const giro = (i.giro ?? 0) >= GIROS ? null : girarRuleta(i.preguntas ?? [], Object.keys(casillas).map(Number));
+        if (!giro) throw new Fail('La ruleta ya terminó');
+        i = { ...i, paso: giro.paso, casillas: { ...casillas, [giro.paso]: giro.casilla }, giro: (i.giro ?? 0) + 1 };
+      }
+      if (body.revelar === true && i.paso >= 0 && !i.reveladas.includes(i.paso)) i = { ...i, reveladas: [...i.reveladas, i.paso] };
+      if (body.paso !== undefined) {
+        const paso = Number(body.paso);
+        if (i.tipo !== 'repaso' || !Number.isInteger(paso) || paso < 0 || paso >= (i.preguntas?.length ?? 0)) throw new Fail('Pregunta no válida');
+        i = { ...i, paso };
+      }
+    }
+    const [{ actualizado }] = await sql<{ actualizado: Date }[]>`
+      update eventos set interaccion = ${i ? sql.json(i) : null}, actualizado = now() where codigo = ${e.codigo} returning actualizado`;
+    // Las respuestas de una interacción que ya no está no se guardan.
+    await sql`delete from evento_respuestas where codigo = ${e.codigo} and interaccion <> ${i?.id ?? ''}`;
+    return { evento: await conResultados(sql, { ...e, interaccion: i, actualizado }, true) };
+  },
+
+  /** Oculta (o vuelve a mostrar) una respuesta del muro. */
+  async ocultarRespuesta({ sql, body, request }) {
+    const yo = await usuario(sql, request);
+    const e = await owned(sql, body.codigo, yo);
+    const id = Number(body.id);
+    if (!Number.isInteger(id)) throw new Fail('Respuesta no válida');
+    await sql`update evento_respuestas set oculta = ${body.oculta !== false} where codigo = ${e.codigo} and id = ${id}`;
+    return { evento: await conResultados(sql, e, true) };
   },
 
   async mios({ sql, request }) {
@@ -247,6 +424,38 @@ const actions: Record<string, Handler> = {
       [yo],
     );
     return { eventos: rows.map((e) => publico(e, true)) };
+  },
+
+  /**
+   * Alguien de la congregación responde, sin cuenta: `participante` es el identificador que inventó su teléfono.
+   * La pregunta abierta se puede cambiar hasta que se revele; en el repaso vale la primera respuesta.
+   */
+  async responderEvento({ sql, body }) {
+    const e = await find(sql, codigoDe(body.codigo));
+    const i = e.interaccion;
+    if (e.estado !== 'en-vivo' || !i || body.interaccion !== i.id) throw new Fail('Esta pregunta ya se cerró', 409);
+    const participante = typeof body.participante === 'string' ? body.participante : '';
+    if (!/^[a-z0-9-]{16,40}$/i.test(participante)) throw new Fail('Participante no válido');
+    const paso = i.paso;
+    if (paso < 0) throw new Fail('Todavía no hay pregunta', 409);
+    if (i.reveladas.includes(paso)) throw new Fail('Esta pregunta ya se reveló', 409);
+    const [{ n }] = await sql<{ n: number }[]>`
+      select count(*)::int as n from evento_respuestas where codigo = ${e.codigo} and interaccion = ${i.id} and paso = ${paso}`;
+    if (n >= MAX_RESPUESTAS) throw new Fail('Ya respondió mucha gente a esta pregunta', 429);
+    if (i.tipo === 'repaso') {
+      const opcion = Number(body.opcion);
+      if (!Number.isInteger(opcion) || opcion < 0 || opcion > 3) throw new Fail('Opción no válida');
+      await sql`
+        insert into evento_respuestas (codigo, interaccion, paso, participante, texto)
+        values (${e.codigo}, ${i.id}, ${paso}, ${participante}, ${LETRAS[opcion]}) on conflict do nothing`;
+    } else {
+      const texto = text(body.texto, MAX_RESPUESTA, 'tu respuesta');
+      await sql`
+        insert into evento_respuestas (codigo, interaccion, paso, participante, texto)
+        values (${e.codigo}, ${i.id}, ${paso}, ${participante}, ${texto})
+        on conflict (codigo, interaccion, paso, participante) do update set texto = excluded.texto, creado = now()`;
+    }
+    return { ok: true };
   },
 
   async borrar({ sql, body, request }) {
@@ -263,7 +472,8 @@ export async function GET(request: Request) {
   if (url.searchParams.has('sala')) return celulaGET(url);
   try {
     const codigo = codigoDe(new URL(request.url).searchParams.get('codigo'));
-    const evento = publico(await find(await db(), codigo));
+    const sql = await db();
+    const evento = await conResultados(sql, await find(sql, codigo), false);
     return Response.json(
       { evento },
       {

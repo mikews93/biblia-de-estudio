@@ -25,6 +25,9 @@ export type Tipo =
   | 'respondida' // una oración respondida (privada: solo cuenta la primera)
   | 'sermon' // una semana del sermón completa (5 días)
   | 'celula' // una lectura en vivo de la célula
+  | 'estudio-grupo' // un estudio en grupo de la lectura en vivo en el que respondiste o preguntaste
+  | 'pregunta-estudio' // una pregunta tuya que el grupo estudió con el estudio
+  | 'pregunta-apoyada' // una pregunta tuya que otros dos también tenían
   | 'evento' // un evento de la iglesia seguido en vivo
   | 'grupo' // la meta semanal de un grupo cumplida entre todos
   | 'pareja-dia' // un día de un plan en pareja respondido por los dos
@@ -362,6 +365,58 @@ const CATALOGO: Sello[] = [
     dibujo: 'pagina',
     versiculo: v('Salmos 133:1', 'psa', 133, 1, '¡Mirad, cuán bueno, y cuán suave es habitar los hermanos también en uno!'),
     ir: { label: 'Leer en vivo', href: '/vivo' },
+    publico: 'todos',
+  },
+  {
+    id: 'estudio-grupo-1',
+    familia: 'juntos',
+    titulo: 'Hierro con hierro',
+    como: 'Responde o pregunta en un estudio en grupo en vivo.',
+    logro: 'Estudiaste la Palabra con tu grupo.',
+    tipo: 'estudio-grupo',
+    meta: 1,
+    dibujo: 'lupa',
+    versiculo: v('Proverbios 27:17', 'pro', 27, 17, 'Hierro con hierro se aguza; y el hombre aguza el rostro de su amigo.'),
+    ir: { label: 'Estudiar en vivo', href: '/vivo' },
+    publico: 'todos',
+  },
+  {
+    id: 'estudio-grupo-10',
+    familia: 'juntos',
+    titulo: 'Perseveraban',
+    como: 'Participa en 10 estudios en grupo en vivo.',
+    logro: 'Diez estudios en grupo: la constancia de los primeros discípulos.',
+    tipo: 'estudio-grupo',
+    meta: 10,
+    dibujo: 'libro',
+    versiculo: v('Hechos 2:42', 'act', 2, 42, 'Y perseveraban en la doctrina de los apóstoles, y en la comunión, y en el partimiento del pan, y en las oraciones.'),
+    ir: { label: 'Estudiar en vivo', href: '/vivo' },
+    publico: 'todos',
+  },
+  {
+    id: 'pregunta-estudio',
+    familia: 'juntos',
+    titulo: 'Nos abría las Escrituras',
+    como: 'Deja una pregunta en el estudio en grupo y que la estudien juntos.',
+    logro: 'Tu pregunta abrió el texto para todo el grupo.',
+    tipo: 'pregunta-estudio',
+    meta: 1,
+    dibujo: 'lampara',
+    versiculo: v('Lucas 24:32', 'luk', 24, 32, 'Y decían el uno al otro: ¿No ardía nuestro corazón en nosotros, mientras nos hablaba en el camino, y cuando nos abría las Escrituras?'),
+    ir: { label: 'Estudiar en vivo', href: '/vivo' },
+    publico: 'todos',
+  },
+  {
+    id: 'pregunta-apoyada',
+    familia: 'juntos',
+    titulo: 'Las cargas de los otros',
+    como: 'Haz una pregunta en el estudio en grupo que otros dos también tengan.',
+    logro: 'Pusiste en palabras la duda de otros.',
+    tipo: 'pregunta-apoyada',
+    meta: 1,
+    dibujo: 'dos',
+    versiculo: v('Gálatas 6:2', 'gal', 6, 2, 'Sobrellevad los unos las cargas de los otros; y cumplid así la ley de Cristo.'),
+    ir: { label: 'Estudiar en vivo', href: '/vivo' },
     publico: 'todos',
   },
   {

@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Appear from '@/components/Appear';
 import { Button } from '@/components/comunidad/ui';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon, OpenBookIcon, ShareIcon } from '@/components/icons';
+import { BotonPreguntas, PreguntasSheet, TarjetaEstudio, TarjetaRonda, preguntarAlEstudio } from '@/components/vivo/Estudio';
+import { TarjetaRepaso } from '@/components/vivo/Repaso';
 import { NuevaTarjeta, PantallaSheet, PasajeSheet, PersonasSheet } from '@/components/vivo/Hojas';
 import { Faces, LIVE_RED, LiveBadge, Sheet, vivoText } from '@/components/vivo/piezas';
 import TarjetaVivo from '@/components/vivo/TarjetaVivo';
@@ -17,9 +19,11 @@ import { useTaller } from '@/lib/taller';
 import { huella } from '@/lib/sellos';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
-import { type Sala, cleanCode, liveUrl, spacedCode, touchesByVerse, useSala, vivoApi } from '@/lib/vivo';
+import { type PreguntaSala, type Sala, cleanCode, liveUrl, spacedCode, touchesByVerse, useSala, vivoApi } from '@/lib/vivo';
 
-type Open = null | 'pasaje' | 'pantalla' | 'personas' | 'invitar';
+type Open = null | 'pasaje' | 'pantalla' | 'personas' | 'invitar' | 'preguntas';
+/** La respuesta del estudio a una duda del grupo mientras se escribe (solo la ve quien guía). */
+type Respondiendo = { pregunta: PreguntaSala; texto: string };
 
 /** La sala en vivo: el capítulo que todos leen a la vez, lo que señala quien guía y la tarjeta de la dinámica. */
 export default function SalaEnVivo() {
@@ -40,6 +44,7 @@ export default function SalaEnVivo() {
   // Mientras llega la respuesta del servidor: la hoja nueva y el versículo tocado se ven al instante.
   const [pending, setPending] = useState<{ libro: string; capitulo: number } | null>(null);
   const [pendingTap, setPendingTap] = useState<number | null>(null);
+  const [respondiendo, setRespondiendo] = useState<Respondiendo | null>(null);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const positions = useRef(new Map<number, number>());
   const textTop = useRef(0);
@@ -61,6 +66,16 @@ export default function SalaEnVivo() {
   useEffect(() => {
     if (enSala) huella('celula', codigo);
   }, [enSala, codigo]);
+
+  // Mis sellos del estudio en grupo: tus preguntas que el grupo estudió y las que otros dos también tenían.
+  const preguntasSala = sala?.preguntas;
+  useEffect(() => {
+    for (const p of preguntasSala ?? []) {
+      if (p.autor !== me) continue;
+      if (p.respondida) huella('pregunta-estudio', p.id);
+      if (p.apoyos.length >= 2) huella('pregunta-apoyada', p.id);
+    }
+  }, [preguntasSala, me]);
 
   // El texto en la versión de cada quien (los números de versículo coinciden), con la RV1909 si no se puede.
   useEffect(() => {
@@ -115,6 +130,7 @@ export default function SalaEnVivo() {
       try {
         const next = await vivoApi<Sala>(accion, { sala: codigo, ...body });
         apply(next);
+        if (accion === 'responderSala' || accion === 'preguntarSala') huella('estudio-grupo', codigo);
         return next;
       } catch (e) {
         setPending(null);
@@ -172,7 +188,28 @@ export default function SalaEnVivo() {
 
   const put = async (t: NuevaTarjeta) => {
     setOpen(null);
-    await act('moverSala', { tarjeta: { ...t, texto: t.texto?.slice(0, 1500) } });
+    const tarjeta = t.tipo === 'estudio' || t.tipo === 'ronda' || t.tipo === 'repaso' ? t : { ...t, texto: t.texto?.slice(0, 1500) };
+    await act('moverSala', { tarjeta });
+  };
+
+  /** Le pregunta al estudio la duda que eligió quien guía y, al terminar, la respuesta va a todas las pantallas. */
+  const askStudy = async (p: PreguntaSala) => {
+    if (!libro || !capitulo || respondiendo) return;
+    setOpen(null);
+    setRespondiendo({ pregunta: p, texto: '' });
+    scroll.current?.scrollTo({ y: 0, animated: true });
+    try {
+      const answer = await preguntarAlEstudio(libro, capitulo, settings.version, p.texto, (texto) =>
+        setRespondiendo((r) => (r?.pregunta.id === p.id ? { ...r, texto } : r)),
+      );
+      await act('moverSala', {
+        tarjeta: { tipo: 'estudio', titulo: p.texto, texto: answer.text.slice(0, 8000), fuentes: answer.sources, pregunta: p.id },
+      });
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRespondiendo(null);
+    }
   };
 
   const toques = useMemo(() => {
@@ -252,6 +289,7 @@ export default function SalaEnVivo() {
   }
 
   const guia = lead ? 'Tú' : sala.sala.guia.nombre;
+  const abiertas = sala.preguntas.filter((p) => !p.respondida).length;
   const tarjeta = estado?.tarjeta;
 
   return (
@@ -296,16 +334,56 @@ export default function SalaEnVivo() {
       </View>
 
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
-        {tarjeta && (
-          <TarjetaVivo
-            key={`${tarjeta.titulo}-${tarjeta.tipo}`}
+        {respondiendo ? (
+          <TarjetaEstudio
+            tarjeta={{ titulo: respondiendo.pregunta.texto, texto: respondiendo.texto || '…', pregunta: respondiendo.pregunta.id }}
+            lead
+            escribiendo
+          />
+        ) : tarjeta?.tipo === 'estudio' ? (
+          <TarjetaEstudio key={tarjeta.id} tarjeta={tarjeta} lead={lead} onClose={() => act('moverSala', { tarjeta: null })} />
+        ) : tarjeta?.tipo === 'repaso' ? (
+          <TarjetaRepaso
+            key={tarjeta.id}
             tarjeta={tarjeta}
-            skew={skew}
+            respuestas={sala.respuestas}
+            presentes={sala.presentes}
+            guia={sala.sala.guia.id}
+            me={me}
             lead={lead}
-            onStep={(paso) => act('moverSala', { paso })}
-            onTimer={(reloj) => act('moverSala', { reloj })}
+            onAnswer={async (r) =>
+              !!(await act('responderSala', { ronda: `${tarjeta.id}:${tarjeta.paso}`, ...(typeof r === 'string' ? { respuesta: r } : { opcion: r }) }))
+            }
+            onReveal={() => act('moverSala', { revelar: true })}
+            onNext={(paso) => act('moverSala', { paso })}
+            onSpin={() => act('moverSala', { girar: true })}
             onClose={() => act('moverSala', { tarjeta: null })}
           />
+        ) : tarjeta?.tipo === 'ronda' ? (
+          <TarjetaRonda
+            key={tarjeta.id}
+            tarjeta={tarjeta}
+            respuestas={sala.respuestas}
+            presentes={sala.presentes}
+            guia={sala.sala.guia.id}
+            me={me}
+            lead={lead}
+            onAnswer={async (texto) => !!(await act('responderSala', { ronda: tarjeta.id, texto }))}
+            onReveal={(revelar) => act('moverSala', { revelar })}
+            onClose={() => act('moverSala', { tarjeta: null })}
+          />
+        ) : (
+          tarjeta && (
+            <TarjetaVivo
+              key={`${tarjeta.titulo}-${tarjeta.tipo}`}
+              tarjeta={tarjeta}
+              skew={skew}
+              lead={lead}
+              onStep={(paso) => act('moverSala', { paso })}
+              onTimer={(reloj) => act('moverSala', { reloj })}
+              onClose={() => act('moverSala', { tarjeta: null })}
+            />
+          )
         )}
         <View onLayout={(e) => (textTop.current = e.nativeEvent.layout.y)}>
           {verses && book ? (
@@ -358,34 +436,38 @@ export default function SalaEnVivo() {
               <ChevronRightIcon color={colors.surface} size={20} />
             </Pressable>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <BotonPreguntas compact count={abiertas} onPress={() => setOpen('preguntas')} />
             <Pressable
               onPress={() => setOpen('pantalla')}
               style={({ pressed }) => [styles.put, { backgroundColor: colors.warmSoft }, pressed && { opacity: 0.8 }]}
               accessibilityRole="button"
             >
               <LiveIcon color={colors.warm} size={18} strokeWidth={2} />
-              <Text style={{ color: colors.warm, fontWeight: '800', fontSize: 13.5 }}>Dinámica</Text>
+              <Text style={{ color: colors.warm, fontWeight: '800', fontSize: 13.5 }}>Mostrar</Text>
             </Pressable>
           </View>
         ) : (
-          <View style={[styles.follow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <LiveIcon color={colors.muted} size={16} />
-            <Text style={{ color: colors.muted, fontSize: 13, flexShrink: 1 }} numberOfLines={2}>
-              {me ? (
-                <>
-                  Sigues a <Text style={{ color: colors.text, fontWeight: '700' }}>{sala.sala.guia.nombre.split(' ')[0]}</Text>. Toca un
-                  versículo para iluminarlo para todos.
-                </>
-              ) : (
-                <>
-                  Sigues a <Text style={{ color: colors.text, fontWeight: '700' }}>{sala.sala.guia.nombre.split(' ')[0]}</Text>.{' '}
-                  <Text onPress={() => router.push('/entrar')} style={{ color: colors.accent, fontWeight: '700' }}>
-                    Entra
-                  </Text>{' '}
-                  para iluminar versículos.
-                </>
-              )}
-            </Text>
+          <View style={styles.followRow}>
+            <View style={[styles.follow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <LiveIcon color={colors.muted} size={16} />
+              <Text style={{ color: colors.muted, fontSize: 13, flexShrink: 1 }} numberOfLines={2}>
+                {me ? (
+                  <>
+                    Sigues a <Text style={{ color: colors.text, fontWeight: '700' }}>{sala.sala.guia.nombre.split(' ')[0]}</Text>. Toca un
+                    versículo para iluminarlo para todos.
+                  </>
+                ) : (
+                  <>
+                    Sigues a <Text style={{ color: colors.text, fontWeight: '700' }}>{sala.sala.guia.nombre.split(' ')[0]}</Text>.{' '}
+                    <Text onPress={() => router.push('/entrar')} style={{ color: colors.accent, fontWeight: '700' }}>
+                      Entra
+                    </Text>{' '}
+                    para iluminar versículos.
+                  </>
+                )}
+              </Text>
+            </View>
+            <BotonPreguntas floating count={abiertas} onPress={() => setOpen('preguntas')} />
           </View>
         )}
       </View>
@@ -404,7 +486,34 @@ export default function SalaEnVivo() {
         />
       )}
       {open === 'pantalla' && (
-        <PantallaSheet encuentros={encuentros} books={books} initialEncuentro={params.taller} onPut={put} onClose={() => setOpen(null)} />
+        <PantallaSheet
+          encuentros={encuentros}
+          books={books}
+          initialEncuentro={params.taller}
+          libro={libro!}
+          capitulo={capitulo!}
+          version={settings.version}
+          onPut={put}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {open === 'preguntas' && (
+        <PreguntasSheet
+          preguntas={sala.preguntas}
+          me={me}
+          lead={lead}
+          guia={sala.sala.guia.nombre}
+          respondiendo={respondiendo?.pregunta.id ?? null}
+          onAsk={async (texto) => !!(await act('preguntarSala', { texto }))}
+          onSupport={(p) => act('apoyarSala', { pregunta: p.id })}
+          onRemove={(p) => act('quitarPreguntaSala', { pregunta: p.id })}
+          onTalk={(p) => {
+            setOpen(null);
+            act('moverSala', { tarjeta: { tipo: 'pregunta', titulo: p.texto.slice(0, 120) } });
+          }}
+          onStudy={askStudy}
+          onClose={() => setOpen(null)}
+        />
       )}
       {open === 'personas' && (
         <PersonasSheet
@@ -508,7 +617,9 @@ const styles = StyleSheet.create({
   passage: { flex: 1, alignItems: 'center', paddingHorizontal: 4 },
   divider: { width: StyleSheet.hairlineWidth, height: 28 },
   put: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 22, paddingHorizontal: 14, height: 44 },
+  followRow: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 580, width: '100%', justifyContent: 'center' },
   follow: {
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

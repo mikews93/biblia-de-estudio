@@ -21,7 +21,7 @@ type Event =
   | { type: 'error'; message: string };
 
 export type TallerRequest = {
-  modo: 'preguntar' | 'sugerir' | 'revisar';
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;
@@ -31,7 +31,7 @@ export type TallerRequest = {
 };
 
 /** Herramientas de un capítulo inspiradas en NotebookLM: resumen en audio, tarjetas de repaso y mapa mental. */
-export type Herramienta = 'podcast' | 'tarjetas' | 'mapa';
+export type Herramienta = 'podcast' | 'tarjetas' | 'mapa' | 'repaso' | 'quien' | 'mentira' | 'ruleta';
 
 type Request = {
   book?: string;

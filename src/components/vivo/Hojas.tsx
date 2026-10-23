@@ -10,6 +10,8 @@ import { type Mensaje, pasajeLabel, tituloDe } from '@/lib/taller';
 import { serif, useColors } from '@/lib/theme';
 import type { Persona, Sala } from '@/lib/vivo';
 
+import { AnonimaSwitch, EstudioTab, type TarjetaNueva } from './Estudio';
+import { LanzarRepaso } from './Repaso';
 import { Segmented, Sheet } from './piezas';
 
 /** Elegir libro y capítulo: primero el libro, luego la cuadrícula de capítulos. */
@@ -88,35 +90,49 @@ export function PasajeSheet({
   );
 }
 
-export type NuevaTarjeta = {
-  tipo: 'dinamica' | 'pregunta' | 'parte';
-  titulo?: string;
-  texto?: string;
-  pasos?: string[];
-  dinamica?: string;
-  minutos?: number | null;
-};
+export type NuevaTarjeta =
+  | {
+      tipo: 'dinamica' | 'pregunta' | 'parte';
+      titulo?: string;
+      texto?: string;
+      pasos?: string[];
+      dinamica?: string;
+      minutos?: number | null;
+    }
+  | TarjetaNueva;
 
-type Tab = 'dinamicas' | 'pregunta' | 'encuentro';
+type Tab = 'estudio' | 'dinamicas' | 'pregunta' | 'encuentro';
 
-/** Poner algo en todas las pantallas: una dinámica del catálogo, una pregunta o una parte de tu encuentro del Taller. */
+/**
+ * Poner algo en todas las pantallas: una sección del estudio Profundo del capítulo, una dinámica del catálogo,
+ * una pregunta (para conversar o para que cada uno responda en secreto) o una parte de tu encuentro del Taller.
+ */
 export function PantallaSheet({
   encuentros,
   books,
   initialEncuentro,
+  libro,
+  capitulo,
+  version,
   onPut,
   onClose,
 }: {
   encuentros: Mensaje[];
   books: Book[];
   initialEncuentro?: string;
+  libro: string;
+  capitulo: number;
+  version: string;
   onPut: (t: NuevaTarjeta) => void;
   onClose: () => void;
 }) {
   const colors = useColors();
-  const [tab, setTab] = useState<Tab>(initialEncuentro || encuentros.length ? 'encuentro' : 'dinamicas');
+  const [tab, setTab] = useState<Tab>(initialEncuentro ? 'encuentro' : 'estudio');
   const [momento, setMomento] = useState<Momento>('conectar');
   const [pregunta, setPregunta] = useState('');
+  const [ronda, setRonda] = useState(false);
+  const [anonima, setAnonima] = useState(false);
+  const nombre = `${books.find((b) => b.id === libro)?.name ?? ''} ${capitulo}`;
   const [open, setOpen] = useState<string | null>(initialEncuentro ?? (encuentros.length === 1 ? encuentros[0].id : null));
   const mensaje = encuentros.find((m) => m.id === open);
 
@@ -124,13 +140,21 @@ export function PantallaSheet({
     <Sheet title="Poner en todas las pantallas" kicker="PARA EL GRUPO" onClose={onClose}>
       <Segmented
         options={[
-          ['encuentro', 'Mi encuentro'],
-          ['dinamicas', 'Dinámicas'],
+          ['estudio', 'Estudio'],
           ['pregunta', 'Pregunta'],
+          ['dinamicas', 'Dinámicas'],
+          ['encuentro', 'Encuentro'],
         ]}
         value={tab}
         onChange={setTab}
       />
+
+      {tab === 'estudio' && (
+        <>
+          <LanzarRepaso libro={libro} capitulo={capitulo} onPut={(preguntas, modo, juego) => onPut({ tipo: 'repaso', preguntas, modo, juego })} />
+          <EstudioTab libro={libro} capitulo={capitulo} nombre={nombre} version={version} onPut={onPut} />
+        </>
+      )}
 
       {tab === 'dinamicas' && (
         <>
@@ -162,22 +186,42 @@ export function PantallaSheet({
 
       {tab === 'pregunta' && (
         <View style={{ gap: 12 }}>
-          <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>
-            Escribe una pregunta para conversar. Aparece grande en el teléfono de cada uno mientras hablan.
-          </Text>
+          <View style={styles.modes}>
+            {(
+              [
+                [false, 'Para conversar', 'Aparece grande en cada teléfono mientras hablan.'],
+                [true, 'Que cada uno responda', 'Escriben en secreto y tú revelas las respuestas juntas.'],
+              ] as const
+            ).map(([value, label, detail]) => {
+              const on = ronda === value;
+              return (
+                <Pressable
+                  key={label}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => setRonda(value)}
+                  style={[styles.mode, { borderColor: on ? colors.warm : colors.border, backgroundColor: on ? colors.warmSoft : colors.surface }]}
+                >
+                  <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14 }}>{label}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 17, marginTop: 3 }}>{detail}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <Field
             value={pregunta}
             onChangeText={setPregunta}
             placeholder="¿Qué te llamó la atención de este pasaje?"
             multiline
-            maxLength={120}
+            maxLength={ronda ? 280 : 120}
             accessibilityLabel="Pregunta para el grupo"
           />
+          {ronda && <AnonimaSwitch value={anonima} onChange={setAnonima} />}
           <Button
-            label="Mostrar a todos"
+            label={ronda ? 'Que todos respondan' : 'Mostrar a todos'}
             icon={LiveIcon}
             disabled={!pregunta.trim()}
-            onPress={() => onPut({ tipo: 'pregunta', titulo: pregunta.trim() })}
+            onPress={() => onPut(ronda ? { tipo: 'ronda', titulo: pregunta.trim(), anonima } : { tipo: 'pregunta', titulo: pregunta.trim() })}
           />
         </View>
       )}
@@ -334,6 +378,8 @@ const styles = StyleSheet.create({
   changeBook: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 14 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cell: { width: 50, height: 50, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  modes: { flexDirection: 'row', gap: 8 },
+  mode: { flex: 1, borderWidth: 1, borderRadius: 14, padding: 12 },
   momentos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   momento: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14, marginBottom: 8 },

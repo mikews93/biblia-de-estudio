@@ -4,8 +4,9 @@ import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, Button, Card, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
+import { InteraccionEvento, LanzarInteraccion } from '@/components/evento/Interaccion';
 import { CitaDesplegable, EstadoPill, LiveDot, useEventoEnVivo } from '@/components/evento/piezas';
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, LiveIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CommentIcon, LiveIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import {
@@ -52,10 +53,19 @@ export default function EventoScreen() {
     if (enVivo) huella('evento', codigo);
   }, [enVivo, codigo]);
 
-  // Al avanzar quien predica, la página baja sola hasta el punto nuevo (si se sigue en vivo).
+  // Cuando quien predica lanza algo para responder, la página sube hasta ahí.
+  const interaccionY = useRef(0);
+  const interaccion = evento?.estado === 'en-vivo' ? evento.interaccion?.id : undefined;
+  useEffect(() => {
+    if (!interaccion) return;
+    const t = setTimeout(() => scroll.current?.scrollTo({ y: Math.max(0, interaccionY.current - 16), animated: true }), 150);
+    return () => clearTimeout(t);
+  }, [interaccion]);
+
+  // Al avanzar quien predica, la página baja sola hasta el punto nuevo (si se sigue en vivo y no hay nada para responder).
   const punto = evento?.punto ?? -1;
   useEffect(() => {
-    if (!seguir || !evento || evento.estado !== 'en-vivo' || punto < 0) return;
+    if (!seguir || !evento || evento.estado !== 'en-vivo' || punto < 0 || evento.interaccion) return;
     const t = setTimeout(() => {
       const y = posiciones.current[punto];
       if (y !== undefined) scroll.current?.scrollTo({ y: Math.max(0, listaY.current + y - 90), animated: true });
@@ -116,6 +126,10 @@ export default function EventoScreen() {
               <CitaDesplegable label={pasaje} books={books} />
             </View>
           )}
+        </View>
+
+        <View onLayout={(e) => (interaccionY.current = e.nativeEvent.layout.y)}>
+          <InteraccionEvento evento={evento} propio={propio} onCambio={aplicar} />
         </View>
 
         {evento.estado === 'pronto' && (
@@ -208,7 +222,7 @@ export default function EventoScreen() {
       </ScrollView>
 
       {propio ? (
-        <Controles evento={evento} onCambio={aplicar} colors={colors} />
+        <Controles evento={evento} books={books} onCambio={aplicar} colors={colors} />
       ) : (
         vivo &&
         evento.punto >= 0 && (
@@ -299,9 +313,10 @@ function Nota({ codigo, donde, valor, colors, abierta }: { codigo: string; donde
 }
 
 /** La barra de quien predica: avanzar los puntos, empezar y terminar, y la pantalla para proyectar. */
-function Controles({ evento, onCambio, colors }: { evento: Evento; onCambio: (e: Evento) => void; colors: Colors }) {
+function Controles({ evento, books, onCambio, colors }: { evento: Evento; books: Book[]; onCambio: (e: Evento) => void; colors: Colors }) {
   const { busy, error, run } = useAction();
   const [copiado, setCopiado] = useState(false);
+  const [interactuar, setInteractuar] = useState(false);
   const mover = (cambio: Parameters<typeof moverEvento>[1]) => run(async () => onCambio(await moverEvento(evento.codigo, cambio)));
   const ultimo = evento.total - 1;
   const copiar = async () => {
@@ -336,6 +351,14 @@ function Controles({ evento, onCambio, colors }: { evento: Evento; onCambio: (e:
         {evento.estado === 'en-vivo' ? (
           <View style={styles.controlsRow}>
             <Pressable
+              onPress={() => setInteractuar(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Interactuar: que la iglesia responda"
+              style={[styles.round, { borderColor: evento.interaccion ? colors.warm : colors.border, backgroundColor: evento.interaccion ? colors.warmSoft : 'transparent' }]}
+            >
+              <CommentIcon color={evento.interaccion ? colors.warm : colors.text} size={19} strokeWidth={2} />
+            </Pressable>
+            <Pressable
               onPress={() => mover({ punto: evento.punto - 1 })}
               disabled={busy || evento.punto < 0}
               accessibilityRole="button"
@@ -368,6 +391,7 @@ function Controles({ evento, onCambio, colors }: { evento: Evento; onCambio: (e:
         )}
         <ErrorText>{error}</ErrorText>
       </View>
+      {interactuar && <LanzarInteraccion evento={evento} books={books} onCambio={onCambio} onClose={() => setInteractuar(false)} />}
     </View>
   );
 }

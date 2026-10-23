@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { sessionKey } from './comunidad';
+import type { Juego, ModoRepaso, PreguntaRepaso } from './repaso';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const POLL_MS = 1500;
@@ -13,8 +14,11 @@ const HEARTBEAT_MS = 20_000;
 export const CODE_LENGTH = 6;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
+export type Fuente = { n: number; label: string; ref?: string; url?: string };
 export type Tarjeta = {
-  tipo: 'dinamica' | 'pregunta' | 'parte';
+  /** «estudio»: una sección del estudio o su respuesta a una duda; «ronda»: una pregunta que todos responden en secreto. */
+  tipo: 'dinamica' | 'pregunta' | 'parte' | 'estudio' | 'ronda' | 'repaso';
+  id?: string;
   titulo: string;
   texto: string | null;
   pasos: string[];
@@ -22,10 +26,36 @@ export type Tarjeta = {
   dinamica: string | null;
   minutos: number | null;
   fin: string | null;
+  fuentes?: Fuente[];
+  pregunta?: string | null;
+  anonima?: boolean;
+  revelada?: boolean;
+  /** Repaso: «correcta» es -1 hasta que se revela cada pregunta. */
+  preguntas?: PreguntaRepaso[];
+  reveladas?: number[];
+  desdes?: (string | null)[];
+  modo?: ModoRepaso;
+  juego?: Juego;
+  casillas?: Record<string, number>;
+  giro?: number;
+  equipos?: Record<string, number>;
 };
 export type EstadoSala = { libro: string; capitulo: number; foco: number | null; tarjeta: Tarjeta | null; recorrido: string[] };
 export type Persona = { id: string; nombre: string; foto: string | null };
 export type Toque = { usuario: string; nombre: string; versiculo: number };
+/** Una duda del tablero de la sala; «apoyos» son quienes tocaron «yo también». */
+export type PreguntaSala = { id: string; texto: string; autor: string; nombre: string; apoyos: string[]; respondida: boolean };
+/** La ronda en pantalla: quiénes respondieron y, ya reveladas, las respuestas (sin nombre si es anónima). */
+export type Respuestas = {
+  ronda: string;
+  quienes: string[];
+  lista: { texto: string; usuario?: string; nombre?: string }[] | null;
+  /** Repaso: cuántos eligieron cada opción en las preguntas reveladas, y el marcador si se juega con puntos o equipos. */
+  votos?: Record<number, number[]>;
+  marcador?: { usuario: string; nombre: string; puntos: number; aciertos: number; equipo?: number | null }[];
+  /** Ruleta: lo que suma todo el grupo y cada equipo. */
+  puntaje?: { grupo: number; equipos: number[] };
+};
 export type Sala = {
   sala: {
     codigo: string;
@@ -40,6 +70,8 @@ export type Sala = {
   estado: EstadoSala;
   presentes: Persona[];
   toques: Toque[];
+  preguntas: PreguntaSala[];
+  respuestas: Respuestas | null;
 };
 /** Lo que muestra la pantalla del grupo cuando hay una lectura abierta. */
 export type SalaDelGrupo = { codigo: string; titulo: string; estado: EstadoSala; guia: string; presentes: number };
@@ -88,6 +120,42 @@ export function touchesByVerse(toques: Toque[]) {
   const map = new Map<number, Toque[]>();
   for (const t of toques) map.set(t.versiculo, [...(map.get(t.versiculo) ?? []), t]);
   return map;
+}
+
+/** El tablero: primero las que esperan, las más apoyadas arriba; las ya vistas al final. */
+export function ordenPreguntas(list: PreguntaSala[]) {
+  return list
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => Number(a.p.respondida) - Number(b.p.respondida) || b.p.apoyos.length - a.p.apoyos.length || a.i - b.i)
+    .map(({ p }) => p);
+}
+
+/**
+ * Parte el estudio Profundo en sus secciones («## Panorama»). Cada una lleva su título sin el «##», su texto y
+ * las fuentes que cita (⟦n⟧), para que en cada teléfono los números se puedan abrir.
+ */
+export function seccionesDelEstudio(text: string, fuentes: Fuente[] = []) {
+  return text
+    .split(/^## /m)
+    .slice(1)
+    .map((part) => {
+      const [first, ...rest] = part.split('\n');
+      // «## Panorama: de qué trata…» o «## Panorama» con el texto debajo
+      const [title, ...inline] = first.split(/:\s+/);
+      const body = [inline.join(': '), ...rest].join('\n').trim();
+      const cited = new Set([...body.matchAll(/⟦(\d+)⟧/g)].map((m) => Number(m[1])));
+      return { titulo: title.replace(/[:.]\s*$/, '').trim(), texto: body, fuentes: fuentes.filter((f) => cited.has(f.n)) };
+    })
+    .filter((s) => s.titulo && s.texto);
+}
+
+/** Las preguntas de una sección («Para aplicar»): cada línea de la lista que es una pregunta, sin citas ni negritas. */
+export function preguntasDe(texto: string) {
+  return texto
+    .split('\n')
+    .filter((l) => /^\s*[-*] /.test(l))
+    .map((l) => l.replace(/^\s*[-*] /, '').replace(/\s*⟦\d+⟧/g, '').replace(/\*\*/g, '').trim())
+    .filter((l) => l.endsWith('?') && l.length <= 280);
 }
 
 export class VivoError extends Error {
