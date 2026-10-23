@@ -136,6 +136,70 @@ test('la pantalla para proyectar muestra el código, el QR y el punto actual', a
   await expect(page.getByText(`Proyectar ${m}`).last()).toBeVisible();
 });
 
+test('en vivo, la iglesia responde una pregunta abierta y un repaso sacado del bosquejo', async ({ page, browser, request }) => {
+  const m = marca();
+  const pastor = await cuentaNueva(request, 'Pastor Pregunta');
+  const auth = { Authorization: `Bearer ${pastor.llave}` };
+  const res = await request.post('/api/vivo', {
+    headers: auth,
+    data: {
+      accion: 'publicar',
+      mensaje: `int${m}`,
+      titulo: `El Padre corre ${m}`,
+      pasaje: { book: 'luk', chapter: 15, from: 11, to: 24 },
+      puntos: [
+        { titulo: 'Nos alejamos', texto: '', citas: ['Lucas 15:13'] },
+        { titulo: 'El Padre corre', texto: '', citas: ['Lucas 15:20', 'Romanos 5:8'] },
+      ],
+    },
+  });
+  const { evento } = await res.json();
+  await request.post('/api/vivo', { headers: auth, data: { accion: 'mover', codigo: evento.codigo, estado: 'en-vivo', punto: 0 } });
+  await conSesion(page, pastor);
+  await page.goto(`/evento/${evento.codigo}`);
+  await expect(page.getByText('TU EVENTO · PUNTO 1 DE 2')).toBeVisible();
+
+  const fiel = await browser.newContext({ ...test.info().project.use, storageState: undefined });
+  const telefono = await fiel.newPage();
+  await telefono.goto(`/evento/${evento.codigo}`);
+  await expect(telefono.getByText('Nos alejamos', { exact: true })).toBeVisible();
+
+  // Una pregunta abierta: cada uno responde sin nombre y quien predica la muestra como muro.
+  await page.getByRole('button', { name: 'Interactuar: que la iglesia responda' }).click();
+  await page.getByRole('button', { name: '¿Qué te habló Dios en este mensaje?' }).click();
+  await page.getByRole('button', { name: 'Hacer la pregunta' }).click();
+  await expect(telefono.getByText('PREGUNTA PARA TODOS')).toBeVisible({ timeout: 15_000 });
+  await telefono.getByLabel('Tu respuesta').fill(`Que me espera ${m}`);
+  await telefono.getByRole('button', { name: 'Enviar' }).click();
+  await expect(telefono.getByText(`Que me espera ${m}`)).toBeVisible();
+  await expect(page.getByText('1 persona respondió')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(`Que me espera ${m}`)).toBeVisible();
+  await page.getByRole('button', { name: 'Mostrar las respuestas a todos' }).click();
+  await expect(telefono.getByText('Lo que respondió la iglesia')).toBeVisible({ timeout: 15_000 });
+
+  // El repaso sale del bosquejo y de todas sus citas, no de un solo capítulo.
+  await page.getByRole('button', { name: 'Interactuar: que la iglesia responda' }).click();
+  await page.getByRole('button', { name: 'Preparar el repaso' }).click();
+  await expect(page.getByText('Según Romanos 5:8, ¿cuándo murió Cristo por nosotros?')).toBeVisible();
+  await page.getByRole('button', { name: 'Empezar el repaso (2)' }).click();
+  await expect(telefono.getByText('REPASO RELÁMPAGO')).toBeVisible({ timeout: 15_000 });
+  await telefono.getByRole('button', { name: /^B: Corrió y lo besó/ }).click();
+  await expect(telefono.getByText('Elegiste la B. Espera a que se revele.')).toBeVisible();
+  await expect(page.getByText('1 persona respondió')).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Revelar la respuesta' }).click();
+  await expect(telefono.getByRole('button', { name: 'B: Corrió y lo besó, la correcta, tu respuesta' })).toBeVisible({ timeout: 15_000 });
+  await expect(telefono.getByText('¡La iglesia acertó!')).toBeVisible();
+  await page.getByRole('button', { name: 'Siguiente pregunta' }).click();
+  await telefono.getByRole('button', { name: /^A: Siendo aún pecadores/ }).click({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Revelar la respuesta' }).click();
+  await expect(telefono.getByText('La iglesia acertó 2 de 2')).toBeVisible({ timeout: 15_000 });
+
+  // En la pantalla de la iglesia, el resultado en grande.
+  await page.getByRole('button', { name: 'Proyectar' }).click();
+  await expect(page.getByText('La iglesia acertó 2 de 2')).toBeVisible();
+  await fiel.close();
+});
+
 test('un código que no existe lo dice y deja escribir otro', async ({ page }) => {
   await page.goto('/evento/ZZZZZZ');
   await expect(page.getByText('No encontramos el evento')).toBeVisible();

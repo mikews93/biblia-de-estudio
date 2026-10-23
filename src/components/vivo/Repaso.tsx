@@ -100,13 +100,17 @@ type Props = {
   guia: string;
   me: string | null;
   lead: boolean;
+  /** En un evento de iglesia no se sabe quiénes están: se muestra solo cuántos respondieron. */
+  respondieron?: number;
+  /** Quién juega junto: «El grupo» en la sala, «La iglesia» en un evento. */
+  quien?: string;
   onAnswer: (opcion: number) => Promise<boolean>;
   onReveal: () => void;
   onNext: (paso: number) => void;
   onClose: () => void;
 };
 
-export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lead, onAnswer, onReveal, onNext, onClose }: Props) {
+export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lead, respondieron, quien = 'El grupo', onAnswer, onReveal, onNext, onClose }: Props) {
   const colors = useColors();
   const dark = isDark(colors);
   const preguntas = t.preguntas ?? [];
@@ -256,7 +260,11 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
               </Text>
             )}
             {!me && <Text style={{ color: colors.muted, fontSize: 13, marginTop: 12 }}>Entra con tu cuenta para jugar.</Text>}
-            <Progreso clave={ronda} presentes={presentes} quienes={quienes} guia={guia} />
+            {respondieron === undefined ? (
+              <Progreso clave={ronda} presentes={presentes} quienes={quienes} guia={guia} />
+            ) : (
+              <Contados n={respondieron} />
+            )}
             {lead && <Button label="Revelar la respuesta" icon={EyeIcon} onPress={onReveal} style={{ marginTop: 14 }} />}
           </>
         )}
@@ -267,7 +275,7 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
               {!!q.cita && <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: '700' }}>{q.cita}</Text>}
               {modo === 'grupo' && (
                 <Text style={[styles.resultText, { color: acertoElGrupo(votos, q.correcta) ? BIEN.ink : colors.text }]}>
-                  {acertoElGrupo(votos, q.correcta) ? '¡El grupo acertó!' : `Esta costó: ${votos[q.correcta]} de ${votos.reduce((a, b) => a + b, 0)} acertaron`}
+                  {acertoElGrupo(votos, q.correcta) ? `¡${quien} acertó!` : `Esta costó: ${votos[q.correcta]} de ${votos.reduce((a, b) => a + b, 0)} acertaron`}
                 </Text>
               )}
               {modo === 'puntos' && yo && (
@@ -280,7 +288,7 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
           </Appear>
         )}
 
-        {done && <Final modo={modo} aciertos={aciertosGrupo} total={preguntas.length} marcador={respuestas?.marcador ?? []} equipos={puntosEquipo} me={me} />}
+        {done && <Final quien={quien} modo={modo} aciertos={aciertosGrupo} total={preguntas.length} marcador={respuestas?.marcador ?? []} equipos={puntosEquipo} me={me} />}
         {revealed && modo === 'puntos' && !done && <Podio marcador={respuestas?.marcador ?? []} me={me} compact />}
 
         {lead && revealed && !last && (
@@ -288,6 +296,19 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
         )}
       </View>
     </Appear>
+  );
+}
+
+/** Cuántos respondieron, cuando no se sabe cuántos están (la congregación de un evento). */
+export function Contados({ n }: { n: number }) {
+  const colors = useColors();
+  return (
+    <View style={styles.contados}>
+      <PeopleIcon color={n ? colors.warm : colors.muted} size={16} />
+      <Text style={{ color: n ? colors.text : colors.muted, fontSize: 13.5, fontWeight: '700', fontVariant: ['tabular-nums'] }} accessibilityLiveRegion="polite">
+        {n === 0 ? 'Nadie ha respondido todavía' : n === 1 ? '1 persona respondió' : `${n.toLocaleString('es')} personas respondieron`}
+      </Text>
+    </View>
   );
 }
 
@@ -342,6 +363,7 @@ function Podio({ marcador, me, compact }: { marcador: NonNullable<Respuestas['ma
 
 /** El final del repaso: lo que acertó el grupo, el podio o el equipo que ganó. */
 function Final({
+  quien,
   modo,
   aciertos,
   total,
@@ -349,6 +371,7 @@ function Final({
   equipos,
   me,
 }: {
+  quien: string;
   modo: ModoRepaso;
   aciertos: number;
   total: number;
@@ -364,7 +387,7 @@ function Final({
         <Text style={[vivoText.kicker, { color: colors.warm }]}>RESULTADO</Text>
         {modo === 'grupo' && (
           <Text style={[styles.finalTitle, { color: colors.text }]}>
-            El grupo acertó {aciertos} de {total}
+            {quien} acertó {aciertos} de {total}
           </Text>
         )}
         {modo === 'equipos' && (
@@ -405,6 +428,7 @@ const styles = StyleSheet.create({
   place: { width: 18, fontWeight: '900', fontSize: 15, textAlign: 'center' },
   final: { borderRadius: 16, padding: 16, marginTop: 16 },
   finalTitle: { fontFamily: serif, fontSize: 22, fontWeight: '700', marginTop: 6 },
+  contados: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
   launch: { borderRadius: 16, padding: 14, marginBottom: 14 },
   modes: { flexDirection: 'row', gap: 6, marginVertical: 12 },
   mode: { flex: 1, borderWidth: 1.5, borderRadius: 12, padding: 9 },

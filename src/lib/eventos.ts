@@ -8,10 +8,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { askStudy } from './estudio';
 import { parseCita } from './cita';
 import { sessionKey } from './comunidad';
 import { requireConnection } from './conexion';
-import type { Book } from './data';
+import { type Book, getChapter } from './data';
+import { type PreguntaRepaso, parseRepaso } from './repaso';
 import { cambio, registrar } from './sincronia';
 import { type Mensaje, type Pasaje, ideaCentral, tituloDe } from './taller';
 
@@ -36,8 +38,32 @@ export type Evento = {
   puntos: PuntoEvento[];
   creado: string;
   actualizado: string;
+  /** Lo que quien predica puso para que todos respondan (null: nada). */
+  interaccion: Interaccion | null;
+  resultados?: Resultados | null;
   /** Solo para quien lo publicó: el mensaje del Taller. */
   mensaje?: string;
+};
+
+/**
+ * Una pregunta abierta (las respuestas forman un muro al revelarla) o un repaso de opción múltiple, una pregunta
+ * a la vez. La respuesta correcta llega como −1 hasta que se revela.
+ */
+export type Interaccion = {
+  id: string;
+  tipo: 'pregunta' | 'repaso';
+  titulo: string;
+  preguntas?: PreguntaRepaso[];
+  paso: number;
+  reveladas: number[];
+};
+export type Resultados = {
+  /** Cuántos respondieron la pregunta de ahora. */
+  respondieron: number;
+  /** Votos por opción de las preguntas reveladas del repaso. */
+  votos?: Record<number, number[]>;
+  /** Las respuestas de la pregunta abierta: para quien predica siempre (con las ocultas), para los demás al revelar. */
+  muro?: { id: number; texto: string; oculta: boolean }[];
 };
 
 export const CODIGO_LARGO = 6;
@@ -148,6 +174,101 @@ export const moverEvento = async (codigo: string, cambio: { punto?: number; esta
   ponerMio((await accion<{ evento: Evento }>('mover', { codigo, ...cambio })).evento);
 
 export const verMiEvento = async (codigo: string) => ponerMio((await accion<{ evento: Evento }>('ver', { codigo })).evento);
+
+// Interactuar en vivo: la congregación responde sin cuenta
+
+export const interactuarEvento = async (
+  codigo: string,
+  cambio: { nueva?: { tipo: 'pregunta' | 'repaso'; titulo: string; preguntas?: PreguntaRepaso[] }; revelar?: true; paso?: number; quitar?: true },
+) => ponerMio((await accion<{ evento: Evento }>('interactuar', { codigo, ...cambio })).evento);
+
+export const ocultarRespuesta = async (codigo: string, id: number, oculta: boolean) =>
+  ponerMio((await accion<{ evento: Evento }>('ocultarRespuesta', { codigo, id, oculta })).evento);
+
+const PARTICIPANTE = 'evento-participante';
+let participante: Promise<string> | null = null;
+
+/** El identificador de este teléfono para responder en los eventos: se inventa una vez, sin datos de la persona. */
+export function participanteId() {
+  participante ??= AsyncStorage.getItem(PARTICIPANTE)
+    .catch(() => null)
+    .then((id) => {
+      if (id) return id;
+      const nuevo = Array.from({ length: 24 }, () => '0123456789abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 36)]).join('');
+      AsyncStorage.setItem(PARTICIPANTE, nuevo).catch(() => {});
+      return nuevo;
+    });
+  return participante;
+}
+
+export async function responderEvento(codigo: string, interaccion: string, respuesta: { texto: string } | { opcion: number }) {
+  requireConnection();
+  let res: Response;
+  try {
+    res = await fetch(`${API}/api/vivo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accion: 'responderEvento', codigo, interaccion, participante: await participanteId(), ...respuesta }),
+    });
+  } catch {
+    throw new EventoError('No hay conexión. Vuelve a intentarlo.', 0);
+  }
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new EventoError(json.error ?? `Algo falló (${res.status})`, res.status);
+}
+
+const repasosMensaje = new Map<string, Promise<PreguntaRepaso[]>>();
+
+/**
+ * El repaso de un mensaje: la IA del Taller prepara las preguntas con el bosquejo y el texto de todas sus citas
+ * (un sermón suele recorrer varios pasajes, no un solo capítulo). Se pide una vez por evento mientras la app está abierta.
+ */
+export function repasoDelMensaje(e: Evento, books: Book[]) {
+  let p = repasosMensaje.get(e.codigo);
+  if (p) return p;
+  p = (async () => {
+    const citas = [...new Set(e.puntos.flatMap((x) => x.citas))].slice(0, 20);
+    const textos = await Promise.all(
+      citas.map(async (c) => {
+        const r = leerCita(c, books);
+        if (!r) return null;
+        const vs = await getChapter(r.book, r.chapter).catch(() => []);
+        const t = vs
+          .filter(([n]) => !r.from || (n >= r.from && n <= (r.to ?? r.from)))
+          .map(([n, t]) => `${n} ${t}`)
+          .join(' ')
+          .slice(0, 700);
+        return t ? `${c}: ${t}` : null;
+      }),
+    );
+    const borrador = [
+      `Título: ${e.titulo}`,
+      e.idea ? `Idea central: ${e.idea}` : '',
+      ...e.puntos.map((x, i) => `${i + 1}. ${x.titulo}${x.texto ? `\n${x.texto}` : ''}${x.citas.length ? `\nCitas: ${x.citas.join('; ')}` : ''}`),
+      textos.some(Boolean) ? `Versículos (RV1909):\n${textos.filter(Boolean).join('\n')}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+      .slice(0, 11500);
+    const pasaje = e.pasaje ?? leerCita(citas[0] ?? '', books) ?? null;
+    if (!pasaje) throw new Error('El mensaje necesita un pasaje o una cita para preparar el repaso.');
+    const r = await askStudy(
+      {
+        book: pasaje.book,
+        chapter: pasaje.chapter,
+        messages: [],
+        taller: { modo: 'repaso', tipo: 'sermon', paso: 'bosquejo', borrador },
+      },
+      () => {},
+    );
+    const qs = parseRepaso(r.text);
+    if (!qs.length) throw new Error('No salió bien el repaso. Inténtalo otra vez.');
+    return qs;
+  })();
+  p.catch(() => repasosMensaje.delete(e.codigo));
+  repasosMensaje.set(e.codigo, p);
+  return p;
+}
 
 export async function borrarEvento(codigo: string) {
   await accion('borrar', { codigo });

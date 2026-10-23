@@ -21,7 +21,7 @@ type Event =
   | { type: 'error'; message: string };
 
 export type TallerRequest = {
-  modo: 'preguntar' | 'sugerir' | 'revisar';
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;

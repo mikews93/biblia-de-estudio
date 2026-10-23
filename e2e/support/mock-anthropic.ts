@@ -133,6 +133,16 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
       cite: false,
     };
   }
+  // El repaso de un mensaje en un evento (Taller, modo «repaso»): sale del bosquejo y de sus citas.
+  if (first.includes('repaso relámpago de este mensaje')) {
+    return {
+      text: [
+        'P: ¿Qué hizo el padre cuando vio al hijo de lejos?\nA) Lo esperó en la puerta\nB) Corrió y lo besó\nC) Mandó a un siervo\nD) Lo reprendió\nR: B\nV: Lucas 15:20',
+        'P: Según Romanos 5:8, ¿cuándo murió Cristo por nosotros?\nA) Siendo aún pecadores\nB) Después de arrepentirnos\nC) Al ser bautizados\nD) Al guardar la ley\nR: A\nV: Romanos 5:8',
+      ].join('\n\n'),
+      cite: false,
+    };
+  }
   if (first.includes('repaso relámpago')) {
     return {
       text: [
