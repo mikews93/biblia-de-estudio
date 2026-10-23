@@ -247,7 +247,7 @@ function Muro({ evento, propio, onCambio }: { evento: Evento; propio?: boolean; 
   return (
     <View style={styles.wall}>
       {muro.map((m, n) => (
-        <Appear key={m.id} from={6} delay={Math.min(n, 12) * 40}>
+        <Appear key={m.id} from={6} delay={Math.min(n, 12) * 40} style={{ maxWidth: '100%' }}>
           <View
             style={[
               styles.note,
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, maxWidth: '100%' },
   section: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, marginTop: 4, marginBottom: 6 },
   ideas: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 10 },
-  idea: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6 },
+  idea: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
   repaso: { borderRadius: 16, padding: 14, marginTop: 22 },
   q: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderWidth: 1.5, borderRadius: 12, padding: 10 },
   check: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },

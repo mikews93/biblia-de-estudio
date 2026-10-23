@@ -347,7 +347,7 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
         {revealed && (
           <Appear from={6}>
             <View style={[styles.result, { borderColor: colors.border }]}>
-              {!!q.cita && <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: '700' }}>{q.cita}</Text>}
+              {!!q.cita && !solucion && <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: '700' }}>{q.cita}</Text>}
               {modo === 'grupo' && (
                 <Text style={[styles.resultText, { color: acertoElGrupo(votos, q.correcta) ? BIEN.ink : colors.text }]}>
                   {acertoElGrupo(votos, q.correcta)
