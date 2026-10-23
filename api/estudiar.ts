@@ -198,7 +198,7 @@ B) opción
 C) opción
 D) opción
 R: la letra de la opción correcta
-V: la cita que la respalda
+V: una sola cita que la respalda (por ejemplo «1 Reyes 18:21»)
 
 Haz 12 preguntas: cada categoría en sus tres niveles (una de nivel 1, una de 2 y una de 3).
 - «texto», lo que dice: qué pasa, quién, en qué orden. Solo esta categoría pregunta por datos.
@@ -207,7 +207,7 @@ Haz 12 preguntas: cada categoría en sus tres niveles (una de nivel 1, una de 2 
 - «vida», para la vida: una situación concreta de hoy (en la casa, el trabajo, el colegio, la iglesia) y cuál respuesta vive mejor esta enseñanza.
 Dificultad: el nivel 1 se responde con una lectura atenta; el 2 pide relacionar dos partes; el 3 pide pensar en serio, con opciones que se parecen y solo una fiel al texto.
 - Aunque inviten a reflexionar, cada pregunta tiene una sola respuesta correcta que el texto sostiene; las otras son creíbles pero el texto las descarta (en «vida», respuestas que suenan bien pero no son lo que enseña el pasaje). Nada de opinión personal ni de doctrina discutida entre iglesias.
-- Opciones parecidas en largo; que la correcta no sea siempre la misma letra. Nada de sí o no, ni de «todas las anteriores».`;
+- Opciones cortas (máximo 15 palabras, también en «vida») y parecidas en largo; que la correcta no sea siempre la misma letra. Nada de sí o no, ni de «todas las anteriores».`;
 
 const REPASO_FORMATO = `Formato estricto, sin títulos ni introducción, con una línea en blanco entre preguntas:
 P: la pregunta (una sola, concreta, de máximo 20 palabras)

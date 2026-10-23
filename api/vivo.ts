@@ -20,7 +20,7 @@
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 
-import { CATEGORIAS, GIROS, LETRAS, MAX_PREGUNTAS, type PreguntaRepaso, equipoDe, girarRuleta, puntajeRuleta } from '../src/lib/repaso';
+import { CATEGORIAS, GIROS, LETRAS, MAX_CITA, MAX_OPCION, MAX_PREGUNTAS, MAX_TEXTO_PREGUNTA, type PreguntaRepaso, equipoDe, girarRuleta, puntajeRuleta } from '../src/lib/repaso';
 import { celulaGET, celulaPOST, isCelulaAction } from './_celula';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -267,16 +267,16 @@ async function conResultados(sql: Sql, e: Row, propio: boolean) {
 function preguntasDe(value: unknown): PreguntaRepaso[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > MAX_PREGUNTAS) throw new Fail('Preguntas no válidas');
   return value.map((q: Json) => {
-    const opciones = Array.isArray(q?.opciones) ? q.opciones.map((o) => text(o, 120, 'una opción')) : [];
+    const opciones = Array.isArray(q?.opciones) ? q.opciones.map((o) => text(o, MAX_OPCION, 'una opción')) : [];
     const correcta = Number(q?.correcta);
     if (opciones.length !== 4 || !Number.isInteger(correcta) || correcta < 0 || correcta > 3) throw new Fail('Pregunta no válida');
     const categoria = CATEGORIAS.find((c) => c.id === q?.categoria)?.id;
     const nivel = Number(q?.nivel);
     return {
-      texto: text(q?.texto, 240, 'la pregunta'),
+      texto: text(q?.texto, MAX_TEXTO_PREGUNTA, 'la pregunta'),
       opciones,
       correcta,
-      cita: text(q?.cita, 40, 'la cita', false) || null,
+      cita: text(q?.cita, MAX_CITA, 'la cita', false) || null,
       ...(categoria && { categoria }),
       ...(nivel >= 1 && nivel <= 3 && { nivel }),
     };

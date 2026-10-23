@@ -37,6 +37,25 @@ export const conSolucion = (j: Juego | undefined) => j === 'ordena' || j === 'es
 
 export const LETRAS = ['A', 'B', 'C', 'D'];
 export const MAX_PREGUNTAS = 12;
+/** Los topes de la sala y de los eventos (api/_celula.ts, api/vivo.ts). Lo que escribe la IA se recorta a ellos. */
+export const MAX_TEXTO_PREGUNTA = 280;
+export const MAX_OPCION = 200;
+export const MAX_CITA = 60;
+
+/** Recorta en una palabra, con «…», para que una pregunta larga no tumbe todo el juego. */
+function recortar(t: string, max: number) {
+  if (t.length <= max) return t;
+  const corte = t.slice(0, max - 1);
+  const espacio = corte.lastIndexOf(' ');
+  return `${(espacio > max / 2 ? corte.slice(0, espacio) : corte).replace(/[\s,;:.]+$/, '')}…`;
+}
+
+/** Una sola cita: si la IA pone varias («1 Reyes 18:21; 18:36»), queda la primera. */
+function unaCita(c: string | undefined) {
+  const t = c?.replace(/^[«"“]|[»"”]$/g, '').trim();
+  if (!t) return null;
+  return t.length <= MAX_CITA ? t : recortar(t.split(/\s*[;|]\s*|\s+y\s+/)[0], MAX_CITA);
+}
 
 /** Lee el formato «P: … / A) … / R: B / V: cita». Se salta las preguntas mal formadas. */
 export function parseRepaso(text: string): PreguntaRepaso[] {
@@ -50,15 +69,15 @@ export function parseRepaso(text: string): PreguntaRepaso[] {
         (o, i) => o || i < 3,
       );
       const letra = lines.find((l) => /^R:/i.test(l))?.replace(/^R:\s*/i, '').trim()[0]?.toUpperCase();
-      const cita = lines.find((l) => /^V:/i.test(l))?.replace(/^V:\s*/i, '') || null;
+      const cita = unaCita(lines.find((l) => /^V:/i.test(l))?.replace(/^V:\s*/i, ''));
       const cat = lines.find((l) => /^C:/i.test(l))?.replace(/^C:\s*/i, '').trim().toLowerCase();
       const categoria = CATEGORIAS.find((c) => c.id === cat || c.nombre.toLowerCase() === cat)?.id;
       const nivel = Number(lines.find((l) => /^N:/i.test(l))?.replace(/^N:\s*/i, '').trim()[0]);
       const correcta = letra ? LETRAS.indexOf(letra) : -1;
       if (!texto || opciones.some((o) => !o) || correcta < 0 || correcta >= opciones.length) return null;
       return {
-        texto,
-        opciones: opciones as string[],
+        texto: recortar(texto, MAX_TEXTO_PREGUNTA),
+        opciones: (opciones as string[]).map((o) => recortar(o, MAX_OPCION)),
         correcta,
         cita,
         ...(categoria && { categoria }),

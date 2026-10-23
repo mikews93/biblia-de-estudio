@@ -26,7 +26,10 @@ import {
   JUEGOS,
   type Juego,
   LETRAS,
+  MAX_CITA,
+  MAX_OPCION,
   MAX_PREGUNTAS,
+  MAX_TEXTO_PREGUNTA,
   type ModoRepaso,
   type PreguntaRepaso,
   conSolucion,
@@ -57,7 +60,7 @@ const MAX_ROUTE = 40;
 // Una sección del estudio o una respuesta de la IA es más larga que una tarjeta del Taller.
 const MAX_STUDY_TEXT = 8000;
 const MAX_SOURCES = 24;
-const MAX_QUESTION = 280;
+const MAX_QUESTION = MAX_TEXTO_PREGUNTA;
 const MAX_ANSWER = 600;
 // Las dudas abiertas de cada persona en el tablero, para que nadie lo llene.
 const MAX_OPEN_QUESTIONS = 5;
@@ -303,9 +306,9 @@ function quizCard(v: Json): Tarjeta {
   const juego: Juego = JUEGOS.some((j) => j.id === v.juego) ? (v.juego as Juego) : 'repaso';
   const preguntas = (Array.isArray(v.preguntas) ? v.preguntas : []).slice(0, MAX_PREGUNTAS).map((q): PreguntaRepaso => {
     const x = (q ?? {}) as Json;
-    const opciones = Array.isArray(x.opciones) ? x.opciones.slice(0, 24).map((o) => str(o, 120, 'la opción')!) : [];
+    const opciones = Array.isArray(x.opciones) ? x.opciones.slice(0, 24).map((o) => str(o, MAX_OPCION, 'el texto de una opción')!) : [];
     const texto = str(x.texto, MAX_QUESTION, 'la pregunta')!;
-    const cita = str(x.cita, 60, 'la cita', true);
+    const cita = str(x.cita, MAX_CITA, 'la cita', true);
     // Ordena y espada: se acierta si la respuesta es la solución (las palabras en orden, el número del versículo).
     if (conSolucion(juego)) {
       const solucion = str(x.solucion, 600, 'la solución')!;
