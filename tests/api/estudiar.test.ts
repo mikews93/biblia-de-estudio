@@ -46,6 +46,23 @@ async function events(res: Response): Promise<Event[]> {
 const textOf = (evs: Event[]) => evs.filter((e) => e.type === 'text').map((e) => e.text).join('');
 const lastAiText = () => JSON.stringify(aiRequests.at(-1));
 
+describe('paraDevolver', () => {
+  it('quita lo pedido antes de pasar a otro modelo y los textos vacíos', async () => {
+    const { paraDevolver } = await import('../../api/estudiar');
+    const b = (type: string, extra: object = {}) => ({ type, ...extra }) as never;
+    const out = paraDevolver([
+      b('thinking', { thinking: 'a', signature: 's' }),
+      b('text', { text: 'Primero' }),
+      b('tool_use', { id: 't0', name: 'leer_pasaje', input: {} }),
+      b('fallback', { from: { model: 'x' }, to: { model: 'y' } }),
+      b('text', { text: '' }),
+      b('tool_use', { id: 't1', name: 'leer_pasaje', input: {} }),
+    ]);
+    expect(out.map((x: { type: string }) => x.type)).toEqual(['text', 'fallback', 'tool_use']);
+    expect((out.at(-1) as { id: string }).id).toBe('t1');
+  });
+});
+
 describe('/api/estudiar sin cuenta', () => {
   it('pide una cuenta antes de mirar la petición', async () => {
     const res = await estudiar(request('/api/estudiar', { book: 'jhn', chapter: 3 }));
@@ -339,6 +356,19 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(sources[0]).toMatchObject({ label: expect.stringMatching(/^Filipenses 4:/), ref: expect.stringMatching(/^php\.4\./) });
     expect(sources.some((e) => e.url?.startsWith('https://'))).toBe(true);
     expect(evs.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('si la IA se satura a mitad de la investigación, repite esa vuelta y devuelve su respuesta sin textos vacíos', async () => {
+    const before = aiRequests.length;
+    const evs = await events(await ask({ tema: { texto: 'Los atributos de Dios SATURADA', tipo: 'sermon' } }));
+    expect(evs.filter((e) => e.type === 'error')).toEqual([]);
+    expect(evs.at(-1)).toEqual({ type: 'done' });
+    expect(textOf(evs)).toContain('## Pasajes');
+    // Pedir herramientas, la vuelta que falló y la repetida
+    const [, fallida, repetida] = aiRequests.slice(before);
+    expect(repetida.messages).toEqual(fallida.messages);
+    const devuelto = repetida.messages[1].content as { type: string; text?: string }[];
+    expect(devuelto.map((b) => b.type)).toEqual(['thinking', 'tool_use', 'tool_use', 'tool_use']);
   });
 
   it('la maqueta lleva lo que se quería tratar, las partes de la estructura y puede investigar', async () => {
