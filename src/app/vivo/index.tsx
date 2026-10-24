@@ -10,8 +10,9 @@ import { PasajeSheet } from '@/components/vivo/Hojas';
 import { vivoText } from '@/components/vivo/piezas';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
-import { useTaller } from '@/lib/taller';
-import { getLastRead, serif, useColors } from '@/lib/theme';
+import { guionDe, rangoDe, soloRango } from '@/lib/guion';
+import { pasajeLabel, tipoInfo, tituloDe, useTaller } from '@/lib/taller';
+import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { CODE_LENGTH, type Sala, cleanCode, vivoApi } from '@/lib/vivo';
 
@@ -19,6 +20,7 @@ import { CODE_LENGTH, type Sala, cleanCode, vivoApi } from '@/lib/vivo';
 export default function LecturaEnVivo() {
   const params = useLocalSearchParams<{ grupo?: string; libro?: string; capitulo?: string; taller?: string }>();
   const colors = useColors();
+  const { settings } = useSettings();
   const { ready, usuario, grupos } = useAccount();
   const { mensajes } = useTaller();
   const [code, setCode] = useState('');
@@ -55,15 +57,27 @@ export default function LecturaEnVivo() {
     if (ready6) navigate(() => router.push(`/vivo/${code}`), 'forward');
   };
 
+  // Con un mensaje del Taller: solo sus versículos (si se empieza en su capítulo) y el guion de sus partes.
+  const enSuPasaje = !!taller?.pasaje && taller.pasaje.book === pasaje?.book && taller.pasaje.chapter === pasaje?.chapter;
+  const rango = enSuPasaje ? rangoDe(taller!.pasaje) : null;
+  const guion = taller ? guionDe(taller, tituloDe(taller, books), books) : undefined;
+
   const start = () =>
     run(async () => {
       if (!pasaje) return;
-      const sala = await vivoApi<Sala>('crearSala', {
+      let sala = await vivoApi<Sala & { existente?: boolean }>('crearSala', {
         libro: pasaje.book,
         capitulo: pasaje.chapter,
         grupo: grupo || undefined,
-        titulo: !grupo && taller?.titulo ? taller.titulo : undefined,
+        titulo: !grupo && taller ? guion!.titulo.slice(0, 80) : undefined,
+        version: settings.version,
+        rango,
+        ...(guion && { guion }),
       });
+      // El grupo ya tenía una lectura abierta: se entra en ella y, si guías, se lleva el mensaje ahí.
+      if (sala.existente && guion && sala.sala.guia.id === usuario?.id) {
+        sala = await vivoApi<Sala>('moverSala', { sala: sala.sala.codigo, guion, libro: pasaje.book, capitulo: pasaje.chapter, rango, version: settings.version });
+      }
       const q = params.taller ? `?taller=${params.taller}` : '';
       navigate(() => router.replace(`/vivo/${sala.sala.codigo}${q}`), 'forward');
     });
@@ -124,11 +138,15 @@ export default function LecturaEnVivo() {
       ) : (
         <Card>
           {taller && (
-            <View style={[styles.taller, { backgroundColor: colors.accentSoft }]}>
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '700' }}>ENCUENTRO DEL TALLER</Text>
-              <Text style={{ color: colors.text, fontWeight: '700', marginTop: 2 }}>{taller.titulo || 'Encuentro de grupo'}</Text>
-              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
-                Llevarás cada parte a la pantalla de todos desde «Dinámica».
+            <View style={[styles.taller, { backgroundColor: colors.warmSoft }]}>
+              <Text style={{ color: colors.warm, fontSize: 11.5, fontWeight: '800', letterSpacing: 0.8 }}>
+                {`${tipoInfo(taller.tipo).nombre} del Taller`.toUpperCase()}
+              </Text>
+              <Text style={{ color: colors.text, fontFamily: serif, fontSize: 18, fontWeight: '700', marginTop: 3 }}>{guion!.titulo}</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4 }}>
+                {taller.secciones.length} partes
+                {taller.pasaje ? ` · ${pasajeLabel(taller.pasaje, books)}` : ''}. Lo llevarás parte por parte con su reloj: al pasar de
+                parte, todos van a sus versículos y ven lo que escribiste para ellos y su dinámica. Tus notas solo las ves tú.
               </Text>
             </View>
           )}
@@ -154,7 +172,10 @@ export default function LecturaEnVivo() {
             accessibilityRole="button"
             accessibilityLabel="Elegir el pasaje"
           >
-            <Text style={[styles.passageText, { color: colors.text }]}>{book && pasaje ? `${book.name} ${pasaje.chapter}` : '…'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.passageText, { color: colors.text }]}>{book && pasaje ? `${book.name} ${pasaje.chapter}` : '…'}</Text>
+              {rango && <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Se leerá {soloRango(rango)}</Text>}
+            </View>
             <Text style={{ color: colors.accent, fontWeight: '600' }}>Cambiar</Text>
           </Pressable>
           <Button label="Empezar en vivo" icon={LiveIcon} onPress={start} busy={busy} disabled={!pasaje} style={{ marginTop: 16 }} />

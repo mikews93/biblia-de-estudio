@@ -5,7 +5,21 @@ import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View
 
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, Field, text } from '@/components/comunidad/ui';
-import { CheckIcon, CloseIcon, DocumentIcon, type IconProps, PencilIcon, PlayIcon, PlusIcon, PrintIcon, RepeatIcon, ShareIcon } from '@/components/icons';
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  DocumentIcon,
+  type IconProps,
+  LiveIcon,
+  PencilIcon,
+  PlayIcon,
+  PlusIcon,
+  PrintIcon,
+  RepeatIcon,
+  ShareIcon,
+} from '@/components/icons';
+import ComoPresentar from '@/components/taller/ComoPresentar';
 import DocumentoVista from '@/components/taller/DocumentoVista';
 import { Book, getBooks } from '@/lib/data';
 import { descargarWord, documentoDe, documentoTexto, fechaLarga, imprimir, puedeImprimir } from '@/lib/documento';
@@ -29,6 +43,7 @@ export default function DocumentoScreen() {
   const [anotando, setAnotando] = useState(false);
   const [fecha, setFecha] = useState(hoy());
   const [lugar, setLugar] = useState('');
+  const [presentar, setPresentar] = useState(false);
   const m = mensajes.find((x) => x.id === id);
 
   useEffect(() => {
@@ -94,10 +109,25 @@ export default function DocumentoScreen() {
         {puedeImprimir && <Accion icon={PrintIcon} label="Imprimir" hint="Imprimir o guardar en PDF" onPress={() => imprimir(d)} />}
         {puedeImprimir && <Accion icon={DocumentIcon} label="Word" onPress={() => (descargarWord(d), flash('Descargado. Se abre en Word o Google Docs.'))} />}
         <Accion icon={ShareIcon} label="Compartir" onPress={compartir} />
-        <Accion icon={PlayIcon} label="Presentar" onPress={() => navigate(() => router.push(`/taller/${m.id}/presentar`), 'forward')} />
+        <Accion icon={PlayIcon} label="Presentar" hint="Presentar: en pantalla completa, en la iglesia o con tu grupo" onPress={() => setPresentar(true)} />
         <Accion icon={PencilIcon} label="Editar" onPress={() => navigate(() => (desde === 'editor' ? router.back() : router.push(`/taller/${m.id}`)), 'back')} />
       </View>
       {nota && <Text style={{ color: colors.accent, fontWeight: '600', marginBottom: 10, textAlign: 'center' }}>{nota}</Text>}
+
+      {m.terminado && (
+        <Pressable
+          onPress={() => setPresentar(true)}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.envivo, { backgroundColor: colors.warmSoft }, pressed && { opacity: 0.8 }]}
+        >
+          <LiveIcon color={colors.warm} size={20} strokeWidth={2} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 15 }}>Presentarlo en vivo</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 1 }}>En la iglesia con un código, o con tu grupo o célula.</Text>
+          </View>
+          <ChevronRightIcon color={colors.warm} size={18} />
+        </Pressable>
+      )}
 
       <DocumentoVista d={d} vacio="Sin escribir todavía." />
 
@@ -182,6 +212,7 @@ export default function DocumentoScreen() {
         }}
         style={{ marginTop: 18, alignSelf: 'center' }}
       />
+      {presentar && <ComoPresentar m={m} books={books} onClose={() => setPresentar(false)} />}
     </ScrollView>
   );
 }
@@ -211,6 +242,7 @@ const styles = StyleSheet.create({
   page: { padding: 16, paddingBottom: 80, maxWidth: 820, width: '100%', alignSelf: 'center' },
   estado: { alignItems: 'center', marginBottom: 12 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 5 },
+  envivo: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginBottom: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
   acciones: { flexDirection: 'row', gap: 8, marginBottom: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
   accion: { flex: 1, minWidth: 0, alignItems: 'center', gap: 4, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 4 },
   caja: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginTop: 18 },

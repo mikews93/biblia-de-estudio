@@ -64,6 +64,8 @@ const MAX_QUESTION = MAX_TEXTO_PREGUNTA;
 const MAX_ANSWER = 600;
 // Las dudas abiertas de cada persona en el tablero, para que nadie lo llene.
 const MAX_OPEN_QUESTIONS = 5;
+const MAX_PARTS = 30;
+const MAX_PART_CITAS = 12;
 
 const SCHEMA = `
 create table if not exists vivo_salas (
@@ -163,6 +165,25 @@ export type Estado = {
   tarjeta: Tarjeta | null;
   /** Los capítulos que leyeron juntos, en orden («jhn.3»), para el resumen del final. */
   recorrido: string[];
+  /** Los versículos que eligió quien guía (los del mensaje o de la parte); sin esto se ve el capítulo entero. */
+  rango?: Rango | null;
+  /** La versión en que lee quien guía: todos la ven en ella (las con derechos se piden en el teléfono, no aquí). */
+  version?: string | null;
+  /** El mensaje del Taller que se lleva parte por parte, con el reloj de cada parte. */
+  guion?: Guion | null;
+};
+export type Rango = { desde: number; hasta: number };
+/** Solo títulos, minutos y citas: las notas de quien guía se quedan en su teléfono. */
+export type ParteGuion = { titulo: string; minutos: number; citas: string[] };
+export type Guion = {
+  mensaje: string;
+  titulo: string;
+  partes: ParteGuion[];
+  /** −1 es la portada, antes de la primera parte. */
+  parte: number;
+  /** Cuándo empezó el mensaje y la parte de ahora (hora del servidor). */
+  inicio: string;
+  desde: string;
 };
 
 class Fail extends Error {
@@ -237,6 +258,43 @@ async function passage(libro: unknown, capitulo: unknown) {
   const book = (await books()).find((b) => b.id === libro);
   if (!book) throw new Fail('Libro no válido');
   return { libro: book.id, capitulo: int(capitulo, 'Capítulo', 1, book.chapters) };
+}
+
+/** Los versículos elegidos: «del 14 al 21». null quita la selección y se ve el capítulo entero. */
+function rangeOf(value: unknown): Rango | null {
+  if (value === null) return null;
+  const v = (value ?? {}) as Json;
+  const desde = int(v.desde, 'Versículo', 1, 200);
+  const hasta = v.hasta === undefined ? desde : int(v.hasta, 'Versículo', desde, 200);
+  return { desde, hasta };
+}
+
+/** El id de una versión («rv1909», «nbla»): solo se guarda el nombre, nunca su texto. */
+function versionOf(value: unknown) {
+  if (value === null) return null;
+  if (typeof value !== 'string' || !/^[a-z0-9-]{2,16}$/.test(value)) throw new Fail('Versión no válida');
+  return value;
+}
+
+/** El guion de un mensaje del Taller: el título y, de cada parte, su título, sus minutos y sus citas. */
+function scriptOf(value: unknown): Guion | null {
+  if (value === null) return null;
+  if (!value || typeof value !== 'object') throw new Fail('Guion no válido');
+  const v = value as Json;
+  if (!Array.isArray(v.partes) || !v.partes.length || v.partes.length > MAX_PARTS) throw new Fail('Guion no válido');
+  const now = new Date().toISOString();
+  return {
+    mensaje: str(v.mensaje, 80, 'el mensaje')!,
+    titulo: str(v.titulo, MAX_CARD_TITLE, 'el título')!,
+    partes: v.partes.map((p: unknown) => {
+      const x = (p ?? {}) as Json;
+      const citas = Array.isArray(x.citas) ? x.citas.slice(0, MAX_PART_CITAS).map((c) => str(c, 40, 'una cita')!) : [];
+      return { titulo: str(x.titulo, MAX_CARD_TITLE, 'el título de una parte')!, minutos: x.minutos ? int(x.minutos, 'Tiempo', 0, MAX_MINUTES * 2) : 0, citas };
+    }),
+    parte: -1,
+    inicio: now,
+    desde: now,
+  };
 }
 
 /** Una tarjeta que manda quien guía. Las dinámicas del catálogo se toman del catálogo, no del teléfono. */
@@ -577,7 +635,16 @@ export const celulaActions: Record<string, Handler> = {
       }
     }
     const titulo = str(body.titulo, MAX_TITLE, 'el título', true) ?? grupo?.nombre ?? 'Lectura en vivo';
-    const estado: Estado = { libro, capitulo, foco: null, tarjeta: null, recorrido: [`${libro}.${capitulo}`] };
+    const estado: Estado = {
+      libro,
+      capitulo,
+      foco: null,
+      tarjeta: null,
+      recorrido: [`${libro}.${capitulo}`],
+      rango: body.rango === undefined ? null : rangeOf(body.rango),
+      version: body.version === undefined ? null : versionOf(body.version),
+      guion: body.guion === undefined ? null : scriptOf(body.guion),
+    };
     let codigo = '';
     for (let i = 0; i < 5 && !codigo; i++) {
       const [row] = await sql<{ codigo: string }[]>`
@@ -654,7 +721,8 @@ export const celulaActions: Record<string, Handler> = {
 
   /**
    * Quien guía pasa la hoja, señala un versículo o pone una tarjeta. Solo cambia lo que trae:
-   * libro y capítulo, foco (número o null), tarjeta (objeto o null), paso de la tarjeta, reloj («iniciar» o «parar»).
+   * libro y capítulo, foco (número o null), tarjeta (objeto o null), paso de la tarjeta, reloj («iniciar» o «parar»),
+   * rango (los versículos elegidos o null), version, guion (un mensaje del Taller o null) y parte (la de ahora).
    */
   async moverSala({ sql, body, request }) {
     const user = await auth(sql, request);
@@ -667,6 +735,8 @@ export const celulaActions: Record<string, Handler> = {
         estado.libro = libro;
         estado.capitulo = capitulo;
         estado.foco = null;
+        // Los versículos elegidos eran de la hoja anterior (si no llegan otros con ella).
+        estado.rango = null;
         const key = `${libro}.${capitulo}`;
         if (estado.recorrido.at(-1) !== key) estado.recorrido = [...estado.recorrido, key].slice(-MAX_ROUTE);
         // Los versículos iluminados eran de la hoja anterior.
@@ -674,6 +744,15 @@ export const celulaActions: Record<string, Handler> = {
       }
     }
     if (body.foco !== undefined) estado.foco = body.foco === null ? null : int(body.foco, 'Versículo', 1, 200);
+    if (body.rango !== undefined) estado.rango = rangeOf(body.rango);
+    if (body.version !== undefined) estado.version = versionOf(body.version);
+    if (body.guion !== undefined) estado.guion = scriptOf(body.guion);
+    if (body.parte !== undefined) {
+      if (!estado.guion) throw new Fail('No hay un mensaje que seguir');
+      const parte = int(body.parte, 'Parte', -1, estado.guion.partes.length - 1);
+      // Volver a la misma parte no reinicia su reloj.
+      if (parte !== estado.guion.parte) estado.guion = { ...estado.guion, parte, desde: new Date().toISOString() };
+    }
     if (body.tarjeta !== undefined) {
       estado.tarjeta = card(body.tarjeta);
       // La respuesta del estudio a una duda del tablero la marca como vista.

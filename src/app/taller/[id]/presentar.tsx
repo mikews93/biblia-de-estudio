@@ -6,14 +6,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AmbienteBoton from '@/components/Ambiente';
 import { IconText } from '@/components/comunidad/ui';
 import { LiveDot } from '@/components/evento/piezas';
-import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon } from '@/components/icons';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon, PeopleIcon } from '@/components/icons';
+import { CreditoVersion, Tramos, useVersion } from '@/components/vivo/Guion';
 import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { dinamica } from '@/lib/dinamicas';
-import { codigoLegible, moverEvento, useMisEventos } from '@/lib/eventos';
+import { codigoLegible, interactuarEvento, moverEvento, useMisEventos } from '@/lib/eventos';
 import { enPasaje, ideaCentral, pasajeLabel, tituloDe, useTaller } from '@/lib/taller';
-import { sans, serif, useColors } from '@/lib/theme';
+import { sans, serif, useColors, useSettings } from '@/lib/theme';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -32,6 +33,12 @@ export default function PresentarScreen() {
   const [verses, setVerses] = useState<Verse[] | null>(null);
   const [showPassage, setShowPassage] = useState(false);
   const [size, setSize] = useState(22);
+  // El pasaje en la versión en que lees (las con derechos se piden en el momento), o la RV1909 si no se puede.
+  const { settings } = useSettings();
+  const [shown, setShown] = useState(settings.version);
+  const { abbr } = useVersion(shown);
+  // La dinámica que se mandó a los teléfonos de la congregación, por parte.
+  const [mandada, setMandada] = useState<string | null>(null);
   // Pads debajo de la voz mientras se presenta; se apagan al salir de presentar.
   useAmbienteEnPantalla();
   // Si el mensaje se publicó como evento, al avanzar aquí avanza también en los teléfonos de la congregación.
@@ -59,8 +66,13 @@ export default function PresentarScreen() {
 
   const p = m?.pasaje;
   useEffect(() => {
-    if (p) getChapter(p.book, p.chapter).then((v) => setVerses(v.filter(([n]) => enPasaje(p, n)))).catch(() => {});
-  }, [p?.book, p?.chapter, p?.from, p?.to]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!p) return;
+    const elegir = (v: Verse[]) => setVerses(v.filter(([n]) => enPasaje(p, n)));
+    getChapter(p.book, p.chapter, settings.version)
+      .then((v) => (setShown(settings.version), elegir(v)))
+      .catch(() => getChapter(p.book, p.chapter).then((v) => (setShown('rv1909'), elegir(v))))
+      .catch(() => {});
+  }, [p?.book, p?.chapter, p?.from, p?.to, settings.version]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!m) return <Stack.Screen options={{ headerShown: false }} />;
 
@@ -75,6 +87,14 @@ export default function PresentarScreen() {
   const inSection = elapsed - sectionStart;
   const over = s && s.minutos ? inSection > s.minutos * 60 : false;
   const d = dinamica(s?.dinamica);
+  const clave = s && d ? `${s.id}:${d.id}` : null;
+  const mandar = () => {
+    if (!evento || !d || !s) return;
+    setFallo(false);
+    interactuarEvento(evento.codigo, { nueva: { tipo: 'dinamica', dinamica: d.id, ...(s.minutos > 0 && { minutos: Math.min(s.minutos, 60) }) } })
+      .then(() => setMandada(clave))
+      .catch(() => setFallo(true));
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }]}>
@@ -98,6 +118,10 @@ export default function PresentarScreen() {
             <Text style={{ color: colors.muted, fontSize: 19 }}>A+</Text>
           </Pressable>
         </View>
+      </View>
+
+      <View style={styles.tramos}>
+        <Tramos partes={sections} parte={index} enLaParte={inSection} alto={4} />
       </View>
 
       {evento && (
@@ -141,6 +165,22 @@ export default function PresentarScreen() {
                     {i + 1}. {step}
                   </Text>
                 ))}
+                {enVivo &&
+                  (mandada === clave ? (
+                    <View style={[styles.mandar, { backgroundColor: colors.warmSoft }]}>
+                      <CheckIcon color={colors.warm} size={15} strokeWidth={2.4} />
+                      <Text style={{ color: colors.warm, fontWeight: '800', fontSize: 13.5 }}>En los teléfonos de todos</Text>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={mandar}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [styles.mandar, { backgroundColor: colors.warm }, pressed && { opacity: 0.8 }]}
+                    >
+                      <PeopleIcon color="#FFFFFF" size={16} />
+                      <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13.5 }}>Mandarla a los teléfonos</Text>
+                    </Pressable>
+                  ))}
               </View>
             )}
             {!!s.paraGrupo?.trim() && (
@@ -218,7 +258,9 @@ export default function PresentarScreen() {
         <Modal transparent animationType="fade" visible onRequestClose={() => setShowPassage(false)}>
           <Pressable style={styles.backdrop} onPress={() => setShowPassage(false)}>
             <View style={[styles.passage, { backgroundColor: colors.surface }]}>
-              <Text style={{ color: colors.accent, fontWeight: '700', marginBottom: 10 }}>{pasajeLabel(m.pasaje, books)} · RV1909</Text>
+              <Text style={{ color: colors.accent, fontWeight: '700', marginBottom: 10 }}>
+                {pasajeLabel(m.pasaje, books)} · {abbr}
+              </Text>
               <ScrollView>
                 <Text style={{ color: colors.text, fontFamily: serif, fontSize: size * 0.9, lineHeight: size * 1.4 }}>
                   {verses?.map(([n, t]) => (
@@ -228,6 +270,7 @@ export default function PresentarScreen() {
                     </Text>
                   ))}
                 </Text>
+                <CreditoVersion version={shown} style={{ marginTop: 12 }} />
               </ScrollView>
             </View>
           </Pressable>
@@ -242,6 +285,8 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 8 },
   timer: { alignItems: 'center' },
   eventRow: { alignItems: 'center', paddingBottom: 4 },
+  tramos: { paddingHorizontal: 20, paddingBottom: 8, maxWidth: 820, width: '100%', alignSelf: 'center' },
+  mandar: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, marginTop: 12 },
   eventChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 5 },
   body: { padding: 24, paddingBottom: 40, maxWidth: 820, width: '100%', alignSelf: 'center' },
   counter: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },

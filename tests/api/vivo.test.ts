@@ -111,4 +111,59 @@ describe.skipIf(!DB_URL)('/api/vivo', () => {
     expect((await vivo('borrar', { codigo }, llave)).status).toBe(200);
     expect((await ver(codigo)).status).toBe(404);
   });
+
+  it('guarda la versión y los minutos, y lleva el reloj de quien predica', async () => {
+    const llave = await persona('Reloj');
+    const puntos = BOSQUEJO.puntos.map((p, i) => ({ ...p, minutos: [5, 0, 7][i], ...(i === 1 && { dinamica: 'termometro' }) }));
+    expect((await vivo('publicar', { mensaje: 'v1', ...BOSQUEJO, version: '../x' }, llave)).status).toBe(400);
+    const a = await vivo('publicar', { mensaje: 'v1', gradual: false, ...BOSQUEJO, puntos, version: 'nbla' }, llave);
+    const codigo = a.json.evento.codigo;
+    expect(a.json.evento).toMatchObject({ version: 'nbla', inicio: null, puntoDesde: null });
+    expect(a.json.evento.puntos[0].minutos).toBe(5);
+    expect(a.json.evento.puntos[1]).not.toHaveProperty('minutos');
+    expect(a.json.evento.puntos[1].dinamica).toBe('termometro');
+
+    let r = await vivo('mover', { codigo, estado: 'en-vivo', punto: 0 }, llave);
+    const { inicio, puntoDesde } = r.json.evento;
+    expect(inicio).toBeTruthy();
+    expect(puntoDesde).toBeTruthy();
+    // Moverse al mismo punto no reinicia su reloj; ir a otro sí. El inicio del mensaje queda.
+    r = await vivo('mover', { codigo, punto: 0 }, llave);
+    expect(r.json.evento.puntoDesde).toBe(puntoDesde);
+    await new Promise((ok) => setTimeout(ok, 20));
+    r = await vivo('mover', { codigo, punto: 1 }, llave);
+    expect(Date.parse(r.json.evento.puntoDesde)).toBeGreaterThan(Date.parse(puntoDesde));
+    expect(r.json.evento.inicio).toBe(inicio);
+    // Lo ve también la congregación.
+    expect((await ver(codigo)).json.evento.version).toBe('nbla');
+  });
+
+  it('manda una dinámica del catálogo a los teléfonos, con sus pasos y el reloj', async () => {
+    const llave = await persona('Dinámica');
+    const a = await vivo('publicar', { mensaje: 'd1', ...BOSQUEJO }, llave);
+    const codigo = a.json.evento.codigo;
+    await vivo('mover', { codigo, estado: 'en-vivo', punto: 0 }, llave);
+    expect((await vivo('interactuar', { codigo, nueva: { tipo: 'dinamica', dinamica: 'inventada' } }, llave)).status).toBe(400);
+    let r = await vivo('interactuar', { codigo, nueva: { tipo: 'dinamica', dinamica: 'termometro', titulo: 'Otro nombre' } }, llave);
+    expect(r.status).toBe(200);
+    const i = r.json.evento.interaccion;
+    // El nombre y los pasos salen del catálogo, no de lo que manda el teléfono.
+    expect(i).toMatchObject({ tipo: 'dinamica', dinamica: 'termometro', titulo: 'Termómetro con la mano', paso: 0, minutos: 5, fin: null });
+    expect(i.pasos).toHaveLength(3);
+    expect(r.json.evento.resultados).toBeNull();
+
+    r = await vivo('interactuar', { codigo, paso: 2, reloj: 'iniciar' }, llave);
+    expect(r.json.evento.interaccion.paso).toBe(2);
+    expect(Date.parse(r.json.evento.interaccion.fin) - Date.now()).toBeGreaterThan(4.5 * 60_000);
+    expect((await vivo('interactuar', { codigo, paso: 3 }, llave)).status).toBe(400);
+    r = await vivo('interactuar', { codigo, reloj: 'parar' }, llave);
+    expect(r.json.evento.interaccion.fin).toBeNull();
+
+    // La congregación la ve, pero no se responde en la app.
+    expect((await ver(codigo)).json.evento.interaccion.titulo).toBe('Termómetro con la mano');
+    const res = await POST(
+      request('/api/vivo', { accion: 'responderEvento', codigo, interaccion: i.id, participante: 'telefono-de-prueba-123', texto: 'hola' }),
+    );
+    expect(res.status).toBe(409);
+  });
 });

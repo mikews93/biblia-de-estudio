@@ -75,7 +75,8 @@ const OBSERVAR = [
 ];
 
 export default function MensajeScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `paso`: abrir en un paso («compartir» desde Mis sermones, para elegir qué ve la congregación).
+  const { id, paso } = useLocalSearchParams<{ id: string; paso?: string }>();
   const colors = useColors();
   const { mensajes, ready } = useTaller();
   const [books, setBooks] = useState<Book[]>([]);
@@ -94,7 +95,8 @@ export default function MensajeScreen() {
     if (!m || restaurado) return;
     leerTallerIa(m.id).then((e) => {
       const vista = e?.vista as { paso?: Step; ia?: { modo: Modo; paso: Paso } | null } | undefined;
-      if (vista?.paso && STEPS.some((s) => s.step === vista.paso)) setStep(vista.paso);
+      if (paso && STEPS.some((s) => s.step === paso)) setStep(paso as Step);
+      else if (vista?.paso && STEPS.some((s) => s.step === vista.paso)) setStep(vista.paso);
       else if (m.pasaje && !m.tema && !m.observacion) setStep('idea');
       if (vista?.ia && m.pasaje) setIa(vista.ia);
       setRestaurado(true);
@@ -709,19 +711,16 @@ function CompartirStep({ m, books }: { m: Mensaje; books: Book[] }) {
       <Text style={{ color: colors.muted, fontSize: 13 }}>
         Pantalla completa con letra grande, una parte a la vez, temporizador y el pasaje a un toque.
       </Text>
-      {encuentro && (
-        <>
-          <Button
-            label="Guiar en vivo con el grupo"
-            icon={LiveIcon}
-            kind="outline"
-            onPress={() => navigate(() => router.push(`/vivo?taller=${m.id}`), 'forward')}
-          />
-          <Text style={{ color: colors.muted, fontSize: 13 }}>
-            Cada uno sigue el pasaje en su teléfono y tú llevas cada parte, con su dinámica y su reloj, a la pantalla de todos.
-          </Text>
-        </>
-      )}
+      <Button
+        label="Guiar en vivo con el grupo"
+        icon={LiveIcon}
+        kind="outline"
+        onPress={() => navigate(() => router.push(`/vivo?taller=${m.id}`), 'forward')}
+      />
+      <Text style={{ color: colors.muted, fontSize: 13 }}>
+        Cada uno lee en su teléfono solo los versículos de cada parte, en tu versión, y tú llevas cada parte con su dinámica y
+        su reloj a la pantalla de todos.
+      </Text>
 
       <PublicarEvento m={m} books={books} />
 

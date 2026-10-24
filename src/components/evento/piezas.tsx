@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, ChurchIcon } from '@/components/icons';
+import { CreditoVersion, useVersion } from '@/components/vivo/Guion';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getChapter } from '@/lib/data';
 import { Evento, EstadoEvento, EventoError, leerCita, recordarEvento, useMisEventos, verEvento, verMiEvento } from '@/lib/eventos';
@@ -117,19 +118,29 @@ export function EstadoPill({ estado, colors }: { estado: EstadoEvento; colors: C
   );
 }
 
-/** Una cita del punto: al tocarla se abren sus versículos ahí mismo, con un enlace al capítulo. */
-export function CitaDesplegable({ label, books, size = 16 }: { label: string; books: Book[]; size?: number }) {
+/**
+ * Una cita del punto: al tocarla se abren sus versículos ahí mismo, con un enlace al capítulo. Se leen en la versión
+ * de quien predica (`version`); las con derechos se piden en el momento, como en el lector, y si no se puede, la RV1909.
+ */
+export function CitaDesplegable({ label, books, size = 16, version = 'rv1909' }: { label: string; books: Book[]; size?: number; version?: string }) {
   const colors = useColors();
   const [open, setOpen] = useState(false);
-  const [verses, setVerses] = useState<[number, string][] | null>(null);
+  // Lo leído, con la versión que se pidió (para pedirlo otra vez si cambia) y la que llegó.
+  const [leido, setLeido] = useState<{ pedida: string; shown: string; verses: [number, string][] } | null>(null);
+  const verses = leido?.pedida === version ? leido.verses : null;
+  const shown = leido?.pedida === version ? leido.shown : version;
+  const { abbr } = useVersion(shown);
   const cita = books.length ? leerCita(label, books) : null;
 
   useEffect(() => {
     if (!open || !cita || verses) return;
-    getChapter(cita.book, cita.chapter)
-      .then((v) => setVerses(v.filter(([n]) => !cita.from || (n >= cita.from && n <= (cita.to ?? cita.from))).map(([n, t]) => [n, t])))
-      .catch(() => setVerses([]));
-  }, [open, cita?.book, cita?.chapter, cita?.from, cita?.to]); // eslint-disable-line react-hooks/exhaustive-deps
+    const elegir = (v: [number, string, string?][]) =>
+      v.filter(([n]) => !cita.from || (n >= cita.from && n <= (cita.to ?? cita.from))).map(([n, t]): [number, string] => [n, t]);
+    getChapter(cita.book, cita.chapter, version)
+      .then((v) => setLeido({ pedida: version, shown: version, verses: elegir(v) }))
+      .catch(() => getChapter(cita.book, cita.chapter).then((v) => setLeido({ pedida: version, shown: 'rv1909', verses: elegir(v) })))
+      .catch(() => setLeido({ pedida: version, shown: version, verses: [] }));
+  }, [open, version, cita?.book, cita?.chapter, cita?.from, cita?.to]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!cita) return null;
   const Chevron = open ? ChevronUpIcon : ChevronDownIcon;
@@ -166,8 +177,9 @@ export function CitaDesplegable({ label, books, size = 16 }: { label: string; bo
             hitSlop={6}
             style={{ marginTop: 10 }}
           >
-            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}>RV1909 · Abrir en la Biblia ›</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}>{abbr} · Abrir en la Biblia ›</Text>
           </Pressable>
+          <CreditoVersion version={shown} style={{ marginTop: 8 }} />
         </View>
       )}
     </View>

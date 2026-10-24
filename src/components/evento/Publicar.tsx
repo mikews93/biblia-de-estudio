@@ -14,11 +14,13 @@ import { useAccount } from '@/lib/comunidad';
 import type { Book } from '@/lib/data';
 import { borrarEvento, codigoLegible, contenidoDe, desactualizado, enlaceCorto, enlaceEvento, publicarEvento, useMisEventos } from '@/lib/eventos';
 import { Mensaje, actualizarMensaje, actualizarSeccion } from '@/lib/taller';
-import { Colors, serif, useColors } from '@/lib/theme';
+import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 export default function PublicarEvento({ m, books }: { m: Mensaje; books: Book[] }) {
   const colors = useColors();
+  // Los versículos se abren en cada teléfono en la versión en que lees tú.
+  const { settings } = useSettings();
   const { usuario } = useAccount();
   const { eventos } = useMisEventos(!!usuario);
   const evento = eventos?.find((e) => e.codigo === m.evento?.codigo) ?? eventos?.find((e) => e.mensaje === m.id);
@@ -30,11 +32,11 @@ export default function PublicarEvento({ m, books }: { m: Mensaje; books: Book[]
   const { busy, error, run } = useAction();
   const encuentro = m.tipo === 'encuentro';
   const contenido = contenidoDe(m, books, conNotas);
-  const cambios = evento && (desactualizado(evento, m, books) || evento.gradual !== gradual || !!m.evento?.conNotas !== conNotas);
+  const cambios = evento && (desactualizado(evento, m, books, settings.version) || evento.gradual !== gradual || !!m.evento?.conNotas !== conNotas);
 
   const publicar = () =>
     run(async () => {
-      const e = await publicarEvento({ mensaje: m.id, gradual, ...contenido });
+      const e = await publicarEvento({ mensaje: m.id, gradual, version: settings.version, ...contenido });
       actualizarMensaje(m.id, { evento: { codigo: e.codigo, conNotas, gradual } });
       setEditar(false);
     });

@@ -40,7 +40,22 @@ export type Tarjeta = {
   giro?: number;
   equipos?: Record<string, number>;
 };
-export type EstadoSala = { libro: string; capitulo: number; foco: number | null; tarjeta: Tarjeta | null; recorrido: string[] };
+/** Los versículos elegidos del capítulo (los del mensaje o los de la parte); sin ellos se lee el capítulo entero. */
+export type Rango = { desde: number; hasta: number };
+export type ParteGuion = { titulo: string; minutos: number; citas: string[] };
+/** Un mensaje del Taller llevado parte por parte (src/lib/guion.ts): solo títulos, minutos y citas, sin las notas. */
+export type Guion = { mensaje: string; titulo: string; partes: ParteGuion[]; parte: number; inicio: string; desde: string };
+export type EstadoSala = {
+  libro: string;
+  capitulo: number;
+  foco: number | null;
+  tarjeta: Tarjeta | null;
+  recorrido: string[];
+  rango?: Rango | null;
+  /** La versión de quien guía: todos leen en ella. */
+  version?: string | null;
+  guion?: Guion | null;
+};
 export type Persona = { id: string; nombre: string; foto: string | null };
 export type Toque = { usuario: string; nombre: string; versiculo: number };
 /** Una duda del tablero de la sala; «apoyos» son quienes tocaron «yo también». */
