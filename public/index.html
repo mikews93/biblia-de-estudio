@@ -56,13 +56,14 @@
       #portada .lengua, #portada .lengua path, #portada .halo, #portada .brasa { transform-box: view-box; }
       #portada .lengua, #portada .lengua path { transform-origin: 512px 800px; }
       #portada .halo, #portada .brasa { transform-origin: 512px 600px; }
-      #portada .izq { animation: portada-izq 1.3s linear infinite; }
-      #portada .der { animation: portada-der 1.1s linear -0.5s infinite; }
-      #portada .lengua path { animation: portada-hoja 0.62s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.09s); }
-      #portada .der path { animation-duration: 0.71s; animation-delay: calc(var(--i) * -0.09s - 0.3s); }
-      #portada .brasa { animation: portada-brasa 0.9s linear infinite; }
-      #portada .halo { animation: portada-halo 1.4s linear -0.4s infinite; }
-      /* Pasos desiguales y rápidos: el fuego no oscila, chisporrotea y se estira hacia arriba a tirones. */
+      #portada .izq { animation: portada-izq 2.4s linear infinite; }
+      #portada .der { animation: portada-der 1.6s linear -0.7s infinite; }
+      #portada .lengua path { animation: portada-hoja 1.2s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.15s); }
+      #portada .der path { animation-duration: 0.8s; animation-delay: calc(var(--i) * -0.1s - 0.3s); }
+      #portada .brasa { animation: portada-brasa 1.2s linear infinite; }
+      #portada .halo { animation: portada-halo 2.4s linear -0.4s infinite; }
+      /* Pasos desiguales: el fuego no oscila, chisporrotea y se estira hacia arriba a tirones. Todos los ciclos
+         caben justos en 4,8 s, así que la llama entera vuelve a su primer fotograma y sigue sin costura. */
       @keyframes portada-izq {
         0%, 100% { transform: rotate(0deg) scaleY(1) skewX(0deg); }
         12% { transform: rotate(-3.5deg) scaleY(1.09) skewX(2deg); }

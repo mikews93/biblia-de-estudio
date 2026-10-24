@@ -97,9 +97,9 @@ export default function LlamaArranque() {
       .then((quieta) => {
         if (!quieta) {
           fuego = Animated.parallel([
-            chisporroteo(izq, [0.1, 0.45, 0.95, 0.3, 0.8, 0.05, 0.6, 0.5], 150),
-            chisporroteo(der, [0.9, 0.35, 0.05, 0.7, 0.15, 1, 0.4, 0.5], 135, 60),
-            chisporroteo(brillo, [0.8, 0.2, 1, 0.35, 0.9, 0.1, 0.6], 110),
+            chisporroteo(izq, [0.1, 0.45, 0.95, 0.3, 0.8, 0.05, 0.6, 0.5], 250),
+            chisporroteo(der, [0.9, 0.35, 0.05, 0.7, 0.15, 1, 0.4, 0.5], 230, 60),
+            chisporroteo(brillo, [0.8, 0.2, 1, 0.35, 0.9, 0.1, 0.6, 0], 190),
           ]);
           fuego.start();
         }
