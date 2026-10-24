@@ -2,19 +2,20 @@
 // /buscar?voz=1 empieza a escuchar al abrir.
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AccessibilityInfo, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
 import { ChevronRightIcon, ClockIcon, CloseIcon, MicIcon, SearchIcon, SparkIcon, type IconProps } from '@/components/icons';
 import { NeedsConnection } from '@/components/SinConexion';
-import { IdeaResult, addRecent, clearRecent, getRecent, searchByIdea } from '@/lib/buscar';
+import { IdeaResult, addRecent, clearRecent, getRecent, searchByIdea, withVersion } from '@/lib/buscar';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { Cita, citaLabel, parseCita } from '@/lib/cita';
 import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/lib/data';
 import { Icono } from '@/components/FichaChips';
 import { IndiceRow, buscarFichas, fichaHref, getIndice } from '@/lib/fichas';
+import { type Licensed, licensedById } from '@/lib/licenciadas';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -24,7 +25,8 @@ const CITAS = ['1 Reyes 2:5', 'Salmo 23', 'Juan 3:16 BES', 'Romanos 8:28-30'];
 const FRAGMENTS = ['Todo lo puedo en Cristo', 'Echa sobre él tu ansiedad', 'Mira que te mando que te esfuerces'];
 const TOPICS = ['La ansiedad', 'Perdonar a quien me hirió', 'Cuando Dios parece tardar', 'Dar gracias en la prueba'];
 
-type Preview = { verses: [number, string][]; more: boolean } | { problem: string };
+/** «version»: la versión del texto (sin conexión, una con derechos se muestra en RV1909). */
+type Preview = { verses: [number, string][]; more: boolean; version: string } | { problem: string };
 
 export default function Search() {
   const colors = useColors();
@@ -35,6 +37,8 @@ export default function Search() {
   const [query, setQuery] = useState(params.q ?? '');
   const [asked, setAsked] = useState('');
   const [results, setResults] = useState<IdeaResult[] | null>(null);
+  // La versión en la que se hizo la búsqueda (la de lectura en ese momento)
+  const [searchedIn, setSearchedIn] = useState('rv1909');
   const [note, setNote] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +63,6 @@ export default function Search() {
   const openVersion = cita?.version?.id ?? settings.version;
   // La cita no existe («Juan 30», «Salmo 119:200»): se queda el aviso y no se abre
   const blocked = !!cita && (!!cita.problem || (preview !== null && 'problem' in preview));
-  const openVersionName = versions.find((v) => v.id === openVersion)?.abbr ?? 'RV1909';
   // Personas y lugares con ficha cuyo nombre coincide (el índice se pide la primera vez que hace falta).
   // Sin números también con una cita: «Juan» o «Daniel» son un libro y una persona.
   const quiereFichas = settled.trim().length >= 2 && (!cita || !/\d/.test(settled));
@@ -99,10 +102,10 @@ export default function Search() {
       return;
     }
     let live = true;
-    const load = (id: string) => getChapter(cita.book, cita.chapter, id);
+    const load = (id: string) => getChapter(cita.book, cita.chapter, id).then((vs) => ({ id, verses: vs }));
     load(openVersion)
       .catch(() => load('rv1909'))
-      .then((verses) => {
+      .then(({ id, verses }) => {
         if (!live) return;
         const first = cita.verse ?? 1;
         const last = cita.verse === undefined ? Math.min(3, verses.length) : (cita.verseEnd ?? cita.verse);
@@ -112,7 +115,7 @@ export default function Search() {
           setPreview({ problem: `${citaLabel({ ...cita, verse: undefined }, books)} tiene ${max} versículos.` });
           return;
         }
-        setPreview({ verses: picked.map(([n, t]) => [n, t]), more: cita.verse === undefined || last > first + 4 });
+        setPreview({ verses: picked.map(([n, t]) => [n, t]), more: cita.verse === undefined || last > first + 4, version: id });
       })
       .catch(() => live && setPreview(null));
     return () => {
@@ -140,9 +143,14 @@ export default function Search() {
     setError(null);
     setResults(null);
     router.setParams({ q: text });
+    // Se busca en la versión que se lee ahora; con una con derechos, su texto se pide aparte (nunca va a la IA).
+    const version = settings.version;
     try {
-      const r = await searchByIdea(text, controller.signal);
-      setResults(r.results);
+      const r = await searchByIdea(text, version, controller.signal);
+      const shown = licensedById(version) ? await withVersion(r.results, version, (b, c) => getChapter(b, c, version)) : r.results;
+      if (controller.signal.aborted) return;
+      setResults(shown);
+      setSearchedIn(version);
       setNote(r.note);
     } catch (e) {
       if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'No se pudo hacer la búsqueda.');
@@ -203,6 +211,11 @@ export default function Search() {
 
   const idle = !asked && !cita && !listening && !settled.trim() && !error;
   const versionName = versions.find((v) => v.id === openVersion)?.name ?? 'Reina-Valera 1909';
+  const abbrOf = (id: string) => versions.find((v) => v.id === id)?.abbr ?? licensedById(id)?.abbr ?? id.toUpperCase();
+  const previewLicensed = licensedById(openVersion);
+  const searchedLicensed = licensedById(searchedIn);
+  const searchedName = versions.find((v) => v.id === searchedIn)?.name ?? searchedLicensed?.name ?? 'Reina-Valera 1909';
+  const shownLicensed = !!searchedLicensed && !!results?.some((r) => r.version === searchedIn);
   const bookName = cita ? (books.find((b) => b.id === cita.book)?.name ?? '') : '';
 
   return (
@@ -284,7 +297,7 @@ export default function Search() {
               <Text style={[styles.kicker, { color: colors.accent }]}>Cita</Text>
               {preview && 'verses' in preview && (
                 <View style={[styles.pill, { borderColor: colors.border }]}>
-                  <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>{openVersionName}</Text>
+                  <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>{abbrOf(preview.version)}</Text>
                 </View>
               )}
             </View>
@@ -316,6 +329,9 @@ export default function Search() {
                   </Text>
                 ))}
               </Text>
+            )}
+            {previewLicensed && preview && 'verses' in preview && preview.version === openVersion && (
+              <Credit licensed={previewLicensed} colors={colors} />
             )}
 
             {!blocked && (
@@ -493,7 +509,12 @@ export default function Search() {
                 accessibilityRole="link"
               >
                 <View style={styles.cardHead}>
-                  <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>{r.label}</Text>
+                  <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14, flex: 1 }}>{r.label}</Text>
+                  <View style={[styles.resultVersion, { borderColor: colors.border }]}>
+                    <Text style={[styles.resultVersionText, { color: r.version === searchedIn ? colors.text : colors.muted }]}>
+                      {abbrOf(r.version)}
+                    </Text>
+                  </View>
                   <ChevronRightIcon color={colors.accent} size={18} />
                 </View>
                 <Text style={[styles.resultText, { color: colors.text, fontFamily: serif }]}>{r.text}</Text>
@@ -501,13 +522,38 @@ export default function Search() {
               </Pressable>
             </Appear>
           ))}
-          <Text style={[styles.credit, { color: colors.muted }]}>
-            Búsqueda con IA. Los textos son los de la Reina-Valera 1909 tal como están en la app; la IA solo los elige y
-            explica por qué responden a tu búsqueda.
-          </Text>
+          {searchedLicensed ? (
+            <View style={styles.creditBox}>
+              <Text style={[styles.credit, { color: colors.muted, marginTop: 0 }]}>
+                Búsqueda con IA. La licencia de la {searchedLicensed.abbr} no permite pasarle su texto a la IA: la IA buscó con
+                la Reina-Valera 1909 y aquí ves cada pasaje en tu {searchedLicensed.abbr}
+                {results.some((r) => r.version !== searchedIn) ? ' (los que dicen RV1909 no se pudieron mostrar en ella ahora)' : ''}.
+              </Text>
+              {shownLicensed && <Credit licensed={searchedLicensed} colors={colors} center />}
+            </View>
+          ) : (
+            <Text style={[styles.credit, { color: colors.muted }]}>
+              Búsqueda con IA. Los textos son los de la {abbrOf(searchedIn)} ({searchedName}) tal como están en la app; la IA solo los elige y explica
+              por qué responden a tu búsqueda.
+            </Text>
+          )}
         </>
       )}
     </ScrollView>
+  );
+}
+
+/** El aviso de derechos y los enlaces que los editores piden cada vez que se muestra su texto. */
+function Credit({ licensed, colors, center }: { licensed: Licensed; colors: Colors; center?: boolean }) {
+  return (
+    <Text style={[styles.licensedCredit, { color: colors.muted }, center && { textAlign: 'center' }]}>
+      {licensed.credit}
+      {licensed.links.map((l) => (
+        <Text key={l.url} onPress={() => Linking.openURL(l.url)} role="link" style={{ color: colors.accent }}>
+          {` · ${l.label}`}
+        </Text>
+      ))}
+    </Text>
   );
 }
 
@@ -671,4 +717,8 @@ const styles = StyleSheet.create({
   resultText: { fontSize: 18, lineHeight: 28, marginTop: 8 },
   reason: { fontSize: 14, lineHeight: 20, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
   credit: { fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 4 },
+  creditBox: { marginTop: 4, gap: 6 },
+  licensedCredit: { fontSize: 11, lineHeight: 16, marginTop: 10 },
+  resultVersion: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2, marginRight: 4 },
+  resultVersionText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
 });

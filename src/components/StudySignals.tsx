@@ -7,7 +7,7 @@ import { CheckIcon, ChevronDownIcon, FlagIcon, HeartIcon, PeopleIcon } from '@/c
 import { Markdown, Sources } from '@/components/StudyText';
 import { Source, askStudy } from '@/lib/estudio';
 import { Frecuente, MOTIVOS, Motivo, Pasaje, Senales, leerSenales, marcarAyudo, quitarRaro, reportarRaro } from '@/lib/senales';
-import { Colors } from '@/lib/theme';
+import { Colors, getSettings } from '@/lib/theme';
 
 type Props = {
   pasaje: Pasaje;
@@ -82,7 +82,7 @@ function FaqItem({ item, pasaje, colors, onOpen, onCite }: { item: Frecuente; pa
     setBusy(true);
     abort.current = new AbortController();
     askStudy(
-      { book: pasaje.book, chapter: pasaje.chapter, frecuente: item.id, messages: [] },
+      { book: pasaje.book, chapter: pasaje.chapter, frecuente: item.id, messages: [], version: getSettings().version },
       (text, sources) => setAnswer({ text, sources }),
       abort.current.signal,
     )
@@ -118,7 +118,7 @@ function FaqItem({ item, pasaje, colors, onOpen, onCite }: { item: Frecuente; pa
         <View style={styles.itemBody}>
           {answer?.text ? (
             <>
-              <Markdown text={answer.text} colors={colors} sources={answer.sources} onCite={onCite} />
+              <Markdown text={answer.text} colors={colors} sources={answer.sources} onCite={onCite} onOpenRef={onOpen} />
               {!busy && !!answer.sources.length && <Sources sources={answer.sources} colors={colors} onOpen={onOpen} />}
             </>
           ) : error ? (

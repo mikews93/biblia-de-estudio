@@ -1,11 +1,12 @@
 import { Stack, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import Cuaderno from '@/components/Cuaderno';
 import Welcome from '@/components/comunidad/Welcome';
-import { Button, ErrorText, Field, IconText } from '@/components/comunidad/ui';
-import { CheckIcon, LockIcon, MicIcon, PencilIcon, SparkIcon } from '@/components/icons';
+import { Button, ErrorText, Field } from '@/components/comunidad/ui';
+import { CheckIcon, SparkIcon } from '@/components/icons';
 import { Ruta } from '@/components/SemanaSermon';
 import { NEEDS_ACCOUNT, useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
@@ -24,7 +25,6 @@ import {
 import { type Pasaje, enPasaje, parsePasaje, pasajeLabel } from '@/lib/taller';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
-import { listen, voiceSupported } from '@/lib/voz';
 
 // Pistas para empezar a escribir: añaden una línea con su nombre al final de las notas.
 const PISTAS = ['La idea principal', 'Un versículo que me tocó', 'Una pregunta que me quedó', 'Algo para hacer'];
@@ -179,7 +179,15 @@ export default function NuevaSemana() {
 
       <Appear delay={120}>
         <Numero n={2} title="Tus notas del sermón" colors={colors} />
-        <Notas value={notas} onChange={setNotas} colors={colors} />
+        <Cuaderno
+          value={notas}
+          onChange={setNotas}
+          colors={colors}
+          max={MAX_NOTAS}
+          label="Lo que escuchaste y te tocó"
+          placeholder={'Las ideas del sermón, frases que anotaste, versículos que citaron, lo que Dios te mostró…'}
+          accessibilityLabel="Tus notas del sermón"
+        />
         <View style={styles.pistas}>
           {PISTAS.map((p) => (
             <Pressable
@@ -234,112 +242,6 @@ function Numero({ n, title, colors }: { n: number; title: string; colors: Colors
         <Text style={{ color: colors.accent, fontFamily: serif, fontSize: 15, fontWeight: '700' }}>{n}</Text>
       </View>
       <Text style={[styles.numeroTitle, { color: colors.text }]}>{title}</Text>
-    </View>
-  );
-}
-
-/** El cuaderno de notas: escribir o dictar. El dictado sigue escuchando frase tras frase hasta que se detiene. */
-function Notas({ value, onChange, colors }: { value: string; onChange: (t: string | ((t: string) => string)) => void; colors: Colors }) {
-  const [focus, setFocus] = useState(false);
-  const [dictando, setDictando] = useState(false);
-  const [oyendo, setOyendo] = useState('');
-  const [problema, setProblema] = useState<string | null>(null);
-  const activo = useRef(false);
-  const stop = useRef<(() => void) | null>(null);
-  const puedeDictar = voiceSupported();
-
-  const escuchar = () => {
-    stop.current = listen({
-      onPartial: setOyendo,
-      onFinal: ([t]) => {
-        setOyendo('');
-        if (t) onChange((n) => `${n}${n && !/\s$/.test(n) ? ' ' : ''}${t.charAt(0).toUpperCase()}${t.slice(1)}.`.slice(0, MAX_NOTAS));
-      },
-      onError: (m) => {
-        setProblema(m);
-        activo.current = false;
-      },
-      onEnd: () => {
-        if (activo.current) escuchar();
-        else {
-          setDictando(false);
-          setOyendo('');
-        }
-      },
-    });
-  };
-
-  const alternar = () => {
-    if (dictando) {
-      activo.current = false;
-      stop.current?.();
-      setDictando(false);
-      return;
-    }
-    setProblema(null);
-    activo.current = true;
-    setDictando(true);
-    escuchar();
-  };
-
-  useEffect(
-    () => () => {
-      activo.current = false;
-      stop.current?.();
-    },
-    [],
-  );
-
-  return (
-    <View>
-      <View style={[styles.cuaderno, { borderColor: focus || dictando ? colors.accent : colors.border, backgroundColor: colors.surface }]}>
-        <View style={styles.cuadernoHead}>
-          <IconText icon={PencilIcon} color={colors.accent} size={14}>
-            <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '700' }}>Lo que escuchaste y te tocó</Text>
-          </IconText>
-          <IconText icon={LockIcon} color={colors.muted} size={11} gap={4}>
-            <Text style={{ color: colors.muted, fontSize: 11 }}>Solo tú</Text>
-          </IconText>
-        </View>
-        <TextInput
-          value={value}
-          onChangeText={onChange}
-          onFocus={() => setFocus(true)}
-          onBlur={() => setFocus(false)}
-          placeholder={'Las ideas del sermón, frases que anotaste, versículos que citaron, lo que Dios te mostró…'}
-          placeholderTextColor={colors.muted}
-          multiline
-          maxLength={MAX_NOTAS}
-          style={[styles.cuadernoInput, { color: colors.text }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
-          accessibilityLabel="Tus notas del sermón"
-        />
-        {!!oyendo && <Text style={[styles.oyendo, { color: colors.muted }]}>{oyendo}…</Text>}
-        <View style={[styles.cuadernoFoot, { borderColor: colors.border }]}>
-          {puedeDictar ? (
-            <Pressable
-              onPress={alternar}
-              style={({ pressed }) => [
-                styles.dictar,
-                { backgroundColor: dictando ? colors.accent : colors.accentSoft },
-                pressed && { opacity: 0.8 },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={dictando ? 'Dejar de dictar' : 'Dictar las notas'}
-            >
-              <MicIcon color={dictando ? colors.surface : colors.accent} size={16} />
-              <Text style={{ color: dictando ? colors.surface : colors.accent, fontWeight: '700', fontSize: 13 }}>
-                {dictando ? 'Escuchando… · Detener' : 'Dictar'}
-              </Text>
-            </Pressable>
-          ) : (
-            <Text style={{ color: colors.muted, fontSize: 12, flex: 1 }}>También puedes dictar con el micrófono del teclado.</Text>
-          )}
-          <Text style={{ color: value.length > MAX_NOTAS * 0.9 ? colors.warm : colors.muted, fontSize: 12 }}>
-            {value.length.toLocaleString('es')} / {MAX_NOTAS.toLocaleString('es')}
-          </Text>
-        </View>
-      </View>
-      <ErrorText>{problema}</ErrorText>
     </View>
   );
 }
@@ -417,20 +319,6 @@ const styles = StyleSheet.create({
   numeroTitle: { fontFamily: serif, fontSize: 20 },
   preview: { borderLeftWidth: 3, paddingLeft: 12, marginTop: 12 },
   previewText: { fontFamily: serif, fontSize: 15, lineHeight: 24 },
-  cuaderno: { borderWidth: 1, borderRadius: 18, paddingTop: 14, paddingHorizontal: 16 },
-  cuadernoHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  cuadernoInput: { fontFamily: serif, fontSize: 17, lineHeight: 27, minHeight: 200, textAlignVertical: 'top', paddingVertical: 4 },
-  oyendo: { fontFamily: serif, fontSize: 16, fontStyle: 'italic', marginBottom: 8 },
-  cuadernoFoot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 10,
-    marginTop: 6,
-  },
-  dictar: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7 },
   pistas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   pista: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7 },
   foot: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 10 },

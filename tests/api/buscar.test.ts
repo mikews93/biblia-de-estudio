@@ -1,5 +1,5 @@
 // /api/buscar: la IA simulada propone php.4.6, mat.6.34, gen.99.1 (no existe) y jhn.3.16, y se queda con los dos primeros.
-// El servidor debe comprobar cada referencia contra el texto real de la RV1909. Ver tests/api/helpers.ts.
+// El servidor debe comprobar cada referencia contra el texto real de la versión que lee la persona (sin ella, la RV1909). Ver tests/api/helpers.ts.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -21,10 +21,11 @@ beforeAll(async () => {
 });
 
 const search = (body: unknown, key = llave) => buscar(request('/api/buscar', body, key));
-const rv = (book: string, chapter: number, verse: number) =>
-  (JSON.parse(readFileSync(path.join(DATA_DIR, 'text/rv1909', book, `${chapter}.json`), 'utf8')) as [number, string][]).find(
+const text = (version: string, book: string, chapter: number, verse: number) =>
+  (JSON.parse(readFileSync(path.join(DATA_DIR, 'text', version, book, `${chapter}.json`), 'utf8')) as [number, string][]).find(
     ([n]) => n === verse,
   )![1];
+const rv = (book: string, chapter: number, verse: number) => text('rv1909', book, chapter, verse);
 
 describe('/api/buscar', () => {
   it('sin cuenta: 401', async () => {
@@ -54,8 +55,8 @@ describe('/api/buscar', () => {
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({
         results: [
-          { ref: 'php.4.6', label: 'Filipenses 4:6', text: rv('php', 4, 6), reason: 'Pide no estar afanosos y presentar todo a Dios en oración.' },
-          { ref: 'mat.6.34', label: 'Mateo 6:34', text: rv('mat', 6, 34), reason: 'Jesús enseña a no afanarse por el día de mañana.' },
+          { ref: 'php.4.6', label: 'Filipenses 4:6', text: rv('php', 4, 6), reason: 'Pide no estar afanosos y presentar todo a Dios en oración.', version: 'rv1909' },
+          { ref: 'mat.6.34', label: 'Mateo 6:34', text: rv('mat', 6, 34), reason: 'Jesús enseña a no afanarse por el día de mañana.', version: 'rv1909' },
         ],
       });
 
@@ -66,6 +67,34 @@ describe('/api/buscar', () => {
       expect(review).toContain(`[3] Juan 3:16: ${rv('jhn', 3, 16)}`);
       expect(review).not.toContain('Génesis 99');
       expect(review).toContain('«versículos sobre la ansiedad»');
+      expect(review).toContain('textos reales de la versión «Reina-Valera 1909»');
+    });
+
+    it('con otra versión libre, la IA lee esa versión y los resultados vienen en ella', async () => {
+      const res = await search({ query: 'versículos sobre la ansiedad', version: 'bes' });
+      const { results } = await res.json();
+      expect(results.map((r: { version: string }) => r.version)).toEqual(['bes', 'bes']);
+      expect(results[0].text).toBe(text('bes', 'php', 4, 6));
+      expect(results[0].text).not.toBe(rv('php', 4, 6));
+      const review = aiRequests.at(-1)!;
+      expect(review.system).toContain('(La Biblia en Español Sencillo)');
+      expect(review.messages[0].content).toContain(`textos reales de la versión «La Biblia en Español Sencillo»:\n[1] Filipenses 4:6: ${text('bes', 'php', 4, 6)}`);
+    });
+
+    it('con una versión con derechos, la IA lee la RV1909 (la app muestra después la versión de la persona)', async () => {
+      const res = await search({ query: 'versículos sobre la ansiedad', version: 'nbla' });
+      const { results } = await res.json();
+      expect(results.map((r: { version: string; text: string }) => [r.version, r.text])).toEqual([
+        ['rv1909', rv('php', 4, 6)],
+        ['rv1909', rv('mat', 6, 34)],
+      ]);
+      expect(aiRequests.at(-1)!.messages[0].content).toContain('textos reales de la versión «Reina-Valera 1909»');
+    });
+
+    it('rechaza versiones que no existen', async () => {
+      const res = await search({ query: 'ansiedad', version: 'inventada' });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Versión no válida');
     });
   });
 });

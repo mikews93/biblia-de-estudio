@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Card, SectionTitle, text } from '@/components/comunidad/ui';
-import { type IconProps, LampIcon, LecternIcon, PeopleIcon, PlusIcon } from '@/components/icons';
+import { type IconProps, ChevronRightIcon, LampIcon, LecternIcon, MicIcon, PeopleIcon, PlusIcon } from '@/components/icons';
 import { ago } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import { Pasaje, TIPOS, Tipo, crearMensaje, duracion, pasajeLabel, tipoInfo, tituloDe, useTaller } from '@/lib/taller';
@@ -48,6 +48,26 @@ export default function TallerScreen() {
             Preparar con <Text style={{ fontWeight: '700' }}>{pasajeLabel(pasaje, books)}</Text>. Elige qué quieres preparar.
           </Text>
         </View>
+      )}
+
+      {!pasaje && (
+        <Pressable
+          onPress={() => navigate(() => router.push('/taller/tema'), 'forward')}
+          accessibilityRole="button"
+          accessibilityHint="Graba o escribe de qué quieres hablar y la IA busca pasajes, comentarios y teologías"
+          style={({ pressed }) => [styles.tema, { backgroundColor: colors.surface, borderColor: colors.accent }, pressed && { opacity: 0.8 }]}
+        >
+          <View style={[styles.temaMic, { backgroundColor: colors.accent }]}>
+            <MicIcon color={colors.surface} size={22} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.temaTitle, { color: colors.text }]}>Tengo algo de qué hablar</Text>
+            <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>
+              Grábalo o escríbelo. La IA te busca pasajes, comentarios y teologías, y te arma la maqueta.
+            </Text>
+          </View>
+          <ChevronRightIcon color={colors.accent} size={20} />
+        </Pressable>
       )}
 
       <SectionTitle>Preparar</SectionTitle>
@@ -114,6 +134,9 @@ export default function TallerScreen() {
 
 const styles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 80, maxWidth: 640, width: '100%', alignSelf: 'center' },
+  tema: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 18, borderWidth: 1.5, padding: 16, marginTop: 20 },
+  temaMic: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  temaTitle: { fontFamily: serif, fontSize: 20, fontWeight: '700' },
   banner: { borderRadius: 12, padding: 14, marginTop: 16 },
   type: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
   icon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

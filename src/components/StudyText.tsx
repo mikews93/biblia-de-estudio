@@ -15,10 +15,11 @@ import {
   LinkIcon,
 } from '@/components/icons';
 import Appear from '@/components/Appear';
-import { getChapter, getChapterExtras, parseRef } from '@/lib/data';
+import { citaLabel, parseCita } from '@/lib/cita';
+import { getBooks, getChapter, getChapterExtras, parseRef } from '@/lib/data';
 import { licensedById } from '@/lib/licenciadas';
 import { Source } from '@/lib/estudio';
-import { Colors, serif } from '@/lib/theme';
+import { Colors, serif, useSettings } from '@/lib/theme';
 
 export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors: Colors; onOpen: (ref: string) => void }) {
   return (
@@ -40,7 +41,7 @@ export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors
   );
 }
 
-/** Markdown mínimo: títulos ##, listas con -, **negritas**, *cursivas* y marcas de cita ⟦n⟧. */
+/** Markdown mínimo: títulos ##, listas con -, **negritas**, *cursivas*, marcas de cita ⟦n⟧ y versículos ⟪Juan 3:16⟫. */
 // Iconos de las secciones del estudio profundo, por la palabra con que empieza el título.
 // La letra griega se queda como letra: es la misma marca del texto original en el lector.
 const SECTION_ICONS: [RegExp, ((p: IconProps) => ReactNode) | string][] = [
@@ -77,11 +78,17 @@ type Cites = {
   /** Fuentes de esta respuesta: con ellas los números ⟦n⟧ se pueden tocar. */
   sources?: Source[];
   onCite?: (source: Source) => void;
+  /** Con él, los versículos ⟪…⟫ se pueden tocar para leerlos en su capítulo. */
+  onOpenRef?: (ref: string) => void;
 };
 
-export function Markdown({ text, colors, ornate, sources, onCite }: { text: string; colors: Colors; ornate?: boolean } & Cites) {
-  const cites = { sources, onCite };
-  const blocks = text.split(/\n{2,}/);
+// Un versículo que la IA no copia (versión con derechos, ver versionSystem en api/_investigar.ts): ⟪Juan 3:16⟫.
+const MARCA = /^⟪([^⟪⟫\n]{3,60})⟫$/;
+
+export function Markdown({ text, colors, ornate, sources, onCite, onOpenRef }: { text: string; colors: Colors; ornate?: boolean } & Cites) {
+  const cites = { sources, onCite, onOpenRef };
+  // Mientras llega la respuesta, una marca a medias no se enseña.
+  const blocks = text.replace(/⟪[^⟫\n]*$/, '').split(/\n{2,}/);
   return (
     <View>
       {blocks.map((block, i) => {
@@ -94,6 +101,8 @@ export function Markdown({ text, colors, ornate, sources, onCite }: { text: stri
           if (/^#{1,3} /.test(line)) {
             return <Heading key={`${i}-${j}`} text={line} colors={colors} ornate={ornate} cites={cites} />;
           }
+          const marca = line.trim().match(MARCA);
+          if (marca) return <VerseQuote key={`${i}-${j}`} cita={marca[1]} colors={colors} onOpen={onOpenRef} />;
           const bullet = /^\s*[-*] /.test(line);
           return (
             <View key={`${i}-${j}`} style={bullet ? styles.bulletRow : undefined}>
@@ -110,7 +119,9 @@ export function Markdown({ text, colors, ornate, sources, onCite }: { text: stri
 }
 
 function inline(text: string, colors: Colors, { sources, onCite }: Cites = {}): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|⟦\d+⟧)/).map((part, i) => {
+  return text.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|⟦\d+⟧|⟪[^⟪⟫\n]{3,60}⟫)/).map((part, i) => {
+    // Un versículo dentro de una frase: su texto entre comillas
+    if (part.startsWith('⟪') && part.endsWith('⟫')) return <InlineVerse key={i} cita={part.slice(1, -1)} />;
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
         <Text key={i} style={{ fontWeight: '700' }}>
@@ -155,6 +166,133 @@ function inline(text: string, colors: Colors, { sources, onCite }: Cites = {}): 
     }
     return part;
   });
+}
+
+type Quoted = {
+  ref: string;
+  label: string;
+  verses: [number, string][];
+  more: boolean;
+  /** La versión del texto: sin conexión, una con derechos se muestra en RV1909. */
+  version: string;
+  copyright?: string | null;
+};
+
+/** El texto de ⟪Juan 3:16⟫ en la versión que lee la persona (hasta tres versículos), pedido en el momento. */
+function useQuoted(cita: string): Quoted | null | 'none' {
+  const { settings } = useSettings();
+  const version = settings.version;
+  const key = `${version}|${cita}`;
+  // Con la llave, lo de otra cita o versión no se enseña mientras llega lo nuevo.
+  const [quoted, setQuoted] = useState<{ key: string; q: Quoted | 'none' } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const books = await getBooks();
+      const c = parseCita(cita, books);
+      if (!c || c.problem) return 'none' as const;
+      const first = c.verse ?? 1;
+      const last = Math.min(c.verseEnd ?? c.verse ?? 3, first + 2);
+      const ref = `${c.book}.${c.chapter}.${first}` + (last > first ? `-${c.book}.${c.chapter}.${last}` : '');
+      const licensed = licensedById(version);
+      let shown = version;
+      const vs = await getChapter(c.book, c.chapter, version).catch(() => {
+        if (!licensed) throw new Error('sin texto');
+        shown = 'rv1909';
+        return getChapter(c.book, c.chapter);
+      });
+      const verses = vs.filter(([n]) => n >= first && n <= last).map(([n, t]): [number, string] => [n, t]);
+      if (!verses.length) return 'none' as const;
+      const extras = licensed && shown === version ? await getChapterExtras(c.book, c.chapter, version).catch(() => null) : null;
+      return {
+        ref,
+        label: citaLabel({ ...c, verse: first, verseEnd: last > first ? last : undefined }, books),
+        verses,
+        more: (c.verseEnd ?? c.verse ?? 0) > last || c.verse === undefined,
+        version: shown,
+        copyright: extras?.copyright,
+      };
+    })()
+      .catch(() => 'none' as const)
+      .then((q) => alive && setQuoted({ key, q }));
+    return () => {
+      alive = false;
+    };
+  }, [cita, version, key]);
+  return quoted?.key === key ? quoted.q : null;
+}
+
+/** ⟪Juan 3:16⟫ en una línea propia: el versículo en una tarjeta, con su versión y el aviso que piden los editores. */
+function VerseQuote({ cita, colors, onOpen }: { cita: string; colors: Colors; onOpen?: (ref: string) => void }) {
+  const quoted = useQuoted(cita);
+  if (quoted === 'none') return <Text style={[styles.p, { color: colors.muted }]}>{cita}</Text>;
+  const licensed = quoted ? licensedById(quoted.version) : undefined;
+  const body = (
+    <>
+      <View style={styles.quoteHead}>
+        <Text style={[styles.quoteLabel, { color: colors.accent }]} numberOfLines={1}>
+          {quoted?.label ?? cita}
+        </Text>
+        {quoted && (
+          <View style={[styles.quotePill, { borderColor: colors.border }]}>
+            <Text style={[styles.quotePillText, { color: colors.muted }]}>{licensed?.abbr ?? quoted.version.toUpperCase()}</Text>
+          </View>
+        )}
+        {quoted && onOpen && <ChevronRightIcon color={colors.muted} size={15} />}
+      </View>
+      {quoted ? (
+        <Text style={[styles.quoteText, { color: colors.text }]}>
+          {quoted.verses.map(([n, t], i) => (
+            <Text key={n}>
+              {i > 0 ? ' ' : ''}
+              {quoted.verses.length > 1 && <Text style={[styles.peekVerse, { color: colors.accent }]}>{n} </Text>}
+              {t}
+            </Text>
+          ))}
+          {quoted.more ? ' …' : ''}
+        </Text>
+      ) : (
+        <View style={styles.quoteLoading}>
+          <View style={[styles.quoteBar, { backgroundColor: colors.border, width: '92%' }]} />
+          <View style={[styles.quoteBar, { backgroundColor: colors.border, width: '64%' }]} />
+        </View>
+      )}
+      {licensed && (
+        <Text style={[styles.peekCredit, { color: colors.muted }]}>
+          {quoted && typeof quoted === 'object' && quoted.copyright ? quoted.copyright : licensed.credit}
+          {licensed.links.map((l) => (
+            <Text key={l.url} onPress={() => Linking.openURL(l.url)} role="link" style={{ color: colors.accent }}>
+              {` · ${l.label}`}
+            </Text>
+          ))}
+        </Text>
+      )}
+    </>
+  );
+  const style = [styles.quote, { backgroundColor: colors.accentSoft, borderColor: colors.accent }];
+  if (!quoted || !onOpen) return <View style={style}>{body}</View>;
+  return (
+    <Pressable
+      onPress={() => onOpen(quoted.ref)}
+      accessibilityRole="link"
+      accessibilityLabel={`${quoted.label}: leer en su capítulo`}
+      style={({ pressed }) => [...style, pressed && { opacity: 0.7 }]}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+/** ⟪Juan 3:16⟫ dentro de una frase: Juan 3:16, «texto» (la versión ya se ve en el selector del estudio). */
+function InlineVerse({ cita }: { cita: string }) {
+  const quoted = useQuoted(cita);
+  if (!quoted || quoted === 'none') return <Text>{cita}</Text>;
+  return (
+    <Text>
+      {`${quoted.label}, `}
+      <Text style={{ fontStyle: 'italic' }}>«{quoted.verses.map(([, t]) => t).join(' ')}{quoted.more ? ' …' : ''}»</Text>
+    </Text>
+  );
 }
 
 /**
@@ -310,6 +448,14 @@ const styles = StyleSheet.create({
   peekOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   peekOpen: { alignSelf: 'flex-start', marginTop: 12, borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 7 },
   citeTap: { borderRadius: 8, overflow: 'hidden' },
+  quote: { borderLeftWidth: 3, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 4, marginBottom: 12 },
+  quoteHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  quoteLabel: { flex: 1, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' },
+  quotePill: { borderWidth: 1, borderRadius: 9, paddingHorizontal: 6, paddingVertical: 1 },
+  quotePillText: { fontSize: 10.5, fontWeight: '700', letterSpacing: 0.4 },
+  quoteText: { fontFamily: serif, fontSize: 17, lineHeight: 26, marginTop: 6 },
+  quoteLoading: { gap: 8, marginTop: 10, marginBottom: 4 },
+  quoteBar: { height: 10, borderRadius: 5 },
   ornate: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 6 },
   ornateIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   ornateText: { marginTop: 0, marginBottom: 0, flex: 1 },

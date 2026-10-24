@@ -51,7 +51,7 @@ export default function VersionPicker({ versions, onClose, estudio }: Props) {
                   <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{v.name}</Text>
                   <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
                     {estudio && v.licensed
-                      ? 'La IA cita la RV1909; al tocar una cita la ves en esta'
+                      ? 'Los versículos del estudio se muestran en esta; la IA trabaja con la RV1909'
                       : v.licensed
                         ? v.credit.split(' · ')[1]
                         : v.credit.split(' · ').slice(1).join(' · ')}

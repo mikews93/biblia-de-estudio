@@ -10,6 +10,7 @@ import { type Source, askStudy } from './estudio';
 import { cambio, registrar } from './sincronia';
 import { type Pasaje, parsePasaje, pasajeLabel } from './taller';
 import { addDays, dateKey, daysBetween, parseDate, todayKey } from './temporadas';
+import { getSettings } from './theme';
 
 export const DIAS = 5;
 /** Lo que acepta el servidor (api/estudiar.ts, MAX_NOTAS). */
@@ -209,6 +210,7 @@ export async function prepararSemana(
       chapter: pasaje.chapter,
       messages: [],
       semana: { notas, desde: pasaje.from, hasta: pasaje.to, predicador: predicador || undefined },
+      version: getSettings().version,
     },
     (t) => onUpdate(parseSemana(t, books, pasaje)),
     signal,

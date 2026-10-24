@@ -233,6 +233,26 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     const sent = aiRequests.at(-1)!;
     expect(sent.messages[0].content[0].title).toBe('Juan 3 · Reina-Valera 1909');
     expect(JSON.stringify(sent.system)).toContain('«Nueva Biblia de las Américas» (NBLA), que tiene derechos de autor: su texto no lo recibes');
+    // No copia la RV1909: marca el versículo y la app lo muestra en la NBLA
+    expect(JSON.stringify(sent.system)).toContain('⟪Juan 3:16⟫');
+    expect(JSON.stringify(sent.system)).not.toContain('en la RV1909: …');
+  });
+
+  it('con una versión con derechos, el estudio guardado es otro (con marcas) y el Taller sigue citando la RV1909', async () => {
+    const before = aiRequests.length;
+    await events(await ask({ book: 'jhn', chapter: 4, version: 'nbla' }));
+    expect(aiRequests.length).toBe(before + 1);
+    await events(await ask({ book: 'jhn', chapter: 4, version: 'nbla' }));
+    expect(aiRequests.length).toBe(before + 1); // el segundo es el guardado
+    await events(await ask({ book: 'jhn', chapter: 4, version: 'rv1909' }));
+    expect(aiRequests.length).toBe(before + 2); // la RV1909 tiene el suyo
+
+    await events(
+      await ask({ book: 'jhn', chapter: 4, version: 'nbla', messages: [], taller: { modo: 'sugerir', tipo: 'sermon', paso: 'bosquejo' } }),
+    );
+    const system = JSON.stringify(aiRequests.at(-1)!.system);
+    expect(system).toContain('en la RV1909: …');
+    expect(system).not.toContain('⟪Juan 3:16⟫');
   });
 
   it('rechaza versiones que no existen', async () => {
@@ -286,6 +306,64 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(task).toContain('un encuentro de grupo pequeño (60 a 90 minutos) sobre Juan 3:1-8');
     expect(task).toContain('Lo que llevo:\nMi idea');
     expect(task).toContain('que las preguntas lleven al texto');
+  });
+
+  it('valida el tema del Taller', async () => {
+    expect(await bad({ tema: { texto: 'corto', tipo: 'sermon' } })).toBe('Tema no válido');
+    expect(await bad({ tema: { texto: 'x'.repeat(4001), tipo: 'sermon' } })).toBe('Tema no válido');
+    expect(await bad({ tema: { texto: 'Jóvenes ansiosos por el futuro', tipo: 'charla' } })).toBe('Tema no válido');
+    expect(await bad({ tema: { texto: 'Jóvenes ansiosos por el futuro', tipo: 'sermon' }, book: 'jhn', chapter: 3 })).toBe('Tema no válido');
+    expect(await bad({ tema: { texto: 'Jóvenes ansiosos por el futuro', tipo: 'sermon' }, messages: [{ role: 'user', text: 'hola' }] })).toBe(
+      'Conversación no válida',
+    );
+    expect(await bad({ book: 'jhn', chapter: 3, taller: { modo: 'maqueta', tipo: 'sermon', paso: 'bosquejo', situacion: 'x'.repeat(4001) } })).toBe(
+      'Pedido del Taller no válido',
+    );
+  });
+
+  it('desde un tema, la IA investiga sin pasaje: lee, consulta comentarios y teología, y responde con su formato', async () => {
+    const before = aiRequests.length;
+    const evs = await events(await ask({ tema: { texto: 'Jóvenes ansiosos por el futuro que sienten que Dios no los escucha', tipo: 'sermon' } }));
+    expect(evs.filter((e) => e.type === 'paso').map((e) => (e as { tipo?: string }).tipo)).toEqual(['leer', 'comentarios', 'teologia']);
+    const [first] = aiRequests.slice(before);
+    expect(first.tools.map((t: { name: string }) => t.name)).toContain('teologia');
+    expect(JSON.stringify(first.system)).toContain('Esta vez la persona no llega con un pasaje');
+    expect(JSON.stringify(first.system)).toContain('Reglas del Taller');
+    // Sin documentos del pasaje: el primer mensaje es solo el encargo, con lo que la persona contó
+    expect(first.messages[0].content).toContain('«Jóvenes ansiosos por el futuro que sienten que Dios no los escucha»');
+    expect(first.messages[0].content).toContain('## Pasajes');
+    const texto = textOf(evs);
+    expect(texto).toContain('- Filipenses 4:4-9 | ');
+    // La cita del pasaje leído se puede abrir; la de teología lleva su enlace
+    const sources = evs.filter((e) => e.type === 'source');
+    expect(sources[0]).toMatchObject({ label: expect.stringMatching(/^Filipenses 4:/), ref: expect.stringMatching(/^php\.4\./) });
+    expect(sources.some((e) => e.url?.startsWith('https://'))).toBe(true);
+    expect(evs.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('la maqueta lleva lo que se quería tratar, las partes de la estructura y puede investigar', async () => {
+    await events(
+      await ask({
+        book: 'php',
+        chapter: 4,
+        taller: {
+          modo: 'maqueta',
+          tipo: 'sermon',
+          paso: 'bosquejo',
+          plantilla: 'Expositiva',
+          desde: 4,
+          hasta: 9,
+          borrador: 'Partes de la estructura:\n1. Introducción: la necesidad',
+          situacion: 'Jóvenes ansiosos',
+        },
+      }),
+    );
+    const sent = aiRequests.at(-1)!;
+    expect(sent.tools?.length).toBeGreaterThan(0);
+    const task = sent.messages[0].content.at(-1).text as string;
+    expect(task).toContain('Empecé por esto que quiero tratar, antes de tener el pasaje:\n«Jóvenes ansiosos»');
+    expect(task).toContain('Arma la maqueta de este mensaje');
+    expect(task).toContain('Lo que llevo:\nPartes de la estructura:');
   });
 
   it('la herramienta de un capítulo se guarda para todos y «nueva» pide otra versión', async () => {

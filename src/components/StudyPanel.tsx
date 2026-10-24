@@ -309,7 +309,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
           <View key={i}>
             {!!turn.pasos?.length && <Investigacion pasos={turn.pasos} working={!turn.text && busy && i === turns.length - 1} colors={colors} />}
             {turn.text ? (
-              <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} />
+              <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} onOpenRef={open} />
             ) : (
               !turn.pasos?.length && (
                 <View style={styles.waiting}>
@@ -367,7 +367,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                     >
                       <Text style={[styles.versionAbbr, { color: colors.accent }]}>{licensed ? licensed.abbr : aiVersion.abbr}</Text>
                       <Text style={[styles.versionText, { color: colors.muted }]} numberOfLines={1}>
-                        {licensed ? 'La IA cita la RV1909' : 'Cambiar versión'}
+                        {licensed ? 'Versículos en tu versión' : 'Cambiar versión'}
                       </Text>
                       <ChevronDownIcon color={colors.muted} size={13} />
                     </Pressable>
@@ -426,7 +426,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               )}
               {first?.text ? (
                 <View>
-                  <Markdown text={first.text} colors={colors} ornate sources={first.sources} onCite={setPeek} />
+                  <Markdown text={first.text} colors={colors} ornate sources={first.sources} onCite={setPeek} onOpenRef={open} />
                   {!!first.sources?.length && (busy ? turns.length > 1 : true) && (
                     <Appear>
                       <Sources sources={first.sources} colors={colors} onOpen={open} />

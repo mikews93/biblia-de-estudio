@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Appear from '@/components/Appear';
@@ -13,6 +13,7 @@ import { NuevaTarjeta, PantallaSheet, PasajeSheet, PersonasSheet } from '@/compo
 import { Faces, LIVE_RED, LiveBadge, Sheet, vivoText } from '@/components/vivo/piezas';
 import TarjetaVivo from '@/components/vivo/TarjetaVivo';
 import TextoVivo from '@/components/vivo/TextoVivo';
+import { shareMessage } from '@/lib/compartir';
 import { chapterHref, useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { useTaller } from '@/lib/taller';
@@ -575,7 +576,7 @@ function Invitar({ sala, onClose }: { sala: Sala; onClose: () => void }) {
             setTimeout(() => setCopied(false), 1800);
           }}
         />
-        {canShare && <Button label="Compartir" style={{ flex: 1 }} onPress={() => Share.share({ message, url }).catch(() => {})} />}
+        {canShare && <Button label="Compartir" style={{ flex: 1 }} onPress={() => shareMessage(message)} />}
       </View>
     </Sheet>
   );
