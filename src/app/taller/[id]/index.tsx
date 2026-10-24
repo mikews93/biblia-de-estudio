@@ -35,6 +35,7 @@ import {
   tituloDe,
   useTaller,
 } from '@/lib/taller';
+import { guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -63,19 +64,33 @@ export default function MensajeScreen() {
   const [books, setBooks] = useState<Book[]>([]);
   const [step, setStep] = useState<Step>('pasaje');
   const [ia, setIa] = useState<{ modo: Modo; paso: Paso } | null>(null);
+  const [restaurado, setRestaurado] = useState(false);
   const m = mensajes.find((x) => x.id === id);
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
   }, []);
 
-  // Uno con pasaje ya elegido empieza en la idea central.
+  // Vuelve al paso en que iba y al Acompañante si estaba abierto (también si la app se cerró).
+  // Uno nuevo con pasaje ya elegido empieza en la idea central.
   useEffect(() => {
-    if (m?.pasaje && !m.tema && !m.observacion && step === 'pasaje') setStep('idea');
+    if (!m || restaurado) return;
+    leerTallerIa(m.id).then((e) => {
+      const vista = e?.vista as { paso?: Step; ia?: { modo: Modo; paso: Paso } | null } | undefined;
+      if (vista?.paso && STEPS.some((s) => s.step === vista.paso)) setStep(vista.paso);
+      else if (m.pasaje && !m.tema && !m.observacion) setStep('idea');
+      if (vista?.ia && m.pasaje) setIa(vista.ia);
+      setRestaurado(true);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m?.id]);
 
-  if (!ready) return <ActivityIndicator color={colors.accent} style={{ marginTop: 60 }} />;
+  useEffect(() => {
+    if (restaurado && m) guardarTallerIa(m.id, { vista: { paso: step, ia } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurado, step, ia]);
+
+  if (!ready || (m && !restaurado)) return <ActivityIndicator color={colors.accent} style={{ marginTop: 60 }} />;
   if (!m) {
     return (
       <View style={styles.page}>

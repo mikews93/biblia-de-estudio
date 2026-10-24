@@ -98,14 +98,23 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   await page.getByPlaceholder('Escríbelo con tus palabras').first().fill(`Leemos Juan 3:16 juntos ${m}`);
   await guardado(page, `Leemos Juan 3:16 juntos ${m}`);
 
-  // Al recargar sigue todo
+  // Si la app se cierra, al volver sigue en el mismo paso y con todo lo escrito
   await page.reload();
   await expect(page.getByText(`Amor que da ${m}`).first()).toBeVisible();
-  await expect(page.getByPlaceholder('Por ejemplo, Lucas 15:11-32')).toHaveValue('Juan 3:16');
+  await expect(page.getByPlaceholder('Escríbelo con tus palabras').first()).toHaveValue(`Leemos Juan 3:16 juntos ${m}`);
   await paso(page, '2 Idea central').click();
   await expect(page.getByPlaceholder('…sale a buscarnos antes de que lleguemos')).toHaveValue(`da a su Hijo ${m}`);
-  await paso(page, '3 Bosquejo').click();
-  await expect(page.getByPlaceholder('Escríbelo con tus palabras').first()).toHaveValue(`Leemos Juan 3:16 juntos ${m}`);
+  await paso(page, '1 Pasaje').click();
+  await expect(page.getByPlaceholder('Por ejemplo, Lucas 15:11-32')).toHaveValue('Juan 3:16');
+
+  // Y la conversación con el Acompañante también: no se vuelve a pedir ni se repite la pregunta
+  const pedidosAntes = (await peticionesIA(request, `Observo ${m}`)).length;
+  await page.getByRole('button', { name: 'Sugiéreme' }).click();
+  await expect(ia.getByText(`Respuesta simulada a «${respuesta}».`)).toBeVisible();
+  await expect(ia.getByText(respuesta, { exact: true })).toHaveCount(1);
+  await expect(ia.getByText('Sugerencia simulada del Taller: Dios ama y da.')).toBeVisible();
+  expect(await peticionesIA(request, `Observo ${m}`)).toHaveLength(pedidosAntes);
+  await ia.getByLabel('Cerrar').last().click();
 
   // Y aparece en «Mis mensajes» del Taller
   await page.goto('/taller');
@@ -185,6 +194,61 @@ test('prepara un sermón desde el lector, lo revisa con la IA, lo presenta y lo 
   await expect(page.getByRole('button', { name: /Sermón ·/ })).toBeVisible();
   await expect(page.getByText('Mis mensajes').filter({ visible: true })).toHaveCount(0);
   await guardado(page, '[]');
+});
+
+test('Revisa propone correcciones a lo escrito, se aplican con vista de cambios y todo sigue al cerrar la app', async ({ page, request }) => {
+  const m = marca();
+  await conSesion(page, await cuentaNueva(request, 'Correctora'));
+  await page.goto('/taller');
+  await page.getByRole('button', { name: /Reflexión ·/ }).click();
+  const pasaje = page.getByPlaceholder('Por ejemplo, Lucas 15:11-32');
+  await pasaje.fill('Nehemías 4:14');
+  await pasaje.press('Enter');
+  await expect(pasaje).toHaveValue('Nehemías 4:14');
+  const observacion = `Nehemías pone guardia asta terminar el muro ${m}`;
+  await page.getByPlaceholder(/Lo que ves en el texto/).fill(observacion);
+
+  await paso(page, '4 Revisar').click();
+  await page.getByRole('button', { name: 'Revisa mi borrador' }).first().click();
+  const ia = acompanante(page);
+  await expect(ia.getByText('Revisión simulada: la idea sale del texto.')).toBeVisible();
+
+  // Las correcciones se piden aparte, con cada campo y su id, y se ven marcadas antes de aplicarlas
+  await ia.getByRole('button', { name: 'Proponer correcciones' }).click();
+  await expect(ia.getByText('CORRECCIONES A TU TEXTO')).toBeVisible();
+  await expect(ia.getByText('OBSERVAR', { exact: true })).toBeVisible();
+  await expect(ia.getByText('Falta la «h»: «hasta» es la preposición.')).toBeVisible();
+  await expect(ia.getByRole('radio', { name: 'Aceptar' })).toBeChecked();
+  const corregir = (await peticionesIA(request, m)).find((r) => JSON.stringify(r.messages[0].content).includes('propón correcciones puntuales'))!;
+  const encargo = JSON.stringify(corregir.messages[0].content);
+  expect(encargo).toContain('[observacion] Observar:');
+  expect(encargo).toContain('Esta fue tu revisión de lo que llevo');
+  expect(encargo).toContain('Corrige lo que escribí, no lo escribas por mí');
+
+  // Descartarla deja el botón sin nada que aplicar; aceptarla y aplicarla cambia el borrador, con deshacer
+  await ia.getByRole('radio', { name: 'Descartar' }).click();
+  await expect(ia.getByRole('button', { name: 'Ninguna corrección elegida' })).toBeDisabled();
+  await ia.getByRole('radio', { name: 'Aceptar' }).click();
+  await ia.getByRole('button', { name: 'Aplicar 1 corrección' }).click();
+  await expect(ia.getByText('Se aplicó 1 corrección a tu borrador')).toBeVisible();
+  await expect(ia.getByText('Aplicada')).toBeVisible();
+  await guardado(page, `guardia hasta terminar el muro ${m}`);
+  await ia.getByRole('button', { name: 'Deshacer' }).click();
+  await guardado(page, observacion);
+  await expect(ia.getByRole('button', { name: 'Aplicar 1 corrección' })).toBeVisible();
+  await ia.getByRole('button', { name: 'Aplicar 1 corrección' }).click();
+  await guardado(page, `guardia hasta terminar el muro ${m}`);
+
+  // Si la app se cierra, al volver el Acompañante sigue abierto con la revisión y las correcciones, sin pedirlas otra vez
+  const pedidos = (await peticionesIA(request, m)).length;
+  await page.reload();
+  await expect(ia.getByText('Revisión simulada: la idea sale del texto.')).toBeVisible();
+  await expect(ia.getByText('Falta la «h»: «hasta» es la preposición.')).toBeVisible();
+  await expect(ia.getByText('Aplicada')).toBeVisible();
+  expect(await peticionesIA(request, m)).toHaveLength(pedidos);
+  await ia.getByLabel('Cerrar').last().click();
+  await expect(page.getByText('4 Revisar').filter({ visible: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: '¿Puedo decir la idea central en una frase?' })).toBeVisible();
 });
 
 test('el catálogo de dinámicas se filtra por momento y muestra los pasos', async ({ page }) => {
@@ -283,7 +347,7 @@ test('desde un tema: la IA busca pasajes y fuentes, arma la maqueta y el mensaje
   const situacion = `Jóvenes ansiosos por el futuro ${m}`;
   await page.getByLabel('Lo que quieres tratar').fill(situacion);
   // Lo contado se guarda en el dispositivo mientras se escribe
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('taller-tema') ?? '')).toContain(m);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('taller-ia') ?? '')).toContain(m);
   await buscar.click();
 
   // La IA investiga a la vista y devuelve pasajes para elegir, lo que dicen las fuentes y preguntas
@@ -328,7 +392,7 @@ test('desde un tema: la IA busca pasajes y fuentes, arma la maqueta y el mensaje
   // Cada parte empieza con la frase que la resume, para editarla
   expect(mensaje.secciones[1].texto).toBe('Pablo no niega el afán: lo convierte en oración con gratitud.');
   // El borrador del tema se borra al crear el mensaje
-  expect(await page.evaluate(() => localStorage.getItem('taller-tema'))).toBeNull();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('taller-ia') ?? '{}').tema)).toBeUndefined();
 
   // En el bosquejo cada parte trae su pregunta guía y su pasaje de apoyo
   await paso(page, '3 Bosquejo').click();

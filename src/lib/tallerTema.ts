@@ -6,8 +6,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Book } from './data';
-import { Source } from './estudio';
+import { Source, Turn } from './estudio';
 import { PLANTILLAS, Pasaje, Seccion, Tipo, crearMensaje, actualizarMensaje, parsePasaje, plantilla as plantillaDe } from './taller';
+import { borrarTallerIa, guardarTallerIa, leerTallerIa } from './tallerIa';
 
 export const MIN_TEMA = 10;
 export const MAX_TEMA = 4000;
@@ -168,19 +169,35 @@ export function conCitas(s: string, sources: { n: number; label: string }[]) {
     .trim();
 }
 
-// El borrador del tema se guarda en el dispositivo mientras se escribe, para no perder lo dictado.
-const KEY = 'taller-tema';
-export type BorradorTema = { texto: string; tipo: Tipo };
+// El borrador del tema se guarda mientras se escribe, para no perder lo dictado, junto con lo que ya se buscó
+// (la etapa, el pasaje elegido, la maqueta pedida). Va en el almacén del Taller con la IA (tallerIa.ts), con sus
+// conversaciones, y así también en la cuenta. Antes iba aparte en el dispositivo («taller-tema»): se lee una vez.
+const ANTES = 'taller-tema';
+export const CLAVE_TEMA = 'tema';
+export type BorradorTema = {
+  texto: string;
+  tipo: Tipo;
+  etapa?: 'contar' | 'explorar' | 'maqueta';
+  elegido?: number;
+  plantilla?: string;
+  idea?: number | null;
+  pedido?: { pasaje: Pasaje; plantilla: string } | null;
+};
 
-export async function leerBorradorTema(): Promise<BorradorTema | null> {
-  const raw = await AsyncStorage.getItem(KEY).catch(() => null);
+export async function leerBorradorTema(): Promise<{ borrador: BorradorTema; convs: Record<string, Turn[]> } | null> {
+  const e = await leerTallerIa(CLAVE_TEMA);
+  if (e?.vista && typeof (e.vista as BorradorTema).texto === 'string') return { borrador: e.vista as BorradorTema, convs: e.convs ?? {} };
+  const raw = await AsyncStorage.getItem(ANTES).catch(() => null);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as BorradorTema;
+    return { borrador: JSON.parse(raw) as BorradorTema, convs: {} };
   } catch {
     return null;
   }
 }
 
-export const guardarBorradorTema = (b: BorradorTema) => AsyncStorage.setItem(KEY, JSON.stringify(b)).catch(() => {});
-export const borrarBorradorTema = () => AsyncStorage.removeItem(KEY).catch(() => {});
+export const guardarBorradorTema = (b: BorradorTema, convs?: Record<string, Turn[]>) => guardarTallerIa(CLAVE_TEMA, { vista: b, convs });
+export const borrarBorradorTema = () => {
+  AsyncStorage.removeItem(ANTES).catch(() => {});
+  return borrarTallerIa(CLAVE_TEMA);
+};

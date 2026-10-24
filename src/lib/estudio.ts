@@ -11,7 +11,14 @@ const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 export type Source = { n: number; label: string; ref?: string; url?: string; nota?: string };
 /** Lo que la IA consultó para responder una pregunta (las herramientas de api/_investigar.ts). */
 export type Paso = { tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia'; texto: string };
-export type Turn = { role: 'user' | 'assistant'; text: string; sources?: Source[]; pasos?: Paso[] };
+export type Turn = {
+  role: 'user' | 'assistant';
+  text: string;
+  sources?: Source[];
+  pasos?: Paso[];
+  /** La respuesta se quedó a medias (falló la conexión o se cerró la app mientras llegaba). */
+  cortada?: boolean;
+};
 
 type Event =
   | { type: 'text'; text: string }
@@ -21,7 +28,7 @@ type Event =
   | { type: 'error'; message: string };
 
 export type TallerRequest = {
-  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta';
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta' | 'corregir';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;
@@ -30,6 +37,8 @@ export type TallerRequest = {
   borrador?: string;
   /** Si el mensaje empezó desde un tema: lo que la persona quería tratar. */
   situacion?: string;
+  /** Solo «corregir»: la revisión que las correcciones aplican. */
+  revision?: string;
 };
 
 /** Herramientas de un capítulo inspiradas en NotebookLM: resumen en audio, tarjetas de repaso y mapa mental. */

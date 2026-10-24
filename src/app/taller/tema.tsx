@@ -13,7 +13,7 @@ import { NeedsConnection } from '@/components/SinConexion';
 import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
-import { useConversations } from '@/lib/conversaciones';
+import { paraGuardar, useConversations } from '@/lib/conversaciones';
 import { Book, getBooks, parseRef } from '@/lib/data';
 import { Source, askStudy } from '@/lib/estudio';
 import { chapterHref, verseHref } from '@/lib/routes';
@@ -62,22 +62,6 @@ export default function TemaScreen() {
   const pedido = useRef<{ pasaje: Pasaje; plantilla: string } | null>(null);
   const [pedidoVisto, setPedidoVisto] = useState<{ pasaje: Pasaje; plantilla: string } | null>(null);
 
-  useEffect(() => {
-    getBooks().then(setBooks).catch(() => {});
-    leerBorradorTema().then((b) => {
-      if (b) {
-        setTexto(b.texto);
-        setTipo(b.tipo);
-        setPlantillaId(PLANTILLAS.find((p) => p.tipo === b.tipo)!.id);
-      }
-      setCargado(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (cargado) guardarBorradorTema({ texto, tipo });
-  }, [texto, tipo, cargado]);
-
   const convs = useConversations<Clave>((clave, history, onUpdate, signal) => {
     if (clave === 'explorar') return askStudy({ tema: { texto, tipo }, messages: history, version: settings.version }, onUpdate, signal);
     const { pasaje, plantilla } = pedido.current!;
@@ -105,6 +89,37 @@ export default function TemaScreen() {
     );
   });
 
+  useEffect(() => {
+    getBooks().then(setBooks).catch(() => {});
+    // Si la app se cerró a mitad, vuelve a lo contado, a la búsqueda y a la maqueta tal como estaban.
+    leerBorradorTema().then((g) => {
+      if (g) {
+        const b = g.borrador;
+        setTexto(b.texto);
+        setTipo(b.tipo);
+        setPlantillaId(b.plantilla && plantillaDe(b.plantilla)?.tipo === b.tipo ? b.plantilla : PLANTILLAS.find((p) => p.tipo === b.tipo)!.id);
+        if (g.convs.explorar?.length) convs.set('explorar', g.convs.explorar);
+        if (b.pedido && g.convs.maqueta?.length) {
+          pedido.current = b.pedido;
+          setPedidoVisto(b.pedido);
+          convs.set('maqueta', g.convs.maqueta);
+        }
+        const etapaGuardada = b.etapa === 'maqueta' && !b.pedido ? 'explorar' : b.etapa;
+        if (etapaGuardada && (etapaGuardada === 'contar' || g.convs.explorar?.length)) setEtapa(etapaGuardada);
+        if (typeof b.elegido === 'number') setElegido(b.elegido);
+        if (b.idea !== undefined) setIdea(b.idea);
+      }
+      setCargado(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!cargado || creando) return;
+    guardarBorradorTema({ texto, tipo, etapa, elegido, plantilla: plantillaId, idea, pedido: pedidoVisto }, paraGuardar(convs.all));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [texto, tipo, etapa, elegido, plantillaId, idea, pedidoVisto, convs.all, cargado]);
+
   const exp = convs.get('explorar');
   const ultima = [...exp.turns].reverse().find((t) => t.role === 'assistant');
   const exploracion = leerExploracion(ultima?.text ?? '', books);
@@ -130,7 +145,7 @@ export default function TemaScreen() {
     if (!q || exp.busy) return;
     setRespuesta('');
     setPeek(null);
-    convs.run('explorar', [...exp.turns, { role: 'user', text: q }]);
+    convs.ask('explorar', q);
   };
 
   const armar = () => {
@@ -179,6 +194,13 @@ export default function TemaScreen() {
         intro="Busca pasajes, comentarios y teologías sobre lo que quieres tratar, y te arma la maqueta; el mensaje lo escribes tú. Solo necesitas una cuenta gratuita."
         onReady={() => convs.retry(etapa === 'maqueta' ? 'maqueta' : 'explorar')}
       />
+    ) : !conv.busy && !conv.error && conv.turns[conv.turns.length - 1]?.cortada ? (
+      <View style={styles.center}>
+        <Text style={{ color: colors.muted, textAlign: 'center' }}>
+          {etapa === 'maqueta' ? 'La maqueta se cortó antes de terminar.' : 'La búsqueda se cortó antes de terminar.'}
+        </Text>
+        <Button label="Continuar" kind="outline" onPress={() => convs.retry(etapa === 'maqueta' ? 'maqueta' : 'explorar')} style={{ marginTop: 12 }} />
+      </View>
     ) : conv.error ? (
       <View style={styles.center}>
         <Text style={{ color: colors.text, textAlign: 'center' }}>{conv.error}</Text>
