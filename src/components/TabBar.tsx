@@ -57,6 +57,8 @@ export default function TabBar() {
   if (path.endsWith('/presentar') || path.endsWith('/proyectar')) return null;
   // La lectura en vivo también: abajo van los mandos de quien guía.
   if (/^\/vivo\/[^/]+$/.test(path)) return null;
+  // La mañana del despertador ocupa toda la pantalla.
+  if (path === '/despertar') return null;
 
   const go = async (key: Tab['key']) => {
     if (key === active && key !== 'leer' && (key !== 'hoy' || path === '/')) return;

@@ -63,6 +63,17 @@ self.addEventListener('push', (event) => {
   } catch {
     aviso = { body: event.data ? event.data.text() : '' };
   }
+  // El despertador (src/lib/despertarTexto.ts) se queda hasta que se toque, vibra largo y ofrece posponer.
+  const alarma = aviso.alarma
+    ? {
+        requireInteraction: true,
+        vibrate: [600, 300, 600, 300, 1200, 600, 600, 300, 600],
+        actions: [
+          { action: 'despertar', title: 'Despertar' },
+          { action: 'posponer', title: '10 minutos más' },
+        ],
+      }
+    : {};
   event.waitUntil(
     self.registration.showNotification(aviso.title || 'Biblia de estudio', {
       body: aviso.body || '',
@@ -72,12 +83,28 @@ self.addEventListener('push', (event) => {
       renotify: Boolean(aviso.tag),
       lang: 'es',
       data: { url: aviso.url || '/' },
+      ...alarma,
     }),
   );
 });
 
+/** «10 minutos más»: el servidor vuelve a mandar el despertador (la dirección de la suscripción lo identifica). */
+async function posponer() {
+  const sub = await self.registration.pushManager.getSubscription();
+  if (!sub) return;
+  await fetch('/api/notificaciones', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accion: 'posponer', endpoint: sub.endpoint }),
+  }).catch(() => {});
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  if (event.action === 'posponer') {
+    event.waitUntil(posponer());
+    return;
+  }
   const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin);
   if (url.origin !== self.location.origin) return;
   event.waitUntil(

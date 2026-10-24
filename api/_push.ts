@@ -44,7 +44,11 @@ create table if not exists suscripciones (
   creado timestamptz not null default now(),
   actualizado timestamptz not null default now()
 );
-create index if not exists suscripciones_usuario on suscripciones (usuario_id);`;
+create index if not exists suscripciones_usuario on suscripciones (usuario_id);
+alter table suscripciones add column if not exists despertar int;
+alter table suscripciones add column if not exists despertar_dias int not null default 127;
+alter table suscripciones add column if not exists despertar_enviado date;
+alter table suscripciones add column if not exists pospuesto timestamptz;`;
 
 const b64 = (buf: Buffer) => buf.toString('base64url');
 const unb64 = (s: string) => Buffer.from(s, 'base64url');
@@ -138,14 +142,14 @@ export function encrypt(payload: Buffer, sub: Pick<Suscripcion, 'p256dh' | 'auth
  * Envía un aviso. Devuelve 'ok', 'caducada' (el navegador la dio de baja: hay que borrarla) o 'error'.
  * Nunca lanza: un aviso que no sale no debe romper lo que la persona estaba haciendo.
  */
-export async function sendPush(sub: Suscripcion, aviso: Aviso, keys: Vapid, ttl = 12 * 3600) {
+export async function sendPush(sub: Suscripcion, aviso: Aviso, keys: Vapid, ttl = 12 * 3600, urgency: 'normal' | 'high' = 'normal') {
   try {
     if (!validEndpoint(sub.endpoint)) return 'caducada';
     const headers: Record<string, string> = {
       'Content-Encoding': 'aes128gcm',
       'Content-Type': 'application/octet-stream',
       TTL: String(ttl),
-      Urgency: 'normal',
+      Urgency: urgency,
       Authorization: vapidAuth(sub.endpoint, keys),
     };
     // Topic: el servicio reemplaza un aviso pendiente con el mismo tema (32 caracteres base64url como mucho).

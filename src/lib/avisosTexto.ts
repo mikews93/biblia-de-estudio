@@ -1,7 +1,14 @@
 // Qué dice el recordatorio diario y cuándo toca enviarlo. Sin dependencias: lo usan el servidor
 // (api/notificaciones.ts, que lo envía) y la app (la vista previa en la pantalla de notificaciones).
 
-export type Aviso = { title: string; body: string; url?: string; tag?: string };
+export type Aviso = {
+  title: string;
+  body: string;
+  url?: string;
+  tag?: string;
+  /** El despertador: el service worker lo muestra hasta que se toque, vibra y ofrece «10 minutos más». */
+  alarma?: boolean;
+};
 
 export type DiaReto = { fecha: string; dia: number; titulo?: string; lectura?: string };
 

@@ -158,8 +158,68 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
       existe: true,
       hora: 21 * 60,
       avisos: { lectura: true, tarjetas: false, reto: true, comunidad: true },
+      despertar: null,
     });
+    await call('guardar', { suscripcion: sub, hora: 21 * 60, despertar: { activo: true, hora: 330, dias: 0b0111110 } });
+    expect((await call('leer', { endpoint: sub.endpoint })).json.despertar).toEqual({ hora: 330, dias: 0b0111110 });
     expect((await call('leer', { endpoint: `${base}/__push/no-existe` })).json).toEqual({ existe: false });
+  });
+
+  it('el despertador suena a su hora, en sus días, con prioridad alta y una sola vez', async () => {
+    const sub = nuevaSuscripcion(base);
+    const now = localNow('UTC');
+    const today = 1 << new Date(`${now.fecha}T12:00:00Z`).getUTCDay();
+    const estado = { leido: now.fecha, lectura: { titulo: 'Juan 4', url: '/juan/4' } };
+    // Todo apagado salvo el despertador: suena igual.
+    await call('guardar', {
+      suscripcion: sub,
+      zona: 'UTC',
+      avisos: { lectura: false, tarjetas: false, reto: false },
+      despertar: { activo: true, hora: 0, dias: 127 },
+      estado,
+    });
+    await sql`update suscripciones set despertar = ${Math.max(0, now.minutos - 2)}, despertar_enviado = null where endpoint = ${sub.endpoint}`;
+
+    const r = await enviar();
+    expect(r.json.despertados).toBeGreaterThanOrEqual(1);
+    const [e] = deliveredTo(sub.id);
+    expect(e.aviso).toEqual({
+      title: 'Buenos días ☀',
+      body: 'Música suave, el versículo del día y Juan 4 te esperan. Toca para empezar el día con la Palabra.',
+      url: '/despertar?alarma=1',
+      tag: 'despertar',
+      alarma: true,
+    });
+    expect(e.headers.urgency).toBe('high');
+    expect(e.headers.ttl).toBe(String(30 * 60));
+
+    await enviar();
+    expect(deliveredTo(sub.id)).toHaveLength(1);
+
+    // Otro dispositivo con la misma hora pero hoy fuera de sus días: no suena.
+    const libre = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: libre, zona: 'UTC', avisos: { lectura: false, tarjetas: false, reto: false }, despertar: { hora: 0, dias: 127 ^ today } });
+    await sql`update suscripciones set despertar = ${Math.max(0, now.minutos - 2)}, despertar_enviado = null where endpoint = ${libre.endpoint}`;
+    await enviar();
+    expect(deliveredTo(libre.id)).toHaveLength(0);
+  });
+
+  it('«10 minutos más» lo vuelve a mandar; apagar el despertador lo quita', async () => {
+    const sub = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: sub, zona: 'UTC', avisos: { lectura: false, tarjetas: false, reto: false }, despertar: { hora: 0, dias: 127 } });
+    // Activado después de su hora: hoy ya no suena.
+    const [row] = await sql`select despertar_enviado::text as d from suscripciones where endpoint = ${sub.endpoint}`;
+    expect(row.d).toBe(localNow('UTC').fecha);
+
+    expect((await call('posponer', { endpoint: sub.endpoint })).json).toEqual({ minutos: 10 });
+    await enviar();
+    expect(deliveredTo(sub.id)).toHaveLength(0);
+    await sql`update suscripciones set pospuesto = now() - interval '1 second' where endpoint = ${sub.endpoint}`;
+    await enviar();
+    expect(deliveredTo(sub.id).map((e) => e.aviso?.body)).toEqual(['Ya pasaron tus diez minutos. La música suave y la Palabra te esperan.']);
+
+    await call('guardar', { suscripcion: sub, zona: 'UTC', despertar: { activo: false, hora: 0, dias: 127 } });
+    expect((await call('posponer', { endpoint: sub.endpoint })).status).toBe(404);
   });
 
   it('si el navegador dio de baja la suscripción, se borra', async () => {

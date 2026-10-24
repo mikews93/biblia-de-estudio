@@ -8,11 +8,16 @@
 // Todo va por POST con {"accion": "...", ...}. El recordatorio diario lo dispara un programador externo cada
 // 15 minutos con GET /api/notificaciones?accion=enviar (o POST {"accion":"enviar"}): se puede llamar de más sin
 // problema, porque cada dispositivo recibe un solo recordatorio al día.
+//
+// El despertador («Despertar con la Biblia», src/lib/despertarTexto.ts) sale en la misma ronda: a su hora, en
+// sus días, con prioridad alta, y otra vez si la persona tocó «10 minutos más». Para que suene a su minuto
+// el programador debe llamar cada minuto (cada 15 minutos puede llegar hasta 15 minutos tarde).
 
 import { createHash } from 'node:crypto';
 import postgres from 'postgres';
 
 import { dailyMessage, DiaReto, EstadoAvisos, HORA_POR_DEFECTO, horaLabel, isDue, localNow, validZone } from '../src/lib/avisosTexto';
+import { despertarDue, despertarMessage, POSPONER_MINUTOS, validDias } from '../src/lib/despertarTexto';
 import { PUSH_SCHEMA, sendMany, sendPush, Suscripcion, validEndpoint, vapid } from './_push';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -27,6 +32,10 @@ type Fila = Suscripcion & {
   reto: boolean;
   estado: EstadoAvisos;
   enviado: string | null;
+  despertar: number | null;
+  despertar_dias: number;
+  despertar_enviado: string | null;
+  pospuesto: Date | null;
 };
 
 class Fail extends Error {
@@ -83,6 +92,14 @@ function keysOf(value: unknown) {
 }
 
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const isMinute = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) < 1440;
+
+/** El despertador que manda el dispositivo: {hora, dias}, o null si está apagado. */
+function despertarOf(v: unknown): { hora: number; dias: number } | null {
+  const d = (v && typeof v === 'object' ? v : {}) as Json;
+  if (d.activo === false || !isMinute(d.hora)) return null;
+  return { hora: d.hora, dias: validDias(d.dias) ? d.dias : 127 };
+}
 const str = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
 /** Solo rutas de la propia app («/juan/3»): el aviso no debe poder abrir otro sitio. */
 const path = (v: unknown) => (typeof v === 'string' && /^\/(?!\/)[^\s\\]{0,199}$/.test(v) ? v : undefined);
@@ -123,33 +140,50 @@ const actions: Record<string, Action> = {
     const endpoint = endpointOf(sub.endpoint);
     const { p256dh, auth } = keysOf(sub.keys);
     const zona = validZone(body.zona) ? body.zona : 'UTC';
-    const hora = Number.isInteger(body.hora) && (body.hora as number) >= 0 && (body.hora as number) < 1440 ? (body.hora as number) : HORA_POR_DEFECTO;
+    const hora = isMinute(body.hora) ? body.hora : HORA_POR_DEFECTO;
+    const despertar = despertarOf(body.despertar);
     const avisos = (body.avisos ?? {}) as Json;
     const flag = (k: string) => avisos[k] !== false;
     const estado = cleanEstado(body.estado);
     const usuario = await accountOf(sql, request);
     // Si la hora elegida ya pasó hoy, el primer recordatorio llega mañana (no justo al activarlas).
-    const [prev] = await sql<{ hora: number; enviado: string | null }[]>`select hora, enviado::text as enviado from suscripciones where endpoint = ${endpoint}`;
+    const [prev] = await sql<{ hora: number; enviado: string | null; despertar: number | null; despertar_enviado: string | null }[]>`
+      select hora, enviado::text as enviado, despertar, despertar_enviado::text as despertar_enviado
+      from suscripciones where endpoint = ${endpoint}`;
     const now = localNow(zona);
     const enviado = prev && prev.hora === hora ? prev.enviado : now.minutos >= hora ? now.fecha : null;
+    // Igual con el despertador: si su hora ya pasó hoy, el primero suena mañana.
+    const despertarEnviado = !despertar
+      ? null
+      : prev && prev.despertar === despertar.hora
+        ? prev.despertar_enviado
+        : now.minutos >= despertar.hora
+          ? now.fecha
+          : null;
     await sql`
-      insert into suscripciones (endpoint, p256dh, auth, usuario_id, zona, hora, lectura, tarjetas, reto, comunidad, estado, enviado)
+      insert into suscripciones (endpoint, p256dh, auth, usuario_id, zona, hora, lectura, tarjetas, reto, comunidad, estado, enviado,
+        despertar, despertar_dias, despertar_enviado)
       values (${endpoint}, ${p256dh}, ${auth}, ${usuario}, ${zona}, ${hora}, ${flag('lectura')}, ${flag('tarjetas')},
-        ${flag('reto')}, ${flag('comunidad')}, ${sql.json(estado as postgres.JSONValue)}, ${enviado})
+        ${flag('reto')}, ${flag('comunidad')}, ${sql.json(estado as postgres.JSONValue)}, ${enviado},
+        ${despertar?.hora ?? null}, ${despertar?.dias ?? 127}, ${despertarEnviado})
       on conflict (endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth, usuario_id = excluded.usuario_id,
         zona = excluded.zona, hora = excluded.hora, lectura = excluded.lectura, tarjetas = excluded.tarjetas,
         reto = excluded.reto, comunidad = excluded.comunidad, estado = excluded.estado, enviado = excluded.enviado,
+        despertar = excluded.despertar, despertar_dias = excluded.despertar_dias, despertar_enviado = excluded.despertar_enviado,
+        pospuesto = case when excluded.despertar is null then null else suscripciones.pospuesto end,
         actualizado = now()`;
     return { cuenta: Boolean(usuario) };
   },
 
   /** Las preferencias guardadas de un dispositivo, para recuperarlas si la app perdió sus datos. */
   async leer({ sql, body }) {
-    const [s] = await sql<{ hora: number; lectura: boolean; tarjetas: boolean; reto: boolean; comunidad: boolean }[]>`
-      select hora, lectura, tarjetas, reto, comunidad from suscripciones where endpoint = ${endpointOf(body.endpoint)}`;
+    const [s] = await sql<
+      { hora: number; lectura: boolean; tarjetas: boolean; reto: boolean; comunidad: boolean; despertar: number | null; despertar_dias: number }[]
+    >`
+      select hora, lectura, tarjetas, reto, comunidad, despertar, despertar_dias from suscripciones where endpoint = ${endpointOf(body.endpoint)}`;
     if (!s) return { existe: false };
-    const { hora, ...avisos } = s;
-    return { existe: true, hora, avisos };
+    const { hora, despertar, despertar_dias, ...avisos } = s;
+    return { existe: true, hora, avisos, despertar: despertar == null ? null : { hora: despertar, dias: despertar_dias } };
   },
 
   /** Al leer, repasar o cambiar de plan, el dispositivo pone al día lo que sabe el servidor. */
@@ -159,6 +193,15 @@ const actions: Record<string, Action> = {
       update suscripciones set estado = ${sql.json(cleanEstado(body.estado) as postgres.JSONValue)}, actualizado = now()
       where endpoint = ${endpoint} returning 1`;
     return { existe: rows.length > 0 };
+  },
+
+  /** «10 minutos más» desde el aviso del despertador (lo pide el service worker). */
+  async posponer({ sql, body }) {
+    const rows = await sql`
+      update suscripciones set pospuesto = now() + make_interval(mins => ${POSPONER_MINUTOS})
+      where endpoint = ${endpointOf(body.endpoint)} and despertar is not null returning 1`;
+    if (!rows.length) throw new Fail('Este dispositivo no tiene despertador', 404);
+    return { minutos: POSPONER_MINUTOS };
   },
 
   async quitar({ sql, body }) {
@@ -194,13 +237,30 @@ const actions: Record<string, Action> = {
     if (!turn) return { enviados: 0, pausa: true };
     // «enviado» como texto: es una fecha local y no debe moverse con la zona del servidor.
     const subs = await sql<Fila[]>`
-      select endpoint, p256dh, auth, zona, hora, lectura, tarjetas, reto, estado, enviado::text as enviado
-      from suscripciones where lectura or tarjetas or reto`;
+      select endpoint, p256dh, auth, zona, hora, lectura, tarjetas, reto, estado, enviado::text as enviado,
+        despertar, despertar_dias, despertar_enviado::text as despertar_enviado, pospuesto
+      from suscripciones where lectura or tarjetas or reto or despertar is not null or pospuesto is not null`;
     const now = new Date();
+    const keys = await vapid(sql);
     let enviados = 0;
+    let despertados = 0;
     for (let i = 0; i < subs.length; i += 50) {
       await Promise.all(
         subs.slice(i, i + 50).map(async (s) => {
+          const alarma = despertarDue(s, now);
+          if (alarma.due) {
+            // Como el recordatorio: se marca antes de enviar, para que nunca suene dos veces.
+            await sql`
+              update suscripciones set pospuesto = null,
+                despertar_enviado = ${alarma.pospuesto ? sql`despertar_enviado` : alarma.fecha}
+              where endpoint = ${s.endpoint}`;
+            const aviso = despertarMessage({ lectura: s.estado?.lectura?.titulo, pospuesto: alarma.pospuesto });
+            // Media hora de vida: un despertador que llega tarde ya no sirve.
+            const r = await sendPush(s, aviso, keys, 30 * 60, 'high');
+            if (r === 'caducada') return void (await sql`delete from suscripciones where endpoint = ${s.endpoint}`);
+            if (r === 'ok') despertados++;
+          }
+          if (!(s.lectura || s.tarjetas || s.reto)) return;
           const { due, fecha } = isDue(s, now);
           if (!due) return;
           // Se marca antes de enviar: si algo falla, mejor un aviso de menos que uno repetido.
@@ -212,7 +272,7 @@ const actions: Record<string, Action> = {
         }),
       );
     }
-    return { enviados, revisados: subs.length };
+    return { enviados, despertados, revisados: subs.length };
   },
 };
 

@@ -106,6 +106,8 @@ function AppStack() {
           <Stack.Screen name="grupos/nuevo" options={{ title: 'Nuevo grupo' }} />
           <Stack.Screen name="cuenta" options={{ title: 'Tu cuenta' }} />
           <Stack.Screen name="notificaciones" options={{ title: 'Notificaciones' }} />
+          <Stack.Screen name="despertador" options={{ title: 'Despertador' }} />
+          <Stack.Screen name="despertar" options={{ headerShown: false }} />
           <Stack.Screen name="entrar" options={{ title: '' }} />
           <Stack.Screen name="registro" options={{ title: '' }} />
           <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
