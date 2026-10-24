@@ -159,7 +159,21 @@ export default function PresentarScreen() {
                 {s.texto.trim()}
               </Text>
             )}
-            {!s.texto.trim() && !s.paraGrupo?.trim() && !d && (
+            {!!s.claves?.trim() && (
+              <View style={[styles.claves, { borderColor: colors.border }]}>
+                {s.claves
+                  .split('\n')
+                  .map((c) => c.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim())
+                  .filter(Boolean)
+                  .map((c, i) => (
+                    <View key={i} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 8 }}>
+                      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.warm, marginTop: size * 0.5 }} />
+                      <Text style={{ color: colors.text, fontSize: size * 0.85, lineHeight: size * 1.25, flex: 1 }}>{c}</Text>
+                    </View>
+                  ))}
+              </View>
+            )}
+            {!s.texto.trim() && !s.paraGrupo?.trim() && !s.claves?.trim() && !d && (
               <Text style={{ color: colors.muted, fontSize: size * 0.8, marginTop: 16 }}>{s.ayuda}</Text>
             )}
           </>
@@ -233,6 +247,7 @@ const styles = StyleSheet.create({
   counter: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   title: { fontFamily: serif, fontSize: 30, fontWeight: '700', marginTop: 6 },
   box: { borderRadius: 14, padding: 16, marginTop: 16 },
+  claves: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 18, paddingTop: 8 },
   bottom: { flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 20, paddingTop: 10 },
   navBtn: { flex: 1, paddingVertical: 10 },
   passageBtn: { borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 6 },

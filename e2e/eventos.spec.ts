@@ -50,7 +50,7 @@ test('publica un sermón como evento y la congregación lo sigue en vivo con sus
 
   // En el Taller, paso Presentar: elige qué ve la congregación y publica.
   await page.goto(`/taller/ev${m}`);
-  await page.getByRole('tab', { name: '5 Presentar' }).click();
+  await page.getByRole('tab', { name: '6 Presentar' }).click();
   await page.getByRole('button', { name: 'Preparar el evento en vivo' }).click();
   await expect(page.getByText('EVENTO EN VIVO')).toBeVisible();
   await page.getByLabel('Para la congregación, punto 1').fill(`Todos nos alejamos ${m}`);
@@ -126,7 +126,7 @@ test('la pantalla para proyectar muestra el código, el QR y el punto actual', a
   await conSesion(page, pastor);
   await conTaller(page, [sermon(`pr${m}`, `Proyectar ${m}`)]);
   await page.goto(`/taller/pr${m}`);
-  await page.getByRole('tab', { name: '5 Presentar' }).click();
+  await page.getByRole('tab', { name: '6 Presentar' }).click();
   await page.getByRole('button', { name: 'Preparar el evento en vivo' }).click();
   await page.getByRole('button', { name: 'Publicar como evento' }).click();
   await page.getByRole('button', { name: 'Proyectar' }).click();

@@ -5,12 +5,26 @@ import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View
 
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, Card, Chips, ErrorText, Field, IconText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, type IconProps, LiveIcon, PlayIcon, SparkIcon } from '@/components/icons';
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  DocumentIcon,
+  type IconProps,
+  LiveIcon,
+  PlayIcon,
+  SparkIcon,
+} from '@/components/icons';
+import DocumentoVista from '@/components/taller/DocumentoVista';
 import PublicarEvento from '@/components/evento/Publicar';
 import { DinamicaCard, DinamicaPicker } from '@/components/taller/Dinamicas';
 import TallerIA, { Modo, Paso } from '@/components/taller/TallerIA';
 import { api, useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
+import { documentoDe, extremosQueFaltan, faltantes, fechaLarga } from '@/lib/documento';
 import { Momento, dinamica } from '@/lib/dinamicas';
 import { chapterHref, verseHref } from '@/lib/routes';
 import {
@@ -19,6 +33,7 @@ import {
   Seccion,
   actualizarMensaje,
   actualizarSeccion,
+  anadirExtremo,
   applyTemplate,
   borrarMensaje,
   comoTexto,
@@ -31,6 +46,7 @@ import {
   parsePasaje,
   pasajeLabel,
   revisionPara,
+  terminarMensaje,
   tipoInfo,
   tituloDe,
   useTaller,
@@ -39,14 +55,15 @@ import { guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-type Step = 'pasaje' | 'idea' | 'bosquejo' | 'revisar' | 'compartir';
+type Step = 'pasaje' | 'idea' | 'bosquejo' | 'revisar' | 'documento' | 'compartir';
 
 const STEPS: { step: Step; label: string }[] = [
   { step: 'pasaje', label: '1 Pasaje' },
   { step: 'idea', label: '2 Idea central' },
   { step: 'bosquejo', label: '3 Bosquejo' },
   { step: 'revisar', label: '4 Revisar' },
-  { step: 'compartir', label: '5 Presentar' },
+  { step: 'documento', label: '5 Documento' },
+  { step: 'compartir', label: '6 Presentar' },
 ];
 
 const OBSERVAR = [
@@ -102,7 +119,7 @@ export default function MensajeScreen() {
   }
 
   const set = (patch: Partial<Mensaje>) => actualizarMensaje(m.id, patch);
-  const iaPaso: Paso = step === 'compartir' ? 'revisar' : step;
+  const iaPaso: Paso = step === 'compartir' || step === 'documento' ? 'revisar' : step;
   const askAI = (modo: Modo) => setIa({ modo, paso: iaPaso });
 
   return (
@@ -132,11 +149,25 @@ export default function MensajeScreen() {
           {m.pasaje && m.titulo.trim() ? ` · ${pasajeLabel(m.pasaje, books).toUpperCase()}` : ''}
         </Text>
         <Text style={[text.title, { color: colors.text }]}>{tituloDe(m, books)}</Text>
+        {m.terminado && step !== 'documento' && (
+          <Pressable
+            onPress={() => navigate(() => router.push(`/taller/${m.id}/documento?desde=editor`), 'forward')}
+            accessibilityRole="link"
+            style={({ pressed }) => [styles.terminado, { backgroundColor: colors.warmSoft }, pressed && { opacity: 0.8 }]}
+          >
+            <CheckIcon color={colors.warm} size={15} strokeWidth={2.4} />
+            <Text style={{ color: colors.text, fontSize: 14, flex: 1 }}>
+              En <Text style={{ fontWeight: '700' }}>Mis sermones</Text> desde el {fechaLarga(m.terminado)}. Lo que cambies se guarda en él.
+            </Text>
+            <ChevronRightIcon color={colors.warm} size={17} />
+          </Pressable>
+        )}
 
         {step === 'pasaje' && <PasajeStep m={m} books={books} set={set} />}
         {step === 'idea' && <IdeaStep m={m} set={set} />}
         {step === 'bosquejo' && <BosquejoStep m={m} mensajes={mensajes} set={set} books={books} />}
         {step === 'revisar' && <RevisarStep m={m} set={set} onReview={() => askAI('revisar')} />}
+        {step === 'documento' && <DocumentoStep m={m} set={set} books={books} />}
         {step === 'compartir' && <CompartirStep m={m} books={books} />}
 
         {step !== 'compartir' && (
@@ -411,7 +442,7 @@ function BosquejoStep({ m, mensajes, set, books }: StepProps & { mensajes: Mensa
                   icon={CloseIcon}
                   hint="Quitar"
                   onPress={async () => {
-                    const empty = !s.texto.trim() && !s.paraGrupo?.trim();
+                    const empty = !s.texto.trim() && !s.paraGrupo?.trim() && !s.claves?.trim();
                     if (empty || (await confirm(`¿Quitar «${s.titulo}»?`, 'Se borra lo que escribiste en esta parte.', 'Quitar'))) {
                       set({ secciones: m.secciones.filter((x) => x.id !== s.id) });
                     }
@@ -453,6 +484,19 @@ function BosquejoStep({ m, mensajes, set, books }: StepProps & { mensajes: Mensa
               placeholder={encuentro ? 'Solo las ves tú' : 'Escríbelo con tus palabras'}
               style={{ minHeight: encuentro ? 70 : 110 }}
             />
+            {!encuentro && (
+              <>
+                <View style={{ height: 10 }} />
+                <Field
+                  label="Puntos para hablar (uno por línea)"
+                  multiline
+                  value={s.claves ?? ''}
+                  onChangeText={(claves) => actualizarSeccion(m.id, s.id, { claves })}
+                  placeholder={'Lo concreto que no quieres olvidar\nUna historia, un dato, una pregunta…'}
+                  style={{ minHeight: 70 }}
+                />
+              </>
+            )}
             <View style={styles.secFoot}>
               <Field
                 label="Min"
@@ -546,6 +590,74 @@ function RevisarStep({ m, set, onReview }: StepProps & { onReview: () => void })
         }
         style={{ minHeight: 100 }}
       />
+    </View>
+  );
+}
+
+function DocumentoStep({ m, set, books }: StepProps & { books: Book[] }) {
+  const colors = useColors();
+  const falta = faltantes(m);
+  const extremos = extremosQueFaltan(m);
+  const abrir = () => navigate(() => router.push(`/taller/${m.id}/documento?desde=editor`), 'forward');
+  return (
+    <View style={{ marginTop: 16, gap: 14 }}>
+      <Text style={[text.body, { color: colors.muted }]}>
+        El documento junta lo que escribiste: la introducción, los puntos que llevan a la idea central, lo que quieres decir en
+        cada uno, la conclusión y los anuncios. Mientras sea borrador, se guarda solo.
+      </Text>
+
+      <View style={[styles.faltaCaja, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+        <Text style={[styles.label, { color: colors.muted }]}>{falta.length ? 'ANTES DE TERMINAR' : 'LISTO PARA TERMINAR'}</Text>
+        {falta.length === 0 && (
+          <IconText icon={CheckIcon} color={colors.warm} size={16} style={{ marginTop: 8 }}>
+            <Text style={{ color: colors.text, fontSize: 15 }}>Tiene idea central, cada parte escrita y puntos para hablar.</Text>
+          </IconText>
+        )}
+        {falta.map((f) => (
+          <View key={f.id} style={styles.faltaFila}>
+            <View style={[styles.faltaPunto, { borderColor: colors.muted }]} />
+            <Text style={{ color: colors.text, fontSize: 15, lineHeight: 21, flex: 1 }}>{f.texto}</Text>
+          </View>
+        ))}
+        {extremos.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+            {extremos.map((e) => (
+              <Button
+                key={e}
+                label={e === 'introduccion' ? '+ Introducción' : '+ Conclusión'}
+                kind="outline"
+                onPress={() => anadirExtremo(m.id, e)}
+                style={{ paddingVertical: 8 }}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+
+      <Field
+        label="Anuncios al final (uno por línea)"
+        multiline
+        value={m.anuncios ?? ''}
+        onChangeText={(anuncios) => set({ anuncios })}
+        placeholder={'Célula el jueves a las 7 p. m.\nRetiro de jóvenes: inscripciones hasta el domingo'}
+        style={{ minHeight: 90 }}
+      />
+
+      <DocumentoVista d={documentoDe(m, books)} vacio="Sin escribir todavía." />
+
+      <Button label="Abrir el documento para imprimir o guardar" icon={DocumentIcon} kind="outline" onPress={abrir} />
+      {m.terminado ? (
+        <Text style={{ color: colors.muted, fontSize: 14, textAlign: 'center' }}>Ya está en Mis sermones desde el {fechaLarga(m.terminado)}.</Text>
+      ) : (
+        <Button
+          label="Terminar y guardar en Mis sermones"
+          icon={CheckIcon}
+          onPress={() => {
+            terminarMensaje(m.id);
+            abrir();
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -704,4 +816,8 @@ const styles = StyleSheet.create({
   box: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   sheetHeading: { fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 12, marginBottom: 4 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 24 },
+  terminado: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginTop: 12 },
+  faltaCaja: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14 },
+  faltaFila: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  faltaPunto: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5 },
 });
