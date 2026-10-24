@@ -21,13 +21,15 @@ type Event =
   | { type: 'error'; message: string };
 
 export type TallerRequest = {
-  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta';
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;
   desde?: number;
   hasta?: number;
   borrador?: string;
+  /** Si el mensaje empezó desde un tema: lo que la persona quería tratar. */
+  situacion?: string;
 };
 
 /** Herramientas de un capítulo inspiradas en NotebookLM: resumen en audio, tarjetas de repaso y mapa mental. */
@@ -48,6 +50,8 @@ type Request = {
   nueva?: boolean;
   /** Del sermón a tu semana: las notas del sermón para preparar cinco días (src/lib/semanas.ts). */
   semana?: { notas: string; desde?: number; hasta?: number; predicador?: string };
+  /** El Taller desde un tema, todavía sin pasaje: lo que la persona quiere tratar (src/lib/tallerTema.ts). */
+  tema?: { texto: string; tipo: 'reflexion' | 'encuentro' | 'sermon' };
   /** La versión que lee la persona: la IA cita esa (o la RV1909 si es una con derechos; ver api/_investigar.ts). */
   version?: string;
   /** Una pregunta frecuente del pasaje (src/lib/senales.ts): su respuesta es la misma para todos. */
@@ -81,7 +85,7 @@ export async function askStudy(
       messages: req.messages.map(({ role, text }) => ({ role, text })),
       ...(getSettings().modo === 'jovenes' ? { publico: 'jovenes' } : {}),
       // Las preguntas sobre el pasaje pueden ayudar a otros, limpias y sin nombre. Nunca en el Modo Jóvenes.
-      ...(getSettings().modo === 'general' && getSettings().compartirPreguntas && req.messages.length > 0 && !req.taller && !req.semana
+      ...(getSettings().modo === 'general' && getSettings().compartirPreguntas && req.messages.length > 0 && !req.taller && !req.semana && !req.tema
         ? { compartir: true }
         : {}),
     }),

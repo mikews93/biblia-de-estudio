@@ -26,6 +26,8 @@ export type Seccion = {
   /** Solo encuentros: quién guía la parte. */
   responsable?: string;
   dinamica?: string;
+  /** Un pasaje que apoya esta parte, sugerido por la maqueta de un tema (src/lib/tallerTema.ts). */
+  apoyo?: { cita: string; porque: string };
 };
 
 export type Mensaje = {
@@ -45,6 +47,8 @@ export type Mensaje = {
   minutos: number;
   creado: string;
   actualizado: string;
+  /** Si empezó desde un tema: lo que la persona grabó o escribió que quería tratar. */
+  situacion?: string;
   /** Si se publicó como evento de iglesia (src/lib/eventos.ts): su código y si lleva las notas de quien predica. */
   evento?: { codigo: string; conNotas: boolean; gradual: boolean };
 };
@@ -452,6 +456,7 @@ export function hojaDelGrupo(m: Mensaje, books: Book[], dinamicaNombre: (id?: st
 /** El borrador resumido para que la IA lo lea en los modos Sugerir y Revisar. */
 export function borradorParaIA(m: Mensaje) {
   const out: string[] = [];
+  // Lo que quería tratar va aparte (campo «situacion» del pedido): aquí solo lo escrito.
   if (m.observacion.trim()) out.push(`Observaciones del autor: ${m.observacion.trim()}`);
   if (m.tema.trim() || m.complemento.trim()) out.push(`Idea central: tema «${m.tema.trim()}», complemento «${m.complemento.trim()}»`);
   if (m.necesidad.trim()) out.push(`Necesidad humana que toca el pasaje: ${m.necesidad.trim()}`);
@@ -460,7 +465,8 @@ export function borradorParaIA(m: Mensaje) {
     const parts = [s.texto.trim() && `Notas: ${s.texto.trim()}`, s.paraGrupo?.trim() && `Para el grupo: ${s.paraGrupo.trim()}`]
       .filter(Boolean)
       .join(' | ');
-    out.push(`Sección ${i + 1}, ${s.titulo}${s.dinamica ? ` (dinámica: ${s.dinamica})` : ''}: ${parts || '(vacía)'}`);
+    const apoyo = s.apoyo ? ` [pasaje de apoyo: ${s.apoyo.cita}]` : '';
+    out.push(`Sección ${i + 1}, ${s.titulo}${s.dinamica ? ` (dinámica: ${s.dinamica})` : ''}${apoyo}: ${parts || '(vacía)'}`);
   });
   return out.join('\n').slice(0, 12000);
 }

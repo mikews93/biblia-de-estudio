@@ -72,6 +72,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
           hasta: single ? undefined : p.to,
           // El borrador se lee al abrir cada modo y en cada pregunta, no en cada tecla.
           borrador: borradorParaIA(mensaje),
+          situacion: mensaje.situacion || undefined,
         },
       },
       onUpdate,
