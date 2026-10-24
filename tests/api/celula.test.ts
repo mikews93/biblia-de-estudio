@@ -118,6 +118,42 @@ describe('/api/vivo (célula)', () => {
       expect((await ver(codigo)).json.sala.enVivo).toBe(false);
     });
 
+    it('lleva un mensaje del Taller parte por parte, en la versión de quien guía y con los versículos elegidos', async () => {
+      const ana = await persona('Ana Predica');
+      const guion = {
+        mensaje: 'm-1',
+        titulo: 'El padre que corre',
+        partes: [
+          { titulo: 'Se fue', minutos: 8, citas: ['Lucas 15:12-13'] },
+          { titulo: 'Volvió', minutos: 0, citas: [] },
+        ],
+      };
+      expect((await act('crearSala', { libro: 'luk', capitulo: 15, guion: { ...guion, partes: [] } }, ana.llave)).status).toBe(400);
+      expect((await act('crearSala', { libro: 'luk', capitulo: 15, version: 'NBLA!' }, ana.llave)).status).toBe(400);
+      const creada = await act('crearSala', { libro: 'luk', capitulo: 15, version: 'nbla', rango: { desde: 11, hasta: 32 }, guion }, ana.llave);
+      expect(creada.status).toBe(200);
+      const codigo = creada.json.sala.codigo as string;
+      expect(creada.json.estado).toMatchObject({ version: 'nbla', rango: { desde: 11, hasta: 32 } });
+      expect(creada.json.estado.guion).toMatchObject({ mensaje: 'm-1', parte: -1, partes: guion.partes });
+      const { inicio, desde } = creada.json.estado.guion;
+
+      // Pasar a la primera parte: su reloj empieza; el del mensaje sigue.
+      await new Promise((ok) => setTimeout(ok, 20));
+      let r = await act('moverSala', { sala: codigo, parte: 0, rango: { desde: 12, hasta: 13 } }, ana.llave);
+      expect(r.json.estado.guion).toMatchObject({ parte: 0, inicio });
+      expect(Date.parse(r.json.estado.guion.desde)).toBeGreaterThan(Date.parse(desde));
+      expect(r.json.estado.rango).toEqual({ desde: 12, hasta: 13 });
+      expect((await act('moverSala', { sala: codigo, parte: 2 }, ana.llave)).status).toBe(400);
+      expect((await act('moverSala', { sala: codigo, rango: { desde: 5, hasta: 2 } }, ana.llave)).status).toBe(400);
+
+      // Otro capítulo sin versículos elegidos: se ve entero. La versión cambia si quien guía la cambia.
+      r = await act('moverSala', { sala: codigo, capitulo: 16, version: 'rv1909' }, ana.llave);
+      expect(r.json.estado).toMatchObject({ capitulo: 16, rango: null, version: 'rv1909' });
+      r = await act('moverSala', { sala: codigo, guion: null }, ana.llave);
+      expect(r.json.estado.guion).toBeNull();
+      expect((await act('moverSala', { sala: codigo, parte: 0 }, ana.llave)).status).toBe(400);
+    });
+
     it('la sala de un grupo: solo sus miembros la empiezan, y si ya hay una abierta se entra en ella', async () => {
       const ana = await persona('Ana Célula');
       const beto = await persona('Beto Célula');

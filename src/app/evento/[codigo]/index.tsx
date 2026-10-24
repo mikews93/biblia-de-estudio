@@ -6,7 +6,9 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, 
 import { Avatar, Button, Card, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { InteraccionEvento, LanzarInteraccion } from '@/components/evento/Interaccion';
 import { CitaDesplegable, EstadoPill, LiveDot, useEventoEnVivo } from '@/components/evento/piezas';
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CommentIcon, LiveIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CommentIcon, HourglassIcon, LiveIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
+import { Tramos, useTic } from '@/components/vivo/Guion';
+import { LIVE_RED } from '@/components/vivo/piezas';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import {
@@ -20,7 +22,9 @@ import {
   notasComoTexto,
   useEventosSeguidos,
 } from '@/lib/eventos';
+import { minutosPlaneados, segundosDesde } from '@/lib/guion';
 import { pasajeLabel } from '@/lib/taller';
+import { clock } from '@/lib/vivo';
 import { huella } from '@/lib/sellos';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -100,7 +104,7 @@ export default function EventoScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title: '' }} />
-      <ScrollView ref={scroll} contentContainerStyle={[styles.page, { paddingBottom: propio ? 190 : 90 }]} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scroll} contentContainerStyle={[styles.page, { paddingBottom: propio ? 260 : 90 }]} keyboardShouldPersistTaps="handled">
         <View style={[styles.hero, { backgroundColor: colors.surface, borderColor: colors.border }, !isDark(colors) && styles.heroShadow]}>
           <View style={styles.heroTop}>
             <EstadoPill estado={evento.estado} colors={colors} />
@@ -123,7 +127,7 @@ export default function EventoScreen() {
           )}
           {!!pasaje && evento.pasaje?.from && (
             <View style={{ marginTop: 14 }}>
-              <CitaDesplegable label={pasaje} books={books} />
+              <CitaDesplegable label={pasaje} books={books} version={evento.version} />
             </View>
           )}
         </View>
@@ -173,7 +177,7 @@ export default function EventoScreen() {
                   {p.citas.length > 0 && (
                     <View style={styles.citas}>
                       {p.citas.map((c) => (
-                        <CitaDesplegable key={c} label={c} books={books} />
+                        <CitaDesplegable key={c} label={c} books={books} version={evento.version} />
                       ))}
                     </View>
                   )}
@@ -348,6 +352,7 @@ function Controles({ evento, books, onCambio, colors }: { evento: Evento; books:
             </Pressable>
           </View>
         </View>
+        {evento.estado === 'en-vivo' && <Reloj evento={evento} colors={colors} />}
         {evento.estado === 'en-vivo' ? (
           <View style={styles.controlsRow}>
             <Pressable
@@ -396,7 +401,42 @@ function Controles({ evento, books, onCambio, colors }: { evento: Evento; books:
   );
 }
 
+/** Para quien predica: en qué punto va, cuánto lleva en él (contra los minutos que planeó) y en todo el mensaje. */
+function Reloj({ evento, colors }: { evento: Evento; colors: Colors }) {
+  useTic();
+  const p = evento.punto >= 0 ? evento.puntos[evento.punto] : null;
+  const enElPunto = segundosDesde(evento.puntoDesde);
+  const total = segundosDesde(evento.inicio);
+  const plan = minutosPlaneados(evento.puntos);
+  const pasado = !!p?.minutos && enElPunto > p.minutos * 60;
+  return (
+    <View style={{ gap: 8 }}>
+      <Tramos partes={evento.puntos} parte={evento.punto} enLaParte={enElPunto} />
+      <View style={styles.relojRow}>
+        <Text style={{ color: colors.text, fontFamily: serif, fontWeight: '700', fontSize: 16, flex: 1 }} numberOfLines={1}>
+          {p ? p.titulo : 'Portada'}
+        </Text>
+        {p && (
+          <View style={[styles.relojPill, { backgroundColor: pasado ? 'rgba(200,70,47,0.12)' : colors.accentSoft }]}>
+            <HourglassIcon color={pasado ? LIVE_RED : colors.text} size={13} strokeWidth={2} />
+            <Text style={{ color: pasado ? LIVE_RED : colors.text, fontWeight: '800', fontSize: 13.5, fontVariant: ['tabular-nums'] }}>
+              {clock(enElPunto)}
+              {p.minutos ? <Text style={{ color: pasado ? LIVE_RED : colors.muted, fontWeight: '600' }}> / {p.minutos}:00</Text> : null}
+            </Text>
+          </View>
+        )}
+        <Text style={{ color: colors.muted, fontSize: 12.5, fontVariant: ['tabular-nums'] }}>
+          Total {clock(total)}
+          {plan ? ` de ${plan} min` : ''}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  relojRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  relojPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   notFound: { maxWidth: 420, alignItems: 'center' },
   page: { padding: 16, paddingTop: 8, maxWidth: 720, width: '100%', alignSelf: 'center' },

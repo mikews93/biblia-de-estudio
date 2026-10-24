@@ -38,7 +38,8 @@ describe('eventos', () => {
     } as unknown as Mensaje;
     const sin = contenidoDe(m, books, false);
     expect(sin.idea).toBe('Dios: corre hacia nosotros');
-    expect(sin.puntos[0]).toEqual({ titulo: 'Se fue', texto: 'Todos nos alejamos', citas: ['Lucas 15:12'] });
+    // Los minutos de cada punto viajan para el reloj de quien predica.
+    expect(sin.puntos[0]).toEqual({ titulo: 'Se fue', texto: 'Todos nos alejamos', citas: ['Lucas 15:12'], minutos: 5 });
     expect(sin.puntos[1].titulo).toBe('Sin título');
     expect(contenidoDe(m, books, true).puntos[0].texto).toBe('Todos nos alejamos\n\nMis notas privadas, ver Lucas 15:12');
   });
@@ -53,9 +54,12 @@ describe('desactualizado', () => {
     } as unknown as Mensaje;
     const e = {
       titulo: 'T', idea: null, pasaje: { to: 24, book: 'luk', from: 11, chapter: 15 },
-      puntos: [{ citas: ['Romanos 5:8'], texto: '', titulo: 'Uno' }],
+      puntos: [{ citas: ['Romanos 5:8'], minutos: 1, texto: '', titulo: 'Uno' }],
     } as never;
     expect(desactualizado(e, m, books)).toBe(false);
     expect(desactualizado(e, { ...m, titulo: 'Otro' }, books)).toBe(true);
+    // También si ahora se lee en otra versión que la publicada (la RV1909 si no dice).
+    expect(desactualizado(e, m, books, 'rv1909')).toBe(false);
+    expect(desactualizado(e, m, books, 'nbla')).toBe(true);
   });
 });

@@ -15,12 +15,13 @@ import { requireConnection } from './conexion';
 import { type Book, getChapter } from './data';
 import { type PreguntaRepaso, parseRepaso } from './repaso';
 import { cambio, registrar } from './sincronia';
-import { type Mensaje, type Pasaje, ideaCentral, tituloDe } from './taller';
+import { type Mensaje, type Pasaje, actualizarMensaje, ideaCentral, tituloDe } from './taller';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
 export type EstadoEvento = 'pronto' | 'en-vivo' | 'terminado';
-export type PuntoEvento = { titulo: string; texto: string; citas: string[] };
+/** `minutos` y `dinamica` son para quien predica: el reloj del punto y la dinámica que puede mandar a los teléfonos. */
+export type PuntoEvento = { titulo: string; texto: string; citas: string[]; minutos?: number; dinamica?: string };
 
 export type Evento = {
   codigo: string;
@@ -36,6 +37,11 @@ export type Evento = {
   gradual: boolean;
   total: number;
   puntos: PuntoEvento[];
+  /** La versión en que lee quien predica: los versículos se abren en ella en cada teléfono. */
+  version?: string;
+  /** Cuándo empezó en vivo y cuándo llegó al punto de ahora: el reloj de quien predica. */
+  inicio?: string | null;
+  puntoDesde?: string | null;
   creado: string;
   actualizado: string;
   /** Lo que quien predica puso para que todos respondan (null: nada). */
@@ -51,7 +57,7 @@ export type Evento = {
  */
 export type Interaccion = {
   id: string;
-  tipo: 'pregunta' | 'repaso';
+  tipo: 'pregunta' | 'repaso' | 'dinamica';
   titulo: string;
   preguntas?: PreguntaRepaso[];
   paso: number;
@@ -61,6 +67,12 @@ export type Interaccion = {
   modo?: 'grupo' | 'equipos';
   casillas?: Record<string, number>;
   giro?: number;
+  /** Una dinámica del catálogo que la iglesia hace a la vez: sus pasos, el de ahora y el reloj. */
+  dinamica?: string;
+  objetivo?: string;
+  pasos?: string[];
+  minutos?: number | null;
+  fin?: string | null;
 };
 export type Resultados = {
   /** Cuántos respondieron la pregunta de ahora. */
@@ -174,8 +186,20 @@ export function useMisEventos(activo: boolean) {
   return { eventos: activo ? mios : [], error };
 }
 
-export const publicarEvento = async (datos: ReturnType<typeof contenidoDe> & { mensaje: string; gradual: boolean }) =>
+export const publicarEvento = async (datos: ReturnType<typeof contenidoDe> & { mensaje: string; gradual: boolean; version?: string }) =>
   ponerMio((await accion<{ evento: Evento }>('publicar', datos)).evento);
+
+/**
+ * Publica (o pone al día) el evento de un mensaje con lo que ya se eligió en el Taller, o lo de siempre: los puntos
+ * a medida que se avanza y sin las notas completas. Lo usa «Mis sermones» para presentarlo en la iglesia de un toque.
+ */
+export async function publicarMensaje(m: Mensaje, books: Book[], version: string) {
+  const conNotas = m.evento?.conNotas ?? false;
+  const gradual = m.evento?.gradual ?? true;
+  const e = await publicarEvento({ mensaje: m.id, gradual, version, ...contenidoDe(m, books, conNotas) });
+  actualizarMensaje(m.id, { evento: { codigo: e.codigo, conNotas, gradual } });
+  return e;
+}
 
 export const moverEvento = async (codigo: string, cambio: { punto?: number; estado?: EstadoEvento }) =>
   ponerMio((await accion<{ evento: Evento }>('mover', { codigo, ...cambio })).evento);
@@ -187,9 +211,12 @@ export const verMiEvento = async (codigo: string) => ponerMio((await accion<{ ev
 export const interactuarEvento = async (
   codigo: string,
   cambio: {
-    nueva?: { tipo: 'pregunta' | 'repaso'; titulo: string; preguntas?: PreguntaRepaso[]; juego?: 'ruleta'; modo?: 'grupo' | 'equipos' };
+    nueva?:
+      | { tipo: 'pregunta' | 'repaso'; titulo: string; preguntas?: PreguntaRepaso[]; juego?: 'ruleta'; modo?: 'grupo' | 'equipos' }
+      | { tipo: 'dinamica'; dinamica: string; minutos?: number };
     revelar?: true;
     paso?: number;
+    reloj?: 'iniciar' | 'parar';
     girar?: true;
     quitar?: true;
   },
@@ -328,17 +355,20 @@ export function contenidoDe(m: Mensaje, books: Book[], conNotas: boolean) {
       titulo: s.titulo.trim() || 'Sin título',
       texto: juntar(s.paraGrupo, conNotas ? s.texto : undefined),
       citas: citasEn(`${s.paraGrupo ?? ''}\n${s.texto}`, books),
+      ...(s.minutos > 0 && { minutos: s.minutos }),
+      ...(s.dinamica && { dinamica: s.dinamica }),
     })),
   };
 }
 
-/** Si lo publicado ya no coincide con el mensaje (se editó después de publicar). */
-export function desactualizado(e: Evento, m: Mensaje, books: Book[]) {
+/** Si lo publicado ya no coincide con el mensaje (se editó después de publicar, o se lee en otra versión). */
+export function desactualizado(e: Evento, m: Mensaje, books: Book[], version?: string) {
   const c = contenidoDe(m, books, !!m.evento?.conNotas);
   // Postgres guarda el JSON con las claves en otro orden: se compara campo por campo.
   const pasaje = (p: Pasaje | null) => (p ? [p.book, p.chapter, p.from ?? null, p.to ?? null].join('.') : '');
-  const punto = (p: PuntoEvento) => JSON.stringify([p.titulo, p.texto, p.citas]);
+  const punto = (p: PuntoEvento) => JSON.stringify([p.titulo, p.texto, p.citas, p.minutos ?? 0, p.dinamica ?? null]);
   return (
+    (!!version && version !== (e.version ?? 'rv1909')) ||
     c.titulo !== e.titulo ||
     (c.idea || null) !== e.idea ||
     pasaje(c.pasaje) !== pasaje(e.pasaje) ||

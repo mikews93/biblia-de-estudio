@@ -3,10 +3,10 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, Button, Field } from '@/components/comunidad/ui';
-import { ChevronRightIcon, LiveIcon } from '@/components/icons';
+import { ChevronRightIcon, LiveIcon, RouteIcon } from '@/components/icons';
 import type { Book } from '@/lib/data';
 import { DINAMICAS, MOMENTOS, Momento, dinamica } from '@/lib/dinamicas';
-import { type Mensaje, pasajeLabel, tituloDe } from '@/lib/taller';
+import { type Mensaje, pasajeLabel, tipoInfo, tituloDe } from '@/lib/taller';
 import { serif, useColors } from '@/lib/theme';
 import type { Persona, Sala } from '@/lib/vivo';
 
@@ -105,10 +105,13 @@ type Tab = 'estudio' | 'dinamicas' | 'pregunta' | 'encuentro';
 
 /**
  * Poner algo en todas las pantallas: una sección del estudio Profundo del capítulo, una dinámica del catálogo,
- * una pregunta (para conversar o para que cada uno responda en secreto) o una parte de tu encuentro del Taller.
+ * una pregunta (para conversar o para que cada uno responda en secreto) o una parte de un mensaje del Taller.
+ * Un mensaje entero también se puede llevar parte por parte, con su reloj (`onGuiar`).
  */
 export function PantallaSheet({
-  encuentros,
+  mensajes,
+  guion,
+  onGuiar,
   books,
   initialEncuentro,
   libro,
@@ -117,7 +120,10 @@ export function PantallaSheet({
   onPut,
   onClose,
 }: {
-  encuentros: Mensaje[];
+  mensajes: Mensaje[];
+  /** El mensaje que ya se lleva parte por parte, si hay uno. */
+  guion: string | null;
+  onGuiar: (m: Mensaje) => void;
   books: Book[];
   initialEncuentro?: string;
   libro: string;
@@ -133,8 +139,13 @@ export function PantallaSheet({
   const [ronda, setRonda] = useState(false);
   const [anonima, setAnonima] = useState(false);
   const nombre = `${books.find((b) => b.id === libro)?.name ?? ''} ${capitulo}`;
-  const [open, setOpen] = useState<string | null>(initialEncuentro ?? (encuentros.length === 1 ? encuentros[0].id : null));
-  const mensaje = encuentros.find((m) => m.id === open);
+  // Los terminados («Mis sermones») primero, luego los borradores, cada grupo del más reciente al más antiguo.
+  const lista = useMemo(
+    () => [...mensajes].sort((a, b) => Number(!!b.terminado) - Number(!!a.terminado) || b.actualizado.localeCompare(a.actualizado)),
+    [mensajes],
+  );
+  const [open, setOpen] = useState<string | null>(initialEncuentro ?? (lista.length === 1 ? lista[0].id : null));
+  const mensaje = lista.find((m) => m.id === open);
 
   return (
     <Sheet title="Poner en todas las pantallas" kicker="PARA EL GRUPO" onClose={onClose}>
@@ -143,7 +154,7 @@ export function PantallaSheet({
           ['estudio', 'Estudio'],
           ['pregunta', 'Pregunta'],
           ['dinamicas', 'Dinámicas'],
-          ['encuentro', 'Encuentro'],
+          ['encuentro', 'Taller'],
         ]}
         value={tab}
         onChange={setTab}
@@ -227,26 +238,43 @@ export function PantallaSheet({
       )}
 
       {tab === 'encuentro' &&
-        (encuentros.length === 0 ? (
+        (lista.length === 0 ? (
           <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 21 }}>
-            Prepara un encuentro de grupo en el Taller y aquí podrás llevar cada parte a la pantalla de todos: lo que ve el
-            grupo, la dinámica con sus pasos y el tiempo.
+            Prepara un encuentro, una reflexión o un sermón en el Taller y aquí podrás llevarlo parte por parte a la
+            pantalla de todos: lo que ve el grupo, los versículos de cada parte, la dinámica con sus pasos y el tiempo.
           </Text>
         ) : !mensaje ? (
-          encuentros.map((m) => (
+          lista.map((m) => (
             <Row
               key={m.id}
               title={tituloDe(m, books)}
-              sub={`${m.secciones.length} partes${m.pasaje ? ` · ${pasajeLabel(m.pasaje, books)}` : ''}`}
+              sub={[m.terminado ? 'Mis sermones' : 'Borrador', tipoInfo(m.tipo).nombre, `${m.secciones.length} partes`, m.pasaje ? pasajeLabel(m.pasaje, books) : '']
+                .filter(Boolean)
+                .join(' · ')}
               onPress={() => setOpen(m.id)}
             />
           ))
         ) : (
           <>
             <Pressable onPress={() => setOpen(null)} style={{ marginBottom: 8 }} accessibilityRole="button">
-              <Text style={{ color: colors.accent, fontWeight: '600' }}>‹ Otros encuentros</Text>
+              <Text style={{ color: colors.accent, fontWeight: '600' }}>‹ Otros mensajes</Text>
             </Pressable>
             <Text style={[styles.encuentro, { color: colors.text }]}>{tituloDe(mensaje, books)}</Text>
+            {guion === mensaje.id ? (
+              <View style={[styles.guiando, { backgroundColor: colors.warmSoft }]}>
+                <RouteIcon color={colors.warm} size={17} />
+                <Text style={{ color: colors.text, fontSize: 13.5, lineHeight: 19, flex: 1 }}>
+                  Lo llevas parte por parte desde la barra de abajo. También puedes poner aquí una parte suelta.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Button label="Llevarlo parte por parte" icon={RouteIcon} onPress={() => onGuiar(mensaje)} />
+                <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 18, marginTop: 6, marginBottom: 14 }}>
+                  Verás en qué parte vas y cuánto llevas. Al pasar de parte, todos van a sus versículos y ven su dinámica.
+                </Text>
+              </>
+            )}
             {mensaje.secciones.map((s, i) => {
               const d = dinamica(s.dinamica);
               return (
@@ -385,6 +413,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14, marginBottom: 8 },
   index: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   encuentro: { fontFamily: serif, fontSize: 19, fontWeight: '700', marginBottom: 10 },
+  guiando: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, padding: 12, marginBottom: 12 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   give: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
 });

@@ -1,17 +1,20 @@
 // Interactuar durante el sermón o la reflexión: quien predica lanza una pregunta abierta (las respuestas forman un
-// muro al mostrarlas) o un repaso de opción múltiple sobre el mensaje, y la congregación responde en el teléfono sin
-// cuenta. El repaso usa la misma tarjeta que la sala de la célula (src/components/vivo/Repaso.tsx), jugado en grupo.
+// muro al mostrarlas), un repaso de opción múltiple sobre el mensaje o una dinámica para hacer juntos, y la
+// congregación la sigue en el teléfono sin cuenta. El repaso y la dinámica usan las mismas tarjetas que la sala de
+// la célula (src/components/vivo/Repaso.tsx y TarjetaVivo.tsx).
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, Field, useAction } from '@/components/comunidad/ui';
-import { CheckIcon, CloseIcon, CommentIcon, EyeIcon, LockIcon, StarIcon } from '@/components/icons';
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon, CommentIcon, EyeIcon, LockIcon, PeopleIcon, StarIcon } from '@/components/icons';
 import { Contados, TarjetaRepaso } from '@/components/vivo/Repaso';
 import { Rueda, useParada } from '@/components/vivo/Ruleta';
 import { Segmented, Sheet, vivoText } from '@/components/vivo/piezas';
+import TarjetaVivo from '@/components/vivo/TarjetaVivo';
 import { lanzarConfeti } from '@/lib/confeti';
 import type { Book } from '@/lib/data';
+import { DINAMICAS, MOMENTOS, type Momento, dinamica } from '@/lib/dinamicas';
 import {
   type Evento,
   interactuarEvento,
@@ -22,7 +25,7 @@ import {
 } from '@/lib/eventos';
 import { CATEGORIAS, GIROS, LETRAS, NIVELES, NOMBRES_EQUIPOS, type PreguntaRepaso, RULETA, acertoElGrupo, equipoDe } from '@/lib/repaso';
 import { isDark, serif, useColors } from '@/lib/theme';
-import type { Respuestas, Tarjeta } from '@/lib/vivo';
+import { type Respuestas, type Tarjeta, clock, useCountdown } from '@/lib/vivo';
 
 /** Preguntas abiertas para empezar, que sirven para casi cualquier mensaje. */
 const IDEAS = [
@@ -53,6 +56,35 @@ export function InteraccionEvento({ evento, propio, onCambio }: { evento: Evento
   const clave = `${i.id}:${i.paso}`;
   const cambiar = (c: Parameters<typeof interactuarEvento>[1]) => run(async () => onCambio(await interactuarEvento(evento.codigo, c)));
   const r = evento.resultados;
+
+  if (i.tipo === 'dinamica') {
+    // La misma tarjeta que en la célula: los pasos (quien predica marca el de ahora) y el reloj que ven todos.
+    const tarjeta: Tarjeta = {
+      id: i.id,
+      tipo: 'dinamica',
+      titulo: i.titulo,
+      texto: i.objetivo ?? null,
+      pasos: i.pasos ?? [],
+      paso: i.paso,
+      dinamica: i.dinamica ?? null,
+      minutos: i.minutos ?? null,
+      fin: i.fin ?? null,
+    };
+    return (
+      <View style={{ marginTop: 18 }}>
+        <TarjetaVivo
+          key={i.id}
+          tarjeta={tarjeta}
+          skew={0}
+          lead={propio}
+          onStep={(paso) => cambiar({ paso })}
+          onTimer={(reloj) => cambiar({ reloj })}
+          onClose={() => cambiar({ quitar: true })}
+        />
+        <ErrorText>{error}</ErrorText>
+      </View>
+    );
+  }
 
   if (i.tipo === 'repaso') {
     const tarjeta: Tarjeta = {
@@ -338,6 +370,8 @@ export function LanzarInteraccion({ evento, books, onCambio, onClose }: { evento
         busy={lanzar.busy && !preguntas}
       />
 
+      <DinamicasParaLanzar evento={evento} onLanzar={(id) => poner({ tipo: 'dinamica', dinamica: id })} busy={lanzar.busy} />
+
       <View style={[styles.repaso, { backgroundColor: colors.warmSoft }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <StarIcon color={colors.warm} size={20} strokeWidth={2} />
@@ -465,6 +499,81 @@ export function LanzarInteraccion({ evento, books, onCambio, onClose }: { evento
   );
 }
 
+/**
+ * Mandar una dinámica a los teléfonos: primero las que pusiste en los puntos del mensaje (la del punto de ahora
+ * arriba), y debajo el catálogo entero por momentos.
+ */
+function DinamicasParaLanzar({ evento, onLanzar, busy }: { evento: Evento; onLanzar: (id: string) => void; busy: boolean }) {
+  const colors = useColors();
+  const [todas, setTodas] = useState(false);
+  const [momento, setMomento] = useState<Momento>('conectar');
+  const delMensaje = evento.puntos
+    .map((p, n) => ({ n, d: dinamica(p.dinamica) }))
+    .filter((x): x is { n: number; d: NonNullable<ReturnType<typeof dinamica>> } => !!x.d)
+    .sort((a, b) => Number(b.n === evento.punto) - Number(a.n === evento.punto));
+  const Chevron = todas ? ChevronUpIcon : ChevronDownIcon;
+  const fila = (d: NonNullable<ReturnType<typeof dinamica>>, sub: string, ahora = false) => (
+    <Pressable
+      key={`${sub}${d.id}`}
+      accessibilityRole="button"
+      accessibilityLabel={`Mandar «${d.nombre}» a los teléfonos`}
+      disabled={busy}
+      onPress={() => onLanzar(d.id)}
+      style={({ pressed }) => [styles.dinamica, { backgroundColor: colors.surface, borderColor: ahora ? colors.warm : colors.border }, pressed && { opacity: 0.75 }]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: ahora ? colors.warm : colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }}>{sub.toUpperCase()}</Text>
+        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15, marginTop: 1 }}>{d.nombre}</Text>
+        <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 17, marginTop: 2 }} numberOfLines={2}>
+          {d.objetivo}
+        </Text>
+      </View>
+      <View style={[styles.mandar, { backgroundColor: colors.warmSoft }]}>
+        <Text style={{ color: colors.warm, fontWeight: '800', fontSize: 12.5 }}>Mandar</Text>
+      </View>
+    </Pressable>
+  );
+  return (
+    <View style={{ marginTop: 22 }}>
+      <Text style={[styles.section, { color: colors.muted }]}>UNA DINÁMICA PARA HACER JUNTOS</Text>
+      <Text style={{ color: colors.muted, fontSize: 13.5, lineHeight: 19, marginBottom: 10 }}>
+        Aparece en cada teléfono con sus pasos. Tú marcas el paso en que van y pones el reloj, el mismo para todos.
+      </Text>
+      <View style={{ gap: 8 }}>
+        {delMensaje.map(({ n, d }) => fila(d, `${n === evento.punto ? 'Punto de ahora' : 'Punto'} ${n + 1} · ${d.minutos} min`, n === evento.punto))}
+      </View>
+      <Pressable onPress={() => setTodas(!todas)} accessibilityRole="button" accessibilityState={{ expanded: todas }} style={styles.verTodas} hitSlop={6}>
+        <PeopleIcon color={colors.accent} size={15} />
+        <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13.5 }}>
+          {delMensaje.length ? 'Otra dinámica del catálogo' : `Elegir entre las ${DINAMICAS.length} dinámicas`}
+        </Text>
+        <Chevron color={colors.accent} size={14} />
+      </Pressable>
+      {todas && (
+        <View style={{ gap: 8, marginTop: 4 }}>
+          <View style={styles.ideas}>
+            {MOMENTOS.map((m) => {
+              const on = m.momento === momento;
+              return (
+                <Pressable
+                  key={m.momento}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => setMomento(m.momento)}
+                  style={[styles.idea, { borderColor: on ? colors.warm : colors.border, backgroundColor: on ? colors.warmSoft : 'transparent' }]}
+                >
+                  <Text style={{ color: on ? colors.text : colors.muted, fontWeight: '700', fontSize: 13 }}>{m.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {DINAMICAS.filter((d) => d.momento === momento).map((d) => fila(d, `${d.minutos} min · ${d.grupo}`))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 // --- En la pantalla de la iglesia ---
 
 const TINTA = '#F2EEE8';
@@ -481,6 +590,8 @@ export function InteraccionProyector({ evento, width }: { evento: Evento; width:
   const big = Math.min(Math.max(width / 26, 26), 54);
   const n = r?.respondieron ?? 0;
   const contados = n === 0 ? 'Responde en tu teléfono' : n === 1 ? '1 persona respondió' : `${n.toLocaleString('es')} personas respondieron`;
+
+  if (i.tipo === 'dinamica') return <DinamicaProyector evento={evento} big={big} />;
 
   if (i.tipo === 'pregunta') {
     const revelada = i.reveladas.includes(0);
@@ -606,6 +717,30 @@ function RuletaProyector({ evento, big, contados }: { evento: Evento; big: numbe
   );
 }
 
+/** La dinámica en grande: su nombre, el paso de ahora resaltado y el reloj. */
+function DinamicaProyector({ evento, big }: { evento: Evento; big: number }) {
+  const i = evento.interaccion!;
+  const left = useCountdown(i.fin, 0);
+  const pasos = i.pasos ?? [];
+  return (
+    <View style={proy.box}>
+      <Text style={proy.kicker}>DINÁMICA{left !== null ? ` · ${left === 0 ? 'SE ACABÓ EL TIEMPO' : clock(left)}` : ''}</Text>
+      <Text style={[proy.q, { fontSize: big, lineHeight: big * 1.22 }]}>{i.titulo}</Text>
+      <View style={{ gap: 12, marginTop: 24, width: '100%', maxWidth: 900 }}>
+        {pasos.map((p, k) => {
+          const ahora = k === i.paso;
+          return (
+            <View key={k} style={[proy.option, { borderColor: ahora ? CALIDO : '#3A3632', opacity: ahora ? 1 : 0.55 }]}>
+              <Text style={[proy.letter, { color: ahora ? CALIDO : SUAVE }]}>{k + 1}</Text>
+              <Text style={[proy.optText, { fontSize: Math.max(big * (ahora ? 0.5 : 0.42), 17) }]}>{p}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 /** Al terminar el repaso, fuegos en la pantalla grande. */
 export function useFuegosAlTerminar(evento: Evento | null) {
   const i = evento?.interaccion;
@@ -636,6 +771,9 @@ const styles = StyleSheet.create({
   mode: { flex: 1, borderWidth: 1.5, borderRadius: 12, padding: 9 },
   q: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderWidth: 1.5, borderRadius: 12, padding: 10 },
   check: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  dinamica: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, padding: 12 },
+  mandar: { borderRadius: 14, paddingHorizontal: 12, paddingVertical: 7 },
+  verTodas: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 12 },
 });
 
 const proy = StyleSheet.create({

@@ -10,7 +10,8 @@
 // quien publica: publicar (crea o actualiza el evento de un mensaje), mover (punto y estado), ver, mios, borrar.
 //
 // Mientras está en vivo, quien predica puede lanzar una interacción (interactuar): una pregunta abierta que la
-// congregación responde y se ve en un muro, o un repaso de opción múltiple sobre el mensaje. Se responde sin
+// congregación responde y se ve en un muro, un repaso de opción múltiple sobre el mensaje, o una dinámica del
+// catálogo con sus pasos y su reloj en cada teléfono. Se responde sin
 // cuenta (responderEvento), con un identificador que cada teléfono inventa; el GET publica solo cuántos
 // respondieron hasta que quien predica revela. Quien predica puede ocultar respuestas del muro (ocultarRespuesta).
 //
@@ -20,6 +21,7 @@
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 
+import { dinamica } from '../src/lib/dinamicas';
 import { CATEGORIAS, GIROS, LETRAS, MAX_CITA, MAX_OPCION, MAX_PREGUNTAS, MAX_TEXTO_PREGUNTA, type PreguntaRepaso, equipoDe, girarRuleta, puntajeRuleta } from '../src/lib/repaso';
 import { celulaGET, celulaPOST, isCelulaAction } from './_celula';
 
@@ -38,6 +40,7 @@ const MAX_RESPUESTA = 280;
 const MAX_MURO = 80;
 /** Respuestas por interacción y paso: una iglesia grande cabe, un ataque con miles de identificadores no. */
 const MAX_RESPUESTAS = 3000;
+const MAX_MINUTOS = 120;
 
 const SCHEMA = `
 create table if not exists eventos (
@@ -57,6 +60,9 @@ create table if not exists eventos (
 );
 create index if not exists eventos_usuario on eventos (usuario_id, actualizado desc);
 alter table eventos add column if not exists interaccion jsonb;
+alter table eventos add column if not exists version text;
+alter table eventos add column if not exists inicio timestamptz;
+alter table eventos add column if not exists punto_desde timestamptz;
 create table if not exists evento_respuestas (
   id bigint generated always as identity,
   codigo text not null references eventos on delete cascade,
@@ -73,8 +79,11 @@ create table if not exists evento_respuestas (
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
 type Estado = (typeof ESTADOS)[number];
-/** `citas`: las referencias del punto («Romanos 5:8»), también las que estaban en las notas que no se muestran. */
-type Punto = { titulo: string; texto: string; citas: string[] };
+/**
+ * `citas`: las referencias del punto («Romanos 5:8»), también las que estaban en las notas que no se muestran.
+ * `minutos` y `dinamica` son para quien predica: el reloj de cada punto y la dinámica que puede mandar a los teléfonos.
+ */
+type Punto = { titulo: string; texto: string; citas: string[]; minutos?: number; dinamica?: string };
 type Pasaje = { book: string; chapter: number; from?: number; to?: number };
 /**
  * Lo que quien predica puso para que la congregación responda. «pregunta»: abierta, con muro al revelar.
@@ -82,7 +91,7 @@ type Pasaje = { book: string; chapter: number; from?: number; to?: number };
  */
 type Interaccion = {
   id: string;
-  tipo: 'pregunta' | 'repaso';
+  tipo: 'pregunta' | 'repaso' | 'dinamica';
   titulo: string;
   preguntas?: PreguntaRepaso[];
   paso: number;
@@ -92,6 +101,12 @@ type Interaccion = {
   modo?: 'grupo' | 'equipos';
   casillas?: Record<string, number>;
   giro?: number;
+  /** Una dinámica del catálogo para hacer en el teléfono: sus pasos, el de ahora y el reloj que ven todos. */
+  dinamica?: string;
+  objetivo?: string;
+  pasos?: string[];
+  minutos?: number | null;
+  fin?: string | null;
 };
 type Row = {
   codigo: string;
@@ -106,6 +121,9 @@ type Row = {
   punto: number;
   autor: string;
   iglesia: string | null;
+  version: string | null;
+  inicio: Date | null;
+  punto_desde: Date | null;
   creado: Date;
   actualizado: Date;
 };
@@ -180,15 +198,28 @@ function citasDe(value: unknown) {
 function puntosDe(value: unknown): Punto[] {
   if (!Array.isArray(value) || value.length === 0) throw new Fail('El bosquejo no tiene puntos');
   if (value.length > MAX_POINTS) throw new Fail(`Demasiados puntos (máximo ${MAX_POINTS})`);
-  return value.map((p: Json) => ({
-    titulo: text(p?.titulo, MAX_POINT_TITLE, 'el título de un punto'),
-    texto: text(p?.texto, MAX_POINT_TEXT, 'el texto de un punto', false),
-    citas: citasDe(p?.citas),
-  }));
+  return value.map((p: Json) => {
+    const minutos = Number(p?.minutos);
+    const d = typeof p?.dinamica === 'string' ? dinamica(p.dinamica) : undefined;
+    return {
+      titulo: text(p?.titulo, MAX_POINT_TITLE, 'el título de un punto'),
+      texto: text(p?.texto, MAX_POINT_TEXT, 'el texto de un punto', false),
+      citas: citasDe(p?.citas),
+      ...(Number.isInteger(minutos) && minutos > 0 && minutos <= MAX_MINUTOS && { minutos }),
+      ...(d && { dinamica: d.id }),
+    };
+  });
+}
+
+/** El id de la versión en que lee quien predica («rv1909», «nbla»). Solo el nombre: el texto se pide en cada teléfono. */
+function versionDe(value: unknown) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^[a-z0-9-]{2,16}$/.test(value)) throw new Fail('Versión no válida');
+  return value;
 }
 
 const ROW_COLUMNS = `e.codigo, e.interaccion, e.mensaje, e.titulo, e.pasaje, e.idea, e.puntos, e.gradual, e.estado, e.punto, e.creado, e.actualizado,
-  u.nombre as autor, u.iglesia`;
+  e.version, e.inicio, e.punto_desde, u.nombre as autor, u.iglesia`;
 
 async function find(sql: Sql, codigo: string) {
   const [row] = await sql.unsafe<Row[]>(`select ${ROW_COLUMNS} from eventos e join usuarios u on u.id = e.usuario_id where e.codigo = $1`, [codigo]);
@@ -222,7 +253,8 @@ type Muro = { id: number; texto: string; oculta: boolean }[];
  */
 async function resultados(sql: Sql, e: Row, propio: boolean) {
   const i = e.interaccion;
-  if (!i) return null;
+  // Una dinámica no se responde en la app: se hace en el grupo.
+  if (!i || i.tipo === 'dinamica') return null;
   const [{ n }] = await sql<{ n: number }[]>`
     select count(*)::int as n from evento_respuestas where codigo = ${e.codigo} and interaccion = ${i.id} and paso = ${i.paso}`;
   if (i.tipo === 'repaso') {
@@ -299,6 +331,9 @@ export function publico(e: Row, propio = false) {
     estado: e.estado,
     punto: e.punto,
     gradual: e.gradual,
+    version: e.version ?? 'rv1909',
+    inicio: e.inicio ? new Date(e.inicio).toISOString() : null,
+    puntoDesde: e.punto_desde ? new Date(e.punto_desde).toISOString() : null,
     total: e.puntos.length,
     puntos: visibles,
     interaccion: interaccionPublica(e.interaccion),
@@ -320,11 +355,12 @@ const actions: Record<string, Handler> = {
     const pasaje = pasajeDe(body.pasaje);
     const puntos = puntosDe(body.puntos);
     const gradual = body.gradual !== false;
+    const version = versionDe(body.version);
     const [existing] = await sql<{ codigo: string }[]>`select codigo from eventos where usuario_id = ${yo} and mensaje = ${mensaje}`;
     if (existing) {
       await sql`
         update eventos set titulo = ${titulo}, idea = ${idea}, pasaje = ${pasaje ? sql.json(pasaje) : null}, puntos = ${sql.json(puntos)},
-          gradual = ${gradual}, punto = least(punto, ${puntos.length - 1}), actualizado = now()
+          gradual = ${gradual}, version = ${version}, punto = least(punto, ${puntos.length - 1}), actualizado = now()
         where codigo = ${existing.codigo}`;
       return { evento: publico(await find(sql, existing.codigo), true) };
     }
@@ -332,8 +368,8 @@ const actions: Record<string, Handler> = {
     if (n >= MAX_EVENTS) throw new Fail(`Ya tienes ${MAX_EVENTS} eventos. Borra alguno de los antiguos para publicar otro.`, 409);
     for (let attempt = 0; attempt < 6; attempt++) {
       const [row] = await sql<{ codigo: string }[]>`
-        insert into eventos (codigo, usuario_id, mensaje, titulo, idea, pasaje, puntos, gradual)
-        values (${newCode()}, ${yo}, ${mensaje}, ${titulo}, ${idea}, ${pasaje ? sql.json(pasaje) : null}, ${sql.json(puntos)}, ${gradual})
+        insert into eventos (codigo, usuario_id, mensaje, titulo, idea, pasaje, puntos, gradual, version)
+        values (${newCode()}, ${yo}, ${mensaje}, ${titulo}, ${idea}, ${pasaje ? sql.json(pasaje) : null}, ${sql.json(puntos)}, ${gradual}, ${version})
         on conflict do nothing returning codigo`;
       if (row) return { evento: publico(await find(sql, row.codigo), true) };
     }
@@ -349,9 +385,13 @@ const actions: Record<string, Handler> = {
     const punto = body.punto === undefined ? e.punto : Number(body.punto);
     if (!Number.isInteger(punto) || punto < -1 || punto >= e.puntos.length) throw new Fail('Punto no válido');
     // La hora de la base de datos, la misma que devuelve «ver»: el cliente nunca vuelve a una respuesta más vieja.
-    const [{ actualizado }] = await sql<{ actualizado: Date }[]>`
-      update eventos set estado = ${estado}, punto = ${punto}, actualizado = now() where codigo = ${e.codigo} returning actualizado`;
-    return { evento: await conResultados(sql, { ...e, estado, punto, actualizado }, true) };
+    // El reloj de quien predica: el mensaje empieza la primera vez que va en vivo y cada punto al llegar a él.
+    const [{ actualizado, inicio, punto_desde }] = await sql<{ actualizado: Date; inicio: Date | null; punto_desde: Date | null }[]>`
+      update eventos set estado = ${estado}, punto = ${punto}, actualizado = now(),
+        inicio = case when ${estado} = 'en-vivo' then coalesce(inicio, now()) else inicio end,
+        punto_desde = case when punto_desde is null or punto <> ${punto} then now() else punto_desde end
+      where codigo = ${e.codigo} returning actualizado, inicio, punto_desde`;
+    return { evento: await conResultados(sql, { ...e, estado, punto, actualizado, inicio, punto_desde }, true) };
   },
 
   /** El evento completo para quien lo publicó (sin la caché del CDN). */
@@ -361,8 +401,9 @@ const actions: Record<string, Handler> = {
   },
 
   /**
-   * Quien predica lanza una interacción (`nueva`: {tipo, titulo, preguntas?}), revela la de ahora (`revelar`),
-   * pasa a otra pregunta del repaso (`paso`) o la quita de las pantallas (`quitar`).
+   * Quien predica lanza una interacción (`nueva`: {tipo, titulo, preguntas?} o {tipo: 'dinamica', dinamica}),
+   * revela la de ahora (`revelar`), pasa a otra pregunta del repaso o a otro paso de la dinámica (`paso`), pone o
+   * para el reloj de la dinámica (`reloj`: «iniciar» o «parar») o la quita de las pantallas (`quitar`).
    */
   async interactuar({ sql, body, request }) {
     const yo = await usuario(sql, request);
@@ -371,21 +412,49 @@ const actions: Record<string, Handler> = {
     if (body.quitar === true) i = null;
     else if (body.nueva !== undefined) {
       const n = (body.nueva ?? {}) as Json;
-      if (n.tipo !== 'pregunta' && n.tipo !== 'repaso') throw new Fail('Interacción no válida');
+      if (n.tipo !== 'pregunta' && n.tipo !== 'repaso' && n.tipo !== 'dinamica') throw new Fail('Interacción no válida');
       const ruleta = n.tipo === 'repaso' && n.juego === 'ruleta';
-      i = {
-        id: randomUUID(),
-        tipo: n.tipo,
-        titulo: text(n.titulo, MAX_POINT_TITLE * 2, n.tipo === 'pregunta' ? 'la pregunta' : 'el título'),
-        ...(n.tipo === 'repaso' ? { preguntas: preguntasDe(n.preguntas) } : {}),
-        // La ruleta empieza sin pregunta: sale la primera al girar.
-        paso: ruleta ? -1 : 0,
-        reveladas: [],
-        ...(ruleta && { juego: 'ruleta' as const, modo: n.modo === 'equipos' ? ('equipos' as const) : ('grupo' as const), casillas: {}, giro: 0 }),
-      };
+      // La dinámica sale del catálogo (src/lib/dinamicas.ts), no de lo que mande el teléfono.
+      const d = n.tipo === 'dinamica' ? dinamica(typeof n.dinamica === 'string' ? n.dinamica : '') : undefined;
+      if (n.tipo === 'dinamica' && !d) throw new Fail('Dinámica no válida');
+      const minutos = Number(n.minutos);
+      if (d) {
+        i = {
+          id: randomUUID(),
+          tipo: 'dinamica',
+          titulo: d.nombre,
+          dinamica: d.id,
+          objetivo: d.objetivo,
+          pasos: d.pasos,
+          paso: 0,
+          reveladas: [],
+          minutos: Number.isInteger(minutos) && minutos > 0 && minutos <= 60 ? minutos : d.minutos,
+          fin: null,
+        };
+      } else {
+        i = {
+          id: randomUUID(),
+          tipo: n.tipo as 'pregunta' | 'repaso',
+          titulo: text(n.titulo, MAX_POINT_TITLE * 2, n.tipo === 'pregunta' ? 'la pregunta' : 'el título'),
+          ...(n.tipo === 'repaso' ? { preguntas: preguntasDe(n.preguntas) } : {}),
+          // La ruleta empieza sin pregunta: sale la primera al girar.
+          paso: ruleta ? -1 : 0,
+          reveladas: [],
+          ...(ruleta && { juego: 'ruleta' as const, modo: n.modo === 'equipos' ? ('equipos' as const) : ('grupo' as const), casillas: {}, giro: 0 }),
+        };
+      }
     } else {
       if (!i) throw new Fail('No hay nada para responder');
-      if (body.girar === true) {
+      if (i.tipo === 'dinamica') {
+        // La dinámica: el paso de ahora y el reloj, el mismo en todos los teléfonos.
+        if (body.paso !== undefined) {
+          const paso = Number(body.paso);
+          if (!Number.isInteger(paso) || paso < 0 || paso >= (i.pasos?.length ?? 0)) throw new Fail('Paso no válido');
+          i = { ...i, paso };
+        }
+        if (body.reloj === 'iniciar') i = { ...i, minutos: i.minutos || 5, fin: new Date(Date.now() + (i.minutos || 5) * 60_000).toISOString() };
+        if (body.reloj === 'parar') i = { ...i, fin: null };
+      } else if (body.girar === true) {
         if (i.juego !== 'ruleta') throw new Fail('Esto no es una ruleta');
         if (i.paso >= 0 && !i.reveladas.includes(i.paso)) throw new Fail('Primero revela la respuesta');
         const casillas = i.casillas ?? {};
@@ -393,8 +462,8 @@ const actions: Record<string, Handler> = {
         if (!giro) throw new Fail('La ruleta ya terminó');
         i = { ...i, paso: giro.paso, casillas: { ...casillas, [giro.paso]: giro.casilla }, giro: (i.giro ?? 0) + 1 };
       }
-      if (body.revelar === true && i.paso >= 0 && !i.reveladas.includes(i.paso)) i = { ...i, reveladas: [...i.reveladas, i.paso] };
-      if (body.paso !== undefined) {
+      if (i.tipo !== 'dinamica' && body.revelar === true && i.paso >= 0 && !i.reveladas.includes(i.paso)) i = { ...i, reveladas: [...i.reveladas, i.paso] };
+      if (i.tipo !== 'dinamica' && body.paso !== undefined) {
         const paso = Number(body.paso);
         if (i.tipo !== 'repaso' || !Number.isInteger(paso) || paso < 0 || paso >= (i.preguntas?.length ?? 0)) throw new Fail('Pregunta no válida');
         i = { ...i, paso };
@@ -434,6 +503,7 @@ const actions: Record<string, Handler> = {
     const e = await find(sql, codigoDe(body.codigo));
     const i = e.interaccion;
     if (e.estado !== 'en-vivo' || !i || body.interaccion !== i.id) throw new Fail('Esta pregunta ya se cerró', 409);
+    if (i.tipo === 'dinamica') throw new Fail('Esta dinámica no se responde en la app', 409);
     const participante = typeof body.participante === 'string' ? body.participante : '';
     if (!/^[a-z0-9-]{16,40}$/i.test(participante)) throw new Fail('Participante no válido');
     const paso = i.paso;

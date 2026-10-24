@@ -8,6 +8,7 @@ import Appear from '@/components/Appear';
 import { Button } from '@/components/comunidad/ui';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon, OpenBookIcon, ShareIcon } from '@/components/icons';
 import { BotonPreguntas, PreguntasSheet, TarjetaEstudio, TarjetaRonda, preguntarAlEstudio } from '@/components/vivo/Estudio';
+import { BarraGuion, ChipGuion } from '@/components/vivo/Guion';
 import { TarjetaRepaso } from '@/components/vivo/Repaso';
 import { NuevaTarjeta, PantallaSheet, PasajeSheet, PersonasSheet } from '@/components/vivo/Hojas';
 import { Faces, LIVE_RED, LiveBadge, Sheet, vivoText } from '@/components/vivo/piezas';
@@ -16,7 +17,9 @@ import TextoVivo from '@/components/vivo/TextoVivo';
 import { shareMessage } from '@/lib/compartir';
 import { chapterHref, useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
-import { useTaller } from '@/lib/taller';
+import { leerCita } from '@/lib/eventos';
+import { guionDe, moverAParte, rangoDe } from '@/lib/guion';
+import { type Mensaje, tituloDe, useTaller } from '@/lib/taller';
 import { huella } from '@/lib/sellos';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -38,6 +41,10 @@ export default function SalaEnVivo() {
   const { mensajes } = useTaller();
   const [books, setBooks] = useState<Book[]>([]);
   const [verses, setVerses] = useState<Verse[] | null>(null);
+  // La versión en que llegó el texto: la de quien guía, o la RV1909 si esa no se pudo abrir en este teléfono.
+  const [shown, setShown] = useState('rv1909');
+  // Quien sigue puede abrir el capítulo entero aunque quien guía eligió solo unos versículos (vale para esa selección).
+  const [todoEn, setTodoEn] = useState<string | null>(null);
   const [open, setOpen] = useState<Open>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -56,7 +63,13 @@ export default function SalaEnVivo() {
   const libro = pending?.libro ?? estado?.libro;
   const capitulo = pending?.capitulo ?? estado?.capitulo;
   const book = books.find((b) => b.id === libro);
-  const encuentros = useMemo(() => mensajes.filter((m) => m.tipo === 'encuentro'), [mensajes]);
+  // Todos leen en la versión de quien guía; quien guía, en la suya.
+  const version = lead ? settings.version : (estado?.version ?? settings.version);
+  const guion = estado?.guion ?? null;
+  const guionMensaje = mensajes.find((m) => m.id === guion?.mensaje);
+  const rango = pending ? null : (estado?.rango ?? null);
+  const rangoKey = rango ? `${libro}.${capitulo}.${rango.desde}-${rango.hasta}` : '';
+  const todo = !!rangoKey && todoEn === rangoKey;
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
@@ -78,21 +91,28 @@ export default function SalaEnVivo() {
     }
   }, [preguntasSala, me]);
 
-  // El texto en la versión de cada quien (los números de versículo coinciden), con la RV1909 si no se puede.
+  // El texto en la versión de quien guía (las con derechos se piden en el momento, como en el lector), con la
+  // RV1909 si no se puede. Los números de versículo coinciden, así que el foco y los toques valen igual.
   useEffect(() => {
     if (!libro || !capitulo) return;
     let gone = false;
     setVerses(null);
     positions.current.clear();
-    getChapter(libro, capitulo, settings.version)
-      .catch(() => getChapter(libro, capitulo))
-      .then((v) => !gone && setVerses(v))
+    getChapter(libro, capitulo, version)
+      .then((v) => !gone && (setShown(version), setVerses(v)))
+      .catch(() => getChapter(libro, capitulo).then((v) => !gone && (setShown('rv1909'), setVerses(v))))
       .catch(() => {});
     scroll.current?.scrollTo({ y: 0, animated: false });
     return () => {
       gone = true;
     };
-  }, [libro, capitulo, settings.version]);
+  }, [libro, capitulo, version]);
+
+  // Quien guía lleva su versión a la sala: si la cambia en Ajustes, cambia para todos.
+  const versionSala = estado?.version;
+  useEffect(() => {
+    if (lead && sala?.sala.enVivo && versionSala !== settings.version) vivoApi<Sala>('moverSala', { sala: codigo, version: settings.version }).then(apply).catch(() => {});
+  }, [lead, sala?.sala.enVivo, versionSala, settings.version, codigo, apply]);
 
   // Al llegar la hoja que se pidió, se olvida lo provisional.
   useEffect(() => {
@@ -211,6 +231,34 @@ export default function SalaEnVivo() {
     } finally {
       setRespondiendo(null);
     }
+  };
+
+  /** Llevar un mensaje del Taller parte por parte: empieza en su portada, en su pasaje y con sus versículos. */
+  const guiar = (m: Mensaje) => {
+    setOpen(null);
+    if (m.pasaje) setPending({ libro: m.pasaje.book, capitulo: m.pasaje.chapter });
+    act('moverSala', {
+      guion: guionDe(m, tituloDe(m, books), books),
+      tarjeta: null,
+      ...(m.pasaje && { libro: m.pasaje.book, capitulo: m.pasaje.chapter, rango: rangoDe(m.pasaje) }),
+    });
+  };
+
+  /** Pasar a otra parte: su pasaje, sus versículos y lo que escribiste para el grupo con su dinámica. */
+  const irAParte = (parte: number) => {
+    if (!guion || parte < -1 || parte >= guion.partes.length) return;
+    let body: Record<string, unknown>;
+    if (guionMensaje) body = moverAParte(guionMensaje, parte, books);
+    else {
+      // El mensaje está en el teléfono de quien empezó: con el guion basta para ir a la primera cita de la parte.
+      const c = parte >= 0 ? guion.partes[parte].citas.map((x) => leerCita(x, books)).find(Boolean) : null;
+      body = { parte, ...(c && { libro: c.book, capitulo: c.chapter, rango: rangoDe(c) }) };
+    }
+    if (typeof body.libro === 'string' && (body.libro !== estado?.libro || body.capitulo !== estado?.capitulo)) {
+      setPending({ libro: body.libro, capitulo: body.capitulo as number });
+    }
+    scroll.current?.scrollTo({ y: 0, animated: true });
+    act('moverSala', body);
   };
 
   const toques = useMemo(() => {
@@ -334,7 +382,8 @@ export default function SalaEnVivo() {
         </View>
       </View>
 
-      <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
+      <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={[styles.content, lead && guion && { paddingBottom: 320 }]}>
+        {guion && !lead && <ChipGuion guion={guion} skew={skew} />}
         {respondiendo ? (
           <TarjetaEstudio
             tarjeta={{ titulo: respondiendo.pregunta.texto, texto: respondiendo.texto || '…', pregunta: respondiendo.pregunta.id }}
@@ -392,6 +441,10 @@ export default function SalaEnVivo() {
               bookName={book.name}
               chapter={capitulo!}
               verses={verses}
+              version={shown}
+              rango={rango}
+              todo={todo}
+              onTodo={(t) => setTodoEn(t ? rangoKey : null)}
               toques={toques}
               foco={pending ? null : (estado?.foco ?? null)}
               guia={guia}
@@ -408,7 +461,7 @@ export default function SalaEnVivo() {
 
       {/* Avisos: la hoja que pasó, o un problema */}
       {(toast || problem) && (
-        <View pointerEvents="box-none" style={[styles.toastWrap, { bottom: insets.bottom + (lead ? 96 : 76) }]}>
+        <View pointerEvents="box-none" style={[styles.toastWrap, { bottom: insets.bottom + (lead ? (guion ? 250 : 96) : 76) }]}>
           <Appear from={6}>
             <Pressable accessibilityRole="button"
               onPress={() => (problem && !me ? router.push('/entrar') : setProblem(null))}
@@ -422,6 +475,7 @@ export default function SalaEnVivo() {
 
       {/* Abajo: los mandos de quien guía, o para los demás a quién siguen */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
+        {lead && guion && <BarraGuion guion={guion} skew={skew} mensaje={guionMensaje} onParte={irAParte} />}
         {lead ? (
           <View style={[styles.dock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Pressable accessibilityRole="button" onPress={() => turn(-1)} accessibilityLabel="Capítulo anterior" style={[styles.dockRound, { backgroundColor: colors.accentSoft }]}>
@@ -488,7 +542,9 @@ export default function SalaEnVivo() {
       )}
       {open === 'pantalla' && (
         <PantallaSheet
-          encuentros={encuentros}
+          mensajes={mensajes}
+          guion={guion?.mensaje ?? null}
+          onGuiar={guiar}
           books={books}
           initialEncuentro={params.taller}
           libro={libro!}
@@ -602,7 +658,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 160, maxWidth: 680, width: '100%', alignSelf: 'center' },
   toastWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', paddingHorizontal: 20 },
   toast: { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' },
-  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingHorizontal: 12 },
+  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingHorizontal: 12, gap: 8 },
   dock: {
     flexDirection: 'row',
     alignItems: 'center',
