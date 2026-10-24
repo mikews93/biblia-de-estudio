@@ -23,6 +23,7 @@ import {
   SparkIcon,
   WordJourneyIcon,
   StarIcon,
+  SunIcon,
   type IconProps,
 } from '@/components/icons';
 import PlanCard from '@/components/PlanCard';
@@ -341,6 +342,7 @@ function Today() {
         />
         <Tile icon={PencilIcon} label="Mis notas" colors={colors} onPress={() => navigate(() => router.push('/notas'), 'forward')} />
         <Tile icon={HeartIcon} label="Mi diario" colors={colors} onPress={() => navigate(() => router.push('/diario' as never), 'forward')} />
+        <Tile icon={SunIcon} label="Despertador" colors={colors} onPress={() => navigate(() => router.push('/despertador' as never), 'forward')} />
         <Tile
           icon={SparkIcon}
           label="Estudiar con IA"

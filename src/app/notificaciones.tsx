@@ -5,9 +5,10 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, SectionTitle, useAction } from '@/components/comunidad/ui';
-import { CandleIcon, CardsIcon, CommentIcon, type IconProps, OpenBookIcon, PlusSquareIcon, ShareIcon } from '@/components/icons';
+import { CandleIcon, CardsIcon, ChevronRightIcon, CommentIcon, type IconProps, OpenBookIcon, PlusSquareIcon, ShareIcon, SunIcon } from '@/components/icons';
 import { Ajustes, Soporte, Tipo, activar, buildEstado, cambiar, desactivar, permiso, probar, soporte, useAvisos } from '@/lib/avisos';
 import { dailyMessage, horaLabel } from '@/lib/avisosTexto';
+import { diasLabel } from '@/lib/despertarTexto';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import { dateKey, usePlans } from '@/lib/planes';
@@ -166,6 +167,28 @@ export default function NotificationsScreen() {
           })}
         </View>
         <ErrorText>{change.error}</ErrorText>
+      </Appear>
+
+      <Appear delay={155}>
+        <SectionTitle>Despertador</SectionTitle>
+        <Pressable
+          onPress={() => navigate(() => router.push('/despertador' as never), 'forward')}
+          accessibilityRole="link"
+          style={({ pressed }) => [styles.card, styles.toggle, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.8 }]}
+        >
+          <View style={[styles.toggleIcon, { backgroundColor: colors.warmSoft }]}>
+            <SunIcon color={colors.warm} size={20} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Despertar con la Biblia</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
+              {avisos.despertar.activo
+                ? `Suena a las ${horaLabel(avisos.despertar.hora).hora} ${horaLabel(avisos.despertar.hora).parte} · ${diasLabel(avisos.despertar.dias).toLowerCase()}`
+                : 'Un aviso a la hora de levantarte que abre la app con música suave y el versículo del día.'}
+            </Text>
+          </View>
+          <ChevronRightIcon color={colors.muted} size={18} />
+        </Pressable>
       </Appear>
 
       {on && (

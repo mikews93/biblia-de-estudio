@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { EstadoAvisos, HORA_POR_DEFECTO } from './avisosTexto';
+import { DESPERTADOR_POR_DEFECTO, Despertador } from './despertarTexto';
 import { sessionKey } from './comunidad';
 import { Book } from './data';
 import { MyPlan, planDays, planDef } from './planes';
@@ -29,6 +30,8 @@ export type Ajustes = {
   /** Minutos desde la medianoche (7:30 → 450). */
   hora: number;
   avisos: Record<Tipo, boolean>;
+  /** El despertador (src/lib/despertar.ts). En la web lo manda el servidor; en la app nativa, el teléfono. */
+  despertar: Despertador;
   /** La persona cerró la invitación de la pantalla Hoy. */
   invitacionVista?: boolean;
 };
@@ -37,6 +40,7 @@ const DEFAULTS: Ajustes = {
   endpoint: null,
   hora: HORA_POR_DEFECTO,
   avisos: { lectura: true, tarjetas: true, reto: true, comunidad: true },
+  despertar: DESPERTADOR_POR_DEFECTO,
 };
 
 let state: Ajustes = DEFAULTS;
@@ -49,7 +53,12 @@ function load() {
     .then((raw) => {
       if (raw) {
         const saved = JSON.parse(raw) as Partial<Ajustes>;
-        state = { ...DEFAULTS, ...saved, avisos: { ...DEFAULTS.avisos, ...saved.avisos } };
+        state = {
+          ...DEFAULTS,
+          ...saved,
+          avisos: { ...DEFAULTS.avisos, ...saved.avisos },
+          despertar: { ...DEFAULTS.despertar, ...saved.despertar },
+        };
       }
     })
     .catch(() => {})
@@ -146,7 +155,14 @@ async function registration() {
 let lastEstado: EstadoAvisos = {};
 
 async function save(sub: PushSubscriptionJSON, next: Ajustes) {
-  await api('guardar', { suscripcion: sub, zona: zona(), hora: next.hora, avisos: next.avisos, estado: lastEstado });
+  await api('guardar', {
+    suscripcion: sub,
+    zona: zona(),
+    hora: next.hora,
+    avisos: next.avisos,
+    despertar: next.despertar,
+    estado: lastEstado,
+  });
 }
 
 /** Pide permiso, suscribe este dispositivo y guarda las preferencias. */
@@ -194,8 +210,20 @@ export async function revisar() {
   if (!state.endpoint) {
     // Se borraron los ajustes de la app, pero el navegador conserva la suscripción: se recuperan del servidor.
     if (!sub || !granted) return;
-    const r = await api<{ existe: boolean; hora?: number; avisos?: Record<Tipo, boolean> }>('leer', { endpoint: sub.endpoint });
-    if (r.existe) set({ endpoint: sub.endpoint, hora: r.hora ?? state.hora, avisos: { ...state.avisos, ...r.avisos } });
+    const r = await api<{
+      existe: boolean;
+      hora?: number;
+      avisos?: Record<Tipo, boolean>;
+      despertar?: { hora: number; dias: number } | null;
+    }>('leer', { endpoint: sub.endpoint });
+    if (r.existe) {
+      set({
+        endpoint: sub.endpoint,
+        hora: r.hora ?? state.hora,
+        avisos: { ...state.avisos, ...r.avisos },
+        despertar: r.despertar ? { ...state.despertar, ...r.despertar, activo: true } : state.despertar,
+      });
+    }
     return;
   }
   if (sub?.endpoint === state.endpoint) return;
@@ -221,17 +249,17 @@ export async function desactivar() {
   if (endpoint) await api('quitar', { endpoint }).catch(() => {});
 }
 
-/** Cambia la hora o qué avisos llegan. Con las notificaciones activas, lo guarda también en el servidor. */
-export async function cambiar(patch: Partial<Pick<Ajustes, 'hora' | 'avisos'>>) {
+/** Cambia la hora, qué avisos llegan o el despertador. Con las notificaciones activas, lo guarda también en el servidor. */
+export async function cambiar(patch: { hora?: number; avisos?: Partial<Record<Tipo, boolean>>; despertar?: Partial<Despertador> }) {
   await load();
   const prev = state;
-  const next = { ...state, ...patch, avisos: { ...state.avisos, ...patch.avisos } };
+  const next = { ...state, ...patch, avisos: { ...state.avisos, ...patch.avisos }, despertar: { ...state.despertar, ...patch.despertar } };
   set(next);
   if (!next.endpoint) return;
   try {
     await resave(next);
   } catch (e) {
-    set({ hora: prev.hora, avisos: prev.avisos });
+    set({ hora: prev.hora, avisos: prev.avisos, despertar: prev.despertar });
     throw e;
   }
 }
@@ -305,6 +333,13 @@ export function useAvisos() {
 
 // ——— El resumen para el recordatorio ———
 
+/** Lo que toca leer: la primera lectura pendiente de un plan a tu ritmo que ya empezó, o donde se quedó. */
+export function lecturaPendiente(plans: MyPlan[], books: Book[], last: { book: string; chapter: number } | null, today: string) {
+  const plan = plans.find((p) => !p.finished && p.started <= today && !planDef(p.def, books)?.season);
+  const nextIdx = plan ? plan.readings.findIndex((_, i) => !plan.done[i]) : -1;
+  return plan && nextIdx >= 0 ? (plan.readings[nextIdx] as readonly [string, number]) : last ? ([last.book, last.chapter] as const) : null;
+}
+
 /**
  * Lo que el servidor necesita saber: qué toca leer (la siguiente lectura de un plan, o donde se quedó), el último
  * día con lectura, las fechas de repaso de las tarjetas y los días pendientes del desafío de temporada.
@@ -345,10 +380,7 @@ export function buildEstado(input: {
     break;
   }
 
-  // Lo que toca leer: la primera lectura pendiente de un plan a tu ritmo que ya empezó, o donde se quedó.
-  const plan = active.find((p) => p.started <= today && !planDef(p.def, books)?.season);
-  const nextIdx = plan ? plan.readings.findIndex((_, i) => !plan.done[i]) : -1;
-  const target = plan && nextIdx >= 0 ? plan.readings[nextIdx] : last ? ([last.book, last.chapter] as const) : null;
+  const target = lecturaPendiente(plans, books, last, today);
   if (target && books.length) estado.lectura = { titulo: `${name(target[0])} ${target[1]}`, url: chapterHref(target[0], target[1]) };
 
   const due = Object.values(cards).map((c) => c.due).sort();
