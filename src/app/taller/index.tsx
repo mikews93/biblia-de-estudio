@@ -2,13 +2,20 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Card, SectionTitle, text } from '@/components/comunidad/ui';
+import { Card, Field, SectionTitle, text } from '@/components/comunidad/ui';
 import { type IconProps, ChevronRightIcon, LampIcon, LecternIcon, MicIcon, PeopleIcon, PlusIcon } from '@/components/icons';
 import { ago } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
-import { Pasaje, TIPOS, Tipo, crearMensaje, duracion, pasajeLabel, tipoInfo, tituloDe, useTaller } from '@/lib/taller';
+import { fechaLarga } from '@/lib/documento';
+import { Pasaje, TIPOS, Tipo, crearMensaje, duracion, esTerminado, ideaCentral, pasajeLabel, tipoInfo, tituloDe, useTaller } from '@/lib/taller';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 
 const ICONOS: Record<Tipo, (p: IconProps) => React.ReactNode> = { reflexion: LampIcon, encuentro: PeopleIcon, sermon: LecternIcon };
 
@@ -18,6 +25,11 @@ export default function TallerScreen() {
   const params = useLocalSearchParams<{ libro?: string; capitulo?: string; versiculo?: string }>();
   const { mensajes, ready } = useTaller();
   const [books, setBooks] = useState<Book[]>([]);
+  const [buscar, setBuscar] = useState('');
+  const borradores = mensajes.filter((m) => !esTerminado(m));
+  // Los terminados, del último que se predicó o terminó al primero.
+  const reciente = (m: (typeof mensajes)[number]) => m.ocasiones?.[0]?.fecha ?? m.terminado ?? '';
+  const terminados = mensajes.filter(esTerminado).sort((a, b) => reciente(b).localeCompare(reciente(a)));
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
@@ -100,21 +112,30 @@ export default function TallerScreen() {
         <Text style={{ color: colors.accent, fontWeight: '700' }}>Ver las 23 dinámicas para grupos ›</Text>
       </Pressable>
 
-      {ready && mensajes.length > 0 && (
+      {ready && borradores.length > 0 && (
         <>
-          <SectionTitle>Mis mensajes</SectionTitle>
+          <SectionTitle>Borradores</SectionTitle>
           <View style={{ gap: 10 }}>
-            {mensajes.map((m) => {
+            {borradores.map((m) => {
               const mins = duracion(m);
+              const escritas = m.secciones.filter((x) => x.texto.trim() || x.claves?.trim() || x.paraGrupo?.trim()).length;
               return (
-                <Pressable key={m.id} onPress={() => navigate(() => router.push(`/taller/${m.id}`), 'forward')}>
+                <Pressable key={m.id} onPress={() => navigate(() => router.push(`/taller/${m.id}`), 'forward')} accessibilityRole="button">
                   <Card>
-                    <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.6 }}>
+                    <Text style={[styles.kicker, { color: colors.muted }]}>
                       {tipoInfo(m.tipo).nombre.toUpperCase()}
                       {m.pasaje && m.titulo ? ` · ${pasajeLabel(m.pasaje, books).toUpperCase()}` : ''}
                     </Text>
                     <Text style={[styles.msgTitle, { color: colors.text }]}>{tituloDe(m, books)}</Text>
-                    <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4 }}>
+                    <View style={styles.progreso}>
+                      <View style={[styles.barra, { backgroundColor: colors.accentSoft }]}>
+                        <View style={{ width: `${m.secciones.length ? (escritas / m.secciones.length) * 100 : 0}%`, height: '100%', borderRadius: 3, backgroundColor: colors.accent }} />
+                      </View>
+                      <Text style={{ color: colors.muted, fontSize: 12 }}>
+                        {escritas} de {m.secciones.length} partes
+                      </Text>
+                    </View>
+                    <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>
                       {m.tema.trim() ? `${m.tema.trim()} · ` : ''}
                       {mins ? `${mins} min · ` : ''}editado {ago(m.actualizado)}
                     </Text>
@@ -125,8 +146,56 @@ export default function TallerScreen() {
           </View>
         </>
       )}
+
+      {ready && terminados.length > 0 && (
+        <>
+          <SectionTitle>Mis sermones</SectionTitle>
+          {terminados.length > 4 && (
+            <Field value={buscar} onChangeText={setBuscar} placeholder="Buscar por título, pasaje o tema" accessibilityLabel="Buscar en Mis sermones" style={{ marginBottom: 10 }} />
+          )}
+          <View style={{ gap: 10 }}>
+            {terminados
+              .filter((m) => !buscar.trim() || fold(`${tituloDe(m, books)} ${pasajeLabel(m.pasaje, books)} ${m.tema} ${m.complemento}`).includes(fold(buscar)))
+              .map((m) => {
+                const veces = m.ocasiones?.length ?? 0;
+                const ultima = m.ocasiones?.[0];
+                return (
+                  <Pressable
+                    key={m.id}
+                    onPress={() => navigate(() => router.push(`/taller/${m.id}/documento`), 'forward')}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.sermon, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.8 }]}
+                  >
+                    <View style={[styles.lomo, { backgroundColor: colors.warm }]} />
+                    <View style={{ flex: 1, paddingVertical: 14, paddingRight: 14 }}>
+                      <Text style={[styles.kicker, { color: colors.muted }]}>
+                        {tipoInfo(m.tipo).nombre.toUpperCase()}
+                        {m.pasaje ? ` · ${pasajeLabel(m.pasaje, books).toUpperCase()}` : ''}
+                      </Text>
+                      <Text style={[styles.msgTitle, { color: colors.text }]}>{tituloDe(m, books)}</Text>
+                      {ideaCentral(m) ? (
+                        <Text style={{ color: colors.text, fontFamily: serif, fontStyle: 'italic', fontSize: 15, lineHeight: 21, marginTop: 4 }} numberOfLines={2}>
+                          {ideaCentral(m)}
+                        </Text>
+                      ) : null}
+                      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>
+                        {veces
+                          ? `Predicado ${veces === 1 ? 'una vez' : `${veces} veces`} · la última el ${fechaLarga(ultima!.fecha)}${ultima!.lugar ? `, ${ultima!.lugar}` : ''}`
+                          : `Terminado el ${fechaLarga(m.terminado!)}`}
+                      </Text>
+                    </View>
+                    <View style={{ justifyContent: 'center', paddingRight: 12 }}>
+                      <ChevronRightIcon color={colors.muted} size={18} />
+                    </View>
+                  </Pressable>
+                );
+              })}
+          </View>
+        </>
+      )}
       <Text style={{ color: colors.muted, fontSize: 12, marginTop: 28, lineHeight: 17 }}>
-        Lo que preparas se guarda en este dispositivo. Los encuentros se pueden enviar a tus grupos.
+        Los borradores se guardan mientras escribes, en este dispositivo y en tu cuenta si entraste. Al terminarlos pasan a
+        «Mis sermones». Los encuentros se pueden enviar a tus grupos.
       </Text>
     </ScrollView>
   );
@@ -142,4 +211,9 @@ const styles = StyleSheet.create({
   icon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   typeName: { fontSize: 17, fontWeight: '700' },
   msgTitle: { fontFamily: serif, fontSize: 19, fontWeight: '700', marginTop: 4 },
+  kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6 },
+  progreso: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  barra: { flex: 1, maxWidth: 160, height: 6, borderRadius: 3, overflow: 'hidden' },
+  sermon: { flexDirection: 'row', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', gap: 14 },
+  lomo: { width: 4 },
 });

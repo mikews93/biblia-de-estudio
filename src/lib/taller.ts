@@ -29,7 +29,12 @@ export type Seccion = {
   dinamica?: string;
   /** Un pasaje que apoya esta parte, sugerido por la maqueta de un tema (src/lib/tallerTema.ts). */
   apoyo?: { cita: string; porque: string };
+  /** Puntos concretos para hablar, uno por línea: lo que orienta a quien predica en esta parte. */
+  claves?: string;
 };
+
+/** Una vez que se compartió el mensaje: cuándo y dónde. */
+export type Ocasion = { fecha: string; lugar?: string };
 
 export type Mensaje = {
   id: string;
@@ -52,6 +57,12 @@ export type Mensaje = {
   situacion?: string;
   /** Si se publicó como evento de iglesia (src/lib/eventos.ts): su código y si lleva las notas de quien predica. */
   evento?: { codigo: string; conNotas: boolean; gradual: boolean };
+  /** Los anuncios que se dan al final, uno por línea. Van al cierre del documento. */
+  anuncios?: string;
+  /** Cuándo se dio por terminado. Sin esta fecha es un borrador; con ella va a «Mis sermones». */
+  terminado?: string;
+  /** Las veces que se predicó o compartió, de la más reciente a la más antigua. */
+  ocasiones?: Ocasion[];
 };
 
 type SeccionBase = { titulo: string; ayuda: string; minutos: number; dinamica?: string };
@@ -353,11 +364,54 @@ export async function duplicarMensaje(id: string): Promise<string | null> {
     revision: [],
     seguimiento: '',
     evento: undefined,
+    terminado: undefined,
+    ocasiones: undefined,
     creado: now,
     actualizado: now,
   };
   commit([copy, ...state]);
   return copy.id;
+}
+
+// Borradores y terminados: un mensaje es borrador hasta que quien lo prepara lo da por terminado. Terminado queda en
+// «Mis sermones» para volver a leerlo, presentarlo otra vez o adaptarlo para otra ocasión.
+
+export const esTerminado = (m: Mensaje) => !!m.terminado;
+
+export function terminarMensaje(id: string) {
+  actualizarMensaje(id, { terminado: new Date().toISOString() });
+}
+
+export function volverABorrador(id: string) {
+  actualizarMensaje(id, { terminado: undefined });
+}
+
+export function anotarOcasion(id: string, o: Ocasion) {
+  const m = state.find((x) => x.id === id);
+  if (!m) return;
+  const lugar = o.lugar?.trim();
+  const ocasiones = [{ fecha: o.fecha, ...(lugar && { lugar }) }, ...(m.ocasiones ?? [])].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  actualizarMensaje(id, { ocasiones });
+}
+
+export function quitarOcasion(id: string, i: number) {
+  const m = state.find((x) => x.id === id);
+  if (!m?.ocasiones) return;
+  actualizarMensaje(id, { ocasiones: m.ocasiones.filter((_, k) => k !== i) });
+}
+
+export const esIntroduccion = (s: Seccion) => /introducci/i.test(s.titulo);
+export const esConclusion = (s: Seccion) => /conclusi/i.test(s.titulo);
+
+/** Añade una introducción al principio o una conclusión al final, para las estructuras que no la traen. */
+export function anadirExtremo(id: string, cual: 'introduccion' | 'conclusion') {
+  const m = state.find((x) => x.id === id);
+  if (!m) return;
+  const s: Seccion =
+    cual === 'introduccion'
+      ? { id: uid(), titulo: 'Introducción', ayuda: 'Cómo vas a empezar: una pregunta, una historia o la necesidad que toca el pasaje.', texto: '', minutos: 4 }
+      : { id: uid(), titulo: 'Conclusión', ayuda: 'Repite la idea central y termina con una respuesta concreta.', texto: '', minutos: 4 };
+  actualizarMensaje(id, { secciones: cual === 'introduccion' ? [s, ...m.secciones] : [...m.secciones, s] });
 }
 
 export function useTaller() {
@@ -473,7 +527,11 @@ export function borradorParaIA(m: Mensaje) {
   if (m.necesidad.trim()) out.push(`Necesidad humana que toca el pasaje: ${m.necesidad.trim()}`);
   if (m.gracia.trim()) out.push(`Respuesta de la gracia: ${m.gracia.trim()}`);
   m.secciones.forEach((s, i) => {
-    const parts = [s.texto.trim() && `Notas: ${s.texto.trim()}`, s.paraGrupo?.trim() && `Para el grupo: ${s.paraGrupo.trim()}`]
+    const parts = [
+      s.texto.trim() && `Notas: ${s.texto.trim()}`,
+      s.claves?.trim() && `Puntos para hablar: ${s.claves.trim().replace(/\n+/g, '; ')}`,
+      s.paraGrupo?.trim() && `Para el grupo: ${s.paraGrupo.trim()}`,
+    ]
       .filter(Boolean)
       .join(' | ');
     const apoyo = s.apoyo ? ` [pasaje de apoyo: ${s.apoyo.cita}]` : '';
@@ -517,6 +575,7 @@ export function destinosDe(m: Mensaje): Destino[] {
       out.push({ id: `notas:${s.id}`, label: `${titulo} · notas`, grupo: 'Bosquejo' });
     } else {
       out.push({ id: `notas:${s.id}`, label: titulo, grupo: 'Bosquejo' });
+      out.push({ id: `claves:${s.id}`, label: `${titulo} · puntos para hablar`, grupo: 'Bosquejo' });
     }
   }
   return out;
@@ -606,8 +665,8 @@ export function agregarSugerencia(m: Mensaje, destino: string, s: Sugerencia): {
   }
   const [campo, id] = destino.split(':');
   const seccion = m.secciones.find((x) => x.id === id);
-  if (!seccion || (campo !== 'notas' && campo !== 'grupo')) return null;
-  const key = campo === 'notas' ? 'texto' : 'paraGrupo';
+  if (!seccion || (campo !== 'notas' && campo !== 'grupo' && campo !== 'claves')) return null;
+  const key = campo === 'notas' ? 'texto' : campo === 'claves' ? 'claves' : 'paraGrupo';
   return {
     cambio: { secciones: m.secciones.map((x) => (x.id === id ? { ...x, [key]: sumar(x[key], s.texto) } : x)) },
     previo: { [key]: seccion[key] },

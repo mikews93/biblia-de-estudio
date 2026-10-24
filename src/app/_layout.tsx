@@ -132,6 +132,7 @@ function AppStack() {
           <Stack.Screen name="taller/dinamicas" options={{ title: 'Dinámicas' }} />
           <Stack.Screen name="taller/[id]/index" options={{ title: '' }} />
           <Stack.Screen name="taller/[id]/presentar" options={{ headerShown: false }} />
+          <Stack.Screen name="taller/[id]/documento" options={{ title: 'Documento' }} />
           <Stack.Screen name="semana/index" options={{ title: 'Del sermón a tu semana' }} />
           <Stack.Screen name="semana/nueva" options={{ title: 'Del sermón a tu semana' }} />
           <Stack.Screen name="semana/[id]/index" options={{ title: '' }} />
