@@ -256,6 +256,14 @@ test('el borrador se vuelve documento con puntos para hablar y anuncios, se term
   await expect(page.getByText('Borradores', { exact: true })).toBeVisible();
   await expect(page.getByText(`El Padre que corre ${m} (copia)`)).toBeVisible();
   await expect(page.getByText('Mis sermones', { exact: true })).toBeVisible();
+
+  // Un sermón terminado se puede borrar desde su documento, con confirmación
+  await page.getByText(`El Padre que corre ${m}`, { exact: true }).click();
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: 'Borrar este sermón' }).click();
+  await expect(page).toHaveURL(/\/taller$/);
+  await expect(page.getByText('Mis sermones', { exact: true }).filter({ visible: true })).toHaveCount(0);
+  await expect(page.getByText(`El Padre que corre ${m} (copia)`).filter({ visible: true })).toBeVisible();
 });
 
 test('Revisa propone correcciones a lo escrito, se aplican con vista de cambios y todo sigue al cerrar la app', async ({ page, request }) => {

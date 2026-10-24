@@ -9,7 +9,7 @@ import { CheckIcon, CloseIcon, DocumentIcon, type IconProps, PencilIcon, PlayIco
 import DocumentoVista from '@/components/taller/DocumentoVista';
 import { Book, getBooks } from '@/lib/data';
 import { descargarWord, documentoDe, documentoTexto, fechaLarga, imprimir, puedeImprimir } from '@/lib/documento';
-import { anotarOcasion, duplicarMensaje, quitarOcasion, terminarMensaje, useTaller, volverABorrador } from '@/lib/taller';
+import { anotarOcasion, borrarMensaje, duplicarMensaje, quitarOcasion, terminarMensaje, useTaller, volverABorrador } from '@/lib/taller';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -169,6 +169,19 @@ export default function DocumentoScreen() {
           />
         </View>
       )}
+
+      <Button
+        label={m.terminado ? 'Borrar este sermón' : 'Descartar este borrador'}
+        kind="quiet"
+        onPress={async () => {
+          const que = m.terminado ? 'sermón' : 'borrador';
+          if (await confirm(`¿Borrar este ${que}?`, 'Se borra de este dispositivo y de tu cuenta. No se puede deshacer.', 'Borrar')) {
+            borrarMensaje(m.id);
+            navigate(() => router.replace('/taller'), 'back');
+          }
+        }}
+        style={{ marginTop: 18, alignSelf: 'center' }}
+      />
     </ScrollView>
   );
 }
