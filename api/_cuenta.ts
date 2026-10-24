@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import postgres from 'postgres';
 
 import { IGLESIAS_SCHEMA } from './_iglesias';
+import { esCuidador } from './_senales';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 
@@ -40,7 +41,8 @@ export async function usuarioDe(request: Request): Promise<string | null> {
 
 // La lámpara diaria: cuántas preguntas propias a la IA (seguimientos, Taller, semana) puede hacer cada cuenta al día.
 // Lo que se guarda para todos (el primer estudio de un pasaje, las herramientas) no la gasta. El día es el del servidor.
-// Los miembros de una iglesia anfitriona activa (api/_iglesias.ts) tienen el tope de su iglesia.
+// Los miembros de una iglesia anfitriona activa (api/_iglesias.ts) tienen el tope de su iglesia, y quienes cuidan
+// Zarza (los correos de CUIDADORES en Vercel) no tienen tope: son quienes pagan las claves.
 const LAMPARA = Number(process.env.LAMPARA_DIA ?? 15);
 const lamparaVacia = (n: number, iglesia: string | null) =>
   `Tu lámpara de hoy ya dio su luz: hiciste ${n} preguntas a la IA. Mañana se vuelve a llenar. Mientras, los estudios ya preparados siguen abiertos.` +
@@ -67,16 +69,18 @@ export async function gastarLampara(request: Request): Promise<Response | null> 
       });
     await lamparaLista;
     const hash = createHash('sha256').update(key).digest('hex');
-    const [row] = await sql<{ n: number; tope: number | null; iglesia: string | null }[]>`
+    const [row] = await sql<{ n: number; tope: number | null; iglesia: string | null; correo: string | null }[]>`
       with yo as (select usuario_id from sesiones where llave_hash = ${hash}),
       suma as (
         insert into lampara (usuario_id, dia, n) select usuario_id, current_date, 1 from yo
         on conflict (usuario_id, dia) do update set n = lampara.n + 1
         returning usuario_id, n
       )
-      select s.n, i.lampara as tope, i.nombre as iglesia from suma s
+      select s.n, i.lampara as tope, i.nombre as iglesia, u.correo from suma s
+      join usuarios u on u.id = s.usuario_id
       left join iglesia_miembros m on m.usuario_id = s.usuario_id
       left join iglesias_anfitrionas i on i.id = m.iglesia_id and i.activa`;
+    if (esCuidador(row?.correo)) return null;
     const tope = Math.max(LAMPARA, row?.tope ?? 0);
     if (row && row.n > tope) return Response.json({ error: lamparaVacia(tope, row.iglesia), lampara: true }, { status: 429 });
     return null;
