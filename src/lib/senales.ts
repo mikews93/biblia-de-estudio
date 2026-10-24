@@ -26,6 +26,8 @@ async function post(pasaje: Pasaje, extra: object): Promise<Senales | null> {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${llave}` },
     body: JSON.stringify({
       ...pasaje,
+      // Cada versión tiene su estudio (api/estudiar.ts, clave): las señales van al que la persona está leyendo.
+      version: getSettings().version,
       // El estudio del Modo Jóvenes es otro: sus señales también.
       ...(getSettings().modo === 'jovenes' ? { publico: 'jovenes' } : {}),
       ...extra,

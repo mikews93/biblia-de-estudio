@@ -237,6 +237,20 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
       cite: true,
     };
   }
+  // Con una versión con derechos la IA no copia versículos: los marca y la app los muestra en esa versión
+  // (versionSystem en api/_investigar.ts).
+  if (system.includes('⟪Juan 3:16⟫') && !followUp && first.includes('Juan 3')) {
+    return {
+      text: [
+        '## Panorama',
+        'Jesús le explica a Nicodemo de dónde viene la vida nueva: no de lo que el hombre hace, sino del amor del Padre que da a su Hijo.',
+        '⟪Juan 3:16⟫',
+        '## Para aplicar',
+        '- Jesús dice que hay que nacer de nuevo (⟪Juan 3:3⟫). ¿Qué parte de tu vida necesita empezar otra vez?',
+      ].join('\n\n'),
+      cite: true,
+    };
+  }
   // Una respuesta larga que llega despacio, para leerla mientras aún se escribe.
   if (followUp?.includes('despacio')) {
     const parrafos = Array.from({ length: 40 }, (_, i) => `Párrafo ${i + 1} de la respuesta lenta: Dios ama al mundo.`);

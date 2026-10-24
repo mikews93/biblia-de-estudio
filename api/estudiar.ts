@@ -58,6 +58,9 @@ const MODEL_PROPIO = process.env.ESTUDIO_MODEL_PROPIO ?? 'claude-sonnet-5-5';
 const COMMENT_WORDS = { verse: 700, chapter: 1200 };
 // Cambia cuando cambian las fuentes del estudio, para que los estudios guardados antes se preparen de nuevo.
 const STUDY_VERSION = 'c1';
+// Con una versión con derechos los estudios usan marcas ⟪Juan 3:16⟫ en vez de citar la RV1909 (ver versionSystem):
+// los guardados antes citaban la RV1909, así que se preparan de nuevo.
+const MARCAS = 'm1';
 const MAX_TURNS = 12;
 const MAX_QUESTION = 600;
 const MAX_USES = 24;
@@ -1114,10 +1117,10 @@ export async function POST(request: Request) {
 
   // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos. La semana es de cada persona.
   const clave = frecuente
-    ? `faq:${Number(body.frecuente)}` + (version.id === 'rv1909' ? '' : `:${version.id}`)
+    ? `faq:${Number(body.frecuente)}` + (version.id === 'rv1909' ? '' : `:${version.id}`) + (version.licensed ? `:${MARCAS}` : '')
     : !herramienta && !taller && !semana && turns.length === 0
       ? [
-          STUDY_VERSION + (version.id === 'rv1909' ? '' : `-${version.id}`),
+          STUDY_VERSION + (version.id === 'rv1909' ? '' : `-${version.id}`) + (version.licensed ? `-${MARCAS}` : ''),
           (devocional ? 'devocional' : 'profundo') + (jovenes ? '-jovenes' : ''),
           book.id,
           chapter,
@@ -1196,7 +1199,8 @@ export async function POST(request: Request) {
   const investiga = turns.length > 0 || taller?.modo === 'maqueta';
   const system =
     (frecuente ? SYSTEM : semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) +
-    versionSystem(version) +
+    // Las marcas de versículo se leen donde la respuesta es texto libre: no en el Taller ni en la semana, que tienen su formato.
+    versionSystem(version, !taller && !semana) +
     (investiga ? TOOLS_SYSTEM : '') +
     (jovenes ? JOVENES_SYSTEM : '');
   return streamAnswer(
