@@ -1254,6 +1254,28 @@ function reintento(err: unknown, history: Anthropic.Beta.BetaMessageParam[]): 'e
 }
 
 /**
+ * Los resultados de las herramientas para la IA. La API no deja mezclar search_result con texto dentro de un mismo
+ * tool_result (en producción respondía 400 y el estudio fallaba tras los pasos), así que las notas que acompañan a
+ * los resultados (el resumen de una búsqueda, el aviso de la teología) van después, como texto aparte.
+ */
+export function respuestas(
+  calls: Anthropic.Beta.BetaToolUseBlock[],
+  done: { content: Anthropic.Beta.BetaToolResultBlockParam['content']; error?: boolean }[],
+): Anthropic.Beta.BetaContentBlockParam[] {
+  const notas: Anthropic.Beta.BetaTextBlockParam[] = [];
+  const results = calls.map((call, i): Anthropic.Beta.BetaToolResultBlockParam => {
+    let content = done[i].content;
+    if (Array.isArray(content) && content.some((b) => b.type === 'search_result')) {
+      const texto = content.flatMap((b) => (b.type === 'text' && b.text.trim() ? [b.text] : []));
+      if (texto.length) notas.push({ type: 'text', text: `Nota del resultado de ${call.name}: ${texto.join('\n')}` });
+      content = content.filter((b) => b.type === 'search_result');
+    }
+    return { type: 'tool_result', tool_use_id: call.id, content, ...(done[i].error && { is_error: true }) };
+  });
+  return [...results, ...notas];
+}
+
+/**
  * Lo que se devuelve a la IA de su propia respuesta. Si a media respuesta pasó a otro modelo (bloque «fallback»), la
  * API pide quitar el razonamiento y las herramientas pedidas antes del cambio; y nunca acepta textos vacíos.
  */
@@ -1404,15 +1426,7 @@ function streamAnswer(
           done.forEach((d) => results.push(...d.results));
           history.push(
             { role: 'assistant', content },
-            {
-              role: 'user',
-              content: calls.map((call, i) => ({
-                type: 'tool_result' as const,
-                tool_use_id: call.id,
-                content: done[i].content,
-                ...(done[i].error && { is_error: true }),
-              })),
-            },
+            { role: 'user', content: respuestas(calls, done) },
           );
           continue;
         }

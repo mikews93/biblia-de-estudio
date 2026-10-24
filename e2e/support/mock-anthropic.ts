@@ -513,6 +513,20 @@ function sendSegments(res: ServerResponse, send: (event: Record<string, unknown>
   res.end();
 }
 
+// Las reglas de la API real que ya rompieron la app en producción: un tool_result con search_result solo lleva search_result.
+function rechazo(body: Body): string | null {
+  for (const [m, msg] of body.messages.entries()) {
+    if (typeof msg.content === 'string') continue;
+    for (const [c, b] of msg.content.entries()) {
+      if (b.type !== 'tool_result' || !Array.isArray(b.content)) continue;
+      const tipos = new Set(b.content.map((x) => x.type));
+      if (tipos.has('search_result') && tipos.size > 1)
+        return `messages.${m}.content.${c}.tool_result: if any blocks in a tool result are of type search_result, all blocks must be of that type`;
+    }
+  }
+  return null;
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
   if (req.method === 'GET' && req.url === '/__requests') {
     res.writeHead(200, { 'content-type': 'application/json' });
@@ -530,6 +544,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   for await (const c of req) chunks.push(c as Buffer);
   const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Body;
   requests.push(body);
+  const invalido = rechazo(body);
+  if (invalido) {
+    res.writeHead(400, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: invalido } }));
+  }
   if (body.stream) return sse(res, body);
   const content =
     body.output_config?.format?.type === 'json_schema'
