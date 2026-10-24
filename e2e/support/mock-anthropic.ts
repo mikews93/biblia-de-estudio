@@ -226,6 +226,24 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
     if (first.includes('Hazme de 3 a 5 preguntas')) {
       return { text: 'Preguntas del Taller simuladas:\n- ¿Qué muestra el pasaje del amor de Dios?\n- ¿A quién se lo dice Jesús?', cite: true };
     }
+    if (first.includes('propón correcciones puntuales')) {
+      // Corrige las faltas que encuentra en cada campo, con el id que trae el borrador.
+      const FALTAS: [RegExp, string, string][] = [
+        [/\basta\b/, 'hasta', 'Falta la «h»: «hasta» es la preposición.'],
+        [/\btambien\b/, 'también', 'Lleva tilde: es aguda terminada en vocal.'],
+        [/\bseguun\b/, 'según', 'Se escribe «según», con tilde.'],
+        [/ nos salva por que nos ama/, ' nos salva porque nos ama', '«Porque» va junto cuando explica la causa ⟦1⟧.'],
+      ];
+      const bloques: string[] = [];
+      for (const [, id, cuerpo] of first.matchAll(/\[([a-z]+(?::[a-z0-9]+)?)\][^\n]*:\n([\s\S]*?)(?=\n\n\[|\n\n(?:Esta fue|Ahora propón)|$)/g)) {
+        for (const linea of cuerpo.split('\n')) {
+          for (const [re, bien, porque] of FALTAS) {
+            if (re.test(linea)) bloques.push(`@@ ${id}\n- ${linea}\n+ ${linea.replace(re, bien)}\n? ${porque}`);
+          }
+        }
+      }
+      return { text: bloques.join('\n\n') || 'SIN CAMBIOS', cite: true };
+    }
     if (first.includes('Revisa lo que llevo')) {
       return { text: '## Lo que funciona\n- Revisión simulada: la idea sale del texto.\n\n## Para mejorar\n- Concreta la aplicación.', cite: true };
     }

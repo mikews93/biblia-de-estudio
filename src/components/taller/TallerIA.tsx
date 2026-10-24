@@ -13,20 +13,23 @@ import {
 } from 'react-native';
 
 import { IconText } from '@/components/comunidad/ui';
-import { CloseIcon, SparkIcon } from '@/components/icons';
+import { CloseIcon, RefreshIcon, SparkIcon } from '@/components/icons';
 import AskBar from '@/components/AskBar';
 import Investigacion from '@/components/Investigacion';
 import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
 import { parseRef } from '@/lib/data';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
+import Correcciones from '@/components/taller/Correcciones';
 import Sugerencias from '@/components/taller/Sugerencias';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
-import { useConversations } from '@/lib/conversaciones';
-import { Source, TallerRequest, askStudy } from '@/lib/estudio';
+import { paraGuardar, useConversations } from '@/lib/conversaciones';
+import { Source, TallerRequest, Turn, askStudy } from '@/lib/estudio';
 import { verseHref } from '@/lib/routes';
+import { borradorParaCorregir } from '@/lib/correcciones';
 import { Mensaje, borradorParaIA, plantilla } from '@/lib/taller';
+import { guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -55,7 +58,10 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
   const single = p.from && !p.to ? p.from : undefined;
 
   // Una conversación por modo: cambiar de pestaña no la vuelve a pedir ni detiene la que se está escribiendo.
-  const convs = useConversations<Modo>((m, history, onUpdate, signal) =>
+  // Lo que dijo Revisa, para que las correcciones lo apliquen.
+  const revision = useRef('');
+  // «corregir» no es una pestaña: son las correcciones que propone Revisa, con su propia conversación.
+  const convs = useConversations<Modo | 'corregir'>((m, history, onUpdate, signal) =>
     askStudy(
       {
         book: p.book,
@@ -71,7 +77,11 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
           desde: single ? undefined : p.from,
           hasta: single ? undefined : p.to,
           // El borrador se lee al abrir cada modo y en cada pregunta, no en cada tecla.
-          borrador: borradorParaIA(mensaje),
+          borrador: m === 'corregir' ? borradorParaCorregir(mensaje) : borradorParaIA(mensaje),
+          revision:
+            m === 'corregir'
+              ? revision.current || undefined
+              : undefined,
           situacion: mensaje.situacion || undefined,
         },
       },
@@ -80,20 +90,57 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
     ),
   );
   const { turns, busy, error } = convs.get(modo);
+  const textoRevision = convs
+    .get('revisar')
+    .turns.filter((t) => t.role === 'assistant')
+    .map((t) => t.text)
+    .join('\n\n')
+    .slice(-8000);
+  useEffect(() => {
+    revision.current = textoRevision;
+  }, [textoRevision]);
   const retry = () => convs.retry(modo);
 
+  // Las conversaciones se guardan (tallerIa.ts): al volver a abrir, o si la app se cerró, siguen donde estaban.
+  const [guardadas, setGuardadas] = useState<Record<string, Turn[]> | null>(null);
+  const iniciadas = useRef(new Set<Modo>());
   useEffect(() => {
-    if (!convs.started(modo)) convs.run(modo, []);
+    leerTallerIa(mensaje.id).then((e) => setGuardadas(e?.convs ?? {}));
+  }, [mensaje.id]);
+
+  useEffect(() => {
+    if (!guardadas || iniciadas.current.has(modo)) return;
+    iniciadas.current.add(modo);
+    const saved = guardadas[modo];
+    if (saved?.length) convs.set(modo, saved);
+    else convs.run(modo, []);
+    if (modo === 'revisar' && saved?.length && guardadas.corregir?.length) convs.set('corregir', guardadas.corregir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo]);
+  }, [modo, guardadas]);
+
+  useEffect(() => {
+    if (!guardadas) return;
+    guardarTallerIa(mensaje.id, { convs: paraGuardar(convs.all) });
+  }, [convs.all, guardadas, mensaje.id]);
 
   const ask = (q: string) => {
     const text = q.trim();
     if (!text || busy) return;
     setQuestion('');
     setPeek(null);
-    convs.run(modo, [...turns, { role: 'user', text }]);
+    convs.ask(modo, text);
   };
+
+  /** Empieza la pestaña de nuevo, leyendo el borrador como está ahora. */
+  const deNuevo = () => {
+    setPeek(null);
+    if (modo === 'revisar') convs.set('corregir', []);
+    convs.run(modo, []);
+  };
+  const last = turns[turns.length - 1];
+  const cortada = !busy && !error && last?.role === 'assistant' && last.cortada;
+  const corregir = convs.get('corregir');
+  const revisionLista = modo === 'revisar' && !busy && !error && last?.role === 'assistant' && !!last.text && !last.cortada;
 
   const open = (ref: string) => {
     const { start } = parseRef(ref);
@@ -199,6 +246,44 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                   </Pressable>
                 </View>
               )}
+              {revisionLista && (
+                <Correcciones
+                  mensaje={mensaje}
+                  text={corregir.turns[corregir.turns.length - 1]?.text ?? ''}
+                  busy={corregir.busy}
+                  onPedir={() => convs.run('corregir', [])}
+                  colors={colors}
+                />
+              )}
+              {revisionLista && !!corregir.error && corregir.error !== NEEDS_CONNECTION && corregir.error !== NEEDS_ACCOUNT && (
+                <View style={styles.waiting}>
+                  <Text style={{ color: colors.text, textAlign: 'center' }}>{corregir.error}</Text>
+                  <Pressable onPress={() => convs.retry('corregir')} style={[styles.retry, { borderColor: colors.accent }]}>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>Reintentar</Text>
+                  </Pressable>
+                </View>
+              )}
+              {cortada && (
+                <View style={[styles.cortada, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <Text style={{ color: colors.muted, flex: 1, fontSize: 14, lineHeight: 20 }}>La respuesta se cortó antes de terminar.</Text>
+                  <Pressable onPress={retry} hitSlop={8} accessibilityRole="button" style={[styles.retry, { borderColor: colors.accent, marginTop: 0 }]}>
+                    <Text style={{ color: colors.accent, fontWeight: '700' }}>Continuar</Text>
+                  </Pressable>
+                </View>
+              )}
+              {!busy && !!turns[0]?.text && (
+                <Pressable
+                  onPress={deNuevo}
+                  accessibilityRole="button"
+                  accessibilityHint="Vuelve a leer tu borrador como está ahora y empieza esta pestaña de nuevo"
+                  style={({ pressed }) => [styles.again, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+                >
+                  <RefreshIcon color={colors.muted} size={15} />
+                  <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>
+                    {modo === 'revisar' ? 'Revisar de nuevo mi borrador' : 'Empezar de nuevo con mi borrador actual'}
+                  </Text>
+                </Pressable>
+              )}
               <Text style={[styles.disclaimer, { color: colors.muted }]}>
                 La IA pregunta y sugiere a partir de la Reina-Valera 1909, el hebreo y el griego de STEPBible y las referencias de
                 OpenBible.info, pero no escribe tu mensaje: la preparación y la oración son tuyas.
@@ -249,5 +334,7 @@ const styles = StyleSheet.create({
   question: { alignSelf: 'flex-end', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, marginTop: 20, maxWidth: '85%' },
   waiting: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 24 },
   retry: { marginTop: 12, borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 8 },
+  cortada: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, marginTop: 16 },
+  again: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 6, borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginTop: 24 },
   disclaimer: { fontSize: 12, lineHeight: 17, marginTop: 24, textAlign: 'center' },
 });

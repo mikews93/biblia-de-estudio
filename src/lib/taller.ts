@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 
 import type { Book } from './data';
 import { cambio, registrar } from './sincronia';
+import { alCerrarLaApp, borrarTallerIa } from './tallerIa';
 
 export type Tipo = 'reflexion' | 'encuentro' | 'sermon';
 
@@ -262,12 +263,21 @@ function load() {
   return loaded;
 }
 
+const guardar = () => {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
+};
+
+// Si la app se cierra justo después de escribir, lo último no espera al temporizador.
+alCerrarLaApp(() => saveTimer && guardar());
+
 function commit(next: Mensaje[]) {
   state = next;
   listeners.forEach((l) => l());
   // Se guarda poco después de dejar de escribir.
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {}), 400);
+  saveTimer = setTimeout(guardar, 400);
   cambio();
 }
 
@@ -327,6 +337,7 @@ export function actualizarSeccion(id: string, seccion: string, patch: Partial<Se
 
 export function borrarMensaje(id: string) {
   commit(state.filter((m) => m.id !== id));
+  borrarTallerIa(id);
 }
 
 export async function duplicarMensaje(id: string): Promise<string | null> {

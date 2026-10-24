@@ -13,6 +13,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 vi.mock('react-native', () => ({
+  AppState: { currentState: 'active', addEventListener: () => ({ remove: () => {} }) },
   Platform: { OS: 'web', select: (o: Record<string, unknown>) => ('web' in o ? o.web : o.default) },
   Share: { share: vi.fn(async () => ({ action: 'sharedAction' })) },
   useColorScheme: () => 'light',

@@ -107,8 +107,9 @@ type Semana = { notas: string; desde?: number; hasta?: number; predicador?: stri
 // pero nunca escribe el mensaje por la persona.
 type Taller = {
   /** «repaso»: las preguntas de opción múltiple que la congregación responde en vivo durante el evento (api/vivo.ts).
-   *  «maqueta»: el esqueleto del mensaje a partir de un tema (títulos, preguntas guía y pasajes de apoyo). */
-  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta';
+   *  «maqueta»: el esqueleto del mensaje a partir de un tema (títulos, preguntas guía y pasajes de apoyo).
+   *  «corregir»: correcciones puntuales a lo que la persona ya escribió, según la revisión (src/lib/correcciones.ts). */
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta' | 'corregir';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;
@@ -117,6 +118,8 @@ type Taller = {
   borrador?: string;
   /** Lo que la persona quería tratar cuando empezó desde un tema. */
   situacion?: string;
+  /** Solo «corregir»: la revisión que hizo la IA y que las correcciones aplican. */
+  revision?: string;
 };
 type Tema = { texto: string; tipo: Taller['tipo'] };
 
@@ -290,6 +293,22 @@ Reglas:
 - ${t.tipo === 'sermon' ? 'Los títulos de los puntos («Punto 1», «Punto 2»…) cámbialos por un título corto (de 2 a 8 palabras) que salga del texto; las demás partes conservan su nombre exacto.' : 'Cada parte conserva su nombre exacto.'}
 - Una sola frase por parte, que yo voy a editar: nada de párrafos, ilustraciones ni aplicaciones desarrolladas. El desarrollo de cada parte lo escribo yo.
 - El pasaje de apoyo puede ser el mismo pasaje principal (un versículo concreto) u otro que hayas leído; uno por parte.`;
+  } else if (t.modo === 'corregir') {
+    // src/lib/correcciones.ts lee este formato; cada campo de lo que llevo va con su id entre corchetes.
+    ask = `${t.revision?.trim() ? `Esta fue tu revisión de lo que llevo:\n${t.revision.trim()}\n\n` : ''}Ahora propón correcciones puntuales a mi texto, las que la revisión señala y las faltas de ortografía, acentos, puntuación o frases confusas. Cada campo de lo que llevo empieza con su id entre corchetes.
+
+Formato estricto, sin nada antes ni después, un bloque por corrección y una línea en blanco entre bloques:
+@@ el id del campo, tal cual (por ejemplo notas:abc123)
+- el trozo exacto que cambia, copiado letra por letra de mi texto (una frase o parte de ella)
++ el mismo trozo corregido
+? por qué, en una frase, con cita si el cambio toca lo que dice el pasaje
+
+Reglas:
+- Corrige lo que escribí, no lo escribas por mí: conserva mis palabras, mi tono y mis ideas; cambia lo mínimo.
+- Nada de párrafos nuevos, ilustraciones, aplicaciones ni secciones que yo no haya escrito; no rellenes campos vacíos. Si algo de la revisión necesita que yo escriba más, no lo corrijas aquí.
+- El trozo de «-» tiene que estar tal cual en mi texto y ser corto (máximo dos frases). Un bloque por cambio.
+- Si una frase afirma algo que no sale del pasaje, ajústala para que diga lo que el texto sí dice, con su cita.
+- Máximo 12 correcciones, las más importantes primero. Si no hay nada que corregir, responde solo: SIN CAMBIOS`;
   } else if (t.modo === 'ruleta') {
     ask = `Prepara la ruleta de preguntas de este mensaje para la congregación, que la juega en vivo en su teléfono: preguntas de opción múltiple sobre lo que se predicó y sobre las citas del bosquejo (sus versículos van en lo que llevo), no solo sobre ${target}. Si el bosquejo no da para una categoría, usa los versículos citados.
 
@@ -415,7 +434,7 @@ Reglas:
 - Solo dos niveles bajo la idea central.`,
 };
 
-const MODOS = ['preguntar', 'sugerir', 'revisar', 'repaso', 'ruleta', 'maqueta'];
+const MODOS = ['preguntar', 'sugerir', 'revisar', 'repaso', 'ruleta', 'maqueta', 'corregir'];
 const TALLER_TIPOS = ['reflexion', 'encuentro', 'sermon'];
 const TALLER_PASOS = ['pasaje', 'idea', 'bosquejo', 'revisar'];
 const MAX_DRAFT = 12000;
@@ -432,6 +451,7 @@ function validTaller(t: unknown): t is Taller {
     (x.plantilla === undefined || (typeof x.plantilla === 'string' && x.plantilla.length <= 80)) &&
     (x.borrador === undefined || (typeof x.borrador === 'string' && x.borrador.length <= MAX_DRAFT)) &&
     (x.situacion === undefined || (typeof x.situacion === 'string' && x.situacion.length <= MAX_TEMA)) &&
+    (x.revision === undefined || (typeof x.revision === 'string' && x.revision.length <= MAX_DRAFT)) &&
     optInt(x.desde) &&
     optInt(x.hasta)
   );
