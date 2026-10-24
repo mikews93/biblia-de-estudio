@@ -7,6 +7,7 @@ import AudioBar from '@/components/AudioBar';
 import AvisosSync from '@/components/AvisosSync';
 import Celebracion from '@/components/Celebracion';
 import Confeti from '@/components/Confeti';
+import LlamaArranque from '@/components/LlamaArranque';
 import SincroniaCuenta from '@/components/Sincronia';
 import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
@@ -157,6 +158,7 @@ function AppStack() {
       <Celebracion />
       <Confeti />
       <GuardaNinos />
+      {Platform.OS !== 'web' && <LlamaArranque />}
       {Platform.OS === 'web' && (
         <>
           <View nativeID="pliegue-sombra" pointerEvents="none" style={fixedInTransition('pliegue-sombra')} />
