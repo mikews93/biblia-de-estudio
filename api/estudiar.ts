@@ -1220,6 +1220,74 @@ export async function POST(request: Request) {
 
 type Doc = ReturnType<typeof doc>;
 
+/** Lo que hace falta en los registros de Vercel para saber qué falló: estado, tipo, mensaje y petición. */
+function detalle(err: unknown) {
+  if (err instanceof Anthropic.APIError) return { status: err.status, type: err.type, message: err.message, requestID: err.requestID };
+  return { message: err instanceof Error ? err.message : String(err) };
+}
+
+/**
+ * Si una vuelta falló sin enviar nada, cómo volver a intentarla: «esperar» cuando la IA está saturada o se cortó la
+ * conexión, «sin pensamiento» cuando rechaza el razonamiento devuelto de vueltas anteriores (entonces se quita del
+ * historial, como pide la API), o null si no tiene arreglo.
+ */
+function reintento(err: unknown, history: Anthropic.Beta.BetaMessageParam[]): 'esperar' | 'sin pensamiento' | null {
+  if (err instanceof Anthropic.APIUserAbortError) return null;
+  if (err instanceof Anthropic.APIError && err.status === 400 && /thinking|signature/i.test(err.message)) {
+    let quitado = false;
+    for (const m of history) {
+      if (m.role !== 'assistant' || typeof m.content === 'string') continue;
+      const sin = m.content.filter((b) => b.type !== 'thinking' && b.type !== 'redacted_thinking');
+      if (sin.length !== m.content.length) {
+        m.content = sin;
+        quitado = true;
+      }
+    }
+    return quitado ? 'sin pensamiento' : null;
+  }
+  if (err instanceof Anthropic.APIConnectionError) return 'esperar';
+  if (err instanceof Anthropic.APIError) {
+    // Los errores que llegan dentro del stream no traen estado, solo el tipo.
+    if ((err.status ?? 0) >= 500 || err.type === 'overloaded_error' || err.type === 'api_error') return 'esperar';
+  }
+  return null;
+}
+
+/**
+ * Los resultados de las herramientas para la IA. La API no deja mezclar search_result con texto dentro de un mismo
+ * tool_result (en producción respondía 400 y el estudio fallaba tras los pasos), así que las notas que acompañan a
+ * los resultados (el resumen de una búsqueda, el aviso de la teología) van después, como texto aparte.
+ */
+export function respuestas(
+  calls: Anthropic.Beta.BetaToolUseBlock[],
+  done: { content: Anthropic.Beta.BetaToolResultBlockParam['content']; error?: boolean }[],
+): Anthropic.Beta.BetaContentBlockParam[] {
+  const notas: Anthropic.Beta.BetaTextBlockParam[] = [];
+  const results = calls.map((call, i): Anthropic.Beta.BetaToolResultBlockParam => {
+    let content = done[i].content;
+    if (Array.isArray(content) && content.some((b) => b.type === 'search_result')) {
+      const texto = content.flatMap((b) => (b.type === 'text' && b.text.trim() ? [b.text] : []));
+      if (texto.length) notas.push({ type: 'text', text: `Nota del resultado de ${call.name}: ${texto.join('\n')}` });
+      content = content.filter((b) => b.type === 'search_result');
+    }
+    return { type: 'tool_result', tool_use_id: call.id, content, ...(done[i].error && { is_error: true }) };
+  });
+  return [...results, ...notas];
+}
+
+/**
+ * Lo que se devuelve a la IA de su propia respuesta. Si a media respuesta pasó a otro modelo (bloque «fallback»), la
+ * API pide quitar el razonamiento y las herramientas pedidas antes del cambio; y nunca acepta textos vacíos.
+ */
+export function paraDevolver(content: Anthropic.Beta.BetaContentBlock[]): Anthropic.Beta.BetaContentBlock[] {
+  const corte = content.map((b) => b.type).lastIndexOf('fallback');
+  return content.filter(
+    (b, i) =>
+      !(i < corte && (b.type === 'thinking' || b.type === 'redacted_thinking' || b.type === 'tool_use')) &&
+      !(b.type === 'text' && !b.text),
+  );
+}
+
 /**
  * Pide la respuesta a Claude y la envía por partes; «save» guarda la respuesta completa. Con «biblia», la IA puede
  * usar las herramientas de api/_investigar.ts: cada vuelta envía lo que consulta y sigue hasta que responde.
@@ -1284,48 +1352,68 @@ function streamAnswer(
       }
     };
     const history = [...messages];
+    // Una vuelta con la IA. «enviado» dice si ya llegó texto a la persona: entonces no se puede repetir.
+    let enviado = false;
+    const vuelta = async (last: boolean) => {
+      const pending = new Map<number, Set<number>>();
+      const response = client.beta.messages.stream(
+        {
+          model,
+          max_tokens: 16000,
+          system,
+          messages: history,
+          // En la última vuelta las herramientas siguen declaradas (la conversación las usó), pero ya no se pueden pedir.
+          ...(biblia && { tools: TOOLS, tool_choice: { type: last ? 'none' : 'auto' } as const }),
+          cache_control: { type: 'ephemeral' },
+          output_config: { effort: 'medium' },
+          betas: ['server-side-fallback-2026-07-01'],
+          fallbacks: 'default',
+        },
+        // Lo que se guarda para todos termina aunque la persona se haya ido; lo suyo se detiene con ella.
+        { signal: compartido ? undefined : request.signal },
+      );
+      for await (const event of response) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          texto += event.delta.text;
+          enviado = true;
+          send({ type: 'text', text: event.delta.text });
+        } else if (event.type === 'content_block_delta' && event.delta.type === 'citations_delta') {
+          const c = event.delta.citation;
+          if (!pending.has(event.index)) pending.set(event.index, new Set());
+          const into = pending.get(event.index)!;
+          if (c.type === 'content_block_location') cite(docs[c.document_index]?.metas ?? [], c.start_block_index, c.end_block_index, into);
+          else if (c.type === 'search_result_location') cite(results[c.search_result_index] ?? [], c.start_block_index, c.end_block_index, into);
+        } else if (event.type === 'content_block_stop' && pending.has(event.index)) {
+          // Las marcas van al final del fragmento citado, como notas al pie.
+          const marks = [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('');
+          if (marks) {
+            texto += marks;
+            send({ type: 'text', text: marks });
+          }
+          pending.delete(event.index);
+        }
+      }
+      return response.finalMessage();
+    };
     try {
       for (let round = 0; ; round++) {
-        const pending = new Map<number, Set<number>>();
         const last = !biblia || round >= MAX_ROUNDS;
-        const response = client.beta.messages.stream(
-          {
-            model,
-            max_tokens: 16000,
-            system,
-            messages: history,
-            // En la última vuelta las herramientas siguen declaradas (la conversación las usó), pero ya no se pueden pedir.
-            ...(biblia && { tools: TOOLS, tool_choice: { type: last ? 'none' : 'auto' } as const }),
-            cache_control: { type: 'ephemeral' },
-            output_config: { effort: 'medium' },
-            betas: ['server-side-fallback-2026-07-01'],
-            fallbacks: 'default',
-          },
-          // Lo que se guarda para todos termina aunque la persona se haya ido; lo suyo se detiene con ella.
-          { signal: compartido ? undefined : request.signal },
-        );
-        for await (const event of response) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            texto += event.delta.text;
-            send({ type: 'text', text: event.delta.text });
-          } else if (event.type === 'content_block_delta' && event.delta.type === 'citations_delta') {
-            const c = event.delta.citation;
-            if (!pending.has(event.index)) pending.set(event.index, new Set());
-            const into = pending.get(event.index)!;
-            if (c.type === 'content_block_location') cite(docs[c.document_index]?.metas ?? [], c.start_block_index, c.end_block_index, into);
-            else if (c.type === 'search_result_location') cite(results[c.search_result_index] ?? [], c.start_block_index, c.end_block_index, into);
-          } else if (event.type === 'content_block_stop' && pending.has(event.index)) {
-            // Las marcas van al final del fragmento citado, como notas al pie.
-            const marks = [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('');
-            if (marks) {
-              texto += marks;
-              send({ type: 'text', text: marks });
-            }
-            pending.delete(event.index);
+        let final: Anthropic.Beta.BetaMessage;
+        for (let intento = 1; ; intento++) {
+          const antes = enviado;
+          try {
+            final = await vuelta(last);
+            break;
+          } catch (err) {
+            const nuevo = enviado && !antes;
+            const arreglo = intento < 3 && !nuevo && !request.signal.aborted ? reintento(err, history) : null;
+            if (!arreglo) throw err;
+            console.warn('estudiar: reintento', round, intento, arreglo, detalle(err));
+            if (arreglo === 'esperar') await new Promise((r) => setTimeout(r, 1500 * intento));
           }
         }
-        const final = await response.finalMessage();
-        const calls = final.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
+        const content = paraDevolver(final.content);
+        const calls = content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
         if (biblia && final.stop_reason === 'tool_use' && calls.length) {
           // Separa lo que hubiera escrito antes de investigar de la respuesta que viene después.
           if (texto && !texto.endsWith('\n\n')) {
@@ -1337,16 +1425,8 @@ function streamAnswer(
           const done = await Promise.all(calls.map((call, i) => investigar(call.name, inputs[i], biblia)));
           done.forEach((d) => results.push(...d.results));
           history.push(
-            { role: 'assistant', content: final.content },
-            {
-              role: 'user',
-              content: calls.map((call, i) => ({
-                type: 'tool_result' as const,
-                tool_use_id: call.id,
-                content: done[i].content,
-                ...(done[i].error && { is_error: true }),
-              })),
-            },
+            { role: 'assistant', content },
+            { role: 'user', content: respuestas(calls, done) },
           );
           continue;
         }
@@ -1362,7 +1442,7 @@ function streamAnswer(
         break;
       }
     } catch (err) {
-      console.error('estudiar', err);
+      console.error('estudiar', detalle(err), err);
       const message =
         err instanceof Anthropic.RateLimitError
           ? 'Hay muchas consultas ahora mismo. Inténtalo en un momento.'

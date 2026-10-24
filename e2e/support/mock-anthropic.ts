@@ -374,14 +374,18 @@ function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) =>
   res.end();
 }
 
-function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) => void, list?: typeof TEMA_CALLS) {
+// Los temas con «SATURADA» que ya recibieron el error una vez
+const SATURADAS = new Set<string>();
+
+function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) => void, list?: typeof TEMA_CALLS, from = 0) {
   const calls = list ?? [
     { name: 'leer_pasaje', input: { cita: '2 Timoteo 3:14-17' } },
     { name: 'buscar_en_la_biblia', input: { palabras: 'escritur', testamento: 'NT' } },
     { name: 'teologia', input: { tema: 'el canon del Nuevo Testamento', busqueda: 'canon New Testament books accepted disputed', area: 'canon' } },
   ];
-  calls.forEach((c, index) => {
-    send({ type: 'content_block_start', index, content_block: { type: 'tool_use', id: `toolu_${index}`, name: c.name, input: {} } });
+  calls.forEach((c, i) => {
+    const index = from + i;
+    send({ type: 'content_block_start', index, content_block: { type: 'tool_use', id: `toolu_${i}`, name: c.name, input: {} } });
     send({ type: 'content_block_delta', index, delta: { type: 'input_json_delta', partial_json: JSON.stringify(c.input) } });
     send({ type: 'content_block_stop', index });
   });
@@ -395,7 +399,24 @@ async function sse(res: ServerResponse, body: Body) {
   const send = (event: Record<string, unknown>) => res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
   send({ type: 'message_start', message: { ...message([]), stop_reason: null } });
   const tema = temaTools(body);
+  // «SATURADA» en el tema: la IA piensa y deja un texto vacío antes de pedir las herramientas, y la primera vez que
+  // recibe los resultados responde que está saturada, como la API real en producción.
+  const saturada = tema && JSON.stringify(body.messages[0]).includes('SATURADA');
+  if (tema === 'pedir' && saturada) {
+    send({ type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: '' } });
+    send({ type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Busco pasajes.' } });
+    send({ type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'firma' } });
+    send({ type: 'content_block_stop', index: 0 });
+    send({ type: 'content_block_start', index: 1, content_block: { type: 'text', text: '', citations: null } });
+    send({ type: 'content_block_stop', index: 1 });
+    return sendTools(res, send, TEMA_CALLS, 2);
+  }
   if (tema === 'pedir') return sendTools(res, send, TEMA_CALLS);
+  if (tema === 'responder' && saturada && !SATURADAS.has(JSON.stringify(body.messages[0]))) {
+    SATURADAS.add(JSON.stringify(body.messages[0]));
+    send({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } });
+    return res.end();
+  }
   if (tema === 'responder') return sendTema(res, send, body);
   const tools = investigates(body);
   if (tools && !tools.done) return sendTools(res, send);
@@ -492,6 +513,20 @@ function sendSegments(res: ServerResponse, send: (event: Record<string, unknown>
   res.end();
 }
 
+// Las reglas de la API real que ya rompieron la app en producción: un tool_result con search_result solo lleva search_result.
+function rechazo(body: Body): string | null {
+  for (const [m, msg] of body.messages.entries()) {
+    if (typeof msg.content === 'string') continue;
+    for (const [c, b] of msg.content.entries()) {
+      if (b.type !== 'tool_result' || !Array.isArray(b.content)) continue;
+      const tipos = new Set(b.content.map((x) => x.type));
+      if (tipos.has('search_result') && tipos.size > 1)
+        return `messages.${m}.content.${c}.tool_result: if any blocks in a tool result are of type search_result, all blocks must be of that type`;
+    }
+  }
+  return null;
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
   if (req.method === 'GET' && req.url === '/__requests') {
     res.writeHead(200, { 'content-type': 'application/json' });
@@ -509,6 +544,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   for await (const c of req) chunks.push(c as Buffer);
   const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Body;
   requests.push(body);
+  const invalido = rechazo(body);
+  if (invalido) {
+    res.writeHead(400, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: invalido } }));
+  }
   if (body.stream) return sse(res, body);
   const content =
     body.output_config?.format?.type === 'json_schema'

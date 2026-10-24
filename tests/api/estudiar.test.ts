@@ -46,6 +46,23 @@ async function events(res: Response): Promise<Event[]> {
 const textOf = (evs: Event[]) => evs.filter((e) => e.type === 'text').map((e) => e.text).join('');
 const lastAiText = () => JSON.stringify(aiRequests.at(-1));
 
+describe('paraDevolver', () => {
+  it('quita lo pedido antes de pasar a otro modelo y los textos vacíos', async () => {
+    const { paraDevolver } = await import('../../api/estudiar');
+    const b = (type: string, extra: object = {}) => ({ type, ...extra }) as never;
+    const out = paraDevolver([
+      b('thinking', { thinking: 'a', signature: 's' }),
+      b('text', { text: 'Primero' }),
+      b('tool_use', { id: 't0', name: 'leer_pasaje', input: {} }),
+      b('fallback', { from: { model: 'x' }, to: { model: 'y' } }),
+      b('text', { text: '' }),
+      b('tool_use', { id: 't1', name: 'leer_pasaje', input: {} }),
+    ]);
+    expect(out.map((x: { type: string }) => x.type)).toEqual(['text', 'fallback', 'tool_use']);
+    expect((out.at(-1) as { id: string }).id).toBe('t1');
+  });
+});
+
 describe('/api/estudiar sin cuenta', () => {
   it('pide una cuenta antes de mirar la petición', async () => {
     const res = await estudiar(request('/api/estudiar', { book: 'jhn', chapter: 3 }));
@@ -190,19 +207,22 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     const [first, second] = aiRequests.slice(before);
     expect(first.tools.map((t: { name: string }) => t.name)).toContain('leer_pasaje');
     expect(JSON.stringify(first.system)).toContain('Herramientas: puedes investigar');
-    const results = second.messages.at(-1).content;
-    expect(results.map((r: { tool_use_id: string }) => r.tool_use_id)).toEqual(['toolu_0', 'toolu_1', 'toolu_2']);
-    const leido = results[0].content[0];
+    const content = second.messages.at(-1).content as { type: string; tool_use_id?: string; content?: any[]; text?: string }[];
+    const results = content.filter((b) => b.type === 'tool_result');
+    expect(results.map((r) => r.tool_use_id)).toEqual(['toolu_0', 'toolu_1', 'toolu_2']);
+    // La API no deja mezclar search_result con texto en un tool_result: las notas van después, aparte
+    for (const r of results) expect(r.content!.every((b: { type: string }) => b.type === 'search_result')).toBe(true);
+    const notas = content.filter((b) => b.type === 'text').map((b) => b.text);
+    const leido = results[0].content![0];
     expect(leido.type).toBe('search_result');
     expect(leido.title).toBe('2 Timoteo 3:14-17 · Reina-Valera 1909');
     expect(leido.content[2].text).toMatch(/^3:16 Toda Escritura/);
     // La búsqueda dice cuántos versículos hay y en qué libros, con una muestra
-    expect(results[1].content[0].text).toMatch(/^«escritur» aparece en \d+ versículos de la RV1909 \(Nuevo Testamento\)/);
-    expect(results[1].content[1].type).toBe('search_result');
+    expect(notas[0]).toMatch(/^Nota del resultado de buscar_en_la_biblia: «escritur» aparece en \d+ versículos de la RV1909 \(Nuevo Testamento\)/);
+    expect(results[1].content![0].type).toBe('search_result');
     // Teología: el aviso de que son obras humanas en inglés y hasta tres secciones, una por obra, del área pedida
-    const teologia = results[2].content;
-    expect(teologia[0].text).toMatch(/^Obras humanas de dominio público/);
-    const titles = teologia.slice(1).map((r: { title: string }) => r.title);
+    expect(notas[1]).toMatch(/^Nota del resultado de teologia: Obras humanas de dominio público/);
+    const titles = results[2].content!.map((r: { title: string }) => r.title);
     expect(titles.length).toBeGreaterThan(0);
     expect(titles.length).toBeLessThanOrEqual(3);
     expect(titles.some((t: string) => /Eusebio|Westcott|Atanasio|Muratori|Anónimo/.test(t))).toBe(true);
@@ -339,6 +359,19 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(sources[0]).toMatchObject({ label: expect.stringMatching(/^Filipenses 4:/), ref: expect.stringMatching(/^php\.4\./) });
     expect(sources.some((e) => e.url?.startsWith('https://'))).toBe(true);
     expect(evs.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('si la IA se satura a mitad de la investigación, repite esa vuelta y devuelve su respuesta sin textos vacíos ni tool_result mezclados', async () => {
+    const before = aiRequests.length;
+    const evs = await events(await ask({ tema: { texto: 'Los atributos de Dios SATURADA', tipo: 'sermon' } }));
+    expect(evs.filter((e) => e.type === 'error')).toEqual([]);
+    expect(evs.at(-1)).toEqual({ type: 'done' });
+    expect(textOf(evs)).toContain('## Pasajes');
+    // Pedir herramientas, la vuelta que falló y la repetida
+    const [, fallida, repetida] = aiRequests.slice(before);
+    expect(repetida.messages).toEqual(fallida.messages);
+    const devuelto = repetida.messages[1].content as { type: string; text?: string }[];
+    expect(devuelto.map((b) => b.type)).toEqual(['thinking', 'tool_use', 'tool_use', 'tool_use']);
   });
 
   it('la maqueta lleva lo que se quería tratar, las partes de la estructura y puede investigar', async () => {
