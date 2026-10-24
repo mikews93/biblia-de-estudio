@@ -510,3 +510,56 @@ export const GridIcon = (p: Props) => (
     <Rect x={13.5} y={13.5} width={6.5} height={6.5} rx={1.8} />
   </Line>
 );
+
+/** Música de ambiente: una corchea doble. */
+export const MusicIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M9 17.5V6.2l10-2v11.3" />
+    <Circle cx={6.8} cy={17.6} r={2.3} />
+    <Circle cx={16.8} cy={15.6} r={2.3} />
+  </Line>
+);
+
+/** Olas tranquilas (pista «Quietud»). */
+export const WavesIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M3.5 9.5c2.1-1.6 4.1-1.6 6.1 0s4.1 1.6 6.1 0 3.4-1.4 4.8-.5" />
+    <Path d="M3.5 14.5c2.1-1.6 4.1-1.6 6.1 0s4.1 1.6 6.1 0 3.4-1.4 4.8-.5" />
+  </Line>
+);
+
+/** Sol que sale sobre el horizonte (pista «Amanecer»). */
+export const SunriseIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7.5 16.5a4.5 4.5 0 0 1 9 0" />
+    <Path d="M3.5 16.5h17M12 6.5v2.2M5.8 9.6l1.5 1.5M18.2 9.6l-1.5 1.5M8 19.5h8" />
+  </Line>
+);
+
+/** Hoja con la esquina doblada y renglones: el documento de un mensaje. */
+export const DocumentIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7 3.5h7l4.5 4.5v11a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z" />
+    <Path d="M14 3.5V8h4.5" />
+    <Path d="M8.5 12h7M8.5 15h7M8.5 18h4" />
+  </Line>
+);
+
+/** Impresora: imprimir o guardar en PDF. */
+export const PrintIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7.5 9V4h9v5" />
+    <Path d="M7.5 17H6a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.5" />
+    <Rect x={7.5} y={14} width={9} height={6} rx={1} />
+  </Line>
+);
+
+/** Arco con flecha: volver a predicar, repetir. */
+export const RepeatIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M5 12a7 7 0 0 1 12-4.9L19 9" />
+    <Path d="M19 4.5V9h-4.5" />
+    <Path d="M19 12a7 7 0 0 1-12 4.9L5 15" />
+    <Path d="M5 19.5V15h4.5" />
+  </Line>
+);

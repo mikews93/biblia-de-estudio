@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { useAbrirAlarma } from '@/lib/alarma';
 import { buildEstado, cuentaCambio, revisar, sincronizar, useAvisos } from '@/lib/avisos';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
@@ -14,7 +15,8 @@ import { navigate } from '@/lib/transition';
 /**
  * Sin interfaz: con las notificaciones activas, mantiene al día lo que el servidor sabe para el recordatorio
  * diario (lo leído, las tarjetas y los planes), une o separa la suscripción de la cuenta al entrar o salir,
- * rehace la suscripción si se perdió y abre la pantalla de un aviso tocado con la app ya abierta.
+ * rehace la suscripción si se perdió y abre la pantalla de un aviso tocado con la app ya abierta. En la app
+ * nativa, al tocar la alarma del despertador abre /despertar.
  */
 export default function AvisosSync() {
   const { endpoint } = useAvisos();
@@ -24,6 +26,7 @@ export default function AvisosSync() {
   const { llave, ready } = useAccount();
   const [books, setBooks] = useState<Book[]>([]);
   const account = useRef<string | null | undefined>(undefined);
+  useAbrirAlarma();
 
   useEffect(() => {
     if (endpoint) getBooks().then(setBooks).catch(() => {});

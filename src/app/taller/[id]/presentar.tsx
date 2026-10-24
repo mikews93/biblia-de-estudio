@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AmbienteBoton from '@/components/Ambiente';
 import { IconText } from '@/components/comunidad/ui';
 import { LiveDot } from '@/components/evento/piezas';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon } from '@/components/icons';
+import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { dinamica } from '@/lib/dinamicas';
@@ -30,6 +32,8 @@ export default function PresentarScreen() {
   const [verses, setVerses] = useState<Verse[] | null>(null);
   const [showPassage, setShowPassage] = useState(false);
   const [size, setSize] = useState(22);
+  // Pads debajo de la voz mientras se presenta; se apagan al salir de presentar.
+  useAmbienteEnPantalla();
   // Si el mensaje se publicó como evento, al avanzar aquí avanza también en los teléfonos de la congregación.
   const { usuario } = useAccount();
   const { eventos } = useMisEventos(!!usuario);
@@ -85,7 +89,8 @@ export default function PresentarScreen() {
           </Text>
           <Text style={{ color: colors.muted, fontSize: 11 }}>{running ? `Total ${clock(elapsed)}` : 'En pausa'}</Text>
         </Pressable>
-        <View style={{ flexDirection: 'row', gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <AmbienteBoton colors={colors} />
           <Pressable onPress={() => setSize((n) => Math.max(16, n - 2))} hitSlop={8} accessibilityLabel="Letra más pequeña">
             <Text style={{ color: colors.muted, fontSize: 15 }}>A−</Text>
           </Pressable>
@@ -154,7 +159,21 @@ export default function PresentarScreen() {
                 {s.texto.trim()}
               </Text>
             )}
-            {!s.texto.trim() && !s.paraGrupo?.trim() && !d && (
+            {!!s.claves?.trim() && (
+              <View style={[styles.claves, { borderColor: colors.border }]}>
+                {s.claves
+                  .split('\n')
+                  .map((c) => c.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim())
+                  .filter(Boolean)
+                  .map((c, i) => (
+                    <View key={i} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 8 }}>
+                      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.warm, marginTop: size * 0.5 }} />
+                      <Text style={{ color: colors.text, fontSize: size * 0.85, lineHeight: size * 1.25, flex: 1 }}>{c}</Text>
+                    </View>
+                  ))}
+              </View>
+            )}
+            {!s.texto.trim() && !s.paraGrupo?.trim() && !s.claves?.trim() && !d && (
               <Text style={{ color: colors.muted, fontSize: size * 0.8, marginTop: 16 }}>{s.ayuda}</Text>
             )}
           </>
@@ -228,6 +247,7 @@ const styles = StyleSheet.create({
   counter: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   title: { fontFamily: serif, fontSize: 30, fontWeight: '700', marginTop: 6 },
   box: { borderRadius: 14, padding: 16, marginTop: 16 },
+  claves: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 18, paddingTop: 8 },
   bottom: { flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 20, paddingTop: 10 },
   navBtn: { flex: 1, paddingVertical: 10 },
   passageBtn: { borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 6 },

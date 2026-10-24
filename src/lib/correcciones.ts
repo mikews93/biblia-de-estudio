@@ -6,7 +6,7 @@
 import { type Mensaje, destinosDe } from './taller';
 
 export type Correccion = {
-  /** El campo, con los mismos ids que las sugerencias: «tema», «observacion», «notas:<sección>», «grupo:<sección>». */
+  /** El campo, con los mismos ids que las sugerencias: «tema», «observacion», «notas:<sección>», «grupo:<sección>», «claves:<sección>». */
   destino: string;
   /** Nombre del campo para mostrarlo («Punto 1», «La necesidad»…). */
   label: string;
@@ -37,13 +37,14 @@ export function valorDe(m: Mensaje, destino: string): string | undefined {
   if (!s) return undefined;
   if (campo === 'notas') return s.texto;
   if (campo === 'grupo') return s.paraGrupo ?? '';
+  if (campo === 'claves') return s.claves ?? '';
   return undefined;
 }
 
 function conValor(m: Mensaje, destino: string, valor: string): Partial<Mensaje> {
   if ((CAMPOS as readonly string[]).includes(destino)) return { [destino]: valor };
   const [campo, id] = destino.split(':');
-  const key = campo === 'notas' ? 'texto' : 'paraGrupo';
+  const key = campo === 'notas' ? 'texto' : campo === 'claves' ? 'claves' : 'paraGrupo';
   return { secciones: m.secciones.map((x) => (x.id === id ? { ...x, [key]: valor } : x)) };
 }
 
@@ -55,7 +56,7 @@ export function labelDe(m: Mensaje, destino: string) {
 /** Lo escrito, campo por campo con su id, para que la IA sepa dónde va cada corrección. Los campos vacíos no van. */
 export function borradorParaCorregir(m: Mensaje) {
   const out: string[] = [];
-  const ids = [...CAMPOS, ...m.secciones.flatMap((s) => (m.tipo === 'encuentro' ? [`notas:${s.id}`, `grupo:${s.id}`] : [`notas:${s.id}`]))];
+  const ids = [...CAMPOS, ...m.secciones.flatMap((s) => (m.tipo === 'encuentro' ? [`notas:${s.id}`, `grupo:${s.id}`] : [`notas:${s.id}`, `claves:${s.id}`]))];
   for (const id of ids) {
     const v = valorDe(m, id)?.trim();
     if (v) out.push(`[${id}] ${labelDe(m, id)}:\n${v}`);

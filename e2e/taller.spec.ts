@@ -116,9 +116,9 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   expect(await peticionesIA(request, `Observo ${m}`)).toHaveLength(pedidosAntes);
   await ia.getByLabel('Cerrar').last().click();
 
-  // Y aparece en «Mis mensajes» del Taller
+  // Y aparece en «Borradores» del Taller
   await page.goto('/taller');
-  await expect(page.getByText('Mis mensajes')).toBeVisible();
+  await expect(page.getByText('Borradores', { exact: true })).toBeVisible();
   await page.getByText(`Amor que da ${m}`).click();
   await expect(page).toHaveURL(/\/taller\/[a-z0-9]+$/);
   await expect(page.getByPlaceholder('Por ejemplo, Lucas 15:11-32')).toHaveValue('Juan 3:16');
@@ -165,7 +165,7 @@ test('prepara un sermón desde el lector, lo revisa con la IA, lo presenta y lo 
   await ia.getByLabel('Cerrar').last().click();
 
   // Presentar: portada con la idea central, una parte a la vez y el pasaje a un toque
-  await paso(page, '5 Presentar').click();
+  await paso(page, '6 Presentar').click();
   await page.getByRole('button', { name: 'Presentar', exact: true }).click();
   await expect(page).toHaveURL(/\/presentar$/);
   await expect(page.getByText(`La entrega de Dios ${m}: nos da vida eterna`)).toBeVisible();
@@ -187,13 +187,83 @@ test('prepara un sermón desde el lector, lo revisa con la IA, lo presenta y lo 
   await expect(page).toHaveURL(/\/taller\/[a-z0-9]+$/);
 
   // Borrar lo quita del Taller
-  await paso(page, '5 Presentar').click();
+  await paso(page, '6 Presentar').click();
   page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: 'Borrar' }).click();
   await expect(page).toHaveURL(/\/taller$/);
   await expect(page.getByRole('button', { name: /Sermón ·/ })).toBeVisible();
-  await expect(page.getByText('Mis mensajes').filter({ visible: true })).toHaveCount(0);
+  await expect(page.getByText('Borradores', { exact: true }).filter({ visible: true })).toHaveCount(0);
   await guardado(page, '[]');
+});
+
+test('el borrador se vuelve documento con puntos para hablar y anuncios, se termina y queda en Mis sermones para repetirlo', async ({ page }) => {
+  const m = marca();
+  await page.goto('/taller');
+  await page.getByRole('button', { name: /Sermón ·/ }).click();
+  const pasaje = page.getByPlaceholder('Por ejemplo, Lucas 15:11-32');
+  await pasaje.fill('Lucas 15:11-32');
+  await pasaje.press('Enter');
+  await page.getByPlaceholder('Cómo lo llamarás').fill(`El Padre que corre ${m}`);
+  await paso(page, '2 Idea central').click();
+  await page.getByPlaceholder('Por ejemplo, el amor del Padre').fill('El amor del Padre');
+  await page.getByPlaceholder('…sale a buscarnos antes de que lleguemos').fill('sale a buscarnos');
+
+  await paso(page, '3 Bosquejo').click();
+  const borradores = page.getByPlaceholder('Escríbelo con tus palabras');
+  await borradores.nth(0).fill('Todos hemos querido volver a casa.');
+  await borradores.nth(1).fill('El hijo pide la herencia y se va.');
+  await page.getByPlaceholder(/Lo concreto que no quieres olvidar/).nth(1).fill('Pedir la herencia era desearle la muerte\nLejos de casa');
+  await borradores.nth(4).fill('Vuelve: él ya está corriendo.');
+
+  // El documento junta lo escrito y dice lo que falta
+  await paso(page, '5 Documento').click();
+  await expect(page.getByText('ANTES DE TERMINAR')).toBeVisible();
+  await expect(page.getByText('Escribir 2 partes que siguen vacías')).toBeVisible();
+  await page.getByPlaceholder(/Célula el jueves a las 7/).fill(`Célula el jueves ${m}\nBautismos el domingo`);
+  const hoja = page.getByLabel(`Documento: El Padre que corre ${m}`).filter({ visible: true });
+  await expect(hoja.getByText('El amor del Padre: sale a buscarnos')).toBeVisible();
+  await expect(hoja.getByText('INTRODUCCIÓN · 5 min')).toBeVisible();
+  await expect(hoja.getByText('Pedir la herencia era desearle la muerte')).toBeVisible();
+  await expect(hoja.getByText(`Célula el jueves ${m}`)).toBeVisible();
+  await guardado(page, `Célula el jueves ${m}`);
+
+  // Se termina: pasa a Mis sermones y se abre el documento
+  await page.getByRole('button', { name: 'Terminar y guardar en Mis sermones' }).click();
+  await expect(page).toHaveURL(/\/documento\?desde=editor$/);
+  await expect(page.getByText('EN MIS SERMONES', { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Imprimir o guardar en PDF' })).toBeVisible();
+
+  // Se anota una vez que se predicó
+  await page.getByRole('button', { name: 'Anotar una vez que lo prediqué' }).click();
+  await page.getByPlaceholder('2026-10-25').fill('2026-10-25');
+  await page.getByPlaceholder('Iglesia, célula, retiro…').fill('Iglesia central');
+  await page.getByRole('button', { name: 'Anotar', exact: true }).click();
+  await expect(page.getByText('Iglesia central')).toBeVisible();
+
+  // En el Taller ya no es borrador sino sermón, con la vez que se predicó; sigue ahí al volver a abrir
+  await page.goto('/taller');
+  await expect(page.getByText('Mis sermones', { exact: true })).toBeVisible();
+  await expect(page.getByText('Borradores', { exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText(/Predicado una vez · la última el 25 de octubre de 2026, Iglesia central/)).toBeVisible();
+  await page.getByText(`El Padre que corre ${m}`).click();
+  await expect(page).toHaveURL(/\/documento$/);
+
+  // Adaptarlo para otra ocasión hace un borrador nuevo y deja el sermón como estaba
+  await page.getByRole('button', { name: 'Adaptarlo para otra ocasión' }).click();
+  await expect(page).toHaveURL(/\/taller\/[a-z0-9]+$/);
+  await page.goto('/taller');
+  await expect(page.getByText('Borradores', { exact: true })).toBeVisible();
+  await expect(page.getByText(`El Padre que corre ${m} (copia)`)).toBeVisible();
+  await expect(page.getByText('Mis sermones', { exact: true })).toBeVisible();
+
+  // Un sermón terminado se puede borrar desde su documento, con confirmación
+  await page.getByText(`El Padre que corre ${m}`, { exact: true }).click();
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: 'Borrar este sermón' }).click();
+  await expect(page).toHaveURL(/\/taller$/);
+  await expect(page.getByText('Mis sermones', { exact: true }).filter({ visible: true })).toHaveCount(0);
+  await expect(page.getByText(`El Padre que corre ${m} (copia)`).filter({ visible: true })).toBeVisible();
 });
 
 test('Revisa propone correcciones a lo escrito, se aplican con vista de cambios y todo sigue al cerrar la app', async ({ page, request }) => {
@@ -315,7 +385,7 @@ test('prepara un encuentro con una dinámica y envía la hoja al grupo sin las n
   await acompanante(page).getByLabel('Cerrar').last().click();
 
   // La hoja para el grupo lleva la dinámica y lo del grupo, no las notas del líder
-  await paso(page, '5 Presentar').click();
+  await paso(page, '6 Presentar').click();
   await expect(page.getByText('Dinámica: La palabra original')).toBeVisible();
   await expect(page.getByText(`¿Qué recuerdas de la semana? ${m}`)).toBeVisible();
   await expect(page.getByText(`Nota secreta del líder ${m}`)).toHaveCount(0);
