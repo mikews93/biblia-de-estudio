@@ -429,6 +429,9 @@ export const speakerNow = (speech: SpeechAudio) => SPEAKERS[speech.lines[speech.
 // ---------------------------------------------------------------- controles
 
 /** Pausa lo que esté sonando (por ejemplo, al grabar una nota de voz). */
+/** Si suena algo del reproductor (para que la música de ambiente se aparte). No crea el reproductor. */
+export const mainPlaying = () => !!player?.playing || !!state.speech?.playing;
+
 export function pauseAudio() {
   if (player?.playing) player.pause();
   if (state.speech?.playing) {

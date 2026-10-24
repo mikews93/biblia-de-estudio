@@ -2,8 +2,10 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import AmbienteBoton from '@/components/Ambiente';
 import Appear from '@/components/Appear';
 import Devotional from '@/components/Devotional';
+import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { Book, getBooks } from '@/lib/data';
 import { parseRef } from '@/lib/refs';
 import { verseHref } from '@/lib/routes';
@@ -18,6 +20,7 @@ export default function DiaScreen() {
   const { semanas, ready } = useSemanas();
   const [books, setBooks] = useState<Book[]>([]);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  useAmbienteEnPantalla();
   const s = semanas.find((w) => w.id === id);
   const i = Number(dia) - 1;
   const d = s?.dias[i];
@@ -48,7 +51,7 @@ export default function DiaScreen() {
 
   return (
     <ScrollView ref={scroll} style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
-      <Stack.Screen options={{ title: s.titulo }} />
+      <Stack.Screen options={{ title: s.titulo, headerRight: () => <View style={{ marginRight: 12 }}><AmbienteBoton colors={colors} /></View> }} />
 
       <Appear style={[styles.banner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.bannerHead}>

@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import AmbienteBoton from '@/components/Ambiente';
 import Appear from '@/components/Appear';
 import { IconText } from '@/components/comunidad/ui';
 import AskBar from '@/components/AskBar';
@@ -22,6 +23,7 @@ import Investigacion from '@/components/Investigacion';
 import StudyContext from '@/components/StudyContext';
 import StudySignals from '@/components/StudySignals';
 import VersionPicker from '@/components/VersionPicker';
+import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { Book, Version, getVersions, original, parseRef } from '@/lib/data';
 import { licensedById } from '@/lib/licenciadas';
 import Welcome from '@/components/comunidad/Welcome';
@@ -71,6 +73,8 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
   const mode: Enfoque = word ? 'profundo' : chosen;
   // Al seguir un enlace o ir a /entrar, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
   const focused = useIsFocused();
+  // La música de ambiente sigue al seguir un enlace (el panel no se desmonta) y se apaga al cerrar el estudio.
+  useAmbienteEnPantalla();
   const [question, setQuestion] = useState('');
   const [peek, setPeek] = useState<Source | null>(null);
   const [clearing, setClearing] = useState(false);
@@ -372,9 +376,12 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                       <ChevronDownIcon color={colors.muted} size={13} />
                     </Pressable>
                   </View>
-                  <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar estudio">
-                    <CloseIcon color={colors.muted} size={22} />
-                  </Pressable>
+                  <View style={styles.headActions}>
+                    <AmbienteBoton colors={colors} />
+                    <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar estudio">
+                      <CloseIcon color={colors.muted} size={22} />
+                    </Pressable>
+                  </View>
                 </View>
                 {!word && <ModeSwitch mode={mode} onChange={switchMode} colors={colors} />}
               </View>
@@ -628,6 +635,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     overflow: 'hidden',
   },
+  headActions: { flexDirection: 'row', alignItems: 'center', gap: 14, alignSelf: 'flex-start' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

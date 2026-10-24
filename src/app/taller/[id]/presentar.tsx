@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AmbienteBoton from '@/components/Ambiente';
 import { IconText } from '@/components/comunidad/ui';
 import { LiveDot } from '@/components/evento/piezas';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon } from '@/components/icons';
+import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { dinamica } from '@/lib/dinamicas';
@@ -30,6 +32,8 @@ export default function PresentarScreen() {
   const [verses, setVerses] = useState<Verse[] | null>(null);
   const [showPassage, setShowPassage] = useState(false);
   const [size, setSize] = useState(22);
+  // Pads debajo de la voz mientras se presenta; se apagan al salir de presentar.
+  useAmbienteEnPantalla();
   // Si el mensaje se publicó como evento, al avanzar aquí avanza también en los teléfonos de la congregación.
   const { usuario } = useAccount();
   const { eventos } = useMisEventos(!!usuario);
@@ -85,7 +89,8 @@ export default function PresentarScreen() {
           </Text>
           <Text style={{ color: colors.muted, fontSize: 11 }}>{running ? `Total ${clock(elapsed)}` : 'En pausa'}</Text>
         </Pressable>
-        <View style={{ flexDirection: 'row', gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <AmbienteBoton colors={colors} />
           <Pressable onPress={() => setSize((n) => Math.max(16, n - 2))} hitSlop={8} accessibilityLabel="Letra más pequeña">
             <Text style={{ color: colors.muted, fontSize: 15 }}>A−</Text>
           </Pressable>

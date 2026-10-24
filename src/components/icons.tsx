@@ -510,3 +510,28 @@ export const GridIcon = (p: Props) => (
     <Rect x={13.5} y={13.5} width={6.5} height={6.5} rx={1.8} />
   </Line>
 );
+
+/** Música de ambiente: una corchea doble. */
+export const MusicIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M9 17.5V6.2l10-2v11.3" />
+    <Circle cx={6.8} cy={17.6} r={2.3} />
+    <Circle cx={16.8} cy={15.6} r={2.3} />
+  </Line>
+);
+
+/** Olas tranquilas (pista «Quietud»). */
+export const WavesIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M3.5 9.5c2.1-1.6 4.1-1.6 6.1 0s4.1 1.6 6.1 0 3.4-1.4 4.8-.5" />
+    <Path d="M3.5 14.5c2.1-1.6 4.1-1.6 6.1 0s4.1 1.6 6.1 0 3.4-1.4 4.8-.5" />
+  </Line>
+);
+
+/** Sol que sale sobre el horizonte (pista «Amanecer»). */
+export const SunriseIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M7.5 16.5a4.5 4.5 0 0 1 9 0" />
+    <Path d="M3.5 16.5h17M12 6.5v2.2M5.8 9.6l1.5 1.5M18.2 9.6l-1.5 1.5M8 19.5h8" />
+  </Line>
+);
