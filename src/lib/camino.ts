@@ -358,14 +358,16 @@ export function crisisEn(texto: string): 'vida' | 'abuso' | null {
 }
 
 /**
- * Líneas de prevención del suicidio y salud mental por país. Cambian con el tiempo: hay que confirmarlas en la
- * fuente oficial de cada país antes de publicar. Donde no hay una, se muestra el número de emergencias.
+ * Líneas de prevención del suicidio y salud mental por país, revisadas el 2026-10-25: 988 (988lifeline.org), 024
+ * (sanidad.gob.es/linea024), *4141 (minsal.cl), Línea de la Vida (gob.mx) y el Centro de Asistencia al Suicida
+ * (asistenciaalsuicida.org.ar). En Colombia, el 123 de emergencias. Cambian con el tiempo: revisarlas cada año. Donde
+ * no hay una, se muestra el número de emergencias.
  */
 export const LINEAS_VIDA: { pais: string; linea: string; tel: string; nota?: string }[] = [
   { pais: 'US', linea: 'Línea 988 de Prevención del Suicidio y Crisis', tel: '988', nota: 'Atienden en español.' },
   { pais: 'ES', linea: 'Línea 024 de atención a la conducta suicida', tel: '024' },
   { pais: 'MX', linea: 'Línea de la Vida', tel: '8009112000' },
-  { pais: 'CO', linea: 'Línea 192, opción 4 (salud mental)', tel: '192' },
+  { pais: 'CO', linea: 'Línea de emergencias', tel: '123' },
   { pais: 'CL', linea: 'Línea *4141 de prevención del suicidio', tel: '*4141' },
   { pais: 'AR', linea: 'Centro de Asistencia al Suicida', tel: '135', nota: 'Desde Buenos Aires. En el resto del país, (011) 5275-1135.' },
 ];
