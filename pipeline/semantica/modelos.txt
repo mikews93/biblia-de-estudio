@@ -1,0 +1,13 @@
+# Modelos de embeddings (ONNX para Transformers.js) que la acción «Modelos semánticos» copia a la versión
+# «semantica-modelos-v1» del repositorio, porque huggingface.co no se abre desde el entorno de desarrollo.
+# Formato: <repo de Hugging Face> <archivo> (uno por línea).
+Xenova/multilingual-e5-small config.json
+Xenova/multilingual-e5-small tokenizer.json
+Xenova/multilingual-e5-small tokenizer_config.json
+Xenova/multilingual-e5-small special_tokens_map.json
+Xenova/multilingual-e5-small onnx/model_quantized.onnx
+Xenova/paraphrase-multilingual-MiniLM-L12-v2 config.json
+Xenova/paraphrase-multilingual-MiniLM-L12-v2 tokenizer.json
+Xenova/paraphrase-multilingual-MiniLM-L12-v2 tokenizer_config.json
+Xenova/paraphrase-multilingual-MiniLM-L12-v2 special_tokens_map.json
+Xenova/paraphrase-multilingual-MiniLM-L12-v2 onnx/model_quantized.onnx
