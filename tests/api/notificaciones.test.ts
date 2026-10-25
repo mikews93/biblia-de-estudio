@@ -12,6 +12,7 @@ import { client, DB_URL, ensureSchema, HAS_DATA, Post, prepareEnv, request, uniq
 let POST: Post;
 let GET: Post;
 let comunidades: Post;
+let vivoPOST: Post;
 let server: Server;
 let base: string;
 let sql: ReturnType<typeof postgres>;
@@ -21,13 +22,16 @@ beforeAll(async () => {
   process.env.PUSH_HOSTS = '127.0.0.1';
   ({ POST, GET } = await import('../../api/notificaciones'));
   ({ POST: comunidades } = await import('../../api/comunidades'));
+  ({ POST: vivoPOST } = await import('../../api/vivo'));
   server = createServer((req, res) => {
+    if (req.url === '/expo') return void expoPush(req, res);
     void handlePush(req, res).then((handled) => {
       if (!handled) res.writeHead(404).end();
     });
   });
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  process.env.EXPO_PUSH_URL = `${base}/expo`;
   if (DB_URL) {
     await ensureSchema(comunidades);
     sql = postgres(DB_URL, { max: 1, onnotice: () => {} });
@@ -38,6 +42,20 @@ afterAll(async () => {
   server?.close();
   await sql?.end();
 });
+
+/** El servicio push de Expo simulado: guarda cada mensaje y da de baja los tokens que dicen «baja». */
+const expoEntregas: Record<string, any>[] = [];
+async function expoPush(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) {
+  let raw = '';
+  for await (const chunk of req) raw += chunk;
+  const msg = JSON.parse(raw);
+  expoEntregas.push({ ...msg, authorization: req.headers.authorization });
+  const data = String(msg.to).includes('baja')
+    ? { status: 'error', message: 'not registered', details: { error: 'DeviceNotRegistered' } }
+    : { status: 'ok', id: 'x' };
+  res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ data }));
+}
+const expoToken = (tag = 'ok') => `ExponentPushToken[${tag}${Date.now()}${Math.random().toString(36).slice(2, 8)}]`;
 
 const call = async (accion: string, body: Record<string, unknown> = {}, llave?: string) => {
   const res = await POST(request('/api/notificaciones', { accion, ...body }, llave));
@@ -157,7 +175,7 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
     expect((await call('leer', { endpoint: sub.endpoint })).json).toEqual({
       existe: true,
       hora: 21 * 60,
-      avisos: { lectura: true, tarjetas: false, reto: true, comunidad: true },
+      avisos: { lectura: true, tarjetas: false, reto: true, racha: true, comunidad: true },
       despertar: null,
     });
     await call('guardar', { suscripcion: sub, hora: 21 * 60, despertar: { activo: true, hora: 330, dias: 0b0111110 } });
@@ -204,6 +222,43 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
     expect(deliveredTo(libre.id)).toHaveLength(0);
   });
 
+  it('la noche del último día de la racha devocional avisa una sola vez; sin racha o con el aviso apagado, no', async () => {
+    // Una zona donde ahora son entre las 8 y las 11 de la noche.
+    const zona = Array.from({ length: 27 }, (_, i) => i - 12)
+      .map((n) => (n === 0 ? 'UTC' : `Etc/GMT${n > 0 ? '+' : '-'}${Math.abs(n)}`))
+      .find((z) => {
+        const m = localNow(z).minutos;
+        return m >= 20 * 60 && m < 23 * 60;
+      })!;
+    const hoy = localNow(zona).fecha;
+    const apagado = { lectura: false, tarjetas: false, reto: false };
+    const sub = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: sub, zona, avisos: apagado, estado: { racha: { dias: 6, vence: hoy } } });
+    const otro = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: otro, zona, avisos: { ...apagado, racha: false }, estado: { racha: { dias: 6, vence: hoy } } });
+    const aSalvo = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: aSalvo, zona, avisos: apagado, estado: { racha: { dias: 6, vence: '2999-01-01' } } });
+
+    const r = await enviar();
+    expect(r.json.rachas).toBeGreaterThanOrEqual(1);
+    expect(deliveredTo(sub.id).map((e) => e.aviso)).toEqual([
+      {
+        title: 'Tu racha de 6 días te espera',
+        body: 'Hoy es el último día para no perderla. Diez minutos con la Palabra bastan. Te falta un día para los 7.',
+        url: '/diario?hoy=1',
+        tag: 'racha',
+      },
+    ]);
+    await enviar();
+    expect(deliveredTo(sub.id)).toHaveLength(1);
+    expect(deliveredTo(otro.id)).toHaveLength(0);
+    expect(deliveredTo(aSalvo.id)).toHaveLength(0);
+    // Datos raros de la racha se limpian.
+    await call('estado', { endpoint: sub.endpoint, estado: { racha: { dias: -1, vence: 'mañana' } } });
+    const [row] = await sql`select estado from suscripciones where endpoint = ${sub.endpoint}`;
+    expect(row.estado).toEqual({});
+  });
+
   it('«10 minutos más» lo vuelve a mandar; apagar el despertador lo quita', async () => {
     const sub = nuevaSuscripcion(base);
     await call('guardar', { suscripcion: sub, zona: 'UTC', avisos: { lectura: false, tarjetas: false, reto: false }, despertar: { hora: 0, dias: 127 } });
@@ -235,6 +290,54 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
     await call('guardar', { suscripcion: sub });
     await call('quitar', { endpoint: sub.endpoint });
     expect((await call('probar', { endpoint: sub.endpoint })).status).toBe(404);
+  });
+});
+
+describe.skipIf(!DB_URL)('/api/notificaciones: la app nativa (tokens de Expo)', () => {
+  it('guarda el token sin claves y la prueba sale por el servicio de Expo, en el canal de avisos', async () => {
+    const token = expoToken();
+    expect((await call('guardar', { suscripcion: { endpoint: token }, zona: 'America/Bogota', hora: 450 })).json).toEqual({ cuenta: false });
+    expect((await call('probar', { endpoint: token })).json).toEqual({ enviado: true });
+    const e = expoEntregas.find((m) => m.to === token);
+    expect(e).toMatchObject({
+      to: token,
+      title: '¡Listo! Las notificaciones funcionan',
+      body: 'Te recordaremos tu lectura cada día a las 7:30 de la mañana.',
+      data: { url: '/notificaciones', tag: 'prueba' },
+      channelId: 'avisos',
+      collapseId: 'prueba',
+      priority: 'default',
+    });
+  });
+
+  it('el recordatorio diario llega al teléfono; el despertador no lo manda el servidor', async () => {
+    const token = expoToken();
+    await call('guardar', {
+      suscripcion: { endpoint: token },
+      zona: 'UTC',
+      hora: 0,
+      estado: { leido: '2000-01-01', lectura: { titulo: 'Juan 4', url: '/juan/4' } },
+      despertar: { activo: false, hora: 300, dias: 127 },
+    });
+    const now = localNow('UTC');
+    await sql`update suscripciones set hora = ${Math.max(0, now.minutos - 5)}, enviado = null where endpoint = ${token}`;
+    await enviar();
+    expect(expoEntregas.filter((m) => m.to === token).map((m) => m.data.url)).toEqual(['/juan/4']);
+    const [{ despertar }] = await sql`select despertar from suscripciones where endpoint = ${token}`;
+    expect(despertar).toBeNull();
+  });
+
+  it('si la app se desinstaló, Expo lo dice y la suscripción se borra', async () => {
+    const token = expoToken('baja');
+    await call('guardar', { suscripcion: { endpoint: token } });
+    expect((await call('probar', { endpoint: token })).status).toBe(410);
+    expect(await sql`select 1 from suscripciones where endpoint = ${token}`).toHaveLength(0);
+  });
+
+  it('rechaza tokens mal formados', async () => {
+    for (const endpoint of ['ExponentPushToken[]', 'ExponentPushToken[a b]', 'ExponentPushToken[abc]x', `ExponentPushToken[${'a'.repeat(300)}]`]) {
+      expect((await call('guardar', { suscripcion: { endpoint } })).status).toBe(400);
+    }
   });
 });
 
@@ -316,5 +419,97 @@ describe.skipIf(!DB_URL || !HAS_DATA)('avisos de la comunidad', () => {
         tag: `grupo-${id}`,
       },
     ]);
+  });
+
+  /** Un grupo de Ana con Beto y Caro dentro; Beto y Caro con avisos activos. */
+  async function grupoConTres() {
+    const [ana, beto, caro] = [await persona('Ana'), await persona('Beto'), await persona('Caro')];
+    const { id } = (await com()('crearGrupo', { nombre: 'Grupo de conexión', tipo: 'celula' }, ana.llave)).json;
+    const { grupo } = (await com()('grupo', { grupo: id }, ana.llave)).json;
+    await com()('unirse', { codigo: grupo.codigo }, beto.llave);
+    await com()('unirse', { codigo: grupo.codigo }, caro.llave);
+    const subBeto = nuevaSuscripcion(base);
+    const subCaro = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: subBeto }, beto.llave);
+    await call('guardar', { suscripcion: subCaro }, caro.llave);
+    return { ana, beto, caro, id, subBeto, subCaro };
+  }
+
+  it('lo que alguien manda al grupo avisa a los demás, y se puede silenciar un grupo', async () => {
+    const { ana, beto, caro, id, subBeto, subCaro } = await grupoConTres();
+    const silenciar = await com()('avisosGrupo', { grupo: id, si: false }, caro.llave);
+    expect(silenciar.json).toEqual({ avisos: false });
+
+    await com()('nuevaNota', { grupo: id, libro: 'jhn', capitulo: 3, versiculo: 16, texto: 'Tanto nos amó' }, ana.llave);
+    await com()('nuevaPeticion', { grupo: id, texto: 'Por la salud de mi mamá' }, ana.llave);
+    await com()('compartirGuia', { grupo: id, titulo: 'El padre que corre', pasaje: 'Lucas 15:11-32', texto: 'Preguntas…' }, ana.llave);
+
+    expect(deliveredTo(subBeto.id).map((e) => e.aviso)).toEqual([
+      { title: `${ana.nombre} dejó una nota en Juan 3:16`, body: 'Grupo de conexión · Tanto nos amó', url: `/grupos/${id}?tab=notas`, tag: `grupo-notas-${id}` },
+      { title: `${ana.nombre} pidió oración en Grupo de conexión`, body: 'Por la salud de mi mamá', url: `/grupos/${id}?tab=oracion`, tag: `grupo-oracion-${id}` },
+      {
+        title: `${ana.nombre} compartió «El padre que corre» con Grupo de conexión`,
+        body: 'Lucas 15:11-32 · Ábrelo para prepararte para la reunión.',
+        url: `/grupos/${id}?tab=reunion`,
+        tag: `grupo-guia-${id}`,
+      },
+    ]);
+    expect(deliveredTo(subCaro.id)).toHaveLength(0);
+
+    // El perfil y la pantalla del grupo dicen si sus avisos llegan.
+    const yo = (await com()('yo', {}, caro.llave)).json;
+    expect(yo.grupos).toEqual([expect.objectContaining({ id, avisos: false, soyAdmin: false })]);
+    expect((await com()('grupo', { grupo: id }, beto.llave)).json.grupo.avisos).toBe(true);
+    expect((await com()('avisosGrupo', { grupo: id, si: true }, (await persona('Dani')).llave)).status).toBe(403);
+  });
+
+  it('un evento en vivo avisa a los grupos elegidos la primera vez que empieza', async () => {
+    const { ana, beto, id, subBeto, subCaro } = await grupoConTres();
+    const otra = await persona('Eva');
+    const ajeno = (await com()('crearGrupo', { nombre: 'Otro grupo', tipo: 'amigos' }, otra.llave)).json.id;
+    const vivo = async (accion: string, body: Record<string, unknown>, llave: string) => {
+      const res = await vivoPOST(request('/api/vivo', { accion, ...body }, llave));
+      return { status: res.status, json: (await res.json()) as Record<string, any> };
+    };
+    const { evento } = (
+      await vivo('publicar', { mensaje: 'm-grupo', titulo: 'El hijo que vuelve', puntos: [{ titulo: 'Se fue', texto: '', citas: [] }] }, ana.llave)
+    ).json;
+    // Solo cuentan los grupos de quien predica.
+    expect((await vivo('gruposEvento', { codigo: evento.codigo, grupos: [id, ajeno, 'no-es-id'] }, ana.llave)).json).toEqual({ grupos: [id] });
+    expect((await vivo('gruposEvento', { codigo: evento.codigo, grupos: [id] }, beto.llave)).status).toBe(403);
+    expect((await vivo('ver', { codigo: evento.codigo }, ana.llave)).json.evento.grupos).toEqual([id]);
+    expect(deliveredTo(subBeto.id)).toHaveLength(0);
+
+    await vivo('mover', { codigo: evento.codigo, estado: 'en-vivo' }, ana.llave);
+    await vivo('mover', { codigo: evento.codigo, punto: 0 }, ana.llave);
+    await vivo('mover', { codigo: evento.codigo, estado: 'terminado' }, ana.llave);
+    await vivo('mover', { codigo: evento.codigo, estado: 'en-vivo' }, ana.llave);
+    const aviso = {
+      title: `${ana.nombre} empezó en vivo: «El hijo que vuelve»`,
+      body: 'Grupo de conexión · Toca para seguir el mensaje en tu teléfono.',
+      url: `/evento/${evento.codigo}`,
+      tag: `evento-${evento.codigo}`,
+    };
+    expect(deliveredTo(subBeto.id).map((e) => e.aviso)).toEqual([aviso]);
+    expect(deliveredTo(subCaro.id).map((e) => e.aviso)).toEqual([aviso]);
+
+    // Ya en vivo: elegir otro grupo le avisa al momento.
+    const otroDeAna = (await com()('crearGrupo', { nombre: 'Familia', tipo: 'familia' }, ana.llave)).json.id;
+    const { grupo } = (await com()('grupo', { grupo: otroDeAna }, ana.llave)).json;
+    await com()('unirse', { codigo: grupo.codigo }, otra.llave);
+    const subEva = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: subEva }, otra.llave);
+    await vivo('gruposEvento', { codigo: evento.codigo, grupos: [id, otroDeAna] }, ana.llave);
+    expect(deliveredTo(subEva.id).map((e) => e.aviso?.body)).toEqual(['Familia · Toca para seguir el mensaje en tu teléfono.']);
+    expect(deliveredTo(subBeto.id)).toHaveLength(1);
+  });
+
+  it('el perfil de alguien muestra solo los grupos en común', async () => {
+    const { ana, beto, id } = await grupoConTres();
+    await com()('crearGrupo', { nombre: 'Solo de Beto', tipo: 'amigos' }, beto.llave);
+    const visto = (await com()('persona', { usuario: beto.id }, ana.llave)).json.persona;
+    expect(visto.grupos).toEqual([{ id, nombre: 'Grupo de conexión', tipo: 'celula', miembros: 3 }]);
+    const propio = (await com()('persona', { usuario: beto.id }, beto.llave)).json.persona;
+    expect(propio.grupos.map((g: { nombre: string }) => g.nombre).sort()).toEqual(['Grupo de conexión', 'Solo de Beto']);
   });
 });

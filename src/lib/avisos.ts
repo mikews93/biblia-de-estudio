@@ -6,23 +6,28 @@
 // útil («Juan 4 te espera», «5 tarjetas para repasar»), la app manda un resumen (buildEstado) cada vez que cambia.
 //
 // En iPhone y iPad solo funcionan con la app agregada a la pantalla de inicio (iOS 16.4 o posterior).
+//
+// En la app nativa la suscripción es un token de Expo (src/lib/pushNativo.native.ts) y el resto es igual. El
+// despertador no va al servidor: lo hace sonar el propio teléfono (src/lib/alarma.native.ts).
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { EstadoAvisos, HORA_POR_DEFECTO } from './avisosTexto';
+import type { EstadoRacha } from './rachaTexto';
 import { DESPERTADOR_POR_DEFECTO, Despertador } from './despertarTexto';
 import { sessionKey } from './comunidad';
 import { Book } from './data';
 import { MyPlan, planDays, planDef } from './planes';
+import { PUSH_NATIVO, tokenNativo } from './pushNativo';
 import { chapterHref } from './routes';
 import { Card } from './tarjetas';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const KEY = 'avisos';
 
-export type Tipo = 'lectura' | 'tarjetas' | 'reto' | 'comunidad';
+export type Tipo = 'lectura' | 'tarjetas' | 'reto' | 'racha' | 'comunidad';
 
 export type Ajustes = {
   /** La dirección de la suscripción de este dispositivo, o null si están apagadas. */
@@ -39,7 +44,7 @@ export type Ajustes = {
 const DEFAULTS: Ajustes = {
   endpoint: null,
   hora: HORA_POR_DEFECTO,
-  avisos: { lectura: true, tarjetas: true, reto: true, comunidad: true },
+  avisos: { lectura: true, tarjetas: true, reto: true, racha: true, comunidad: true },
   despertar: DESPERTADOR_POR_DEFECTO,
 };
 
@@ -86,7 +91,7 @@ export type Soporte =
   | 'ios-viejo'
   /** El navegador no las admite. */
   | 'no'
-  /** App nativa (aún no). */
+  /** App nativa sin el projectId de EAS: aún no puede pedir su dirección. */
   | 'nativo';
 
 type Nav = { userAgent: string; maxTouchPoints?: number; standalone?: boolean };
@@ -95,7 +100,7 @@ type Nav = { userAgent: string; maxTouchPoints?: number; standalone?: boolean };
 export const isIOS = (nav: Nav) => /iPad|iPhone|iPod/.test(nav.userAgent) || (/Macintosh/.test(nav.userAgent) && (nav.maxTouchPoints ?? 0) > 1);
 
 export function soporte(): Soporte {
-  if (Platform.OS !== 'web') return 'nativo';
+  if (Platform.OS !== 'web') return PUSH_NATIVO ? 'si' : 'nativo';
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return 'no';
   const ios = isIOS(navigator as Nav);
   const standalone = (navigator as Nav).standalone === true || window.matchMedia?.('(display-mode: standalone)').matches;
@@ -154,13 +159,16 @@ async function registration() {
 
 let lastEstado: EstadoAvisos = {};
 
-async function save(sub: PushSubscriptionJSON, next: Ajustes) {
+type Suscripcion = { endpoint?: string; keys?: Record<string, string> };
+
+async function save(sub: Suscripcion, next: Ajustes) {
   await api('guardar', {
     suscripcion: sub,
     zona: zona(),
     hora: next.hora,
     avisos: next.avisos,
-    despertar: next.despertar,
+    // En la app nativa el despertador suena desde el teléfono: el servidor no debe mandarlo otra vez.
+    despertar: Platform.OS === 'web' ? next.despertar : { ...next.despertar, activo: false },
     estado: lastEstado,
   });
 }
@@ -169,6 +177,13 @@ async function save(sub: PushSubscriptionJSON, next: Ajustes) {
 export async function activar() {
   await load();
   if (soporte() !== 'si') throw new Error('Este dispositivo no puede recibir notificaciones de la web.');
+  if (Platform.OS !== 'web') {
+    const token = await tokenNativo(true);
+    if (!token) throw new Error('Este teléfono no dio una dirección para las notificaciones.');
+    await save({ endpoint: token }, state);
+    set({ endpoint: token });
+    return;
+  }
   const result = await Notification.requestPermission();
   if (result !== 'granted') {
     throw new Error(
@@ -204,6 +219,7 @@ async function suscribir() {
 export async function revisar() {
   await load();
   if (soporte() !== 'si') return;
+  if (Platform.OS !== 'web') return revisarNativo();
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = (await reg?.pushManager.getSubscription()) ?? null;
   const granted = permiso() === 'granted';
@@ -238,6 +254,21 @@ export async function revisar() {
   if (old !== state.endpoint) await api('quitar', { endpoint: old }).catch(() => {});
 }
 
+/** Lo mismo en la app nativa: si el permiso se quitó se apagan, y si cambió el token se guarda el nuevo. */
+async function revisarNativo() {
+  if (!state.endpoint) return;
+  const old = state.endpoint;
+  const token = await tokenNativo(false);
+  if (token === old) return;
+  if (!token) {
+    set({ endpoint: null, invitacionVista: false });
+  } else {
+    await save({ endpoint: token }, state);
+    set({ endpoint: token });
+  }
+  await api('quitar', { endpoint: old }).catch(() => {});
+}
+
 export async function desactivar() {
   await load();
   const endpoint = state.endpoint;
@@ -266,6 +297,15 @@ export async function cambiar(patch: { hora?: number; avisos?: Partial<Record<Ti
 
 /** Vuelve a mandar la suscripción (al cambiar preferencias, o al entrar o salir de la cuenta). */
 async function resave(next = state) {
+  if (Platform.OS !== 'web') {
+    const token = await tokenNativo(false);
+    if (!token) {
+      set({ endpoint: null });
+      throw new Error('Las notificaciones están apagadas para Zarza. Permítelas en los ajustes del teléfono.');
+    }
+    if (token !== next.endpoint) set({ endpoint: token });
+    return save({ endpoint: token }, next);
+  }
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager.getSubscription();
   if (!sub) {
@@ -342,7 +382,8 @@ export function lecturaPendiente(plans: MyPlan[], books: Book[], last: { book: s
 
 /**
  * Lo que el servidor necesita saber: qué toca leer (la siguiente lectura de un plan, o donde se quedó), el último
- * día con lectura, las fechas de repaso de las tarjetas y los días pendientes del desafío de temporada.
+ * día con lectura, las fechas de repaso de las tarjetas, los días pendientes del desafío de temporada y la racha
+ * devocional (para avisar la noche antes de perderla).
  */
 export function buildEstado(input: {
   plans: MyPlan[];
@@ -351,13 +392,15 @@ export function buildEstado(input: {
   books: Book[];
   last: { book: string; chapter: number } | null;
   today: string;
+  racha?: EstadoRacha;
 }): EstadoAvisos {
-  const { plans, cards, days, books, last, today } = input;
+  const { plans, cards, days, books, last, today, racha } = input;
   const name = (id: string) => books.find((b) => b.id === id)?.name ?? id;
   const estado: EstadoAvisos = {};
 
   const read = days.filter((d) => d <= today).sort().at(-1);
   if (read) estado.leido = read;
+  if (racha) estado.racha = racha;
 
   const active = plans.filter((p) => !p.finished);
   for (const p of active) {

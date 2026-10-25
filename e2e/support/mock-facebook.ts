@@ -1,5 +1,5 @@
 // Facebook simulado para las pruebas: la página donde la persona acepta (/__facebook/dialog) y la API Graph
-// (/__facebook/graph) que usa api/_perfil.ts. El código de la vuelta lleva el nombre que se escribió en la
+// (/__facebook/graph) que usa Auth.js desde api/_entrar.ts. El código de la vuelta lleva el nombre que se escribió en la
 // página, así cada prueba elige quién es en Facebook.
 
 import { readFileSync } from 'node:fs';
@@ -39,9 +39,14 @@ document.getElementById('f').onsubmit = (e) => {
 <a href="${back({ error: 'access_denied' })}">Cancelar</a>`);
   }
   res.setHeader('content-type', 'application/json');
-  if (url.pathname === '/__facebook/graph/oauth/access_token') return res.end(JSON.stringify({ access_token: q.get('code') }));
+  if (url.pathname === '/__facebook/graph/oauth/access_token') {
+    let raw = '';
+    req.on('data', (c) => (raw += c));
+    req.on('end', () => res.end(JSON.stringify({ access_token: new URLSearchParams(raw).get('code'), token_type: 'bearer' })));
+    return;
+  }
   if (url.pathname === '/__facebook/graph/me') {
-    const { nombre } = decode(q.get('access_token')!);
+    const { nombre } = decode((req.headers.authorization ?? '').replace(/^Bearer /, ''));
     return res.end(
       JSON.stringify({ id: `fb-${nombre}`, name: nombre, picture: { data: { url: `http://localhost:${process.env.PORT ?? 8081}/__facebook/foto.png`, is_silhouette: false } } }),
     );

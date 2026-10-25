@@ -208,6 +208,26 @@ export function SelloIcono({ dibujo, color }: { dibujo: Dibujo; color: string })
           <Path d="M16.5 3c0 4.5-9 4.5-9 9s9 4.5 9 9" />
         </>
       );
+    case 'semilla': // un brote que sale de la tierra, con semillas esparcidas
+      return (
+        <>
+          <Path d="M4 19.5h16" />
+          <Path d="M12 19.5v-8" />
+          <Path d="M12 13c-.6-2.8-2.6-4.3-5.5-4.3.2 2.9 2.2 4.4 5.5 4.3z" />
+          <Path d="M12 11.5c.4-3 2.5-4.7 5.6-4.7-.1 3-2.3 4.7-5.6 4.7z" />
+          <Circle cx={6} cy={16.8} r={0.6} fill={color} />
+          <Circle cx={17.5} cy={16.5} r={0.6} fill={color} />
+          <Circle cx={15} cy={17.6} r={0.6} fill={color} />
+        </>
+      );
+    case 'pies': // pies sobre los montes: el que trae alegres nuevas
+      return (
+        <>
+          <Path d="M2.5 20l5-7 3.5 4 3-3.5 7.5 6.5" />
+          <Path d="M9 9.5c-1.1 0-1.8-1.4-1.8-3.2S7.9 3.5 9 3.5s1.8 1.1 1.8 2.8S10.1 9.5 9 9.5z" />
+          <Path d="M15 11c-1.1 0-1.8-1.4-1.8-3.2S13.9 5 15 5s1.8 1.1 1.8 2.8S16.1 11 15 11z" />
+        </>
+      );
     case 'dos': // dos personas lado a lado
       return (
         <>
@@ -332,6 +352,45 @@ export function SelloIcono({ dibujo, color }: { dibujo: Dibujo; color: string })
         <>
           <Path d="M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" />
           <Path d="M9.5 12.5h5M9.5 15h3.5" />
+        </>
+      );
+    case 'llama': // una llama encendida: la racha
+      return (
+        <>
+          <Path d="M12 21c-3.8 0-6.5-2.7-6.5-6.3 0-2.5 1.4-4.3 2.9-5.9.3 1.5.9 2.6 1.9 3.2-.2-3.4 1.1-6.2 3.6-8.5.3 2.8 1.6 4.6 3 6.2 1 1.2 1.6 2.6 1.6 4.3 0 4-2.7 7-6.5 7z" />
+          <Path d="M12 21c-1.6 0-2.7-1.1-2.7-2.7 0-1.4.9-2.4 2-3.4.3 1 .9 1.6 1.6 1.9.4-.8.6-1.6.5-2.6 1.3 1 2.2 2.3 2.2 4 0 1.6-1.2 2.8-3.6 2.8z" fill={color} />
+        </>
+      );
+    case 'corona': // tú coronas el año
+      return (
+        <>
+          <Path d="M4.5 17 3.5 8.5l4.8 3.6L12 6l3.7 6.1 4.8-3.6-1 8.5z" />
+          <Path d="M5 20.5h14" />
+          <Circle cx={12} cy={13.5} r={1.3} fill={color} />
+        </>
+      );
+    case 'toalla': // lavar los pies los unos a los otros: la toalla sobre el lebrillo
+      return (
+        <>
+          <Path d="M4 14.5h16l-1.8 5H5.8z" />
+          <Path d="M7.5 14.5c0-3 1-5.5 2.2-7.5h4.6c1.2 2 2.2 4.5 2.2 7.5" />
+          <Path d="M10 7v4.5M14 7v4.5" />
+          <Path d="M8.5 17h7" />
+        </>
+      );
+    case 'cayado': // apacienta mis ovejas
+      return (
+        <>
+          <Path d="M10 21V8.5a4 4 0 1 1 8 0c0 1.6-1 2.6-2.3 2.6" />
+          <Path d="M6.5 21h7" />
+        </>
+      );
+    case 'estrella': // los que enseñan a justicia la multitud, como las estrellas
+      return (
+        <>
+          <Path d="M12 3.5l2.3 5 5.4.6-4 3.7 1.1 5.3L12 15.4l-4.8 2.7 1.1-5.3-4-3.7 5.4-.6z" />
+          <Circle cx={19} cy={19} r={1} fill={color} />
+          <Circle cx={5} cy={19.5} r={0.8} fill={color} />
         </>
       );
     default:

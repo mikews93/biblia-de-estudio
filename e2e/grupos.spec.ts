@@ -183,6 +183,53 @@ test('peticiones de oración: compartir, «estoy orando» y marcarla respondida'
   await pb.context().close();
 });
 
+test('pedir oración sin mi nombre y recibir ánimos que solo yo leo', async ({ browser, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Callada');
+  const beto = await cuentaNueva(request, 'Beto Anima');
+  const caro = await cuentaNueva(request, 'Caro Mira');
+  const { id } = await grupoCon(request, nombreUnico('Célula'), ana, [beto, caro]);
+  const pa = await navegador(browser, ana);
+  const pb = await navegador(browser, beto);
+  const pc = await navegador(browser, caro);
+  const peticion = `Oren por mí, es un tiempo difícil ${Date.now()}`;
+
+  await pa.goto(`/grupos/${id}?tab=oracion`);
+  await pa.getByPlaceholder('¿Por qué podemos orar contigo?').fill(peticion);
+  await pa.getByRole('checkbox', { name: /Sin mi nombre/ }).click();
+  await pa.getByRole('button', { name: 'Compartir petición' }).click();
+  await expect(pa.getByText('Tú, sin tu nombre', { exact: false })).toBeVisible();
+
+  // Beto no sabe quién la pidió, ni por la API; le envía ánimo.
+  const { peticiones } = await api(request, beto, 'peticiones', { grupo: id });
+  const suya = peticiones.find((p: { texto: string }) => p.texto === peticion);
+  expect(suya.autor).toBeNull();
+  expect(suya.animos).toBeNull();
+  await pb.goto(`/grupos/${id}?tab=oracion`);
+  await expect(pb.getByTestId('peticion-grupo').getByText('Alguien del grupo', { exact: false })).toBeVisible();
+  await pb.getByRole('button', { name: 'Enviar ánimo' }).click();
+  await pb.getByRole('button', { name: 'Estoy orando por ti hoy.' }).click();
+  await pb.getByTestId('enviar-animo').getByRole('button', { name: 'Enviar ánimo' }).click();
+  await expect(pb.getByRole('button', { name: 'Le enviaste ánimo' })).toBeVisible();
+
+  // Caro no puede leer los ánimos de otra persona.
+  const res = await request.post('/api/comunidades', {
+    headers: { Authorization: `Bearer ${caro.llave}` },
+    data: { accion: 'animos', peticion: suya.id },
+  });
+  expect(res.status()).toBe(403);
+  await pc.goto(`/grupos/${id}?tab=oracion`);
+  await expect(pc.getByText(peticion)).toBeVisible();
+  await expect(pc.getByText('Estoy orando por ti hoy.')).toHaveCount(0);
+
+  // Ana lo lee.
+  await pa.reload();
+  await pa.getByText('Te enviaron un ánimo', { exact: false }).click();
+  await expect(pa.getByTestId('mis-animos').getByText('Estoy orando por ti hoy.')).toBeVisible();
+  await expect(pa.getByTestId('mis-animos').getByText('Beto Anima', { exact: false })).toBeVisible();
+
+  for (const p of [pa, pb, pc]) await p.context().close();
+});
+
 test('la IA sugiere preguntas para la reunión y el grupo las comparte sin volver a pedirlas', async ({ browser, request }, info) => {
   const ana = await cuentaNueva(request, 'Ana Líder');
   const beto = await cuentaNueva(request, 'Beto Anfitrión');
@@ -302,4 +349,48 @@ test('si el único admin sale del grupo, pasa a administrarlo quien lleva más t
 
   await pa.context().close();
   await pb.context().close();
+});
+
+test('Mis grupos en el perfil: abrir, silenciar sus avisos y darse de baja; los grupos en común se ven en el perfil de alguien', async ({ browser, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Perfil');
+  const beto = await cuentaNueva(request, 'Beto Perfil');
+  const conexion = nombreUnico('Conexión');
+  const familia = nombreUnico('Familia');
+  const g = await grupoCon(request, conexion, ana, [beto]);
+  await grupoCon(request, familia, beto, []);
+
+  const pb = await navegador(browser, beto);
+  await pb.goto('/cuenta');
+  const mis = pb.getByTestId('mis-grupos');
+  await expect(mis.getByText('Mis grupos')).toBeVisible();
+  await expect(mis.getByText(conexion)).toBeVisible();
+  await expect(mis.getByText(familia)).toBeVisible();
+  await expect(mis.getByText('Célula · 1 persona · administras')).toBeVisible();
+
+  // Tocar un grupo muestra lo que se puede hacer con él.
+  await mis.getByRole('button', { name: new RegExp(conexion) }).click();
+  await mis.getByRole('button', { name: 'Silenciar sus avisos' }).click();
+  await expect(mis.getByRole('button', { name: 'Recibir sus avisos' })).toBeVisible();
+  expect((await api(request, beto, 'grupo', { grupo: g.id })).grupo.avisos).toBe(false);
+
+  // En el perfil de Ana, Beto ve solo el grupo que comparten, y de ahí llega al grupo.
+  await pb.goto(`/comunidades/persona/${ana.usuario.id}`);
+  const comun = pb.getByTestId('grupos-en-comun');
+  await expect(comun.getByText('Grupos en común')).toBeVisible();
+  await expect(comun.getByText(conexion)).toBeVisible();
+  await expect(comun.getByText(familia)).toHaveCount(0);
+  await comun.getByRole('link', { name: new RegExp(conexion) }).click();
+  await expect(pb.getByText('Avisos silenciados')).toBeVisible();
+  // Desde la lista del grupo se abre el perfil de cada persona.
+  await pb.getByRole('link', { name: `Ver el perfil de ${ana.usuario.nombre}` }).click();
+  await expect(pb).toHaveURL(new RegExp(`/comunidades/persona/${ana.usuario.id}`));
+
+  // Darse de baja desde el perfil.
+  await pb.goto('/cuenta');
+  await mis.getByRole('button', { name: new RegExp(conexion) }).click();
+  await mis.getByRole('button', { name: 'Darme de baja' }).click();
+  await expect(mis.getByText(conexion)).toHaveCount(0);
+  await expect(mis.getByText(familia)).toBeVisible();
+  const { grupo } = await api(request, ana, 'grupo', { grupo: g.id });
+  expect(grupo.miembros.map((m: { nombre: string }) => m.nombre)).toEqual([ana.usuario.nombre]);
 });

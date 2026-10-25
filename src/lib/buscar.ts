@@ -1,8 +1,13 @@
 // Cliente de /api/buscar: búsqueda de pasajes por idea, comprobada contra el texto de la versión que lee la persona.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { WordIndex, searchVersions } from './buscarPalabras';
 import { aiDenied, aiHeaders } from './comunidad';
-import { parseRef } from './refs';
+import { isOnline } from './conexion';
+import { type Book, getChapter } from './data';
+import { downloadsState, init as initDownloads, textPack } from './descargas';
+import { licensedById } from './licenciadas';
+import { formatRef, parseRef } from './refs';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
@@ -24,6 +29,97 @@ export async function searchByIdea(
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new Error(body?.error ?? `No se pudo hacer la búsqueda (${res.status})`);
   return body;
+}
+
+/**
+ * Cómo salió una búsqueda rápida: «semantica» (con internet, por el sentido y las palabras), «palabras» (con internet,
+ * pero el servidor no pudo usar el modelo) o «sin-conexion» (en el dispositivo, por palabras, en una versión descargada).
+ */
+export type QuickMode = 'semantica' | 'palabras' | 'sin-conexion';
+
+/** Sin conexión y sin ninguna versión descargada: no hay dónde buscar. */
+export const NOTHING_DOWNLOADED = 'Sin conexión y sin versiones descargadas.';
+
+/**
+ * Búsqueda rápida por idea o por palabras recordadas, sin IA ni cuenta. Con internet la hace el servidor (semántica +
+ * palabras); sin conexión, o si el servidor no responde, el dispositivo busca por palabras en una versión descargada.
+ */
+export async function quickSearch(
+  query: string,
+  version: string,
+  books: Book[],
+  signal?: AbortSignal,
+): Promise<{ results: IdeaResult[]; mode: QuickMode }> {
+  const online = isOnline();
+  if (online) {
+    try {
+      const res = await fetch(`${API}/api/buscar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, version, modo: 'rapido' }),
+        signal,
+      });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body) return { results: body.results, mode: body.semantica ? 'semantica' : 'palabras' };
+      if (res.status === 400 && body?.error) throw new Error(body.error);
+    } catch (e) {
+      if (signal?.aborted || (e instanceof Error && !(e instanceof TypeError))) throw e;
+    }
+  }
+  try {
+    return { results: await searchOffline(query, version, books), mode: 'sin-conexion' };
+  } catch (e) {
+    // Con internet pero sin respuesta del servidor, y nada descargado: no es un problema de conexión
+    if (online && e instanceof Error && e.message === NOTHING_DOWNLOADED) throw new Error('No se pudo hacer la búsqueda. Inténtalo de nuevo.');
+    throw e;
+  }
+}
+
+const indexes = new Map<string, Promise<WordIndex>>();
+
+/**
+ * Las versiones libres descargadas enteras en las que buscar sin conexión: la que se lee primero (si está), luego las
+ * demás. Cada quien recuerda el versículo con las palabras de su versión, así que se busca en todas.
+ */
+export function offlineVersions(version: string, books: Book[]): string[] {
+  const { index } = downloadsState();
+  const whole = (v: string) => !licensedById(v) && books.length > 0 && books.every((b) => index[textPack(v)]?.includes(b.id));
+  const all = Object.keys(index)
+    .filter((p) => p.startsWith('texto:'))
+    .map((p) => p.slice('texto:'.length));
+  return [...new Set([version, 'rv1909', ...all])].filter(whole);
+}
+
+function wordIndex(v: string, books: Book[]): Promise<WordIndex> {
+  let index = indexes.get(v);
+  if (!index) {
+    index = Promise.all(
+      books.flatMap((b) =>
+        Array.from({ length: b.chapters }, (_, i) =>
+          getChapter(b.id, i + 1, v).then((vs) => vs.map(([n, t]) => ({ ref: `${b.id}.${i + 1}.${n}`, text: t }))),
+        ),
+      ),
+    ).then((chapters) => new WordIndex(chapters.flat()));
+    index.catch(() => indexes.delete(v));
+    indexes.set(v, index);
+  }
+  return index;
+}
+
+/**
+ * Búsqueda por palabras en el dispositivo, en todas las versiones descargadas (la que se lee pesa más). El índice de
+ * cada versión se arma una vez (un par de segundos). El texto sale en la primera versión de la lista.
+ */
+export async function searchOffline(query: string, version: string, books: Book[], limit = 20): Promise<IdeaResult[]> {
+  await initDownloads();
+  const vs = offlineVersions(version, books);
+  if (!vs.length) throw new Error(NOTHING_DOWNLOADED);
+  const all = await Promise.all(vs.map(async (id) => ({ id, index: await wordIndex(id, books) })));
+  const shown = all[0].index;
+  return searchVersions(all, query, version)
+    .slice(0, limit)
+    .map((ref) => ({ ref, label: formatRef(ref, books), text: shown.text(ref), reason: '', version: vs[0] }))
+    .filter((r) => r.text);
 }
 
 // Búsquedas recientes, guardadas solo en este dispositivo

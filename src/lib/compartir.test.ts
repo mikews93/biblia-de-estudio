@@ -31,6 +31,6 @@ describe('compartir un versículo', () => {
   it('la letra se achica con versículos más largos y crece en formato historia', () => {
     const sizes = [10, 100, 200, 300, 500, 800].map((n) => verseFontSize('a'.repeat(n), 'cuadrado'));
     expect(sizes).toEqual([70, 60, 50, 42, 36, 30]);
-    expect(verseFontSize('corto', 'historia')).toBe(81);
+    expect(verseFontSize('corto', 'historia')).toBe(91);
   });
 });

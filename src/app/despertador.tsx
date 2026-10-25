@@ -7,7 +7,7 @@ import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-nativ
 import Appear from '@/components/Appear';
 import { Button, ErrorText, SectionTitle, useAction } from '@/components/comunidad/ui';
 import { BellIcon, LinkIcon, OpenBookIcon, SunIcon, type IconProps } from '@/components/icons';
-import { ALARMA_NATIVA } from '@/lib/alarma';
+import { ALARMA_NATIVA, pedirAlarmaExacta, useAlarmaExacta } from '@/lib/alarma';
 import { Soporte, lecturaPendiente, soporte } from '@/lib/avisos';
 import { horaLabel } from '@/lib/avisosTexto';
 import { Book, getBooks } from '@/lib/data';
@@ -31,6 +31,7 @@ export default function DespertadorScreen() {
   const [support, setSupport] = useState<Soporte>('si');
   const [copiado, setCopiado] = useState(false);
   const save = useAction();
+  const exacta = useAlarmaExacta();
 
   useEffect(() => {
     setSupport(soporte());
@@ -127,6 +128,18 @@ export default function DespertadorScreen() {
             />
           </View>
           <ErrorText>{save.error}</ErrorText>
+          {ALARMA_NATIVA && d.activo && !exacta && (
+            <View style={[styles.aviso, { backgroundColor: colors.accentSoft, borderColor: colors.border }]} testID="alarma-exacta">
+              <BellIcon color={colors.accent} size={20} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Puede sonar unos minutos tarde</Text>
+                <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 3 }}>
+                  Android pide permitir «Alarmas y recordatorios» para que suene justo a su hora.
+                </Text>
+                <Button label="Permitir" kind="outline" onPress={() => void pedirAlarmaExacta()} style={{ marginTop: 10, alignSelf: 'flex-start' }} />
+              </View>
+            </View>
+          )}
         </Appear>
       )}
 
@@ -366,6 +379,7 @@ const styles = StyleSheet.create({
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
   step: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  aviso: { flexDirection: 'row', gap: 12, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14, marginTop: 10 },
   rutina: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
   link: {
     flexDirection: 'row',

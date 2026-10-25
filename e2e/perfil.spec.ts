@@ -1,5 +1,5 @@
-// El perfil: los datos que ven los demás, la foto y entrar o conectar la cuenta con Facebook (el simulado de
-// e2e/support/mock-facebook.ts).
+// El perfil: los datos que ven los demás, la foto y entrar o conectar la cuenta con Facebook por Auth.js (el
+// simulado de e2e/support/mock-facebook.ts).
 
 import path from 'node:path';
 
@@ -80,7 +80,7 @@ test('entrar con Facebook crea la cuenta con su nombre y su foto', async ({ page
   // La ventana de Facebook se cierra sola y la app sigue con la cuenta ya abierta.
   await expect(page.getByText('Pregúntale algo a la comunidad…')).toBeVisible();
   await page.goto('/cuenta');
-  await expect(page.getByText(`Conectado como ${nombre}.`)).toBeVisible();
+  await expect(page.getByText(`Conectado como ${nombre}`)).toBeVisible();
   await expect(page.getByRole('textbox').first()).toHaveValue(nombre);
   await expect(page.locator('img[src*="/fotos-prueba/"]').first()).toBeVisible();
 });

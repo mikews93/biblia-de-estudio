@@ -9,10 +9,13 @@ import {
   BellIcon,
   BooksIcon,
   RouteIcon,
+  SunriseIcon,
+  ShareIcon,
   DownloadIcon,
   HeartIcon,
   LecternIcon,
   RingsIcon,
+  HammerIcon,
   MicIcon,
   PencilIcon,
   PeopleIcon,
@@ -26,6 +29,7 @@ import {
   SunIcon,
   type IconProps,
 } from '@/components/icons';
+import ParaTiHoy from '@/components/ParaTi';
 import PlanCard from '@/components/PlanCard';
 import HoyJovenes from '@/components/jovenes/HoyJovenes';
 import HoyNinos from '@/components/ninos/HoyNinos';
@@ -36,11 +40,14 @@ import VerseImage from '@/components/VerseImage';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
-import { greeting, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
+import { greeting, greetingName, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
 import { Ruta } from '@/components/SemanaSermon';
 import { palabraDeLaSemana, palabraHref, palabrasHref } from '@/lib/palabras';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
+import { useRacha } from '@/lib/racha';
+import { useServicio } from '@/lib/servicioUso';
+import { RachaChip } from '@/components/Racha';
 import { seasonTint } from '@/lib/retos';
 import { ganadosRecientes, sellosPara, siguienteSello, useSellos } from '@/lib/sellos';
 import { diaDeHoy, semanaActiva, siguiente, useSemanas } from '@/lib/semanas';
@@ -63,8 +70,11 @@ export default function Hoy() {
 function Today() {
   const colors = useColors();
   const { usuario } = useAccount();
+  const saludo = greetingName(usuario);
   const { settings } = useSettings();
   const progress = useProgress();
+  const racha = useRacha();
+  const servicio = useServicio();
   const plans = usePlans();
   const words = useWords();
   const due = dueCards(useCards()).length;
@@ -120,7 +130,17 @@ function Today() {
             <Text style={[styles.date, { color: colors.muted }]}>
               {capitalize(new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }))}
             </Text>
-            <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>{greeting()}</Text>
+            <Text style={[styles.hello, { color: colors.text, fontFamily: serif }]}>
+              {greeting()}
+              {saludo ? (
+                <>
+                  ,{'\n'}
+                  <Text style={styles.helloName} numberOfLines={1}>
+                    {saludo}
+                  </Text>
+                </>
+              ) : null}
+            </Text>
           </View>
           {canNotify && (
             <Pressable
@@ -138,7 +158,7 @@ function Today() {
             accessibilityRole="button"
             accessibilityLabel={nube ? `Tu perfil · ${nube}` : 'Tu perfil'}
           >
-            {usuario ? <Avatar name={usuario.nombre} foto={usuario.foto} size={38} /> : <PersonIcon color={colors.accent} />}
+            {usuario ? <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} servicio={servicio.total} size={38} /> : <PersonIcon color={colors.accent} />}
             <NubeEstado />
           </Pressable>
         </View>
@@ -152,19 +172,24 @@ function Today() {
             accessibilityRole="search"
             accessibilityLabel="Buscar una cita, unas palabras o una idea"
           >
-            <SearchIcon color={colors.muted} size={18} />
-            <Text style={{ color: colors.muted, fontSize: 15 }} numberOfLines={1}>
-              Buscar una cita o un versículo
-            </Text>
+            <SearchIcon color={colors.text} size={24} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.searchTitle, { color: colors.text }]} numberOfLines={1}>
+                Buscar en la Biblia
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }} numberOfLines={1}>
+                Una cita, unas palabras o una idea
+              </Text>
+            </View>
           </Pressable>
           {voiceSupported() && (
             <Pressable
               onPress={() => navigate(() => router.push('/buscar?voz=1' as never), 'forward')}
-              style={styles.searchMic}
+              style={({ pressed }) => [styles.searchMic, { backgroundColor: colors.accentSoft }, pressed && styles.pressed]}
               accessibilityRole="button"
               accessibilityLabel="Dictar la búsqueda"
             >
-              <MicIcon color={colors.accent} />
+              <MicIcon color={colors.accent} size={22} />
             </Pressable>
           )}
         </View>
@@ -199,9 +224,15 @@ function Today() {
             >
               <View style={styles.devotionalLabel}>
                 <HeartIcon color={colors.surface} size={18} strokeWidth={2} />
-                <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>Haz el devocional de hoy</Text>
+                <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>
+                  {racha.hoyHecho ? 'Devocional de hoy hecho' : 'Haz el devocional de hoy'}
+                </Text>
               </View>
-              <Text style={{ color: colors.accentSoft, fontSize: 13 }}>10 min</Text>
+              {racha.actual > 0 ? (
+                <RachaChip dias={racha.actual} hecha={racha.hoyHecho} colors={colors} claro />
+              ) : (
+                <Text style={{ color: colors.accentSoft, fontSize: 13 }}>10 min</Text>
+              )}
             </Pressable>
           )}
           <View style={styles.row}>
@@ -218,6 +249,12 @@ function Today() {
           </View>
         </View>
       </Appear>
+
+      {books.length > 0 && (
+        <Appear delay={85}>
+          <ParaTiHoy books={books} comun={daily} colors={colors} />
+        </Appear>
+      )}
 
       {semana && <SemanaCard semana={semana} colors={colors} />}
 
@@ -362,12 +399,15 @@ function Today() {
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
         <Tile icon={RingsIcon} label="En pareja" colors={colors} onPress={() => navigate(() => router.push('/pareja' as never), 'forward')} />
+        <Tile icon={HammerIcon} label="Hombres de pie" colors={colors} onPress={() => navigate(() => router.push('/hombres' as never), 'forward')} />
         <Tile
           icon={LecternIcon}
           label="Del sermón"
           colors={colors}
           onPress={() => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward')}
         />
+        <Tile icon={ShareIcon} label="Para alguien" colors={colors} onPress={() => navigate(() => router.push('/ocasiones' as never), 'forward')} />
+        <Tile icon={SunriseIcon} label="Mi año" colors={colors} onPress={() => navigate(() => router.push('/mi-ano' as never), 'forward')} />
         <Tile icon={RouteIcon} label="Recorridos" colors={colors} onPress={() => navigate(() => router.push('/recorridos' as never), 'forward')} />
         <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
         <Tile icon={WordJourneyIcon} label="Palabras" colors={colors} onPress={() => navigate(() => router.push(palabrasHref() as never), 'forward')} />
@@ -518,10 +558,8 @@ function Tile({ icon: Icon, label, colors, onPress }: { icon: (p: IconProps) => 
       ]}
       accessibilityRole="button"
     >
-      <View style={[styles.tileIcon, { backgroundColor: colors.accentSoft }]}>
-        <Icon color={colors.accent} size={22} />
-      </View>
-      <Text style={{ color: colors.text, fontWeight: '600', marginTop: 8 }}>{label}</Text>
+      <Icon color={colors.accent} size={28} />
+      <Text style={{ color: colors.text, fontWeight: '600', marginTop: 10 }}>{label}</Text>
     </Pressable>
   );
 }
@@ -533,10 +571,12 @@ const styles = StyleSheet.create({
   invite: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   inviteIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   date: { fontSize: 14 },
-  hello: { fontSize: 34, marginTop: 2 },
-  search: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, marginTop: 16, paddingRight: 6 },
-  searchField: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12 },
-  searchMic: { paddingHorizontal: 10, paddingVertical: 8 },
+  hello: { fontSize: 34, lineHeight: 42, marginTop: 2 },
+  helloName: { fontStyle: 'italic' },
+  search: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 22, marginTop: 8, paddingRight: 10, minHeight: 72 },
+  searchField: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 14 },
+  searchTitle: { fontSize: 18, fontWeight: '600' },
+  searchMic: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   kicker: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
   continue: { borderRadius: 20, padding: 20 },
   continueTitle: { fontSize: 28, marginTop: 6 },
@@ -566,8 +606,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  tileIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   devotionalLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tile: { flexGrow: 1, flexBasis: '28%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 16, alignItems: 'center' },
+  tile: { flexGrow: 1, flexBasis: '28%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 20, alignItems: 'center' },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
 });

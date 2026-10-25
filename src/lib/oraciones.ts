@@ -27,7 +27,11 @@ export type Oracion = {
   versiculos: Acompana[];
   /** Cuándo y cómo respondió Dios. */
   respondida?: { fecha: number; nota: string };
+  /** Si la pidió a un grupo de la comunidad: allí la ven y le envían ánimo (src/lib/pedirOracion.ts). */
+  compartida?: Compartida;
 };
+
+export type Compartida = { grupo: string; nombre: string; peticion: string; fecha: number };
 
 const KEY = 'oraciones';
 
@@ -126,6 +130,12 @@ export async function seguirOrando(id: string) {
       return rest;
     }),
   );
+}
+
+/** Recuerda a qué grupo se pidió oración, para llevar a la persona a los ánimos. */
+export async function marcarCompartida(id: string, compartida: Compartida) {
+  await load();
+  save(state.map((o) => (o.id === id ? { ...o, compartida } : o)));
 }
 
 export async function borrarOracion(id: string) {

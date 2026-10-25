@@ -2,7 +2,8 @@
 // - Estudios que varias personas marcaron con «Algo suena raro» (api/_senales.ts): se descartan o se preparan de nuevo.
 // - Pasajes donde al menos MIN_PERSONAS personas distintas dejaron preguntas anónimas (api/_preguntas.ts): la IA
 //   propone preguntas frecuentes, reescritas y sin datos personales, y quien cuida las aprueba o las cambia.
-// - Iglesias anfitrionas (api/_iglesias.ts): darlas de alta, pausarlas y cambiar sus preguntas al día.
+// - Iglesias anfitrionas (api/_iglesias.ts): revisar las postulaciones (aprobar o rechazar), darlas de alta a mano,
+//   pausarlas, reanudar las que se pausaron solas y cambiar sus preguntas al día.
 //
 // El guion bajo hace que Vercel no la publique como función: sus acciones (las que empiezan por «cuidar») van por
 // /api/comunidades, con la misma cuenta.
@@ -11,6 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type postgres from 'postgres';
 
 import { IGLESIAS_SCHEMA, LAMPARA_IGLESIA, nuevoCodigo } from './_iglesias';
+import { notifyUser } from './_push';
 import { PREGUNTAS_SCHEMA } from './_preguntas';
 import { esCuidador, SENALES_SCHEMA } from './_senales';
 
@@ -125,15 +127,22 @@ export function cuidarActions({ auth, fail, books }: Helpers): Record<string, (c
         order by personas desc limit 50`;
       const [{ frecuentes }] = await sql<{ frecuentes: number }[]>`select count(*)::int as frecuentes from preguntas_frecuentes`;
       const iglesias = await sql<Json[]>`
-        select i.id, i.nombre, i.ciudad, i.codigo, i.lampara, i.activa,
+        select i.id, i.nombre, i.ciudad, i.codigo, i.lampara, i.activa, i.pausa, u.nombre as encargado,
           (select count(*)::int from iglesia_miembros m where m.iglesia_id = i.id) as miembros
-        from iglesias_anfitrionas i order by i.activa desc, i.nombre`;
+        from iglesias_anfitrionas i left join usuarios u on u.id = i.encargado_id
+        order by i.pausa is null, i.activa desc, i.nombre`;
+      const postulaciones = await sql<Json[]>`
+        select p.id, p.nombre, p.ciudad, p.direccion, p.denominacion, p.responsable, p.cargo, p.contacto, p.enlace, p.mensaje,
+          p.creado::text, u.nombre as cuenta, u.correo
+        from iglesia_postulaciones p join usuarios u on u.id = p.usuario_id
+        where p.estado = 'pendiente' order by p.creado limit 50`;
       return {
         minPersonas: MIN_PERSONAS,
         raros: raros.map((r) => ({ ...r, ...partesDe(r.clave) })),
         pasajes,
         frecuentes,
         iglesias,
+        postulaciones,
       };
     },
 
@@ -268,17 +277,71 @@ export function cuidarActions({ auth, fail, books }: Helpers): Record<string, (c
       throw fail('No se pudo crear el código, inténtalo de nuevo', 500);
     },
 
+    /** Aprueba una postulación (crea la iglesia con quien la postuló como encargado) o la rechaza con un motivo. */
+    async cuidarPostulacion({ sql, body, request }) {
+      await cuidador(sql, request);
+      const id = typeof body.id === 'string' && /^[0-9a-f-]{36}$/i.test(body.id) ? body.id : null;
+      if (!id || typeof body.aprobar !== 'boolean') throw fail('Pedido no válido');
+      const [p] = await sql<{ usuario_id: string; nombre: string; ciudad: string }[]>`
+        select usuario_id, nombre, ciudad from iglesia_postulaciones where id = ${id} and estado = 'pendiente'`;
+      if (!p) throw fail('Esa postulación ya no está pendiente', 404);
+      if (!body.aprobar) {
+        const motivo = textoDe(body.motivo, 300, 'el motivo, para que la persona sepa qué corregir');
+        await sql`update iglesia_postulaciones set estado = 'rechazada', motivo = ${motivo}, revisado = now() where id = ${id}`;
+        void notifyUser(sql, p.usuario_id, {
+          title: 'Revisamos la postulación de tu iglesia',
+          body: `${p.nombre}: aún no pudimos aprobarla. Mira el motivo en Zarza.`,
+          url: '/iglesia/postular',
+          tag: `postulacion-${id}`,
+        });
+        return { estado: 'rechazada' };
+      }
+      const nombre = textoDe(typeof body.nombre === 'string' && body.nombre.trim() ? body.nombre : p.nombre, MAX_NOMBRE, 'el nombre de la iglesia');
+      const lampara = body.lampara === undefined ? LAMPARA_IGLESIA : Number(body.lampara);
+      if (!Number.isInteger(lampara) || lampara < 1 || lampara > 500) throw fail('Preguntas al día no válidas');
+      const [ya] = await sql`select 1 from iglesias_anfitrionas where encargado_id = ${p.usuario_id}`;
+      if (ya) throw fail('Esa persona ya es encargada de otra iglesia', 409);
+      for (let intento = 0; intento < 5; intento++) {
+        const iglesia = await sql.begin(async (tx) => {
+          const [row] = await tx<{ id: string; codigo: string }[]>`
+            insert into iglesias_anfitrionas (nombre, ciudad, codigo, lampara, encargado_id)
+            values (${nombre}, ${p.ciudad}, ${nuevoCodigo()}, ${lampara}, ${p.usuario_id})
+            on conflict (codigo) do nothing returning id, codigo`;
+          if (!row) return null;
+          await tx`update iglesia_postulaciones set estado = 'aprobada', iglesia_id = ${row.id}, revisado = now() where id = ${id}`;
+          // Quien la postuló entra como miembro: es el primero en tener la lámpara de la iglesia.
+          await tx`
+            insert into iglesia_miembros (usuario_id, iglesia_id) values (${p.usuario_id}, ${row.id})
+            on conflict (usuario_id) do update set iglesia_id = excluded.iglesia_id, unido = now()`;
+          return row;
+        });
+        if (iglesia) {
+          void notifyUser(sql, p.usuario_id, {
+            title: '¡Tu iglesia ya es anfitriona!',
+            body: `${nombre} ya tiene su código. Compártelo con tu congregación desde Zarza.`,
+            url: '/iglesia',
+            tag: `postulacion-${id}`,
+          });
+          return { estado: 'aprobada', iglesia: { ...iglesia, nombre, ciudad: p.ciudad, lampara } };
+        }
+      }
+      throw fail('No se pudo crear el código, inténtalo de nuevo', 500);
+    },
+
     async cuidarIglesia({ sql, body, request }) {
       await cuidador(sql, request);
       const id = typeof body.id === 'string' && /^[0-9a-f-]{36}$/i.test(body.id) ? body.id : null;
       if (!id) throw fail('Iglesia no válida');
       if (body.activa !== undefined && typeof body.activa !== 'boolean') throw fail('Pedido no válido');
+      if (body.reanudar !== undefined && body.reanudar !== true) throw fail('Pedido no válido');
       const lampara = body.lampara === undefined ? null : Number(body.lampara);
       if (lampara !== null && (!Number.isInteger(lampara) || lampara < 1 || lampara > 500)) throw fail('Preguntas al día no válidas');
       const [row] = await sql`
         update iglesias_anfitrionas set
           activa = coalesce(${(body.activa as boolean | undefined) ?? null}::boolean, activa),
-          lampara = coalesce(${lampara}::int, lampara)
+          lampara = coalesce(${lampara}::int, lampara),
+          pausa = case when ${body.reanudar === true} then null else pausa end,
+          revisada = case when ${body.reanudar === true} then now() else revisada end
         where id = ${id} returning id`;
       if (!row) throw fail('Esa iglesia no existe', 404);
       return {};

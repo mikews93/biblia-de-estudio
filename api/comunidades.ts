@@ -2,15 +2,15 @@
 // notas compartidas en un versículo, peticiones de oración, preguntas para la reunión sugeridas por la IA y
 // guías de encuentro preparadas en el Taller.
 // También la red de la pestaña Comunidad: amigos, publicaciones (lo que cada quien lee, versículos resaltados,
-// imágenes de versículos y preguntas), «me gusta» y comentarios. Y «En pareja» (api/_pareja.ts): dos cuentas unidas
+// imágenes de versículos y preguntas), «me gusta» y comentarios; versículos enviados a un amigo con «Amén / Gracias». Y «En pareja» (api/_pareja.ts): dos cuentas unidas
 // por un código que hacen juntas un plan de devocionales.
 //
 // Todo va por POST con {"accion": "...", ...}. Para empezar basta un nombre: al registrarse se recibe una
 // llave de sesión que la app guarda y envía como "Authorization: Bearer <llave>" (en la base solo queda su
 // hash). Si la persona añade correo y contraseña, puede entrar con ellos desde otro dispositivo.
 //
-// El perfil (foto, unas líneas sobre la persona, su iglesia y su ciudad) y la conexión con Facebook usan
-// las ayudas de api/_perfil.ts; Facebook vuelve a /api/facebook, que es facebookCallback de este archivo.
+// El perfil (foto, unas líneas sobre la persona, su iglesia y su ciudad) usa las ayudas de api/_perfil.ts.
+// Entrar con Google, Apple o Facebook (Auth.js, api/_entrar.ts) va por /api/auth, que es authRoute de este archivo.
 //
 // Base de datos: Postgres (Neon desde el Marketplace de Vercel), en DATABASE_URL o POSTGRES_URL.
 // Las tablas se crean solas la primera vez que se usa la función.
@@ -22,12 +22,15 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import postgres from 'postgres';
 
-import { downloadPhoto, facebookDialog, facebookPage, facebookProfile, facebookReady, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
+import { authJs, esProveedor, Externo, NOMBRE, paginaVuelta, Proveedor, proveedoresListos } from './_entrar';
+import { downloadPhoto, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
+import { CIRCULO_SCHEMA, circuloActions } from './_circulo';
 import { CUIDAR_SCHEMA, cuidarActions } from './_cuidar';
 import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
-import { notifyUser, PUSH_SCHEMA } from './_push';
+import { type Aviso, notifyUser, PUSH_SCHEMA } from './_push';
 import { esCuidador } from './_senales';
+import { DIAS_VISIBLE, MAX_ANIMO, PETICIONES_DIA } from '../src/lib/pedirOracion';
 import { planById } from '../src/lib/planesCatalogo';
 import { parseRetoId, seasonRun } from '../src/lib/temporadas';
 
@@ -37,9 +40,10 @@ const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const MAX_NAME = 40;
 const MAX_BIO = 160;
 const MAX_PLACE = 60;
+const MAX_APODO = 24;
 const PHOTOS_PER_DAY = 10;
-// Lo que dura el viaje de ida y vuelta a Facebook.
-const FACEBOOK_MINUTES = 15;
+// Lo que dura el viaje de ida y vuelta a Google, Apple o Facebook.
+const VIAJE_MINUTOS = 15;
 const MAX_NOTE = 1000;
 const MAX_PRAYER = 500;
 const MAX_GUIDE = 10000;
@@ -55,6 +59,9 @@ const PAGE = 30;
 const REPORTS_TO_HIDE = 3;
 const POST_TYPES = ['resaltado', 'imagen', 'pregunta', 'reflexion'];
 const HIGHLIGHTS = ['amarillo', 'verde', 'azul', 'rosa'];
+// «Te envié un versículo»: cuántos se pueden mandar por hora y las respuestas posibles.
+const SENT_PER_HOUR = 30;
+const RESPUESTAS = ['amen', 'gracias'];
 
 const SCHEMA = `
 create table if not exists usuarios (
@@ -151,13 +158,45 @@ alter table usuarios add column if not exists foto text;
 alter table usuarios add column if not exists bio text;
 alter table usuarios add column if not exists iglesia text;
 alter table usuarios add column if not exists ciudad text;
+alter table usuarios add column if not exists apodo text;
 alter table usuarios add column if not exists facebook_id text unique;
 alter table usuarios add column if not exists facebook_nombre text;
 alter table usuarios add column if not exists fotos_dia date;
 alter table usuarios add column if not exists fotos_n int not null default 0;
-create table if not exists facebook_viajes (
+alter table usuarios add column if not exists racha int not null default 0;
+alter table usuarios add column if not exists racha_vence date;
+alter table usuarios add column if not exists servicio int not null default 0;
+-- Cada quien puede silenciar los avisos de un grupo sin salir de él.
+alter table miembros add column if not exists avisos boolean not null default true;
+create table if not exists cuentas_externas (
+  proveedor text not null,
+  cuenta_id text not null,
+  usuario_id uuid not null references usuarios on delete cascade,
+  nombre text,
+  creado timestamptz not null default now(),
+  primary key (proveedor, cuenta_id),
+  unique (usuario_id, proveedor)
+);
+insert into cuentas_externas (proveedor, cuenta_id, usuario_id, nombre)
+  select 'facebook', facebook_id, id, facebook_nombre from usuarios where facebook_id is not null on conflict do nothing;
+update usuarios set facebook_id = null, facebook_nombre = null where facebook_id is not null;
+drop table if exists facebook_viajes;
+alter table peticiones add column if not exists anonima boolean not null default false;
+-- Ánimos a una petición del grupo: uno por persona, y solo los lee quien pidió (src/lib/pedirOracion.ts).
+create table if not exists animos (
+  peticion_id uuid not null references peticiones on delete cascade,
+  usuario_id uuid not null references usuarios on delete cascade,
+  texto text not null,
+  creado timestamptz not null default now(),
+  primary key (peticion_id, usuario_id)
+);
+create table if not exists viajes_cuenta (
   estado_hash text primary key,
+  pase_hash text unique,
+  navegador_hash text unique,
+  proveedor text not null,
   modo text not null,
+  nativo boolean not null default false,
   usuario_id uuid references usuarios on delete cascade,
   resultado text not null default 'pendiente',
   creado timestamptz not null default now()
@@ -214,7 +253,24 @@ create table if not exists bloqueos (
   a uuid not null references usuarios on delete cascade,
   creado timestamptz not null default now(),
   primary key (de, a)
-);`;
+);
+create table if not exists versiculos_enviados (
+  id uuid primary key default gen_random_uuid(),
+  de uuid not null references usuarios on delete cascade,
+  para uuid not null references usuarios on delete cascade,
+  libro text not null,
+  capitulo int not null,
+  versiculo int not null,
+  version text not null,
+  cita text not null,
+  datos jsonb not null default '{}',
+  respuesta text,
+  respondido timestamptz,
+  visto boolean not null default false,
+  creado timestamptz not null default now()
+);
+create index if not exists versiculos_enviados_para on versiculos_enviados (para, creado desc);
+create index if not exists versiculos_enviados_de on versiculos_enviados (de, creado desc);`;
 
 const QUESTIONS_SYSTEM = `Preparas preguntas para la reunión de un grupo pequeño cristiano (una célula, una familia o un grupo de la iglesia) que lee la Biblia en una app gratuita en español.
 
@@ -253,15 +309,29 @@ type User = {
   bio: string | null;
   iglesia: string | null;
   ciudad: string | null;
-  /** Si tiene contraseña (una cuenta creada con Facebook puede tener correo y no contraseña). */
+  /** Cómo quiere que la app la salude («Buenos días, Migue»), o null para usar su primer nombre. */
+  apodo: string | null;
+  /** Si tiene contraseña (una cuenta creada con Google, Apple o Facebook puede tener correo y no contraseña). */
   conClave: boolean;
-  /** El nombre de su cuenta de Facebook conectada, o null. */
-  facebook: string | null;
+  /** Las cuentas de Google, Apple o Facebook con las que puede entrar, con el nombre que tiene en cada una. */
+  cuentas: { proveedor: Proveedor; nombre: string | null }[];
+  /** Su racha devocional viva (0 si no hay): la foto de perfil brilla más mientras más larga. */
+  racha: number;
+  /** Soltero, abierto a conocer a alguien, en una relación o casado (api/_circulo.ts); solo la ve su círculo. */
+  etapa: string | null;
+  /** Cuántas veces ha servido (src/lib/servicio.ts): una corona de estrellas sobre la foto. */
+  servicio: number;
 };
 
+// La racha devocional que la app cuenta (src/lib/rachaTexto.ts), viva hasta su último día; un día de margen por las
+// zonas horarias. Se muestra como un aro de luz alrededor de la foto de perfil.
+const RACHA = `case when u.racha_vence >= current_date - 1 then u.racha else 0 end`;
+
 // Las columnas de User, para cada consulta que devuelve la cuenta a la app.
-const USER_COLUMNS = `u.id, u.nombre, u.correo, u.foto, u.bio, u.iglesia, u.ciudad, u.clave_hash is not null as "conClave",
-  u.facebook_nombre as facebook`;
+const USER_COLUMNS = `u.id, u.nombre, u.correo, u.foto, u.bio, u.iglesia, u.ciudad, u.apodo, u.clave_hash is not null as "conClave",
+  coalesce((select json_agg(json_build_object('proveedor', c.proveedor, 'nombre', c.nombre) order by c.creado)
+    from cuentas_externas c where c.usuario_id = u.id), '[]'::json) as cuentas,
+  case when u.racha_vence >= current_date - 1 then u.racha else 0 end as racha, u.etapa, u.servicio`;
 /** El plan del grupo: un libro a un ritmo fijo, o un reto de temporada («adviento-2026») con sus fechas. */
 type Plan = { libro: string | null; inicio: string | null; porDia: number; reto: string | null };
 
@@ -281,7 +351,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -348,6 +418,24 @@ async function newSession(sql: Sql, userId: string) {
 
 const hash = (key: string) => createHash('sha256').update(key).digest('hex');
 const newCode = () => Array.from({ length: 8 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
+
+/** Lo que guarda una imagen de versículo (fondo, letra, palabras destacadas, dedicatoria y palabra original), acotado. */
+function datosDeImagen(raw: Json) {
+  const corto = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
+  const datos: Json = {
+    estilo: corto(raw.estilo, 20),
+    formato: raw.formato === 'historia' ? 'historia' : 'cuadrado',
+  };
+  if (raw.letra) datos.letra = corto(raw.letra, 20);
+  if (Array.isArray(raw.destacadas))
+    datos.destacadas = [...new Set(raw.destacadas.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 400))].slice(0, 60);
+  if (raw.dedicatoria && corto(raw.dedicatoria, 40)) datos.dedicatoria = corto(raw.dedicatoria, 40);
+  if (raw.contexto && corto(raw.contexto, 110)) datos.contexto = corto(raw.contexto, 110);
+  const o = raw.original as Json | undefined;
+  if (o && typeof o === 'object' && o.palabra && o.glosa)
+    datos.original = { palabra: corto(o.palabra, 40), translit: corto(o.translit, 40), glosa: corto(o.glosa, 40) };
+  return datos;
+}
 
 function text(value: unknown, max: number, what: string) {
   const t = typeof value === 'string' ? value.trim() : '';
@@ -473,17 +561,14 @@ async function setPhoto(sql: Sql, userId: string, bytes: Uint8Array, type: NonNu
   await removePhoto(old?.foto ?? null);
 }
 
-/** La cookie que ata el viaje a Facebook al navegador que lo empezó (que nadie más pueda recoger la sesión). */
-const FB_COOKIE = 'facebook_viaje';
-// Una acción que devuelve esta clave pide a POST que ponga la cookie (no llega a la app).
-const SET_COOKIE = Symbol('cookie');
+/** La cookie que ata el viaje a Google, Apple o Facebook al navegador donde la persona lo hace. */
+const VIAJE_COOKIE = 'zarza-viaje';
 const cookieOf = (request: Request, name: string) =>
   request.headers
     .get('cookie')
     ?.split(/;\s*/)
     .find((c) => c.startsWith(`${name}=`))
     ?.slice(name.length + 1) ?? null;
-const facebookRedirect = (request: Request) => process.env.FACEBOOK_REDIRECT_URI ?? new URL('/api/facebook', request.url).toString();
 
 async function membership(sql: Sql, user: User, groupId: unknown) {
   const id = uuid(groupId);
@@ -616,7 +701,7 @@ type Fragment = postgres.PendingQuery<postgres.Row[]>;
 async function posts(sql: Sql, me: string, where: Fragment, limit = PAGE) {
   const rows = await sql<PostRow[]>`
     select p.id, p.tipo, p.audiencia, p.libro, p.capitulo, p.versiculo, p.version, p.cita, p.texto, p.datos,
-      p.creado, p.actualizado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", p.usuario_id = ${me} as mia,
+      p.creado, p.actualizado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", ${sql.unsafe(RACHA)} as "autorRacha", u.servicio as "autorServicio", p.usuario_id = ${me} as mia,
       (select count(*)::int from me_gusta g where g.publicacion_id = p.id) as "meGusta",
       exists (select 1 from me_gusta g where g.publicacion_id = p.id and g.usuario_id = ${me}) as "yoMeGusta",
       (select count(*)::int from comentarios c where c.publicacion_id = p.id) as comentarios
@@ -725,13 +810,14 @@ const actions: Record<string, Handler> = {
 
   async entrar({ sql, body }) {
     const correo = email(body.correo);
-    const [row] = await sql<{ id: string; clave_hash: string | null; facebook_id: string | null }[]>`
-      select id, clave_hash, facebook_id from usuarios where correo = ${correo}`;
+    const [row] = await sql<{ id: string; clave_hash: string | null; proveedor: Proveedor | null }[]>`
+      select u.id, u.clave_hash, (select proveedor from cuentas_externas c where c.usuario_id = u.id order by creado limit 1) as proveedor
+      from usuarios u where u.correo = ${correo}`;
     const ok = row ? await checkPassword(String(body.clave ?? ''), row.clave_hash) : false;
     if (!row || !ok) {
       await new Promise((r) => setTimeout(r, 400));
-      if (row && !row.clave_hash && row.facebook_id) {
-        throw new Fail('Esta cuenta se creó con Facebook: entra con Facebook.', 401);
+      if (row && !row.clave_hash && row.proveedor) {
+        throw new Fail(`Esta cuenta entra con ${NOMBRE[row.proveedor]}: toca «Continuar con ${NOMBRE[row.proveedor]}».`, 401);
       }
       throw new Fail('El correo o la contraseña no son correctos', 401);
     }
@@ -747,15 +833,17 @@ const actions: Record<string, Handler> = {
   async yo({ sql, body, request }) {
     const user = await auth(sql, request);
     const today = day(body.hoy);
-    const groups = await sql.unsafe<GroupRow[]>(
-      `select ${GROUP_COLUMNS} from grupos g join miembros m on m.grupo_id = g.id
+    const groups = await sql.unsafe<(GroupRow & { rol: string; avisos: boolean })[]>(
+      `select ${GROUP_COLUMNS}, m.rol, m.avisos from grupos g join miembros m on m.grupo_id = g.id
        where m.usuario_id = $1 order by m.unido`,
       [user.id],
     );
     const anfitriona = await iglesiaDe(sql, user.id);
     return {
       usuario: user,
-      grupos: await Promise.all(groups.map((g) => summary(sql, g, today))),
+      grupos: await Promise.all(
+        groups.map(async (g) => ({ ...(await summary(sql, g, today)), soyAdmin: g.rol === 'admin', avisos: g.avisos })),
+      ),
       // La iglesia anfitriona (api/_iglesias.ts) y si la persona cuida Zarza (/cuidar).
       iglesia: anfitriona?.activa ? { nombre: anfitriona.nombre, codigo: anfitriona.codigo, lampara: anfitriona.lampara } : null,
       cuidador: esCuidador(user.correo),
@@ -775,8 +863,10 @@ const actions: Record<string, Handler> = {
     const bio = optional(body.bio, MAX_BIO);
     const iglesia = optional(body.iglesia, MAX_PLACE);
     const ciudad = optional(body.ciudad, MAX_PLACE);
-    await sql`update usuarios set nombre = ${nombre}, bio = ${bio}, iglesia = ${iglesia}, ciudad = ${ciudad} where id = ${user.id}`;
-    return { usuario: { ...user, nombre, bio, iglesia, ciudad } };
+    // Una app vieja no manda el apodo: entonces se queda el que había.
+    const apodo = body.apodo === undefined ? user.apodo : optional(body.apodo, MAX_APODO);
+    await sql`update usuarios set nombre = ${nombre}, bio = ${bio}, iglesia = ${iglesia}, ciudad = ${ciudad}, apodo = ${apodo} where id = ${user.id}`;
+    return { usuario: { ...user, nombre, bio, iglesia, ciudad, apodo } };
   },
 
   async subirFoto({ sql, body, request }) {
@@ -797,53 +887,57 @@ const actions: Record<string, Handler> = {
     return { usuario: { ...user, foto: null } };
   },
 
-  async facebookDisponible() {
-    return { disponible: facebookReady() };
+  /** Con qué proveedores se puede entrar (los que tienen sus claves en el servidor). */
+  async proveedores() {
+    return proveedoresListos();
   },
 
   /**
-   * Empieza el viaje a Facebook: modo «entrar» (sin cuenta, o para crear una) o «conectar» (desde el perfil).
-   * Devuelve la página de Facebook y el estado con el que la app pregunta después por facebookResultado.
+   * Empieza el viaje a Google, Apple o Facebook: modo «entrar» (sin cuenta, o para crear una) o «conectar» (desde el
+   * perfil). Devuelve la dirección que abre la app (lleva un pase de un solo uso) y el estado, que solo conoce la app,
+   * con el que pregunta después por proveedorResultado. Así funciona igual en la web y en la app nativa.
    */
-  async facebookInicio({ sql, body, request }) {
-    if (!facebookReady()) throw new Fail('Entrar con Facebook todavía no está disponible.', 503);
+  async proveedorInicio({ sql, body, request }) {
+    const proveedor = body.proveedor;
+    if (!esProveedor(proveedor) || !proveedoresListos()[proveedor]) throw new Fail('Esa forma de entrar todavía no está disponible.', 503);
     const modo = body.modo === 'conectar' ? 'conectar' : 'entrar';
     const user = modo === 'conectar' ? await auth(sql, request) : null;
     const estado = randomBytes(24).toString('base64url');
-    await sql`delete from facebook_viajes where creado < now() - make_interval(mins => ${FACEBOOK_MINUTES})`;
-    await sql`insert into facebook_viajes (estado_hash, modo, usuario_id) values (${hash(estado)}, ${modo}, ${user?.id ?? null})`;
-    return { url: facebookDialog(estado, facebookRedirect(request)), estado, [SET_COOKIE]: `${FB_COOKIE}=${estado}` };
+    const pase = randomBytes(24).toString('base64url');
+    await sql`delete from viajes_cuenta where creado < now() - make_interval(mins => ${VIAJE_MINUTOS})`;
+    await sql`
+      insert into viajes_cuenta (estado_hash, pase_hash, proveedor, modo, nativo, usuario_id)
+      values (${hash(estado)}, ${hash(pase)}, ${proveedor}, ${modo}, ${body.nativo === true}, ${user?.id ?? null})`;
+    return { url: new URL(`/api/auth/ir?pase=${pase}`, request.url).toString(), estado };
   },
 
-  /** Lo que pasó en Facebook: pendiente mientras la persona sigue allí; al entrar, la llave de la sesión nueva. */
-  async facebookResultado({ sql, body, request }) {
+  /** Lo que pasó en el proveedor: pendiente mientras la persona sigue allí; al entrar, la llave de la sesión nueva. */
+  async proveedorResultado({ sql, body }) {
     const estado = typeof body.estado === 'string' ? body.estado : '';
-    if (!estado || cookieOf(request, FB_COOKIE) !== estado) throw new Fail('Vuelve a intentarlo desde este dispositivo.', 403);
-    const [trip] = await sql<{ modo: string; usuario_id: string | null; resultado: string }[]>`
-      select modo, usuario_id, resultado from facebook_viajes
-      where estado_hash = ${hash(estado)} and creado > now() - make_interval(mins => ${FACEBOOK_MINUTES})`;
+    if (!estado) throw new Fail('Vuelve a intentarlo desde este dispositivo.', 403);
+    const [trip] = await sql<{ proveedor: Proveedor; modo: string; usuario_id: string | null; resultado: string }[]>`
+      select proveedor, modo, usuario_id, resultado from viajes_cuenta
+      where estado_hash = ${hash(estado)} and creado > now() - make_interval(mins => ${VIAJE_MINUTOS})`;
     if (!trip) throw new Fail('Pasó demasiado tiempo. Vuelve a intentarlo.', 410);
     if (trip.resultado === 'pendiente') return { pendiente: true };
-    await sql`delete from facebook_viajes where estado_hash = ${hash(estado)}`;
-    const errors: Record<string, string> = {
-      cancelado: 'No se conectó con Facebook.',
-      ocupada: 'Esa cuenta de Facebook ya está conectada a otra cuenta de la app.',
-      correo: 'Ya tienes una cuenta con el correo de tu Facebook. Entra con tu correo y tu contraseña, y conecta Facebook desde tu perfil.',
-      error: 'Facebook no respondió. Inténtalo de nuevo.',
-    };
-    if (errors[trip.resultado]) throw new Fail(errors[trip.resultado], 409);
+    await sql`delete from viajes_cuenta where estado_hash = ${hash(estado)}`;
+    const error = mensajeViaje(trip.proveedor, trip.resultado);
+    if (error) throw new Fail(error, 409);
     const usuario = await profile(sql, trip.usuario_id!);
     if (!usuario) throw new Fail('Esa cuenta ya no existe', 404);
     return trip.modo === 'entrar' ? { usuario, llave: await newSession(sql, usuario.id) } : { usuario };
   },
 
-  async desconectarFacebook({ sql, request }) {
+  async desconectarProveedor({ sql, body, request }) {
     const user = await auth(sql, request);
-    if (!user.conClave) {
-      throw new Fail('Antes de desconectar Facebook, añade un correo y una contraseña para poder volver a entrar.', 409);
+    const proveedor = body.proveedor;
+    if (!esProveedor(proveedor)) throw new Fail('Proveedor no válido');
+    // Siempre debe quedar una forma de volver a entrar.
+    if (!user.conClave && user.cuentas.filter((c) => c.proveedor !== proveedor).length === 0) {
+      throw new Fail(`Antes de desconectar ${NOMBRE[proveedor]}, añade un correo y una contraseña o conecta otra cuenta para poder volver a entrar.`, 409);
     }
-    await sql`update usuarios set facebook_id = null, facebook_nombre = null where id = ${user.id}`;
-    return { usuario: { ...user, facebook: null } };
+    await sql`delete from cuentas_externas where usuario_id = ${user.id} and proveedor = ${proveedor}`;
+    return { usuario: { ...user, cuentas: user.cuentas.filter((c) => c.proveedor !== proveedor) } };
   },
 
   async borrarCuenta({ sql, request }) {
@@ -853,6 +947,23 @@ const actions: Record<string, Handler> = {
     for (const { grupo_id } of groups) await leave(sql, grupo_id, user.id);
     await sql`update suscripciones set usuario_id = null where usuario_id = ${user.id}`;
     await sql`delete from usuarios where id = ${user.id}`;
+    return {};
+  },
+
+  /** La app cuenta la racha devocional y la pone al día aquí, para el aro de luz de la foto de perfil. */
+  async racha({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const dias = Number.isInteger(body.dias) && (body.dias as number) >= 0 ? Math.min(body.dias as number, 100_000) : 0;
+    const vence = typeof body.vence === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.vence) && !isNaN(Date.parse(body.vence)) ? body.vence : null;
+    await sql`update usuarios set racha = ${vence ? dias : 0}, racha_vence = ${vence} where id = ${user.id}`;
+    return {};
+  },
+
+  /** La app cuenta las veces que la persona ha servido y la pone al día aquí, para la corona de estrellas. */
+  async servicio({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const total = Number.isInteger(body.total) && (body.total as number) >= 0 ? Math.min(body.total as number, 1_000_000) : 0;
+    await sql`update usuarios set servicio = ${total} where id = ${user.id}`;
     return {};
   },
 
@@ -913,7 +1024,7 @@ const actions: Record<string, Handler> = {
     const reading = await todaysReading(planOf(g), today);
     const read = await readToday(sql, id, reading, today);
     const members = await sql<{ id: string; nombre: string; foto: string | null; rol: string }[]>`
-      select u.id, u.nombre, u.foto, m.rol from miembros m join usuarios u on u.id = m.usuario_id
+      select u.id, u.nombre, u.foto, ${sql.unsafe(RACHA)} as racha, u.servicio, m.rol from miembros m join usuarios u on u.id = m.usuario_id
       where m.grupo_id = ${id} order by m.rol = 'admin' desc, m.unido`;
     return {
       grupo: {
@@ -924,6 +1035,7 @@ const actions: Record<string, Handler> = {
         plan: planOf(g),
         lectura: reading,
         soyAdmin: admin,
+        avisos: await groupAlerts(sql, id, user.id),
         semana: await weekMeter(sql, id, members.length, today),
         miembros: members.map((m) => ({ ...m, leyoHoy: read.has(m.id), soyYo: m.id === user.id })),
       },
@@ -967,6 +1079,14 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  /** Silencia o vuelve a encender los avisos de un grupo para esta persona (sigue dentro del grupo). */
+  async avisosGrupo({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const { id } = await membership(sql, user, body.grupo);
+    await sql`update miembros set avisos = ${body.si !== false} where grupo_id = ${id} and usuario_id = ${user.id}`;
+    return { avisos: body.si !== false };
+  },
+
   async hacerAdmin({ sql, body, request }) {
     const user = await auth(sql, request);
     const { id, admin } = await membership(sql, user, body.grupo);
@@ -1006,6 +1126,12 @@ const actions: Record<string, Handler> = {
     const [row] = await sql<{ id: string }[]>`
       insert into notas (grupo_id, usuario_id, libro, capitulo, versiculo, texto)
       values (${id}, ${user.id}, ${book.id}, ${chapter}, ${verse}, ${texto}) returning id`;
+    await avisarGrupo(sql, id, user, (grupo) => ({
+      title: `${user.nombre} dejó una nota en ${book.name} ${chapter}:${verse}`,
+      body: `${grupo} · ${texto.slice(0, 120)}`,
+      url: `/grupos/${id}?tab=notas`,
+      tag: `grupo-notas-${id}`,
+    }));
     return { id: row.id };
   },
 
@@ -1020,15 +1146,25 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  // Las abiertas dejan de verse a los DIAS_VISIBLE días (quien pidió la sigue viendo y la puede renovar). Sin nombre,
+  // el autor no sale de aquí: ni a los demás ni a los administradores.
   async peticiones({ sql, body, request }) {
     const user = await auth(sql, request);
     const { id } = await membership(sql, user, body.grupo);
     const rows = await sql`
-      select p.id, p.texto, p.respondida, p.creado, u.nombre as autor, p.usuario_id = ${user.id} as mia,
+      select p.id, p.texto, p.respondida, p.creado, p.anonima, p.usuario_id = ${user.id} as mia,
+        case when p.anonima and p.usuario_id <> ${user.id} then null else u.nombre end as autor,
         (select count(*)::int from orando o where o.peticion_id = p.id) as orando,
-        exists (select 1 from orando o where o.peticion_id = p.id and o.usuario_id = ${user.id}) as "yoOrando"
+        exists (select 1 from orando o where o.peticion_id = p.id and o.usuario_id = ${user.id}) as "yoOrando",
+        case when p.usuario_id = ${user.id}
+          then (select count(*)::int from animos a where a.peticion_id = p.id and not ${blocked(sql, user.id, sql`a.usuario_id`)})
+        end as animos,
+        exists (select 1 from animos a where a.peticion_id = p.id and a.usuario_id = ${user.id}) as "yoAnime",
+        p.creado < now() - make_interval(days => ${DIAS_VISIBLE}) as vencida
       from peticiones p join usuarios u on u.id = p.usuario_id
       where p.grupo_id = ${id}
+        and (p.respondida or p.usuario_id = ${user.id} or p.creado >= now() - make_interval(days => ${DIAS_VISIBLE}))
+        and not ${blocked(sql, user.id, sql`p.usuario_id`)}
       order by p.respondida, p.creado desc limit 100`;
     return { peticiones: rows };
   },
@@ -1037,8 +1173,18 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const { id } = await membership(sql, user, body.grupo);
     const texto = text(body.texto, MAX_PRAYER, 'la petición');
+    const [{ n }] = await sql<{ n: number }[]>`
+      select count(*)::int as n from peticiones where usuario_id = ${user.id} and creado > now() - interval '1 day'`;
+    if (n >= PETICIONES_DIA) throw new Fail('Ya compartiste varias peticiones hoy. Tu grupo está orando; vuelve mañana.', 429);
     const [row] = await sql<{ id: string }[]>`
-      insert into peticiones (grupo_id, usuario_id, texto) values (${id}, ${user.id}, ${texto}) returning id`;
+      insert into peticiones (grupo_id, usuario_id, texto, anonima)
+      values (${id}, ${user.id}, ${texto}, ${Boolean(body.anonima)}) returning id`;
+    await avisarGrupo(sql, id, user, (grupo) => ({
+      title: body.anonima ? `Alguien pidió oración en ${grupo}` : `${user.nombre} pidió oración en ${grupo}`,
+      body: texto.slice(0, 140),
+      url: `/grupos/${id}?tab=oracion`,
+      tag: `grupo-oracion-${id}`,
+    }));
     return { id: row.id };
   },
 
@@ -1056,6 +1202,46 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  // Un ánimo corto, uno por persona (enviar otro lo cambia). Llega a quien pidió con un aviso; nadie más lo ve.
+  async animar({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const petitionId = uuid(body.peticion);
+    const [p] = await sql<{ grupo_id: string; usuario_id: string; respondida: boolean }[]>`
+      select grupo_id, usuario_id, respondida from peticiones where id = ${petitionId}`;
+    if (!p) throw new Fail('La petición ya no existe', 404);
+    await membership(sql, user, p.grupo_id);
+    if (p.usuario_id === user.id) throw new Fail('Es tu petición', 400);
+    const texto = text(body.texto, MAX_ANIMO, 'tu ánimo');
+    const [nuevo] = await sql<{ nuevo: boolean }[]>`
+      insert into animos (peticion_id, usuario_id, texto) values (${petitionId}, ${user.id}, ${texto})
+      on conflict (peticion_id, usuario_id) do update set texto = excluded.texto, creado = now()
+      returning (xmax = 0) as nuevo`;
+    const [bloqueo] = await sql`select ${blocked(sql, user.id, p.usuario_id)} as si`;
+    if (nuevo?.nuevo && !(bloqueo as Json).si) {
+      await notifyUser(sql, p.usuario_id, {
+        title: `${user.nombre} te envió ánimo`,
+        body: texto.length > 140 ? `${texto.slice(0, 139)}…` : texto,
+        url: `/grupos/${p.grupo_id}?tab=oracion`,
+        tag: `animo-${petitionId}`,
+      });
+    }
+    return {};
+  },
+
+  // Los ánimos de una petición: solo para quien la pidió.
+  async animos({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const petitionId = uuid(body.peticion);
+    const [p] = await sql<{ usuario_id: string }[]>`select usuario_id from peticiones where id = ${petitionId}`;
+    if (!p || p.usuario_id !== user.id) throw new Fail('Solo quien pidió oración ve los ánimos', 403);
+    const rows = await sql`
+      select u.nombre as autor, a.texto, a.creado
+      from animos a join usuarios u on u.id = a.usuario_id
+      where a.peticion_id = ${petitionId} and not ${blocked(sql, user.id, sql`a.usuario_id`)}
+      order by a.creado desc`;
+    return { animos: rows };
+  },
+
   async editarPeticion({ sql, body, request }) {
     const user = await auth(sql, request);
     const petitionId = uuid(body.peticion);
@@ -1065,6 +1251,7 @@ const actions: Record<string, Handler> = {
     const { admin } = await membership(sql, user, p.grupo_id);
     if (p.usuario_id !== user.id && !admin) throw new Fail('Solo quien la compartió puede cambiarla', 403);
     if (body.borrar) await sql`delete from peticiones where id = ${petitionId}`;
+    else if (body.renovar && p.usuario_id === user.id) await sql`update peticiones set creado = now() where id = ${petitionId}`;
     else await sql`update peticiones set respondida = ${Boolean(body.respondida)} where id = ${petitionId}`;
     return {};
   },
@@ -1079,6 +1266,12 @@ const actions: Record<string, Handler> = {
     const [row] = await sql<{ id: string }[]>`
       insert into guias (grupo_id, usuario_id, titulo, pasaje, texto)
       values (${id}, ${user.id}, ${titulo}, ${pasaje}, ${texto}) returning id`;
+    await avisarGrupo(sql, id, user, (grupo) => ({
+      title: `${user.nombre} compartió «${titulo}» con ${grupo}`,
+      body: pasaje ? `${pasaje} · Ábrelo para prepararte para la reunión.` : 'Ábrelo para prepararte para la reunión.',
+      url: `/grupos/${id}?tab=reunion`,
+      tag: `grupo-guia-${id}`,
+    }));
     return { id: row.id };
   },
 
@@ -1136,7 +1329,8 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const post = await visiblePost(sql, user.id, body.id);
     const comentarios = await sql`
-      select c.id, c.texto, c.creado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", c.usuario_id = ${user.id} as mio
+      select c.id, c.texto, c.creado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", ${sql.unsafe(RACHA)} as "autorRacha", u.servicio as "autorServicio",
+        c.usuario_id = ${user.id} as mio
       from comentarios c join usuarios u on u.id = c.usuario_id
       where c.publicacion_id = ${post.id} and not ${blocked(sql, user.id, sql`c.usuario_id`)}
       order by c.creado limit 200`;
@@ -1163,7 +1357,7 @@ const actions: Record<string, Handler> = {
       tipo === 'resaltado'
         ? { color: HIGHLIGHTS.includes(raw.color as string) ? raw.color : 'amarillo' }
         : tipo === 'imagen'
-          ? { estilo: String(raw.estilo ?? '').slice(0, 20), formato: raw.formato === 'historia' ? 'historia' : 'cuadrado' }
+          ? datosDeImagen(raw)
           : {};
     await tooMany(sql, 'publicaciones', user.id, POSTS_PER_HOUR);
     const [row] = await sql<{ id: string }[]>`
@@ -1233,14 +1427,14 @@ const actions: Record<string, Handler> = {
     const codigo = await friendCode(sql, user.id);
     const [{ compartir }] = await sql<{ compartir: boolean }[]>`
       select compartir_lecturas as compartir from usuarios where id = ${user.id}`;
-    const links = await sql<{ id: string; nombre: string; foto: string | null; estado: string }[]>`
-      select u.id, u.nombre, u.foto, case when a.aceptada then 'amigos' when a.de = ${user.id} then 'enviada' else 'recibida' end as estado
+    const links = await sql<{ id: string; nombre: string; foto: string | null; racha: number; servicio: number; estado: string }[]>`
+      select u.id, u.nombre, u.foto, ${sql.unsafe(RACHA)} as racha, u.servicio, case when a.aceptada then 'amigos' when a.de = ${user.id} then 'enviada' else 'recibida' end as estado
       from amistades a join usuarios u on u.id = case when a.de = ${user.id} then a.para else a.de end
       where a.de = ${user.id} or a.para = ${user.id}
       order by u.nombre`;
     // Sugerencias: gente de tus grupos con la que aún no tienes amistad.
     const sugerencias = await sql`
-      select distinct on (u.id) u.id, u.nombre, u.foto, g.nombre as grupo
+      select distinct on (u.id) u.id, u.nombre, u.foto, ${sql.unsafe(RACHA)} as racha, u.servicio, g.nombre as grupo
       from miembros mine join miembros other on other.grupo_id = mine.grupo_id and other.usuario_id <> ${user.id}
       join usuarios u on u.id = other.usuario_id join grupos g on g.id = mine.grupo_id
       where mine.usuario_id = ${user.id} and not ${blocked(sql, user.id, sql`u.id`)}
@@ -1248,9 +1442,14 @@ const actions: Record<string, Handler> = {
       order by u.id limit 30`;
     const bloqueadas = await sql`
       select u.id, u.nombre, u.foto from bloqueos b join usuarios u on u.id = b.a where b.de = ${user.id} order by u.nombre`;
-    const pick = (estado: string) => links.filter((l) => l.estado === estado).map(({ id, nombre, foto }) => ({ id, nombre, foto }));
+    const pick = (estado: string) =>
+      links.filter((l) => l.estado === estado).map(({ id, nombre, foto, racha, servicio }) => ({ id, nombre, foto, racha, servicio }));
+    const [{ nuevos }] = await sql<{ nuevos: number }[]>`
+      select count(*)::int as nuevos from versiculos_enviados v
+      where v.para = ${user.id} and not v.visto and not ${blocked(sql, user.id, sql`v.de`)}`;
     return {
       codigo,
+      versiculosNuevos: nuevos,
       bloqueadas,
       compartirLecturas: compartir,
       amigos: pick('amigos'),
@@ -1306,6 +1505,75 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  // «Te envié un versículo»: la imagen de un versículo va directo a un amigo, con un aviso, y quien la recibe
+  // responde «Amén» o «Gracias» con un toque (le llega un aviso a quien la mandó).
+  async enviarVersiculo({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const para = uuid(body.para);
+    const [amigo] = await sql<{ nombre: string }[]>`
+      select u.nombre from usuarios u where u.id = ${para} and u.id in (${friendIds(sql, user.id)}) and not ${blocked(sql, user.id, para)}`;
+    if (!amigo) throw new Fail('Solo puedes enviar versículos a tus amigos', 403);
+    const book = await bookOf(body.libro);
+    const chapter = int(body.capitulo, 'Capítulo', 1, book.chapters);
+    const verse = int(body.versiculo, 'Versículo', 1, 200);
+    const quote = await verseText(body.version, book, chapter, verse);
+    const datos = datosDeImagen((body.datos ?? {}) as Json);
+    const [{ n }] = await sql<{ n: number }[]>`
+      select count(*)::int as n from versiculos_enviados where de = ${user.id} and creado > now() - interval '1 hour'`;
+    if (n >= SENT_PER_HOUR) throw new Fail('Has enviado muchos versículos en poco tiempo. Vuelve a intentarlo en un rato.', 429);
+    const [row] = await sql<{ id: string }[]>`
+      insert into versiculos_enviados (de, para, libro, capitulo, versiculo, version, cita, datos)
+      values (${user.id}, ${para}, ${book.id}, ${chapter}, ${verse}, ${quote.version}, ${quote.cita}, ${sql.json(datos as postgres.JSONValue)})
+      returning id`;
+    const dedicatoria = typeof datos.dedicatoria === 'string' ? `${datos.dedicatoria}: ` : '';
+    await notifyUser(sql, para, {
+      title: `${user.nombre} te envió un versículo`,
+      body: `${dedicatoria}${book.name} ${chapter}:${verse}. «${quote.cita.slice(0, 100)}${quote.cita.length > 100 ? '…' : ''}»`,
+      url: '/recibidos',
+      tag: `versiculo-${row.id}`,
+    });
+    return { id: row.id, para: amigo.nombre };
+  },
+
+  async versiculosRecibidos({ sql, request }) {
+    const user = await auth(sql, request);
+    const recibidos = await sql`
+      select v.id, v.libro, v.capitulo, v.versiculo, v.version, v.cita, v.datos, v.respuesta, v.visto, v.creado,
+        u.id as "deId", u.nombre as "deNombre", u.foto as "deFoto"
+      from versiculos_enviados v join usuarios u on u.id = v.de
+      where v.para = ${user.id} and not ${blocked(sql, user.id, sql`v.de`)}
+      order by v.creado desc limit 60`;
+    const enviados = await sql`
+      select v.id, v.libro, v.capitulo, v.versiculo, v.version, v.cita, v.datos, v.respuesta, v.creado,
+        u.id as "paraId", u.nombre as "paraNombre", u.foto as "paraFoto"
+      from versiculos_enviados v join usuarios u on u.id = v.para
+      where v.de = ${user.id}
+      order by v.creado desc limit 60`;
+    // Abrir la lista los marca como vistos.
+    await sql`update versiculos_enviados set visto = true where para = ${user.id} and not visto`;
+    return { recibidos, enviados };
+  },
+
+  async responderVersiculo({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const respuesta = String(body.respuesta);
+    if (!RESPUESTAS.includes(respuesta)) throw new Fail('Respuesta no válida');
+    const [row] = await sql<{ de: string; libro: string; capitulo: number; versiculo: number }[]>`
+      update versiculos_enviados set respuesta = ${respuesta}, respondido = now()
+      where id = ${uuid(body.id)} and para = ${user.id} and respuesta is null
+      returning de, libro, capitulo, versiculo`;
+    if (row) {
+      const book = await bookOf(row.libro);
+      await notifyUser(sql, row.de, {
+        title: respuesta === 'amen' ? `${user.nombre} dijo «Amén»` : `${user.nombre} te dio las gracias`,
+        body: `Por el versículo que le enviaste: ${book.name} ${row.capitulo}:${row.versiculo}.`,
+        url: '/recibidos?ver=enviados',
+        tag: `versiculo-respuesta-${uuid(body.id)}`,
+      });
+    }
+    return { respuesta };
+  },
+
   // Bloquear: dejan de verse (publicaciones, comentarios, solicitudes y sugerencias) y la amistad se quita.
   async bloquear({ sql, body, request }) {
     const user = await auth(sql, request);
@@ -1333,15 +1601,21 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const id = uuid(body.usuario);
     const [p] = await sql<{ id: string; nombre: string; foto: string | null; amigos: number }[]>`
-      select u.id, u.nombre, u.foto, u.bio, u.iglesia, u.ciudad,
+      select u.id, u.nombre, u.foto, u.bio, u.iglesia, u.ciudad, ${sql.unsafe(RACHA)} as racha, u.servicio,
         (select count(*)::int from amistades a where a.aceptada and (a.de = u.id or a.para = u.id)) as amigos
       from usuarios u where u.id = ${id}`;
     if (!p) throw new Fail('Esa persona ya no está en la comunidad', 404);
     // Quien te bloqueó desaparece para ti, como si no estuviera.
     const [theyBlocked] = await sql`select 1 from bloqueos where de = ${id} and a = ${user.id}`;
     if (theyBlocked) throw new Fail('Esa persona ya no está en la comunidad', 404);
+    // Los grupos en común (o todos los tuyos, si es tu perfil): los demás grupos de alguien son privados.
+    const grupos = await sql<{ id: string; nombre: string; tipo: string; miembros: number }[]>`
+      select g.id, g.nombre, g.tipo, (select count(*)::int from miembros x where x.grupo_id = g.id) as miembros
+      from grupos g join miembros a on a.grupo_id = g.id and a.usuario_id = ${id}
+      join miembros b on b.grupo_id = g.id and b.usuario_id = ${user.id}
+      order by g.nombre`;
     return {
-      persona: { ...p, relacion: await relation(sql, user.id, id) },
+      persona: { ...p, relacion: await relation(sql, user.id, id), grupos },
       publicaciones: await posts(sql, user.id, sql`p.usuario_id = ${id}`),
     };
   },
@@ -1352,6 +1626,8 @@ Object.assign(actions, parejaActions({ auth, fail: (message, status) => new Fail
 // «Zarza para Iglesias» (api/_iglesias.ts) y «Cuidar Zarza» (api/_cuidar.ts), con la misma cuenta.
 Object.assign(actions, iglesiaActions({ auth, fail: (message, status) => new Fail(message, status) }));
 Object.assign(actions, cuidarActions({ auth, fail: (message, status) => new Fail(message, status), books }));
+// «Círculo de solteros» (api/_circulo.ts): sus acciones empiezan por «circulo» (y las de /cuidar, por «cuidar»).
+Object.assign(actions, circuloActions({ auth, fail: (message, status) => new Fail(message, status) }));
 
 // --- Avisos push de la comunidad (api/_push.ts). Solo llegan a quien los activó en la pantalla de notificaciones. ---
 
@@ -1382,7 +1658,7 @@ async function avisarAmistadAceptada(sql: Sql, to: string, user: User) {
 async function avisarUnion(sql: Sql, groupId: string, user: User) {
   const admins = await sql<{ usuario_id: string; nombre: string }[]>`
     select m.usuario_id, g.nombre from miembros m join grupos g on g.id = m.grupo_id
-    where m.grupo_id = ${groupId} and m.rol = 'admin' and m.usuario_id <> ${user.id}`;
+    where m.grupo_id = ${groupId} and m.rol = 'admin' and m.usuario_id <> ${user.id} and m.avisos`;
   await Promise.all(
     admins.map((a) =>
       notifyUser(sql, a.usuario_id, {
@@ -1393,6 +1669,20 @@ async function avisarUnion(sql: Sql, groupId: string, user: User) {
       }),
     ),
   );
+}
+
+/** Avisa a quienes están en el grupo (menos a quien lo hizo y a quien silenció el grupo). */
+async function avisarGrupo(sql: Sql, groupId: string, user: User, aviso: (grupo: string) => Aviso) {
+  const rows = await sql<{ usuario_id: string; nombre: string }[]>`
+    select m.usuario_id, g.nombre from miembros m join grupos g on g.id = m.grupo_id
+    where m.grupo_id = ${groupId} and m.usuario_id <> ${user.id} and m.avisos
+      and not exists (select 1 from bloqueos b where (b.de = m.usuario_id and b.a = ${user.id}) or (b.de = ${user.id} and b.a = m.usuario_id))`;
+  await Promise.all(rows.map((r) => notifyUser(sql, r.usuario_id, aviso(r.nombre))));
+}
+
+async function groupAlerts(sql: Sql, groupId: string, userId: string) {
+  const [row] = await sql<{ avisos: boolean }[]>`select avisos from miembros where grupo_id = ${groupId} and usuario_id = ${userId}`;
+  return row?.avisos ?? true;
 }
 
 /** Sale del grupo; si se va el último administrador, pasa a serlo quien lleva más tiempo, y sin nadie el grupo se borra. */
@@ -1423,12 +1713,7 @@ export async function POST(request: Request) {
   }
   try {
     const result = await action({ sql: await db(), body, request });
-    const headers = new Headers({ 'Cache-Control': 'no-store' });
-    const cookie = (result as { [SET_COOKIE]?: string })[SET_COOKIE];
-    if (cookie) {
-      headers.set('Set-Cookie', `${cookie}; Path=/api; Max-Age=${FACEBOOK_MINUTES * 60}; HttpOnly; Secure; SameSite=Lax`);
-    }
-    return Response.json(result, { headers });
+    return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     if (err instanceof Fail) return Response.json({ error: err.message }, { status: err.status });
     console.error('comunidades', body.accion, err);
@@ -1440,91 +1725,150 @@ export async function POST(request: Request) {
   }
 }
 
-/**
- * La vuelta de Facebook (GET /api/facebook?code=…&state=…). Anota el resultado del viaje para que la app lo
- * recoja con facebookResultado y muestra una página que se cierra sola o vuelve a la app.
- */
-export async function facebookCallback(request: Request) {
-  const url = new URL(request.url);
-  const estado = url.searchParams.get('state') ?? '';
-  let modo = 'entrar';
-  const page = (ok: boolean, msg?: string) =>
-    facebookPage(
-      ok ? 'Listo' : 'No se pudo conectar',
-      msg ?? (ok ? 'Ya puedes volver a Biblia de estudio.' : 'Vuelve a la app e inténtalo de nuevo.'),
-      modo === 'conectar' ? '/cuenta' : '/entrar',
-    );
-  if (!estado || cookieOf(request, FB_COOKIE) !== estado || !facebookReady()) {
-    return page(false, 'Empieza otra vez desde la app, en este mismo dispositivo.');
+
+/** El mensaje para la app cuando el viaje no terminó en una cuenta abierta o conectada, o null si terminó bien. */
+function mensajeViaje(proveedor: Proveedor, resultado: string) {
+  const p = NOMBRE[proveedor];
+  const errors: Record<string, string> = {
+    cancelado: `No se conectó con ${p}.`,
+    ocupada: `Esa cuenta de ${p} ya está conectada a otra cuenta de Zarza.`,
+    correo: `Ya tienes una cuenta con el correo de tu ${p}. Entra como siempre y conecta ${p} desde tu perfil.`,
+    error: `${p} no respondió. Inténtalo de nuevo.`,
+  };
+  return errors[resultado] ?? null;
+}
+
+/** Lo que ve la persona en la página de vuelta, según cómo terminó el viaje. */
+function textoVuelta(proveedor: Proveedor, resultado: string): [boolean, string, string] {
+  const p = NOMBRE[proveedor];
+  if (resultado === 'conectado') return [true, `${p} quedó conectado`, `Desde ahora puedes entrar a Zarza con ${p} en cualquier dispositivo.`];
+  if (resultado === 'creada') return [true, 'Bienvenido a Zarza', 'Tu cuenta quedó creada. Ya puedes volver a la app.'];
+  if (resultado === 'listo') return [true, 'Qué bueno verte', 'Ya entraste. Puedes volver a la app.'];
+  return [false, 'No se pudo entrar', mensajeViaje(proveedor, resultado) ?? 'Vuelve a la app e inténtalo de nuevo.'];
+}
+
+/** La cuenta de Zarza para quien vuelve del proveedor: la conecta, entra en la suya o la crea. Devuelve el resultado. */
+async function vincular(sql: Sql, trip: { modo: string; usuario_id: string | null }, ext: Externo) {
+  const copyPhoto = async (userId: string) => {
+    const pic = ext.foto ? await downloadPhoto(ext.foto) : null;
+    if (pic) await setPhoto(sql, userId, pic.bytes, pic.type).catch((err) => console.error('entrar: foto', err));
+  };
+  const [owner] = await sql<{ usuario_id: string }[]>`
+    select usuario_id from cuentas_externas where proveedor = ${ext.proveedor} and cuenta_id = ${ext.id}`;
+  const nombre = ext.nombre || null;
+
+  if (trip.modo === 'conectar') {
+    if (owner && owner.usuario_id !== trip.usuario_id) return { resultado: 'ocupada', usuario: trip.usuario_id };
+    await sql`delete from cuentas_externas where usuario_id = ${trip.usuario_id} and proveedor = ${ext.proveedor} and cuenta_id <> ${ext.id}`;
+    await sql`
+      insert into cuentas_externas (proveedor, cuenta_id, usuario_id, nombre) values (${ext.proveedor}, ${ext.id}, ${trip.usuario_id}, ${nombre})
+      on conflict (proveedor, cuenta_id) do update set nombre = coalesce(excluded.nombre, cuentas_externas.nombre)`;
+    const [me] = await sql<{ foto: string | null }[]>`select foto from usuarios where id = ${trip.usuario_id}`;
+    if (me && !me.foto) await copyPhoto(trip.usuario_id!);
+    return { resultado: 'conectado', usuario: trip.usuario_id };
   }
+  if (owner) {
+    if (nombre) await sql`update cuentas_externas set nombre = ${nombre} where proveedor = ${ext.proveedor} and cuenta_id = ${ext.id}`;
+    return { resultado: 'listo', usuario: owner.usuario_id };
+  }
+  // Nunca se une a una cuenta existente solo por el correo: quien la tenga debe entrar y conectar el proveedor él mismo.
+  if (ext.correo) {
+    const [taken] = await sql`select 1 from usuarios where correo = ${ext.correo}`;
+    if (taken) return { resultado: 'correo', usuario: null };
+  }
+  const id = await sql.begin(async (tx) => {
+    const [created] = await tx<{ id: string }[]>`
+      insert into usuarios (nombre, correo) values (${nombre ?? ext.correo?.split('@')[0]?.slice(0, MAX_NAME) ?? 'Amigo'}, ${ext.correo})
+      returning id`;
+    await tx`insert into cuentas_externas (proveedor, cuenta_id, usuario_id, nombre) values (${ext.proveedor}, ${ext.id}, ${created.id}, ${nombre})`;
+    return created.id;
+  });
+  await copyPhoto(id);
+  return { resultado: 'creada', usuario: id };
+}
+
+/**
+ * Todo /api/auth (vercel.json lo reescribe a /api/auth?ruta=…):
+ * - ir?pase=…: la app abre esta dirección; gasta el pase, ata el viaje a este navegador con una cookie y manda al proveedor.
+ * - callback/<proveedor>: la vuelta del proveedor, que resuelve Auth.js (api/_entrar.ts).
+ * - listo: la página final; anota el viaje como cancelado si el proveedor volvió con un error.
+ */
+export async function authRoute(request: Request) {
+  const url = new URL(request.url);
+  const ruta = (url.searchParams.get('ruta') ?? url.pathname.replace(/^\/api\/auth\/?/, '')).replace(/^\/+|\/+$/g, '');
+  url.searchParams.delete('ruta');
+  const origin = url.origin;
+  const volver = (modo?: string) => (modo === 'conectar' ? '/cuenta' : '/entrar');
   let sql: Sql;
   try {
     sql = await db();
   } catch {
-    return page(false);
+    return paginaVuelta(false, 'No se pudo entrar', 'Vuelve a la app e inténtalo de nuevo.', '/entrar');
   }
-  const [trip] = await sql<{ modo: string; usuario_id: string | null }[]>`
-    select modo, usuario_id from facebook_viajes
-    where estado_hash = ${hash(estado)} and resultado = 'pendiente' and creado > now() - make_interval(mins => ${FACEBOOK_MINUTES})`;
-  if (!trip) return page(false, 'Pasó demasiado tiempo. Vuelve a la app e inténtalo de nuevo.');
-  modo = trip.modo;
-  const finish = async (resultado: string, usuario: string | null = trip.usuario_id) => {
-    await sql`update facebook_viajes set resultado = ${resultado}, usuario_id = ${usuario} where estado_hash = ${hash(estado)}`;
-  };
+  const navegador = cookieOf(request, VIAJE_COOKIE);
+  const tripOf = async () =>
+    navegador
+      ? (
+          await sql<{ estado_hash: string; proveedor: Proveedor; modo: string; nativo: boolean; usuario_id: string | null; resultado: string }[]>`
+            select estado_hash, proveedor, modo, nativo, usuario_id, resultado from viajes_cuenta
+            where navegador_hash = ${hash(navegador)} and creado > now() - make_interval(mins => ${VIAJE_MINUTOS})`
+        )[0]
+      : undefined;
 
-  const code = url.searchParams.get('code');
-  if (!code) {
-    await finish('cancelado');
-    return page(false, 'No se conectó con Facebook. Puedes volver a la app.');
+  if (ruta === 'ir') {
+    const pase = url.searchParams.get('pase') ?? '';
+    const nuevo = randomBytes(24).toString('base64url');
+    const [trip] = pase
+      ? await sql<{ proveedor: Proveedor; modo: string; nativo: boolean }[]>`
+          update viajes_cuenta set pase_hash = null, navegador_hash = ${hash(nuevo)}
+          where pase_hash = ${hash(pase)} and resultado = 'pendiente' and creado > now() - make_interval(mins => ${VIAJE_MINUTOS})
+          returning proveedor, modo, nativo`
+      : [];
+    if (!trip || !proveedoresListos()[trip.proveedor]) {
+      return paginaVuelta(false, 'Este enlace ya se usó', 'Vuelve a la app y toca otra vez el botón para entrar.', volver(trip?.modo), trip?.nativo);
+    }
+    const res = await authJs(
+      new Request(`${origin}/api/auth/signin/${trip.proveedor}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: request.headers.get('cookie') ?? '' },
+        body: new URLSearchParams({ callbackUrl: `${origin}/api/auth/listo` }),
+      }),
+      async () => `${origin}/api/auth/listo`,
+    );
+    const headers = new Headers(res.headers);
+    headers.append('Set-Cookie', `${VIAJE_COOKIE}=${nuevo}; Path=/api/auth; Max-Age=${VIAJE_MINUTOS * 60}; HttpOnly; Secure; SameSite=None`);
+    headers.set('Cache-Control', 'no-store');
+    return new Response(res.body, { status: res.status, headers });
   }
-  let fb;
-  try {
-    fb = await facebookProfile(code, facebookRedirect(request));
-  } catch (err) {
-    console.error('facebook', err);
-    await finish('error');
-    return page(false);
-  }
-  const copyPhoto = async (userId: string) => {
-    const pic = fb.foto ? await downloadPhoto(fb.foto) : null;
-    if (pic) await setPhoto(sql, userId, pic.bytes, pic.type).catch((err) => console.error('facebook: foto', err));
-  };
 
-  try {
-    const [owner] = await sql<{ id: string; foto: string | null }[]>`select id, foto from usuarios where facebook_id = ${fb.id}`;
-    if (trip.modo === 'conectar') {
-      if (owner && owner.id !== trip.usuario_id) {
-        await finish('ocupada');
-        return page(false, 'Esa cuenta de Facebook ya está conectada a otra cuenta de la app.');
-      }
-      const [me] = await sql<{ foto: string | null }[]>`
-        update usuarios set facebook_id = ${fb.id}, facebook_nombre = ${fb.nombre} where id = ${trip.usuario_id} returning foto`;
-      if (me && !me.foto) await copyPhoto(trip.usuario_id!);
-      await finish('conectado');
-      return page(true, 'Tu cuenta de Facebook quedó conectada. Ya puedes volver a Biblia de estudio.');
+  if (ruta === 'listo') {
+    const trip = await tripOf();
+    if (!trip) return paginaVuelta(false, 'No se pudo entrar', 'Empieza otra vez desde la app, en este mismo dispositivo.', '/entrar');
+    let resultado = trip.resultado;
+    if (resultado === 'pendiente') {
+      // El proveedor volvió con un error (la persona canceló) o Auth.js no pudo terminar.
+      const error = url.searchParams.get('error');
+      resultado = !error || error === 'OAuthCallbackError' || error === 'AccessDenied' ? 'cancelado' : 'error';
+      await sql`update viajes_cuenta set resultado = ${resultado} where estado_hash = ${trip.estado_hash} and resultado = 'pendiente'`;
     }
-    if (owner) {
-      await sql`update usuarios set facebook_nombre = ${fb.nombre} where id = ${owner.id}`;
-      await finish('listo', owner.id);
-      return page(true);
-    }
-    // Nunca se une a una cuenta existente solo por el correo: quien la tenga debe entrar y conectar Facebook él mismo.
-    if (fb.correo) {
-      const [taken] = await sql`select 1 from usuarios where correo = ${fb.correo}`;
-      if (taken) {
-        await finish('correo');
-        return page(false, 'Ya tienes una cuenta con ese correo. Vuelve a la app y entra con tu correo y tu contraseña.');
-      }
-    }
-    const [created] = await sql<{ id: string }[]>`
-      insert into usuarios (nombre, correo, facebook_id, facebook_nombre) values (${fb.nombre}, ${fb.correo}, ${fb.id}, ${fb.nombre})
-      returning id`;
-    await copyPhoto(created.id);
-    await finish('listo', created.id);
-    return page(true, 'Tu cuenta quedó creada. Ya puedes volver a Biblia de estudio.');
-  } catch (err) {
-    console.error('facebook', err);
-    await finish('error').catch(() => {});
-    return page(false);
+    const [ok, titulo, texto] = textoVuelta(trip.proveedor, resultado);
+    return paginaVuelta(ok, titulo, texto, volver(trip.modo), trip.nativo);
   }
+
+  if (!ruta.startsWith('callback/')) return new Response('No encontrado', { status: 404 });
+  url.pathname = `/api/auth/${ruta}`;
+  const body = request.method === 'POST' ? await request.text() : undefined;
+  return authJs(new Request(url, { method: request.method, headers: request.headers, body }), async (ext) => {
+    const trip = await tripOf();
+    if (!trip || trip.resultado !== 'pendiente' || trip.proveedor !== ext.proveedor) return `${origin}/api/auth/listo?error=Viaje`;
+    let done: { resultado: string; usuario: string | null };
+    try {
+      done = await vincular(sql, trip, ext);
+    } catch (err) {
+      console.error('entrar', err);
+      done = { resultado: 'error', usuario: trip.usuario_id };
+    }
+    await sql`update viajes_cuenta set resultado = ${done.resultado}, usuario_id = ${done.usuario} where estado_hash = ${trip.estado_hash}`;
+    return `${origin}/api/auth/listo`;
+  });
 }

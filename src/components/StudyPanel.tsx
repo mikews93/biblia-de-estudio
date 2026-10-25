@@ -23,6 +23,9 @@ import Investigacion from '@/components/Investigacion';
 import StudyContext from '@/components/StudyContext';
 import StudySignals from '@/components/StudySignals';
 import VersionPicker from '@/components/VersionPicker';
+import { anotar } from '@/lib/actividad';
+import { fechaLocal } from '@/lib/rachaTexto';
+import { huella } from '@/lib/sellos';
 import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { Book, Version, getVersions, original, parseRef } from '@/lib/data';
 import { licensedById } from '@/lib/licenciadas';
@@ -36,7 +39,7 @@ import { Enfoque, Source, askStudy } from '@/lib/estudio';
 import { conversationKey, forgetConversation, saveConversation, savedConversation } from '@/lib/misPreguntas';
 import { forgetKept, studyKeep } from '@/lib/recordado';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
-import { BOOK_SLUGS, verseHref } from '@/lib/routes';
+import { BOOK_SLUGS, chapterHref, verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 import StudyBackground from '@/components/StudyBackground';
 import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
@@ -104,6 +107,15 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
     },
   );
   const { turns, busy, error } = convs.get(mode);
+  // En Mi diario: el estudio profundo queda anotado cuando su primera respuesta llegó entera.
+  const profundoLeido = mode === 'profundo' && !busy && !!turns[0]?.text && !turns[0]?.cortada;
+  useEffect(() => {
+    if (!profundoLeido) return;
+    const ref = `${book.id}.${chapter}${verse ? `.${verse}` : ''}${word ? `.w${word.index}` : ''}`;
+    anotar('profundo', ref, title, verse ? verseHref(book.id, chapter, verse) : chapterHref(book.id, chapter));
+    huella('profundo', `${fechaLocal()}|${ref}`).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profundoLeido, passageKey]);
   const starting = useRef(new Set<string>());
 
   /** Abre un modo: lo guardado en el dispositivo si la persona ya preguntó aquí; si no, el estudio de todos. */

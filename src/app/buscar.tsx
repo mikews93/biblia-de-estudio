@@ -1,4 +1,5 @@
-// /buscar?q=…: una cita («1 reyes 2:5 nbla») abre el pasaje; unas palabras recordadas o una idea se buscan con IA.
+// /buscar?q=…: una cita («1 reyes 2:5 nbla») abre el pasaje; unas palabras recordadas o una idea se buscan al momento
+// sin IA (por el sentido con internet, por palabras sin conexión) y la IA puede afinar después (con cuenta).
 // /buscar?voz=1 empieza a escuchar al abrir.
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
@@ -8,9 +9,19 @@ import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
 import { ChevronRightIcon, ClockIcon, CloseIcon, MicIcon, SearchIcon, SparkIcon, type IconProps } from '@/components/icons';
 import { NeedsConnection } from '@/components/SinConexion';
-import { IdeaResult, addRecent, clearRecent, getRecent, searchByIdea, withVersion } from '@/lib/buscar';
+import {
+  IdeaResult,
+  NOTHING_DOWNLOADED,
+  type QuickMode,
+  addRecent,
+  clearRecent,
+  getRecent,
+  quickSearch,
+  searchByIdea,
+  withVersion,
+} from '@/lib/buscar';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
-import { NEEDS_CONNECTION } from '@/lib/conexion';
+import { NEEDS_CONNECTION, useOnline } from '@/lib/conexion';
 import { Cita, citaLabel, parseCita } from '@/lib/cita';
 import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/lib/data';
 import { Icono } from '@/components/FichaChips';
@@ -41,6 +52,10 @@ export default function Search() {
   const [searchedIn, setSearchedIn] = useState('rv1909');
   const [note, setNote] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  // Cómo se encontraron los resultados: al momento sin IA (QuickMode) o leídos y elegidos por la IA
+  const [mode, setMode] = useState<QuickMode | 'ia' | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const online = useOnline();
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [listening, setListening] = useState(false);
@@ -130,7 +145,8 @@ export default function Search() {
     navigate(() => router.push(href), 'forward');
   };
 
-  const runIdea = async (q: string) => {
+  /** La búsqueda por idea: primero al momento y sin IA; con `ai`, la IA propone, lee y explica (necesita cuenta). */
+  const runIdea = async (q: string, ai = false) => {
     const text = q.trim();
     if (text.length < 3) return;
     abort.current?.abort();
@@ -141,17 +157,20 @@ export default function Search() {
     addRecent(text).then(setRecent);
     setBusy(true);
     setError(null);
-    setResults(null);
+    if (!ai) setResults(null);
+    setShowAll(false);
     router.setParams({ q: text });
     // Se busca en la versión que se lee ahora; con una con derechos, su texto se pide aparte (nunca va a la IA).
     const version = settings.version;
     try {
-      const r = await searchByIdea(text, version, controller.signal);
-      const shown = licensedById(version) ? await withVersion(r.results, version, (b, c) => getChapter(b, c, version)) : r.results;
+      const r = ai ? { ...(await searchByIdea(text, version, controller.signal)), mode: 'ia' as const } : await quickSearch(text, version, books, controller.signal);
+      const fromServer = r.mode !== 'sin-conexion';
+      const shown = fromServer && licensedById(version) ? await withVersion(r.results, version, (b, c) => getChapter(b, c, version)) : r.results;
       if (controller.signal.aborted) return;
       setResults(shown);
-      setSearchedIn(version);
-      setNote(r.note);
+      setMode(r.mode);
+      setSearchedIn(fromServer ? version : (shown[0]?.version ?? version));
+      setNote('note' in r ? r.note : undefined);
     } catch (e) {
       if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'No se pudo hacer la búsqueda.');
     } finally {
@@ -445,34 +464,38 @@ export default function Search() {
         </>
       )}
 
-      {!listening && busy && <Searching colors={colors} asked={asked} />}
+      {!listening && busy && <Searching colors={colors} asked={asked} ai={mode !== null && results !== null} />}
 
       {!listening && error === NEEDS_ACCOUNT && (
         <Appear style={{ marginTop: 8 }}>
           <Welcome
             kind="ia"
-            title="Busca por idea"
-            intro="La IA encuentra los pasajes que hablan de lo que describes. Necesitas una cuenta gratuita; buscar una cita, como «Juan 3:16», no la necesita."
-            onReady={() => asked && runIdea(asked)}
+            title="Que la IA afine la búsqueda"
+            intro="La IA lee los pasajes, se queda con los que de verdad hablan de lo que buscas y te explica por qué. Necesitas una cuenta gratuita; la búsqueda rápida y las citas no la necesitan."
+            onReady={() => asked && runIdea(asked, true)}
           />
         </Appear>
       )}
 
-      {!listening && error === NEEDS_CONNECTION && (
+      {!listening && (error === NEEDS_CONNECTION || error === NOTHING_DOWNLOADED) && (
         <Appear style={{ marginTop: 8 }}>
           <NeedsConnection
-            title="Buscar por idea necesita internet"
-            intro="La IA busca los pasajes en el servidor. Sin conexión puedes abrir una cita directamente, como «Juan 3:16» o «Sal 23»."
+            title={error === NOTHING_DOWNLOADED ? 'Descarga una versión para buscar sin conexión' : 'Afinar con la IA necesita internet'}
+            intro={
+              error === NOTHING_DOWNLOADED
+                ? 'Sin internet, Zarza busca por palabras en una versión descargada en este dispositivo. También puedes abrir una cita directamente, como «Juan 3:16» o «Sal 23».'
+                : 'La IA lee los pasajes en el servidor. Sin conexión puedes buscar por palabras en tus versiones descargadas o abrir una cita, como «Juan 3:16».'
+            }
           />
         </Appear>
       )}
 
-      {!listening && error && error !== NEEDS_ACCOUNT && error !== NEEDS_CONNECTION && (
+      {!listening && error && error !== NEEDS_ACCOUNT && error !== NEEDS_CONNECTION && error !== NOTHING_DOWNLOADED && (
         <Appear>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}>
             <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>{error}</Text>
             {asked ? (
-              <Pressable onPress={() => runIdea(asked)} style={[styles.secondary, { backgroundColor: colors.accentSoft }]}>
+              <Pressable onPress={() => runIdea(asked, mode === 'ia')} style={[styles.secondary, { backgroundColor: colors.accentSoft }]}>
                 <Text style={{ color: colors.accent, fontWeight: '700' }}>Intentar otra vez</Text>
               </Pressable>
             ) : null}
@@ -480,28 +503,33 @@ export default function Search() {
         </Appear>
       )}
 
-      {!listening && results && !results.length && (
+      {!listening && !busy && results && !results.length && (
         <Appear>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={{ color: colors.text, fontFamily: serif, fontSize: 20 }}>Nada claro todavía</Text>
             <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 6 }}>
               No encontré pasajes para «{asked}». Prueba a decirlo con otras palabras o con lo que recuerdes del versículo.
             </Text>
+            {mode !== 'ia' && online && <Refine colors={colors} onPress={() => runIdea(asked, true)} />}
           </View>
         </Appear>
       )}
 
-      {!listening && results && results.length > 0 && (
+      {!listening && !busy && results && results.length > 0 && (
         <>
-          <Text style={[styles.section, { color: colors.muted }]}>
-            {results.length === 1 ? '1 pasaje' : `${results.length} pasajes`} para «{asked}»
-          </Text>
+          <View style={styles.resultsHead}>
+            <Text style={[styles.section, { color: colors.muted, marginBottom: 0, flex: 1 }]}>
+              {results.length === 1 ? '1 pasaje' : `${results.length} pasajes`} para «{asked}»
+            </Text>
+            <ModeBadge mode={mode} colors={colors} abbr={abbrOf(searchedIn)} />
+          </View>
+          {mode !== 'ia' && online && <Refine colors={colors} onPress={() => runIdea(asked, true)} />}
           {note ? (
             <View style={[styles.notice, { backgroundColor: colors.accentSoft, borderColor: colors.accent, marginTop: 0 }]}>
               <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{note}</Text>
             </View>
           ) : null}
-          {results.map((r, i) => (
+          {(showAll || mode === 'ia' ? results : results.slice(0, QUICK_SHOWN)).map((r, i) => (
             <Appear key={r.ref} delay={Math.min(i, 6) * 40}>
               <Pressable
                 onPress={() => openIdea(r.ref)}
@@ -518,28 +546,80 @@ export default function Search() {
                   <ChevronRightIcon color={colors.accent} size={18} />
                 </View>
                 <Text style={[styles.resultText, { color: colors.text, fontFamily: serif }]}>{r.text}</Text>
-                <Text style={[styles.reason, { color: colors.muted, borderColor: colors.border }]}>{r.reason}</Text>
+                {!!r.reason && <Text style={[styles.reason, { color: colors.muted, borderColor: colors.border }]}>{r.reason}</Text>}
               </Pressable>
             </Appear>
           ))}
-          {searchedLicensed ? (
+          {mode !== 'ia' && !showAll && results.length > QUICK_SHOWN && (
+            <Pressable
+              onPress={() => setShowAll(true)}
+              style={({ pressed }) => [styles.more, { borderColor: colors.border }, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 15 }}>Ver {results.length - QUICK_SHOWN} más</Text>
+            </Pressable>
+          )}
+          {searchedLicensed && mode !== 'sin-conexion' ? (
             <View style={styles.creditBox}>
               <Text style={[styles.credit, { color: colors.muted, marginTop: 0 }]}>
-                Búsqueda con IA. La licencia de la {searchedLicensed.abbr} no permite pasarle su texto a la IA: la IA buscó con
-                la Reina-Valera 1909 y aquí ves cada pasaje en tu {searchedLicensed.abbr}
+                {mode === 'ia'
+                  ? `Búsqueda con IA. La licencia de la ${searchedLicensed.abbr} no permite pasarle su texto a la IA: la IA buscó con la Reina-Valera 1909`
+                  : 'Búsqueda rápida, sin IA: se buscó en la Reina-Valera 1909'}{' '}
+                y aquí ves cada pasaje en tu {searchedLicensed.abbr}
                 {results.some((r) => r.version !== searchedIn) ? ' (los que dicen RV1909 no se pudieron mostrar en ella ahora)' : ''}.
               </Text>
               {shownLicensed && <Credit licensed={searchedLicensed} colors={colors} center />}
             </View>
           ) : (
             <Text style={[styles.credit, { color: colors.muted }]}>
-              Búsqueda con IA. Los textos son los de la {abbrOf(searchedIn)} ({searchedName}) tal como están en la app; la IA solo los elige y explica
-              por qué responden a tu búsqueda.
+              {mode === 'ia'
+                ? `Búsqueda con IA. Los textos son los de la ${abbrOf(searchedIn)} (${searchedName}) tal como están en la app; la IA solo los elige y explica por qué responden a tu búsqueda.`
+                : mode === 'sin-conexion'
+                  ? `Sin conexión: buscado por palabras en la ${abbrOf(searchedIn)} descargada en este dispositivo.`
+                  : mode === 'palabras'
+                    ? 'Búsqueda rápida por palabras, sin IA. Si no ves lo que buscas, pide a la IA que la afine.'
+                    : 'Búsqueda rápida por el sentido y las palabras, sin IA: encuentra pasajes que dicen lo mismo con otras palabras. Si quieres que alguien los lea y te explique por qué, pide a la IA que la afine.'}
             </Text>
           )}
         </>
       )}
     </ScrollView>
+  );
+}
+
+/** Cuántos resultados rápidos se ven antes de «Ver más». */
+const QUICK_SHOWN = 8;
+
+/** De dónde salieron los resultados, en una etiqueta junto al título. */
+function ModeBadge({ mode, colors, abbr }: { mode: QuickMode | 'ia' | null; colors: Colors; abbr: string }) {
+  if (!mode) return null;
+  const label = mode === 'ia' ? 'Elegidos por la IA' : mode === 'sin-conexion' ? `Sin conexión · ${abbr}` : mode === 'semantica' ? 'Por el sentido' : 'Por palabras';
+  return (
+    <View style={[styles.badge, { backgroundColor: mode === 'ia' ? colors.accentSoft : colors.surface, borderColor: mode === 'ia' ? colors.accent : colors.border }]}>
+      {mode === 'ia' && <SparkIcon color={colors.accent} size={12} />}
+      <Text style={{ color: mode === 'ia' ? colors.accent : colors.muted, fontSize: 12, fontWeight: '700' }}>{label}</Text>
+    </View>
+  );
+}
+
+/** Pedir a la IA que lea y elija: una franja discreta sobre los resultados rápidos. */
+function Refine({ colors, onPress }: { colors: Colors; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.refine, { backgroundColor: colors.accentSoft, borderColor: colors.accent }, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel="Afinar con la IA"
+    >
+      <View style={[styles.refineIcon, { backgroundColor: colors.surface }]}>
+        <SparkIcon color={colors.accent} size={16} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Afinar con la IA</Text>
+        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 1 }}>Lee los pasajes, elige los mejores y explica por qué.</Text>
+      </View>
+      <ChevronRightIcon color={colors.accent} size={18} />
+    </Pressable>
   );
 }
 
@@ -645,8 +725,8 @@ function Listening({ colors, heard, onStop }: { colors: Colors; heard: string; o
   );
 }
 
-/** Tarjetas en blanco que laten mientras la IA busca y comprueba los pasajes. */
-function Searching({ colors, asked }: { colors: Colors; asked: string }) {
+/** Tarjetas en blanco que laten mientras se busca (o mientras la IA lee y comprueba los pasajes). */
+function Searching({ colors, asked, ai }: { colors: Colors; asked: string; ai: boolean }) {
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -665,7 +745,7 @@ function Searching({ colors, asked }: { colors: Colors; asked: string }) {
   return (
     <View>
       <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginBottom: 12 }}>
-        Buscando pasajes y leyéndolos para comprobar que responden a «{asked}»…
+        {ai ? `La IA está leyendo los pasajes para quedarse con los que responden a «${asked}»…` : `Buscando «${asked}»…`}
       </Text>
       {[0, 1, 2].map((i) => (
         <Animated.View key={i} style={[styles.result, { backgroundColor: colors.surface, borderColor: colors.border, opacity }]}>
@@ -713,6 +793,11 @@ const styles = StyleSheet.create({
   ring: { position: 'absolute', width: 72, height: 72, borderRadius: 36 },
   bigMic: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
   heard: { fontSize: 24, lineHeight: 32, textAlign: 'center', minHeight: 32 },
+  resultsHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4 },
+  refine: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, marginTop: 4 },
+  refineIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  more: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginBottom: 8 },
   result: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginBottom: 12 },
   resultText: { fontSize: 18, lineHeight: 28, marginTop: 8 },
   reason: { fontSize: 14, lineHeight: 20, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },

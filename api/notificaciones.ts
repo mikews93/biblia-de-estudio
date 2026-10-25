@@ -1,4 +1,4 @@
-// Función de Vercel para las notificaciones push de la web: guarda la suscripción de cada dispositivo con
+// Función de Vercel para las notificaciones push (de la web y de la app nativa): guarda la suscripción de cada dispositivo con
 // sus preferencias, y manda el recordatorio diario a la hora que cada quien eligió.
 //
 // Funciona sin cuenta (el recordatorio de lectura es para todos). Si la petición trae la llave de sesión,
@@ -18,7 +18,8 @@ import postgres from 'postgres';
 
 import { dailyMessage, DiaReto, EstadoAvisos, HORA_POR_DEFECTO, horaLabel, isDue, localNow, validZone } from '../src/lib/avisosTexto';
 import { despertarDue, despertarMessage, POSPONER_MINUTOS, validDias } from '../src/lib/despertarTexto';
-import { PUSH_SCHEMA, sendMany, sendPush, Suscripcion, validEndpoint, vapid } from './_push';
+import { rachaDue, rachaMessage } from '../src/lib/rachaTexto';
+import { isExpoToken, PUSH_SCHEMA, sendMany, sendPush, Suscripcion, validEndpoint, vapid } from './_push';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 
@@ -30,8 +31,10 @@ type Fila = Suscripcion & {
   lectura: boolean;
   tarjetas: boolean;
   reto: boolean;
+  racha: boolean;
   estado: EstadoAvisos;
   enviado: string | null;
+  racha_enviado: string | null;
   despertar: number | null;
   despertar_dias: number;
   despertar_enviado: string | null;
@@ -124,6 +127,10 @@ export function cleanEstado(raw: unknown): EstadoAvisos {
       .map((d) => ({ fecha: d.fecha as string, dia: d.dia as number, titulo: str(d.titulo, 80), lectura: str(d.lectura, 60) }));
     out.reto = { titulo: rt, icono: str(reto.icono, 4), url: ru, dias };
   }
+  const racha = (r.racha ?? null) as Json | null;
+  if (racha && Number.isInteger(racha.dias) && (racha.dias as number) > 0 && (racha.dias as number) < 100_000 && isDate(racha.vence)) {
+    out.racha = { dias: racha.dias as number, vence: racha.vence };
+  }
   return out;
 }
 
@@ -138,7 +145,8 @@ const actions: Record<string, Action> = {
   async guardar({ sql, body, request }) {
     const sub = (body.suscripcion ?? {}) as Json;
     const endpoint = endpointOf(sub.endpoint);
-    const { p256dh, auth } = keysOf(sub.keys);
+    // El token de Expo de la app nativa no lleva claves: el servicio de Expo cifra por su cuenta.
+    const { p256dh, auth } = isExpoToken(endpoint) ? { p256dh: '', auth: '' } : keysOf(sub.keys);
     const zona = validZone(body.zona) ? body.zona : 'UTC';
     const hora = isMinute(body.hora) ? body.hora : HORA_POR_DEFECTO;
     const despertar = despertarOf(body.despertar);
@@ -161,14 +169,14 @@ const actions: Record<string, Action> = {
           ? now.fecha
           : null;
     await sql`
-      insert into suscripciones (endpoint, p256dh, auth, usuario_id, zona, hora, lectura, tarjetas, reto, comunidad, estado, enviado,
+      insert into suscripciones (endpoint, p256dh, auth, usuario_id, zona, hora, lectura, tarjetas, reto, racha, comunidad, estado, enviado,
         despertar, despertar_dias, despertar_enviado)
       values (${endpoint}, ${p256dh}, ${auth}, ${usuario}, ${zona}, ${hora}, ${flag('lectura')}, ${flag('tarjetas')},
-        ${flag('reto')}, ${flag('comunidad')}, ${sql.json(estado as postgres.JSONValue)}, ${enviado},
+        ${flag('reto')}, ${flag('racha')}, ${flag('comunidad')}, ${sql.json(estado as postgres.JSONValue)}, ${enviado},
         ${despertar?.hora ?? null}, ${despertar?.dias ?? 127}, ${despertarEnviado})
       on conflict (endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth, usuario_id = excluded.usuario_id,
         zona = excluded.zona, hora = excluded.hora, lectura = excluded.lectura, tarjetas = excluded.tarjetas,
-        reto = excluded.reto, comunidad = excluded.comunidad, estado = excluded.estado, enviado = excluded.enviado,
+        reto = excluded.reto, racha = excluded.racha, comunidad = excluded.comunidad, estado = excluded.estado, enviado = excluded.enviado,
         despertar = excluded.despertar, despertar_dias = excluded.despertar_dias, despertar_enviado = excluded.despertar_enviado,
         pospuesto = case when excluded.despertar is null then null else suscripciones.pospuesto end,
         actualizado = now()`;
@@ -178,9 +186,18 @@ const actions: Record<string, Action> = {
   /** Las preferencias guardadas de un dispositivo, para recuperarlas si la app perdió sus datos. */
   async leer({ sql, body }) {
     const [s] = await sql<
-      { hora: number; lectura: boolean; tarjetas: boolean; reto: boolean; comunidad: boolean; despertar: number | null; despertar_dias: number }[]
+      {
+        hora: number;
+        lectura: boolean;
+        tarjetas: boolean;
+        reto: boolean;
+        racha: boolean;
+        comunidad: boolean;
+        despertar: number | null;
+        despertar_dias: number;
+      }[]
     >`
-      select hora, lectura, tarjetas, reto, comunidad, despertar, despertar_dias from suscripciones where endpoint = ${endpointOf(body.endpoint)}`;
+      select hora, lectura, tarjetas, reto, racha, comunidad, despertar, despertar_dias from suscripciones where endpoint = ${endpointOf(body.endpoint)}`;
     if (!s) return { existe: false };
     const { hora, despertar, despertar_dias, ...avisos } = s;
     return { existe: true, hora, avisos, despertar: despertar == null ? null : { hora: despertar, dias: despertar_dias } };
@@ -237,13 +254,14 @@ const actions: Record<string, Action> = {
     if (!turn) return { enviados: 0, pausa: true };
     // «enviado» como texto: es una fecha local y no debe moverse con la zona del servidor.
     const subs = await sql<Fila[]>`
-      select endpoint, p256dh, auth, zona, hora, lectura, tarjetas, reto, estado, enviado::text as enviado,
-        despertar, despertar_dias, despertar_enviado::text as despertar_enviado, pospuesto
-      from suscripciones where lectura or tarjetas or reto or despertar is not null or pospuesto is not null`;
+      select endpoint, p256dh, auth, zona, hora, lectura, tarjetas, reto, racha, estado, enviado::text as enviado,
+        racha_enviado::text as racha_enviado, despertar, despertar_dias, despertar_enviado::text as despertar_enviado, pospuesto
+      from suscripciones where lectura or tarjetas or reto or racha or despertar is not null or pospuesto is not null`;
     const now = new Date();
     const keys = await vapid(sql);
     let enviados = 0;
     let despertados = 0;
+    let rachas = 0;
     for (let i = 0; i < subs.length; i += 50) {
       await Promise.all(
         subs.slice(i, i + 50).map(async (s) => {
@@ -260,6 +278,13 @@ const actions: Record<string, Action> = {
             if (r === 'caducada') return void (await sql`delete from suscripciones where endpoint = ${s.endpoint}`);
             if (r === 'ok') despertados++;
           }
+          // La noche del último día de la racha devocional, si aún no hizo el devocional.
+          const local = localNow(s.zona, now);
+          if (s.racha && rachaDue(s.estado?.racha, local, s.racha_enviado)) {
+            await sql`update suscripciones set racha_enviado = ${local.fecha} where endpoint = ${s.endpoint}`;
+            const [r] = await sendMany(sql, [s], rachaMessage(s.estado!.racha!.dias));
+            if (r === 'ok') rachas++;
+          }
           if (!(s.lectura || s.tarjetas || s.reto)) return;
           const { due, fecha } = isDue(s, now);
           if (!due) return;
@@ -272,7 +297,7 @@ const actions: Record<string, Action> = {
         }),
       );
     }
-    return { enviados, despertados, revisados: subs.length };
+    return { enviados, despertados, rachas, revisados: subs.length };
   },
 };
 

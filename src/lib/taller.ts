@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import type { Book } from './data';
+import { huella } from './sellos';
 import { cambio, registrar } from './sincronia';
 import { alCerrarLaApp, borrarTallerIa } from './tallerIa';
 
@@ -351,6 +352,37 @@ export function borrarMensaje(id: string) {
   borrarTallerIa(id);
 }
 
+/**
+ * Borra un mensaje desde la lista y devuelve cómo deshacerlo: vuelve a su lugar mientras no pase el tiempo del aviso.
+ * Lo guardado del Acompañante se borra cuando ya no se puede deshacer.
+ */
+export function borrarConDeshacer(id: string, ms = 8000): { deshacer: () => void; confirmar: () => void } {
+  const i = state.findIndex((m) => m.id === id);
+  const m = state[i];
+  if (!m) return { deshacer: () => {}, confirmar: () => {} };
+  commit(state.filter((x) => x.id !== id));
+  let hecho = false;
+  const confirmar = () => {
+    if (hecho) return;
+    hecho = true;
+    clearTimeout(timer);
+    borrarTallerIa(id);
+  };
+  const timer = setTimeout(confirmar, ms);
+  return {
+    deshacer: () => {
+      if (hecho) return;
+      hecho = true;
+      clearTimeout(timer);
+      if (state.some((x) => x.id === id)) return;
+      const next = [...state];
+      next.splice(Math.min(i, next.length), 0, m);
+      commit(next);
+    },
+    confirmar,
+  };
+}
+
 export async function duplicarMensaje(id: string): Promise<string | null> {
   await load();
   const m = state.find((x) => x.id === id);
@@ -380,6 +412,7 @@ export const esTerminado = (m: Mensaje) => !!m.terminado;
 
 export function terminarMensaje(id: string) {
   actualizarMensaje(id, { terminado: new Date().toISOString() });
+  huella('escrito', id).catch(() => {});
 }
 
 export function volverABorrador(id: string) {
@@ -392,6 +425,8 @@ export function anotarOcasion(id: string, o: Ocasion) {
   const lugar = o.lugar?.trim();
   const ocasiones = [{ fecha: o.fecha, ...(lugar && { lugar }) }, ...(m.ocasiones ?? [])].sort((a, b) => b.fecha.localeCompare(a.fecha));
   actualizarMensaje(id, { ocasiones });
+  // Predicarlo cuenta como servir a otros (src/lib/servicio.ts).
+  huella('guiar', `ocasion:${id}|${o.fecha}`).catch(() => {});
 }
 
 export function quitarOcasion(id: string, i: number) {
@@ -461,6 +496,15 @@ export function pasajeLabel(p: Pasaje | null, books: Book[]) {
   if (!p.from) return `${name} ${p.chapter}`;
   return `${name} ${p.chapter}:${p.from}${p.to ? `-${p.to}` : ''}`;
 }
+
+/** Los anuncios del mensaje, uno por línea y sin viñetas. Al presentar van como la última parte, «Anuncios». */
+export const anunciosDe = (m: Pick<Mensaje, 'anuncios'>) =>
+  (m.anuncios ?? '')
+    .split('\n')
+    .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim())
+    .filter(Boolean);
+
+export const ANUNCIOS = 'Anuncios';
 
 export const enPasaje = (p: Pasaje, verse: number) => !p.from || (verse >= p.from && verse <= (p.to ?? p.from));
 

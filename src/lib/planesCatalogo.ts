@@ -29,6 +29,12 @@ export type PlanDef = {
   /** Solo en los de temporada: una pregunta para pensar por día. */
   questions?: string[];
   season?: Season;
+  /**
+   * Solo en los planes para un momento de la vida (ansiedad, duelo, culpa…): un capítulo al día, con título y pregunta
+   * como los de temporada pero sin fechas. Se sugieren en «Para ti» de Hoy (src/lib/paraTi.ts) y terminan en la cruz o
+   * en la resurrección.
+   */
+  tema?: string;
 };
 
 const OT = [
@@ -319,6 +325,161 @@ export const PLANS: PlanDef[] = [
       '¿Qué peso necesitas dejar para correr con paciencia?',
       '¿Qué has leído en estos días que quieres empezar a hacer, y no solo a oír?',
       '¿A quién puedes amar de una manera concreta esta semana, porque Él te amó primero?',
+    ],
+  },
+  // ——— Para un momento de la vida: siete días, un capítulo cada día, terminando en Cristo ———
+  {
+    id: 'paz-ansiedad',
+    tema: 'ansiedad',
+    title: 'Paz en la ansiedad',
+    description: 'Siete días para los días en que la cabeza no para. Lo que Jesús dice de la preocupación y la paz que Él da.',
+    icon: '☁',
+    icono: 'paloma',
+    spec: [['mat', 6], ['php', 4], ['psa', 23], ['psa', 46], ['1pe', 5], ['jhn', 14], ['mrk', 4]],
+    days: [
+      'Mirad las aves', 'La paz que guarda el corazón', 'Jehová es mi pastor', 'Estad quietos', 'Echad toda vuestra solicitud',
+      'No se turbe vuestro corazón', '¿Quién es este?',
+    ],
+    questions: [
+      '¿Qué te preocupa del mañana? Nómbralo y pregúntate qué parte de eso puedes dejar hoy en manos del Padre.',
+      'Pablo escribe desde una cárcel. Convierte en oración, una por una, tres cosas que te inquietan (v. 6).',
+      '¿Qué verso del salmo describe mejor lo que necesitas hoy de tu Pastor?',
+      '«Estad quietos, y conoced que yo soy Dios». ¿Cómo sería para ti estar quieto cinco minutos hoy?',
+      'Pedro dice que echemos la ansiedad sobre Dios porque Él tiene cuidado. ¿Qué te cuesta soltar, y por qué?',
+      'Jesús dijo esto la noche antes de la cruz. ¿Qué te dice que Él hablara de paz justo entonces?',
+      'Jesús dormía en la tormenta y la calmó con una palabra. ¿Qué cambia saber quién va en tu barca?',
+    ],
+  },
+  {
+    id: 'alma-abatida',
+    tema: 'tristeza',
+    title: 'Cuando el alma está abatida',
+    description: 'Siete días con quienes también se sintieron sin fuerzas: los salmistas, Elías, Jeremías. Y Jesús, varón de dolores.',
+    icon: '☾',
+    icono: 'lampara',
+    spec: [['psa', 42], ['1ki', 19], ['psa', 13], ['lam', 3], ['psa', 40], ['mat', 11], ['isa', 53]],
+    days: [
+      '¿Por qué te abates, oh alma mía?', 'Elías bajo el enebro', '¿Hasta cuándo?', 'Nuevas cada mañana', 'Del pozo a la peña',
+      'Venid a mí los cansados', 'Varón de dolores',
+    ],
+    questions: [
+      'El salmista habla con su propia alma. ¿Qué le dirías hoy a la tuya?',
+      'Dios le dio a Elías comida y sueño antes que palabras. ¿Qué cuidado del cuerpo necesitas tú hoy?',
+      'David empieza preguntando «¿hasta cuándo?» y termina cantando. ¿Puedes orar con esa honestidad?',
+      'Jeremías escribe desde las ruinas, y aun así recuerda la misericordia. ¿Qué misericordia pequeña ves hoy?',
+      '«Pacientemente esperé». ¿Qué te ayuda a esperar sin dejar de clamar?',
+      'Jesús no llama a los fuertes sino a los cansados. ¿Qué carga quieres dejarle hoy?',
+      'Jesús llevó nuestros dolores. ¿Qué significa para ti que Él conozca la tristeza desde dentro?',
+    ],
+  },
+  {
+    id: 'esperanza-duelo',
+    tema: 'duelo',
+    title: 'Esperanza en el duelo',
+    description: 'Siete días para llorar con esperanza: Dios consuela, Jesús llora con nosotros y la muerte fue vencida.',
+    icon: '✿',
+    icono: 'estrella',
+    spec: [['psa', 23], ['jhn', 11], ['2co', 1], ['1th', 4], ['1co', 15], ['jhn', 20], ['rev', 21]],
+    days: [
+      'En valle de sombra de muerte', 'Jesús lloró', 'El Dios de toda consolación', 'No como los que no tienen esperanza',
+      'Sorbida es la muerte', 'No está aquí', 'Enjugará toda lágrima',
+    ],
+    questions: [
+      'El pastor no saca a la oveja del valle: camina con ella. ¿Dónde lo has sentido cerca estos días?',
+      'Jesús sabía que resucitaría a Lázaro y aun así lloró. ¿Qué te dice eso de tus lágrimas?',
+      '¿Quién te ha consolado en este tiempo? ¿A quién podrías consolar tú más adelante?',
+      'Pablo no prohíbe llorar: cambia la manera de llorar. ¿Qué esperanza concreta te da este pasaje?',
+      'Si Cristo resucitó, ¿qué cambia en cómo ves la muerte de quien amas?',
+      'María lloraba en la tumba y Jesús la llamó por su nombre. ¿Qué crees que te diría a ti?',
+      'Lee despacio el versículo 4. ¿Qué parte de esa promesa esperas con más deseo?',
+    ],
+  },
+  {
+    id: 'nunca-solo',
+    tema: 'soledad',
+    title: 'Nunca solo',
+    description: 'Siete días con el Dios que ve a Agar, conoce cada pensamiento y no deja a los suyos. Jesús también fue dejado solo.',
+    icon: '◌',
+    icono: 'tienda',
+    spec: [['gen', 16], ['psa', 139], ['rut', 1], ['jhn', 4], ['heb', 13], ['mat', 27], ['mat', 28]],
+    days: [
+      'El Dios que me ve', 'Me has examinado y conocido', 'A dondequiera que tú fueres', 'La mujer junto al pozo',
+      'No te desampararé', '¿Por qué me has desamparado?', 'Yo estoy con vosotros todos los días',
+    ],
+    questions: [
+      'Agar estaba sola en el desierto y Dios la vio. ¿Dónde necesitas saber que Dios te ve?',
+      '¿Qué verso del salmo te sorprende más sobre cuánto te conoce Dios?',
+      'Rut se quedó con Noemí. ¿Quién podría ser tu compañía, o de quién podrías serlo tú?',
+      'Jesús buscó a una mujer que iba sola al pozo. ¿Qué te dice eso de cómo te busca a ti?',
+      '«No te dejaré, ni te desampararé». ¿Cómo sería creer esto esta noche?',
+      'Jesús fue abandonado para que tú nunca lo fueras. ¿Qué sientes al leerlo?',
+      'Jesús resucitado promete estar contigo todos los días. ¿En qué momento de mañana quieres recordarlo?',
+    ],
+  },
+  {
+    id: 'libre-condenacion',
+    tema: 'culpa',
+    title: 'Libre de condenación',
+    description: 'Siete días sobre la culpa, la confesión y el perdón completo que Jesús ganó en la cruz.',
+    icon: '✝',
+    icono: 'cruz',
+    spec: [['psa', 32], ['psa', 51], ['luk', 15], ['jhn', 8], ['1jn', 1], ['isa', 53], ['rom', 8]],
+    days: [
+      'Bienaventurado aquel cuya transgresión es perdonada', 'Crea en mí un corazón limpio', 'El padre que corre',
+      'Ni yo te condeno', 'Fiel y justo para perdonar', 'El castigo de nuestra paz', 'Ninguna condenación',
+    ],
+    questions: [
+      'David callaba y se consumía. ¿Hay algo que estás callando ante Dios?',
+      'Escribe tu propia versión del versículo 10 y órala.',
+      'El padre corrió antes de oír el discurso del hijo. ¿Qué te dice eso de cómo te recibe Dios?',
+      'Jesús dijo «ni yo te condeno» y también «vete y no peques más». ¿Por qué importan las dos cosas?',
+      '¿Qué te impide confesar algo concreto hoy, sabiendo que Él es fiel para perdonar?',
+      '¿Qué significa que el castigo que te tocaba cayó sobre Él?',
+      'Si en Cristo no hay condenación, ¿qué culpa sigues cargando que Él ya pagó?',
+    ],
+  },
+  {
+    id: 'no-temas',
+    tema: 'miedo',
+    title: 'No temas',
+    description: 'Siete días con Josué, David, Isaías, tres jóvenes en el horno y unos discípulos encerrados por miedo.',
+    icon: '✦',
+    icono: 'montana',
+    spec: [['jos', 1], ['psa', 27], ['isa', 43], ['dan', 3], ['mat', 14], ['psa', 91], ['jhn', 20]],
+    days: [
+      'Esfuérzate y sé valiente', 'Jehová es mi luz', 'Te puse nombre, mío eres tú', 'Y si no', 'Tened ánimo, yo soy',
+      'Bajo la sombra del Omnipotente', 'Paz a vosotros',
+    ],
+    questions: [
+      'Dios le dice a Josué «no temas» porque Él va con él. ¿A dónde te toca ir con miedo?',
+      '¿Qué miedo nombra David que también es tuyo? ¿Qué responde a ese miedo?',
+      'Dios dice «mío eres tú». ¿Cómo cambia el miedo cuando sabes a quién perteneces?',
+      '«Y si no» (v. 18). ¿Puedes confiar en Dios aunque no sepas cómo terminará?',
+      'Pedro se hundió cuando miró el viento. ¿Hacia dónde estás mirando hoy?',
+      '¿Qué imagen del salmo te ayuda más a descansar?',
+      'Los discípulos estaban encerrados por miedo y Jesús entró y dijo «paz». ¿Qué puerta cerrada tienes tú?',
+    ],
+  },
+  {
+    id: 'libres',
+    tema: 'libertad',
+    title: 'Libres de verdad',
+    description: 'Siete días para quien lucha contra una tentación o una adicción. No con fuerza de voluntad sola, sino con Cristo.',
+    icon: '⛓',
+    icono: 'cadena',
+    spec: [['luk', 4], ['jas', 1], ['rom', 7], ['rom', 6], ['1co', 10], ['jhn', 8], ['col', 2]],
+    days: [
+      'Pregonar libertad a los cautivos', 'Cada uno es tentado', '¡Miserable de mí!', 'Muertos al pecado',
+      'Dará también juntamente la salida', 'Verdaderamente libres', 'Clavada en la cruz',
+    ],
+    questions: [
+      'Jesús venció la tentación con la Escritura y vino a liberar cautivos. ¿De qué quieres que te libere?',
+      'Santiago describe cómo crece la tentación. ¿En qué momento del día suele empezar la tuya?',
+      'Pablo confiesa que hace lo que no quiere. ¿Te alivia saber que no eres el único?',
+      '¿Qué significa para ti «consideraos muertos al pecado» en un día normal?',
+      '¿Cuál es la salida que Dios te ha dado y que a veces no tomas? ¿Con quién podrías hablarlo?',
+      'Jesús dice que la verdad hace libres. ¿Qué mentira crees cuando caes?',
+      'La deuda fue clavada en la cruz. ¿Qué cambia saber que tu libertad empieza ahí y no en tu fuerza?',
     ],
   },
 ];

@@ -97,6 +97,9 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
     const marks = first.match(/⟦[^⟧]+⟧/g) ?? [];
     return { text: `Descripción simulada de la ficha ${marks.slice(0, 2).join(' ')}.\n\nSegundo párrafo de la descripción.`, cite: false };
   }
+  if (system.startsWith('Escribes una línea de contexto')) {
+    return { text: '«Jesús se lo dice de noche a Nicodemo, un fariseo que vino a buscarlo.»', cite: false };
+  }
   if (system.startsWith('Traduces al español')) {
     return { text: 'Traducción simulada: Dios amó al mundo de tal manera que dio a su Hijo.', cite: false };
   }

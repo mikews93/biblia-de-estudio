@@ -24,7 +24,8 @@ const QUESTIONS = [
   '¿Cómo se ve este versículo en la vida de Jesús?',
 ];
 
-function dayNumber(date = new Date()) {
+/** Un número que cambia cada día a medianoche (hora local). */
+export function dayNumber(date = new Date()) {
   const start = Date.UTC(date.getFullYear(), 0, 0);
   const now = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   return Math.floor((now - start) / 86_400_000) + date.getFullYear() * 366;
@@ -40,4 +41,15 @@ export const questionOfTheDay = (date = new Date()) => QUESTIONS[dayNumber(date)
 export function greeting(date = new Date()) {
   const h = date.getHours();
   return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+}
+
+/** El primer nombre de «Miguel Ángel Blanco» → «Miguel». */
+export function firstName(nombre: string) {
+  return nombre.trim().split(/\s+/)[0] ?? '';
+}
+
+/** Cómo saludar a la persona en Hoy: su apodo si lo eligió, si no su primer nombre; null sin cuenta. */
+export function greetingName(usuario?: { nombre: string; apodo?: string | null } | null) {
+  if (!usuario) return null;
+  return usuario.apodo?.trim() || firstName(usuario.nombre) || null;
 }

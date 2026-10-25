@@ -16,8 +16,43 @@ export type Raro = {
   palabra: number | null;
 };
 export type PasajePendiente = { libro: string; capitulo: number; personas: number; nuevas: number };
-export type IglesiaCuidada = { id: string; nombre: string; ciudad: string | null; codigo: string; lampara: number; activa: boolean; miembros: number };
-export type Resumen = { minPersonas: number; raros: Raro[]; pasajes: PasajePendiente[]; frecuentes: number; iglesias: IglesiaCuidada[] };
+export type IglesiaCuidada = {
+  id: string;
+  nombre: string;
+  ciudad: string | null;
+  codigo: string;
+  lampara: number;
+  activa: boolean;
+  miembros: number;
+  /** Por qué se pausó sola (demasiados miembros nuevos en un día), o null. */
+  pausa?: string | null;
+  encargado?: string | null;
+};
+/** Una iglesia que pide ser anfitriona, con los datos para comprobar que existe. */
+export type PostulacionCuidada = {
+  id: string;
+  nombre: string;
+  ciudad: string;
+  direccion: string | null;
+  denominacion: string | null;
+  responsable: string;
+  cargo: string | null;
+  contacto: string;
+  enlace: string | null;
+  mensaje: string | null;
+  creado: string;
+  /** El nombre y el correo de la cuenta que la envió. */
+  cuenta: string;
+  correo: string | null;
+};
+export type Resumen = {
+  minPersonas: number;
+  raros: Raro[];
+  pasajes: PasajePendiente[];
+  frecuentes: number;
+  iglesias: IglesiaCuidada[];
+  postulaciones: PostulacionCuidada[];
+};
 export type PreguntaAnonima = { versiculo: number | null; texto: string; quien: string; dia: string; nueva: boolean };
 export type FrecuenteCuidada = { id: number; versiculo: number | null; texto: string; personas: number };
 export type Propuesta = { texto: string; versiculo: number | null; personas: number };
@@ -34,4 +69,7 @@ export const rehacer = (clave: string) => api('cuidarRehacer', { clave });
 export const descartar = (clave: string) => api('cuidarDescartar', { clave });
 export const nuevaIglesia = (nombre: string, ciudad: string, lampara: number) =>
   api<{ iglesia: IglesiaCuidada }>('cuidarNuevaIglesia', { nombre, ciudad, lampara });
-export const cambiarIglesia = (id: string, cambio: { activa?: boolean; lampara?: number }) => api('cuidarIglesia', { id, ...cambio });
+export const cambiarIglesia = (id: string, cambio: { activa?: boolean; lampara?: number; reanudar?: true }) => api('cuidarIglesia', { id, ...cambio });
+export const aprobarPostulacion = (id: string, lampara: number) =>
+  api<{ estado: 'aprobada'; iglesia: IglesiaCuidada }>('cuidarPostulacion', { id, aprobar: true, lampara });
+export const rechazarPostulacion = (id: string, motivo: string) => api('cuidarPostulacion', { id, aprobar: false, motivo });

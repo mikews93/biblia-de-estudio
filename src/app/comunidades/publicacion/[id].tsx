@@ -64,7 +64,7 @@ export default function PostScreen() {
         {comments.map((c) => (
           <View key={c.id} style={styles.comment}>
             <Pressable onPress={() => navigate(() => router.push(`/comunidades/persona/${c.autorId}`), 'forward')}>
-              <Avatar name={c.autor} foto={c.autorFoto} size={32} />
+              <Avatar name={c.autor} foto={c.autorFoto} racha={c.autorRacha} servicio={c.autorServicio} size={32} />
             </Pressable>
             <View style={[styles.bubble, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={{ color: colors.text, fontWeight: '700' }}>{c.autor}</Text>

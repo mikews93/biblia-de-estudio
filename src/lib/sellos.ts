@@ -33,6 +33,8 @@ export type Tipo =
   | 'pareja-dia' // un día de un plan en pareja respondido por los dos
   | 'pareja' // un plan en pareja terminado juntos
   | 'dia' // un día con la Palabra
+  | 'devocional' // un día con el devocional terminado (src/lib/racha.ts)
+  | 'racha' // cada día de la mejor racha devocional («racha:1» … «racha:21»)
   | 'meta' // una semana con la meta de 5 de 7 días
   | 'mision' // una misión del Modo Jóvenes (src/lib/jovenes.ts)
   | 'profunda' // una misión con sus tres estrellas: entendida, pensada y vivida
@@ -40,13 +42,18 @@ export type Tipo =
   | `ruta-${string}` // una misión de esa ruta
   | 'cuento' // una historia del Espacio Niños (src/lib/ninos.ts)
   | 'charla' // una historia conversada en familia
-  | 'memoria'; // un versículo guardado de memoria
+  | 'memoria' // un versículo guardado de memoria
+  | 'compartir' // un versículo compartido como imagen o publicado en Comunidad (cada versículo cuenta una vez)
+  // El servicio (src/lib/servicio.ts): lo que se prepara y se da a otros
+  | 'profundo' // un estudio profundo de un pasaje («2026-10-25|jhn.3.16»), uno por pasaje y día
+  | 'escrito' // un mensaje del Taller dado por terminado (va a «Mis sermones»)
+  | 'guiar'; // una vez guiando a otros: un evento publicado, una lectura en vivo creada o una ocasión predicada
 
 const DE_ESTUDIO: Tipo[] = ['palabra', 'historia', 'original', 'lugar', 'persona', 'viaje', 'promesa', 'diferencia'];
 
 export type Publico = 'todos' | 'jovenes' | 'ninos';
 
-export type Familia = 'palabras' | 'pasaporte' | 'escrituras' | 'oracion' | 'juntos' | 'constancia' | (string & {});
+export type Familia = 'palabras' | 'pasaporte' | 'escrituras' | 'oracion' | 'juntos' | 'devocional' | 'constancia' | (string & {});
 
 export type FamiliaDef = { id: Familia; titulo: string; subtitulo: string };
 
@@ -56,7 +63,9 @@ const FAMILIAS_BASE: FamiliaDef[] = [
   { id: 'escrituras', titulo: 'Escudriñar', subtitulo: 'Promesas cumplidas y manuscritos comparados' },
   { id: 'oracion', titulo: 'Piedras de memoria', subtitulo: 'Lo que Dios ha respondido, solo para ti' },
   { id: 'juntos', titulo: 'Juntos', subtitulo: 'Compañía, nunca competencia' },
+  { id: 'devocional', titulo: 'Racha devocional', subtitulo: 'Días seguidos con tu devocional, con un día libre por semana' },
   { id: 'constancia', titulo: 'Constancia', subtitulo: 'Días con la Palabra, a tu ritmo' },
+  { id: 'servicio', titulo: 'Servicio', subtitulo: 'Lo que estudias, preparas y das a otros' },
 ];
 
 /** Dibujo dentro del sello (ver SelloIcono en components/Sello.tsx). */
@@ -81,6 +90,9 @@ export type Dibujo =
   | 'pulpito'
   | 'lampara'
   | 'sol'
+  // La racha devocional
+  | 'llama'
+  | 'corona'
   // Los del Modo Jóvenes: el dibujo de cada ruta y dos más
   | 'cruz'
   | 'huella'
@@ -94,7 +106,14 @@ export type Dibujo =
   | 'oveja'
   | 'corazon'
   // En pareja
-  | 'cordon';
+  | 'cordon'
+  // Compartir versículos
+  | 'semilla'
+  | 'pies'
+  // El servicio
+  | 'toalla'
+  | 'cayado'
+  | 'estrella';
 
 export type Sello = {
   id: string;
@@ -407,6 +426,32 @@ const CATALOGO: Sello[] = [
     publico: 'todos',
   },
   {
+    id: 'sembrador',
+    familia: 'juntos',
+    titulo: 'Sembrador',
+    como: 'Comparte 3 versículos distintos con alguien.',
+    logro: 'Sembraste la Palabra en 3 versículos compartidos.',
+    tipo: 'compartir',
+    meta: 3,
+    dibujo: 'semilla',
+    versiculo: v('Eclesiastés 11:6', 'ecc', 11, 6, 'Por la mañana siembra tu simiente, y á la tarde no dejes reposar tu mano: porque tú no sabes cuál es lo mejor, si esto ó lo otro, ó si ambas á dos cosas son buenas.'),
+    ir: { label: 'Toca un versículo y elige Compartir', href: '/juan/3' },
+    publico: 'todos',
+  },
+  {
+    id: 'alegres-nuevas',
+    familia: 'juntos',
+    titulo: 'Alegres nuevas',
+    como: 'Comparte 15 versículos distintos.',
+    logro: 'Llevaste 15 versículos a otros.',
+    tipo: 'compartir',
+    meta: 15,
+    dibujo: 'pies',
+    versiculo: v('Isaías 52:7', 'isa', 52, 7, '¡Cuán hermosos son sobre los montes los pies del que trae alegres nuevas, del que publica la paz, del que trae nuevas del bien, del que publica salud, del que dice á Sión: Tu Dios reina!'),
+    ir: { label: 'Toca un versículo y elige Compartir', href: '/salmos/23' },
+    publico: 'todos',
+  },
+  {
     id: 'pregunta-apoyada',
     familia: 'juntos',
     titulo: 'Las cargas de los otros',
@@ -443,6 +488,206 @@ const CATALOGO: Sello[] = [
     dibujo: 'pulpito',
     versiculo: v('Santiago 1:22', 'jas', 1, 22, 'Mas sed hacedores de la palabra, y no tan solamente oidores.'),
     ir: { label: 'Del sermón a tu semana', href: '/semana' },
+    publico: 'todos',
+  },
+  {
+    id: 'profundo-10',
+    familia: 'servicio',
+    titulo: 'Escudriñad',
+    como: 'Haz 10 estudios profundos de un pasaje.',
+    logro: 'Diez estudios profundos escudriñando las Escrituras.',
+    tipo: 'profundo',
+    meta: 10,
+    dibujo: 'lupa',
+    versiculo: v('Juan 5:39', 'jhn', 5, 39, 'Escudriñad las Escrituras, porque á vosotros os parece que en ellas tenéis la vida eterna; y ellas son las que dan testimonio de mí.'),
+    ir: { label: 'Estudiar un pasaje', href: '/juan/3' },
+    publico: 'todos',
+  },
+  {
+    id: 'profundo-100',
+    familia: 'servicio',
+    titulo: 'Obrero aprobado',
+    como: 'Haz 100 estudios profundos de un pasaje.',
+    logro: 'Cien estudios profundos trazando bien la palabra de verdad.',
+    tipo: 'profundo',
+    meta: 100,
+    dibujo: 'libro',
+    versiculo: v('2 Timoteo 2:15', '2ti', 2, 15, 'Procura con diligencia presentarte á Dios aprobado, como obrero que no tiene de qué avergonzarse, que traza bien la palabra de verdad.'),
+    ir: { label: 'Estudiar un pasaje', href: '/juan/3' },
+    publico: 'todos',
+  },
+  {
+    id: 'escrito-1',
+    familia: 'servicio',
+    titulo: 'Tu primer mensaje',
+    como: 'Termina un mensaje en el Taller.',
+    logro: 'Preparaste tu primer mensaje para darlo a otros.',
+    tipo: 'escrito',
+    meta: 1,
+    dibujo: 'pulpito',
+    versiculo: v('1 Pedro 4:10', '1pe', 4, 10, 'Cada uno según el don que ha recibido, adminístrelo á los otros, como buenos dispensadores de las diferentes gracias de Dios.'),
+    ir: { label: 'Ir al Taller', href: '/taller' },
+    publico: 'todos',
+  },
+  {
+    id: 'escrito-12',
+    familia: 'servicio',
+    titulo: 'Apacienta mis ovejas',
+    como: 'Termina 12 mensajes en el Taller.',
+    logro: 'Doce mensajes preparados para alimentar a otros.',
+    tipo: 'escrito',
+    meta: 12,
+    dibujo: 'cayado',
+    versiculo: v('Juan 21:17', 'jhn', 21, 17, 'Dícele Jesús: Apacienta mis ovejas.'),
+    ir: { label: 'Ir al Taller', href: '/taller' },
+    publico: 'todos',
+  },
+  {
+    id: 'guiar-1',
+    familia: 'servicio',
+    titulo: 'Toalla y lebrillo',
+    como: 'Guía a otros una vez: un evento, una lectura en vivo o un mensaje predicado.',
+    logro: 'Serviste a otros guiándolos en la Palabra.',
+    tipo: 'guiar',
+    meta: 1,
+    dibujo: 'toalla',
+    versiculo: v('Juan 13:14', 'jhn', 13, 14, 'Pues si yo, el Señor y el Maestro, he lavado vuestros pies, vosotros también debéis lavar los pies los unos á los otros.'),
+    ir: { label: 'Ir al Taller', href: '/taller' },
+    publico: 'todos',
+  },
+  {
+    id: 'guiar-25',
+    familia: 'servicio',
+    titulo: 'Como las estrellas',
+    como: 'Guía a otros 25 veces.',
+    logro: 'Veinticinco veces enseñando la Palabra a otros.',
+    tipo: 'guiar',
+    meta: 25,
+    dibujo: 'estrella',
+    versiculo: v('Daniel 12:3', 'dan', 12, 3, 'Y los entendidos resplandecerán como el resplandor del firmamento; y los que enseñan á justicia la multitud, como las estrellas á perpetua eternidad.'),
+    ir: { label: 'Ir al Taller', href: '/taller' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-3',
+    familia: 'devocional',
+    titulo: 'Pan de cada día',
+    como: 'Haz tu devocional 3 días seguidos.',
+    logro: 'Tres días seguidos con tu devocional.',
+    tipo: 'racha',
+    meta: 3,
+    dibujo: 'chispa',
+    versiculo: v('Mateo 6:11', 'mat', 6, 11, 'Danos hoy nuestro pan cotidiano.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-7',
+    familia: 'devocional',
+    titulo: 'De mañana',
+    como: 'Haz tu devocional 7 días seguidos.',
+    logro: 'Una semana entera con tu devocional.',
+    tipo: 'racha',
+    meta: 7,
+    dibujo: 'llama',
+    versiculo: v('Salmos 5:3', 'psa', 5, 3, 'Oh Jehová, de mañana oirás mi voz; de mañana me presentaré á ti, y esperaré.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-21',
+    familia: 'devocional',
+    titulo: 'Tres semanas, como Daniel',
+    como: 'Haz tu devocional 21 días seguidos.',
+    logro: 'Tres semanas seguidas: ya es un hábito.',
+    tipo: 'racha',
+    meta: 21,
+    dibujo: 'lampara',
+    versiculo: v(
+      'Daniel 10:12',
+      'dan',
+      10,
+      12,
+      'Daniel, no temas: porque desde el primer día que diste tu corazón á entender, y á afligirte en la presencia de tu Dios, fueron oídas tus palabras.',
+    ),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-40',
+    familia: 'devocional',
+    titulo: 'Cuarenta días',
+    como: 'Haz tu devocional 40 días seguidos.',
+    logro: 'Cuarenta días seguidos alimentándote de la Palabra.',
+    tipo: 'racha',
+    meta: 40,
+    dibujo: 'peregrino',
+    versiculo: v('Mateo 4:4', 'mat', 4, 4, 'Escrito está: No con solo el pan vivirá el hombre, mas con toda palabra que sale de la boca de Dios.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-100',
+    familia: 'devocional',
+    titulo: 'Todo el día',
+    como: 'Haz tu devocional 100 días seguidos.',
+    logro: 'Cien días seguidos meditando en su Palabra.',
+    tipo: 'racha',
+    meta: 100,
+    dibujo: 'libro',
+    versiculo: v('Salmos 119:97', 'psa', 119, 97, '¡Cuánto amo yo tu ley! todo el día es ella mi meditación.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-365',
+    familia: 'devocional',
+    titulo: 'Coronas el año',
+    como: 'Haz tu devocional 365 días seguidos.',
+    logro: 'Un año entero, día tras día, con Él.',
+    tipo: 'racha',
+    meta: 365,
+    dibujo: 'corona',
+    versiculo: v('Salmos 65:11', 'psa', 65, 11, 'Tú coronas el año de tus bienes; y tus nubes destilan grosura.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-2555',
+    familia: 'devocional',
+    titulo: 'La estatura de Cristo',
+    como: 'Haz tu devocional siete años seguidos (2555 días).',
+    logro: 'Siete años, día tras día, creciendo hasta parecerte a Él.',
+    tipo: 'racha',
+    meta: 2555,
+    dibujo: 'sol',
+    versiculo: v(
+      'Efesios 4:13',
+      'eph',
+      4,
+      13,
+      'Hasta que todos lleguemos á la unidad de la fe y del conocimiento del Hijo de Dios, á un varón perfecto, á la medida de la edad de la plenitud de Cristo.',
+    ),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'devocionales-30',
+    familia: 'devocional',
+    titulo: 'En lo secreto',
+    como: 'Termina 30 devocionales, a tu ritmo.',
+    logro: 'Treinta devocionales a solas con tu Padre.',
+    tipo: 'devocional',
+    meta: 30,
+    dibujo: 'amen',
+    versiculo: v(
+      'Mateo 6:6',
+      'mat',
+      6,
+      6,
+      'Mas tú, cuando oras, éntrate en tu cámara, y cerrada tu puerta, ora á tu Padre que está en secreto; y tu Padre que ve en secreto, te recompensará en público.',
+    ),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
     publico: 'todos',
   },
   {

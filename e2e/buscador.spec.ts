@@ -140,16 +140,29 @@ async function comprobarResultados(page: Page, request: APIRequestContext, consu
   return filipenses;
 }
 
-test('buscar por idea sin cuenta pide crearla y, al crearla, hace la búsqueda', async ({ page, request }) => {
-  const consulta = `me preocupa el futuro ${Date.now().toString(36)}`;
+test('buscar por idea muestra pasajes al momento, sin cuenta ni IA; afinar con la IA pide la cuenta', async ({ page, request }) => {
+  const marca = Date.now().toString(36);
+  const consulta = `Mira que te mando que te esfuerces ${marca}`;
   await page.goto('/buscar');
   await campo(page).fill(consulta);
   await campo(page).press('Enter');
 
-  await expect(texto(page, 'Busca por idea')).toBeVisible();
+  // Al momento: Josué 1:9 primero, con su texto real, sin llamar a la IA
+  await expect(texto(page, `para «${consulta}»`)).toBeVisible({ timeout: 20_000 });
+  const primero = visible(page.getByRole('link', { name: /^(\d )?\p{Lu}\p{Ll}+ \d+:\d+/u })).first();
+  await expect(primero).toHaveAccessibleName(/^Josué 1:9/);
+  await expect(primero).toContainText(await versiculo(request, 'jos', 1, 9));
+  await expect(texto(page, /Búsqueda rápida por (el sentido y las )?palabras, sin IA/)).toBeVisible();
+  expect(await peticionesIA(request, marca)).toHaveLength(0);
+
+  // Afinar con la IA sin cuenta: pide crearla y, al crearla, la IA hace la búsqueda
+  const ansiedad = `me preocupa el futuro ${marca}`;
+  await campo(page).fill(ansiedad);
+  await campo(page).press('Enter');
+  await visible(page.getByRole('button', { name: 'Afinar con la IA' })).click();
+  await expect(texto(page, 'Que la IA afine la búsqueda')).toBeVisible();
   await expect(texto(page, /Necesitas una cuenta gratuita/)).toBeVisible();
-  // Sin cuenta no se llama a la IA
-  expect(await peticionesIA(request, consulta)).toHaveLength(0);
+  expect(await peticionesIA(request, ansiedad)).toHaveLength(0);
 
   await visible(page.getByRole('button', { name: 'Crear cuenta gratis' })).click();
   await expect(page).toHaveURL(/\/registro$/);
@@ -158,22 +171,28 @@ test('buscar por idea sin cuenta pide crearla y, al crearla, hace la búsqueda',
   await visible(page.getByPlaceholder('Elige una contraseña')).fill('clave-segura-1');
   await visible(page.getByRole('button', { name: 'Crear mi cuenta' })).click();
 
-  // Vuelve al buscador y la búsqueda se hace sola
+  // Vuelve al buscador y la IA afina sola
   await expect(page).toHaveURL(/\/buscar/);
-  await comprobarResultados(page, request, consulta);
-  expect((await peticionesIA(request, consulta)).length).toBeGreaterThan(0);
+  await comprobarResultados(page, request, ansiedad);
+  await expect(texto(page, 'Elegidos por la IA')).toBeVisible();
+  expect((await peticionesIA(request, ansiedad)).length).toBeGreaterThan(0);
 });
 
-test('con cuenta, la búsqueda por idea muestra pasajes comprobados y abre el elegido', async ({ page, request }) => {
+test('con cuenta, la IA afina la búsqueda con pasajes comprobados y abre el elegido', async ({ page, request }) => {
   await conSesion(page, await cuentaNueva(request, 'Buscadora'));
   const consulta = `ansiedad por el mañana ${Date.now().toString(36)}`;
   await abrirBuscador(page);
   await campo(page).fill(consulta);
   await campo(page).press('Enter');
+  await expect(texto(page, `para «${consulta}»`)).toBeVisible({ timeout: 20_000 });
+  // La búsqueda rápida no llama a la IA aunque haya cuenta
+  expect(await peticionesIA(request, consulta)).toHaveLength(0);
+  await visible(page.getByRole('button', { name: 'Afinar con la IA' })).click();
 
   const filipenses = await comprobarResultados(page, request, consulta);
   // La IA recibió lo que se escribió
   expect((await peticionesIA(request, consulta)).length).toBeGreaterThan(0);
+  await expect(page.getByRole('button', { name: 'Afinar con la IA' }).filter({ visible: true })).toHaveCount(0);
   // La búsqueda queda en la dirección: al recargar se repite
   await expect(page).toHaveURL(/\/buscar\?q=/);
 

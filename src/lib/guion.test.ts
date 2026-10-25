@@ -35,6 +35,17 @@ describe('guion', () => {
     expect(JSON.stringify(g)).not.toContain('Notas privadas');
   });
 
+  it('los anuncios cierran el guion y se muestran en la tarjeta de todos', () => {
+    const con = { ...m, anuncios: 'Cena el viernes\nBautismos' } as Mensaje;
+    const g = guionDe(con, 'T', books);
+    expect(g.partes).toHaveLength(4);
+    expect(g.partes[3]).toEqual({ titulo: 'Anuncios', minutos: 0, citas: [] });
+    expect(moverAParte(con, 3, books)).toEqual({
+      parte: 3,
+      tarjeta: { tipo: 'parte', titulo: 'Anuncios', texto: '• Cena el viernes\n• Bautismos', minutos: null },
+    });
+  });
+
   it('los versículos del pasaje elegido', () => {
     expect(rangoDe({ from: 11, to: 32 })).toEqual({ desde: 11, hasta: 32 });
     expect(rangoDe({ from: 16 })).toEqual({ desde: 16, hasta: 16 });

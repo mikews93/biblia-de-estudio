@@ -5,6 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import type { Etapa } from './circulo';
 import { requireConnection } from './conexion';
 import { pedirPermisoIa } from './permisoIa';
 import { chapterHref as routeToChapter, verseHref } from './routes';
@@ -21,10 +22,14 @@ export type Usuario = {
   bio?: string | null;
   iglesia?: string | null;
   ciudad?: string | null;
-  /** Si tiene contraseña: una cuenta creada con Facebook puede tener correo y no contraseña. */
+  /** Cómo quiere que la app la salude en Hoy; si falta, su primer nombre. */
+  apodo?: string | null;
+  /** Si tiene contraseña: una cuenta creada con Google, Apple o Facebook puede tener correo y no contraseña. */
   conClave?: boolean;
-  /** El nombre de la cuenta de Facebook conectada, o null. */
-  facebook?: string | null;
+  /** Las cuentas de Google, Apple o Facebook con las que entra, con su nombre en cada una. */
+  cuentas?: { proveedor: 'google' | 'apple' | 'facebook'; nombre: string | null }[];
+  /** La etapa del perfil (src/lib/circulo.ts): solo la ve el círculo de solteros de la persona. */
+  etapa?: Etapa | null;
 };
 export type TipoGrupo = 'iglesia' | 'celula' | 'familia' | 'amigos';
 export type Lectura = {
@@ -47,9 +52,13 @@ export type ResumenGrupo = {
   miembros: number;
   leyeronHoy: number;
   lectura: Lectura | null;
+  /** Si administras el grupo (servidores viejos no lo envían). */
+  soyAdmin?: boolean;
+  /** Si te llegan sus avisos: notas, peticiones, guías y lo que empieza en vivo. */
+  avisos?: boolean;
 };
 export type Plan = { libro: string | null; inicio: string | null; porDia: number; reto?: string | null };
-export type Miembro = { id: string; nombre: string; foto: string | null; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
+export type Miembro = { id: string; nombre: string; foto: string | null; racha?: number; servicio?: number; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
 export type Grupo = {
   id: string;
   nombre: string;
@@ -58,6 +67,7 @@ export type Grupo = {
   plan: Plan;
   lectura: Lectura | null;
   soyAdmin: boolean;
+  avisos?: boolean;
   semana: { dias: number; meta: number };
   miembros: Miembro[];
 };
@@ -78,11 +88,19 @@ export type Peticion = {
   texto: string;
   respondida: boolean;
   creado: string;
-  autor: string;
+  /** null cuando se compartió sin nombre y no es mía. */
+  autor: string | null;
+  anonima: boolean;
   mia: boolean;
   orando: number;
   yoOrando: boolean;
+  /** Cuántos ánimos recibió: solo en las mías. */
+  animos: number | null;
+  yoAnime: boolean;
+  /** Abierta hace más de 30 días: ya no la ve el grupo (solo yo, para renovarla). */
+  vencida: boolean;
 };
+export type Animo = { autor: string; texto: string; creado: string };
 
 export type Guia = {
   id: string;
@@ -244,6 +262,22 @@ export async function refreshGroups() {
   save();
 }
 
+/** Sale de un grupo (darse de baja) y pone al día la lista de grupos. */
+export async function leaveGroup(grupo: string) {
+  await api('salir', { grupo });
+  set({ grupos: account.grupos?.filter((g) => g.id !== grupo) ?? null });
+  save();
+  refreshGroups().catch(() => {});
+}
+
+/** Silencia o enciende los avisos de un grupo, sin salir de él. */
+export async function setGroupAlerts(grupo: string, si: boolean) {
+  const r = await api<{ avisos: boolean }>('avisosGrupo', { grupo, si });
+  set({ grupos: account.grupos?.map((g) => (g.id === grupo ? { ...g, avisos: r.avisos } : g)) ?? null });
+  save();
+  return r.avisos;
+}
+
 /** Error que muestran las funciones con IA cuando hace falta entrar; las pantallas lo cambian por <Welcome>. */
 export const NEEDS_ACCOUNT = 'Para usar la IA necesitas una cuenta gratuita.';
 
@@ -278,6 +312,28 @@ export async function reportReading(book: string, chapter: number) {
   if (!account.llave) return;
   await api('leido', { libro: book, capitulo: chapter }).catch(() => {});
   refreshGroups().catch(() => {});
+}
+
+let rachaEnviada = '';
+
+/** Pone al día la racha devocional en la cuenta (el aro de luz de la foto en la comunidad). Solo si cambió. */
+export async function reportarRacha(dias: number, vence: string | null) {
+  const clave = `${dias}|${vence}`;
+  if (clave === rachaEnviada || !(await sessionKey())) return;
+  rachaEnviada = clave;
+  await api('racha', { dias, vence }).catch(() => {
+    rachaEnviada = '';
+  });
+}
+
+let servicioEnviado = -1;
+/** Pone al día en la cuenta cuántas veces se ha servido, para la corona de estrellas de la foto (src/lib/servicio.ts). */
+export async function reportarServicio(total: number) {
+  if (total === servicioEnviado || !(await sessionKey())) return;
+  servicioEnviado = total;
+  await api('servicio', { total }).catch(() => {
+    servicioEnviado = -1;
+  });
 }
 
 export function useAccount() {

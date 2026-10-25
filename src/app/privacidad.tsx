@@ -6,6 +6,7 @@ import { text } from '@/components/comunidad/ui';
 import {
   BellIcon,
   BooksIcon,
+  ChurchIcon,
   HeartIcon,
   ListenIcon,
   LockIcon,
@@ -19,7 +20,7 @@ import { Colors, isDark, serif, useColors } from '@/lib/theme';
 // La política de privacidad que piden las tiendas (App Store y Google Play), también en
 // https://biblia.migueblanco.com/privacidad. Si cambia lo que la app guarda o a quién lo envía, hay que cambiarla aquí
 // y en las fichas de las tiendas (etiquetas de privacidad y «Seguridad de los datos»).
-const ACTUALIZADA = '22 de octubre de 2026';
+const ACTUALIZADA = '25 de octubre de 2026';
 
 type Parte = {
   icon: (p: IconProps) => React.ReactNode;
@@ -42,7 +43,7 @@ const PARTES: Parte[] = [
     titulo: 'Si creas una cuenta',
     puntos: [
       'Guardamos tu nombre, tu correo y tu contraseña cifrada. La foto, la biografía, la iglesia y la ciudad son opcionales.',
-      'Si entras con Facebook, recibimos tu nombre, tu correo, tu foto de perfil y un identificador de Facebook. Nada más.',
+      'Si entras con Google, Apple o Facebook, recibimos tu nombre, tu correo, tu foto de perfil (Apple no la da) y un identificador de esa cuenta. Nada más: no vemos tu contraseña ni publicamos nada en tu nombre.',
       'Tu progreso, notas, diario, oraciones y «Mis preguntas» se guardan en tu cuenta para verlos en tus otros dispositivos. Son privados: nadie más los ve.',
     ],
   },
@@ -71,6 +72,28 @@ const PARTES: Parte[] = [
       'Lo que publicas lo ven tus amigos, tu grupo o toda la comunidad, según elijas al publicar.',
       'Puedes reportar una publicación y bloquear a una persona desde su perfil. Si varias personas reportan algo, se oculta para todos.',
       'En el Modo Jóvenes no hay publicaciones públicas.',
+      'Una petición de oración solo la ve el grupo al que la envías, nunca el muro, y deja de verse a los 30 días. Si la envías sin tu nombre, nadie del grupo ve quién la pidió, ni siquiera quien lo administra. Los ánimos que te envían solo los lees tú.',
+    ],
+  },
+  {
+    icon: HeartIcon,
+    titulo: '«Para ti» en Hoy',
+    puntos: [
+      'Hoy puede mostrarte un versículo y un plan para lo que estás orando. Lo elige tu dispositivo con tu diario de oración, tus temas y los capítulos que leíste.',
+      'Tus oraciones no se envían a ningún servidor ni a la IA para esto, no guardamos tus temas y no medimos qué te muestra Hoy. Lo apagas en «Mis temas».',
+      'Si respondes «¿Cómo sigues?», tu respuesta se queda solo en ese dispositivo: no se guarda en tu cuenta.',
+    ],
+  },
+  {
+    icon: ChurchIcon,
+    titulo: 'El Círculo de solteros',
+    puntos: [
+      'Es solo para mayores de 18 años de una iglesia que usa Zarza. Tu fecha de nacimiento la ven solo los líderes de tu círculo, que aprueban cada entrada.',
+      'Tu etapa («abierto a conocer a alguien», por ejemplo) y tus respuestas de la semana las ven solo las personas de tu círculo.',
+      '«Me gustaría conocerte» es secreto y vence a los 30 días. Los mensajes de «Conocernos» son solo de los dos: los líderes no los leen, solo reciben lo que alguien reporta.',
+      'Lo que escribes en el camino de preparación se guarda solo en tu teléfono. Zarza solo sabe qué etapas terminaste y cuándo, y los líderes de tu círculo ven si lo terminaste.',
+      'Tus respuestas de «Lo que sí importa» no las ve nadie: tu círculo solo ve en qué coinciden, tu propósito y dónde sirves.',
+      'Al salir del círculo se borran tus marcas y se cierra tu «Conocernos».',
     ],
   },
   {

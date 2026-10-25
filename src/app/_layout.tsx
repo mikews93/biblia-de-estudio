@@ -6,6 +6,7 @@ import { Platform, View } from 'react-native';
 import AudioBar from '@/components/AudioBar';
 import AvisosSync from '@/components/AvisosSync';
 import Celebracion from '@/components/Celebracion';
+import { LuceroNuevo } from '@/components/Servicio';
 import Confeti from '@/components/Confeti';
 import LlamaArranque from '@/components/LlamaArranque';
 import SincroniaCuenta from '@/components/Sincronia';
@@ -26,13 +27,15 @@ const fixedHeader = {
 };
 
 // En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
-const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|iglesia|cuidar)(\/|$)/;
+const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|circulo|iglesia|cuidar)(\/|$)/;
 
 function GuardaNinos() {
   const path = usePathname();
   const { modo } = useSettings().settings;
   useEffect(() => {
     if (modo === 'ninos' && SIN_NINOS.test(path)) router.replace('/');
+    // El Círculo de solteros es solo para adultos: en el Modo Jóvenes su portada lo explica y no se entra más allá.
+    else if (modo === 'jovenes' && /^\/circulo\/./.test(path)) router.replace('/circulo');
     // En el teléfono no hay Espacio Niños (ver ESPACIO_NINOS en src/lib/theme.ts).
     else if (!ESPACIO_NINOS && /^\/ninos(\/|$)/.test(path)) router.replace('/');
   }, [modo, path]);
@@ -79,6 +82,9 @@ function AppStack() {
           <Stack.Screen name="mapa/[book]/[chapter]" options={{ title: 'Lugares' }} />
           <Stack.Screen name="recorrido/[book]/[chapter]" options={{ title: 'En el mapa' }} />
           <Stack.Screen name="recorridos" options={{ title: 'Recorridos' }} />
+          <Stack.Screen name="ocasiones" options={{ title: 'Para alguien' }} />
+          <Stack.Screen name="recibidos" options={{ title: 'Versículos para ti' }} />
+          <Stack.Screen name="mi-ano" options={{ title: 'Mi año' }} />
           <Stack.Screen name="podcast/[book]/[chapter]" options={{ title: 'Resumen en audio' }} />
           <Stack.Screen name="comparar/[book]/[chapter]" options={{ title: 'Comparar versiones' }} />
           <Stack.Screen name="concordancia/[strong]" options={{ title: 'Concordancia' }} />
@@ -122,6 +128,7 @@ function AppStack() {
           <Stack.Screen name="privacidad" options={{ title: 'Privacidad' }} />
           <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
           <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
+          <Stack.Screen name="iglesia/postular" options={{ title: 'Postular mi iglesia' }} />
           <Stack.Screen name="iglesia/[codigo]" options={{ title: 'Iglesia anfitriona' }} />
           <Stack.Screen name="cuidar" options={{ title: 'Cuidar Zarza' }} />
           <Stack.Screen name="modo" options={{ title: '' }} />
@@ -146,6 +153,14 @@ function AppStack() {
           <Stack.Screen name="pareja/[plan]/[dia]" options={{ title: '' }} />
           <Stack.Screen name="pareja/unirse/[codigo]" options={{ title: 'Invitación' }} />
           <Stack.Screen name="pareja/ayuda" options={{ title: 'Ayuda' }} />
+          <Stack.Screen name="circulo/index" options={{ title: 'Círculo de solteros' }} />
+          <Stack.Screen name="circulo/conocer/[id]" options={{ title: 'Conocernos' }} />
+          <Stack.Screen name="circulo/lider/[id]" options={{ title: 'Liderar el círculo' }} />
+          <Stack.Screen name="circulo/camino/index" options={{ title: 'Camino de preparación' }} />
+          <Stack.Screen name="circulo/camino/[n]" options={{ title: 'Etapa' }} />
+          <Stack.Screen name="circulo/importa" options={{ title: 'Lo que sí importa' }} />
+          <Stack.Screen name="hombres/index" options={{ title: 'Hombres de pie' }} />
+          <Stack.Screen name="hombres/[n]" options={{ title: 'Semana' }} />
           <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
           <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
         </Stack>
@@ -156,6 +171,7 @@ function AppStack() {
       {Platform.OS === 'web' && <AvisosSync />}
       <SincroniaCuenta />
       <Celebracion />
+      <LuceroNuevo />
       <Confeti />
       <GuardaNinos />
       {Platform.OS !== 'web' && <LlamaArranque />}

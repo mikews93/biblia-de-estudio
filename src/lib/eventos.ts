@@ -14,8 +14,9 @@ import { sessionKey } from './comunidad';
 import { requireConnection } from './conexion';
 import { type Book, getChapter } from './data';
 import { type PreguntaRepaso, parseRepaso } from './repaso';
+import { huella } from './sellos';
 import { cambio, registrar } from './sincronia';
-import { type Mensaje, type Pasaje, actualizarMensaje, ideaCentral, tituloDe } from './taller';
+import { ANUNCIOS, type Mensaje, type Pasaje, actualizarMensaje, anunciosDe, ideaCentral, tituloDe } from './taller';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
@@ -49,6 +50,8 @@ export type Evento = {
   resultados?: Resultados | null;
   /** Solo para quien lo publicó: el mensaje del Taller. */
   mensaje?: string;
+  /** Solo para quien lo publicó: los grupos a los que se avisa cuando empieza en vivo. */
+  grupos?: string[];
 };
 
 /**
@@ -186,8 +189,12 @@ export function useMisEventos(activo: boolean) {
   return { eventos: activo ? mios : [], error };
 }
 
-export const publicarEvento = async (datos: ReturnType<typeof contenidoDe> & { mensaje: string; gradual: boolean; version?: string }) =>
-  ponerMio((await accion<{ evento: Evento }>('publicar', datos)).evento);
+export async function publicarEvento(datos: ReturnType<typeof contenidoDe> & { mensaje: string; gradual: boolean; version?: string }) {
+  const evento = ponerMio((await accion<{ evento: Evento }>('publicar', datos)).evento);
+  // Guiar un evento cuenta como servir a otros (src/lib/servicio.ts).
+  huella('guiar', `evento:${evento.codigo}`).catch(() => {});
+  return evento;
+}
 
 /**
  * Publica (o pone al día) el evento de un mensaje con lo que ya se eligió en el Taller, o lo de siempre: los puntos
@@ -203,6 +210,12 @@ export async function publicarMensaje(m: Mensaje, books: Book[], version: string
 
 export const moverEvento = async (codigo: string, cambio: { punto?: number; estado?: EstadoEvento }) =>
   ponerMio((await accion<{ evento: Evento }>('mover', { codigo, ...cambio })).evento);
+
+/** Los grupos a los que se avisa cuando el evento empieza en vivo (si ya empezó, se les avisa al momento). */
+export async function gruposEvento(e: Evento, grupos: string[]) {
+  const r = await accion<{ grupos: string[] }>('gruposEvento', { codigo: e.codigo, grupos });
+  return ponerMio({ ...e, grupos: r.grupos });
+}
 
 export const verMiEvento = async (codigo: string) => ponerMio((await accion<{ evento: Evento }>('ver', { codigo })).evento);
 
@@ -347,18 +360,17 @@ export function citasEn(texto: string, books: Book[]): string[] {
  * aunque las notas no se muestren: los versículos del punto siempre llegan.
  */
 export function contenidoDe(m: Mensaje, books: Book[], conNotas: boolean) {
-  return {
-    titulo: tituloDe(m, books),
-    idea: ideaCentral(m),
-    pasaje: m.pasaje,
-    puntos: m.secciones.map((s) => ({
-      titulo: s.titulo.trim() || 'Sin título',
-      texto: juntar(s.paraGrupo, conNotas ? s.texto : undefined),
-      citas: citasEn(`${s.paraGrupo ?? ''}\n${s.texto}`, books),
-      ...(s.minutos > 0 && { minutos: s.minutos }),
-      ...(s.dinamica && { dinamica: s.dinamica }),
-    })),
-  };
+  const puntos: PuntoEvento[] = m.secciones.map((s) => ({
+    titulo: s.titulo.trim() || 'Sin título',
+    texto: juntar(s.paraGrupo, conNotas ? s.texto : undefined),
+    citas: citasEn(`${s.paraGrupo ?? ''}\n${s.texto}`, books),
+    ...(s.minutos > 0 && { minutos: s.minutos }),
+    ...(s.dinamica && { dinamica: s.dinamica }),
+  }));
+  // Los anuncios cierran el mensaje: la congregación los ve en su teléfono al llegar al final.
+  const anuncios = anunciosDe(m);
+  if (anuncios.length) puntos.push({ titulo: ANUNCIOS, texto: anuncios.map((a) => `• ${a}`).join('\n'), citas: [] });
+  return { titulo: tituloDe(m, books), idea: ideaCentral(m), pasaje: m.pasaje, puntos };
 }
 
 /** Si lo publicado ya no coincide con el mensaje (se editó después de publicar, o se lee en otra versión). */

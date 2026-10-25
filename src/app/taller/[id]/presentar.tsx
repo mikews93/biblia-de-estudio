@@ -6,14 +6,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AmbienteBoton from '@/components/Ambiente';
 import { IconText } from '@/components/comunidad/ui';
 import { LiveDot } from '@/components/evento/piezas';
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon, PeopleIcon } from '@/components/icons';
+import ParaLlevar from '@/components/ParaLlevar';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon, MegaphoneIcon, PeopleIcon } from '@/components/icons';
 import { CreditoVersion, Tramos, useVersion } from '@/components/vivo/Guion';
 import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { dinamica } from '@/lib/dinamicas';
+import { citasDeParte } from '@/lib/guion';
 import { codigoLegible, interactuarEvento, moverEvento, useMisEventos } from '@/lib/eventos';
-import { enPasaje, ideaCentral, pasajeLabel, tituloDe, useTaller } from '@/lib/taller';
+import { anunciosDe, enPasaje, ideaCentral, pasajeLabel, tituloDe, useTaller } from '@/lib/taller';
 import { sans, serif, useColors, useSettings } from '@/lib/theme';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -49,7 +51,8 @@ export default function PresentarScreen() {
   const [fallo, setFallo] = useState(false);
   const enVivo = vivo || evento?.estado === 'en-vivo';
   const sincronizar = (punto: number, estado?: 'en-vivo') => {
-    if (!evento) return;
+    // Un evento publicado antes de escribir los anuncios no tiene ese último punto: se queda en el anterior.
+    if (!evento || punto >= evento.puntos.length) return;
     setFallo(false);
     moverEvento(evento.codigo, { punto, ...(estado ? { estado } : {}) }).catch(() => setFallo(true));
   };
@@ -77,9 +80,13 @@ export default function PresentarScreen() {
   if (!m) return <Stack.Screen options={{ headerShown: false }} />;
 
   const sections = m.secciones;
-  const s = index >= 0 ? sections[index] : null;
+  // Los anuncios, si los hay, son la última pantalla: después de la última parte.
+  const anuncios = anunciosDe(m);
+  const total = sections.length + (anuncios.length ? 1 : 0);
+  const enAnuncios = anuncios.length > 0 && index === sections.length;
+  const s = index >= 0 && !enAnuncios ? sections[index] : null;
   const go = (n: number) => {
-    const next = Math.max(-1, Math.min(sections.length - 1, n));
+    const next = Math.max(-1, Math.min(total - 1, n));
     setIndex(next);
     setSectionStart(elapsed);
     if (enVivo) sincronizar(next);
@@ -105,7 +112,7 @@ export default function PresentarScreen() {
         </Pressable>
         <Pressable onPress={() => setRunning(!running)} accessibilityLabel={running ? 'Pausar' : 'Seguir'} style={styles.timer}>
           <Text style={{ color: over ? '#B3412E' : colors.text, fontFamily: sans, fontSize: 16, fontVariant: ['tabular-nums'] }}>
-            {s ? `${clock(inSection)}${s.minutos ? ` / ${s.minutos}:00` : ''}` : clock(elapsed)}
+            {s ? `${clock(inSection)}${s.minutos ? ` / ${s.minutos}:00` : ''}` : enAnuncios ? clock(inSection) : clock(elapsed)}
           </Text>
           <Text style={{ color: colors.muted, fontSize: 11 }}>{running ? `Total ${clock(elapsed)}` : 'En pausa'}</Text>
         </Pressable>
@@ -121,7 +128,7 @@ export default function PresentarScreen() {
       </View>
 
       <View style={styles.tramos}>
-        <Tramos partes={sections} parte={index} enLaParte={inSection} alto={4} />
+        <Tramos partes={anuncios.length ? [...sections, { minutos: 0 }] : sections} parte={index} enLaParte={inSection} alto={4} />
       </View>
 
       {evento && (
@@ -216,7 +223,35 @@ export default function PresentarScreen() {
             {!s.texto.trim() && !s.paraGrupo?.trim() && !s.claves?.trim() && !d && (
               <Text style={{ color: colors.muted, fontSize: size * 0.8, marginTop: 16 }}>{s.ayuda}</Text>
             )}
+            {index === sections.length - 1 && (
+              <ParaLlevar titulo={tituloDe(m, books)} pasaje={m.pasaje} citas={sections.flatMap((x) => citasDeParte(x, books))} books={books} colors={colors} para="presentar" />
+            )}
           </>
+        ) : enAnuncios ? (
+          <View style={{ paddingTop: 24 }}>
+            <View style={styles.anunciosHead}>
+              <View style={[styles.megafono, { backgroundColor: colors.warmSoft }]}>
+                <MegaphoneIcon color={colors.warm} size={size * 1.05} strokeWidth={1.8} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.counter, { color: colors.muted }]}>AL TERMINAR</Text>
+                <Text style={[styles.title, { color: colors.accent, marginTop: 2 }]}>Anuncios</Text>
+              </View>
+            </View>
+            <View style={{ marginTop: 18, gap: 12 }}>
+              {anuncios.map((a, i) => (
+                <View key={i} style={[styles.anuncio, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={[styles.anuncioMarca, { backgroundColor: colors.warm }]} />
+                  <Text style={{ color: colors.text, fontFamily: serif, fontSize: size, lineHeight: size * 1.4, flex: 1 }}>{a}</Text>
+                </View>
+              ))}
+            </View>
+            {evento && enVivo && index >= evento.puntos.length && (
+              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 16 }}>
+                La congregación no ve los anuncios porque el evento se publicó antes de escribirlos. Vuelve a publicarlo desde «Presentarlo en vivo» para que les lleguen.
+              </Text>
+            )}
+          </View>
         ) : (
           <View style={{ paddingTop: 40 }}>
             <Text style={[styles.counter, { color: colors.muted }]}>{pasajeLabel(m.pasaje, books).toUpperCase()}</Text>
@@ -244,11 +279,11 @@ export default function PresentarScreen() {
         )}
         <Pressable
           onPress={() => go(index + 1)}
-          disabled={index >= sections.length - 1}
-          style={[styles.navBtn, { alignItems: 'flex-end' }, index >= sections.length - 1 && { opacity: 0.3 }]}
+          disabled={index >= total - 1}
+          style={[styles.navBtn, { alignItems: 'flex-end' }, index >= total - 1 && { opacity: 0.3 }]}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>Siguiente</Text>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>{anuncios.length && index === sections.length - 1 ? 'Anuncios' : 'Siguiente'}</Text>
             <ChevronRightIcon color={colors.text} size={18} strokeWidth={2} />
           </View>
         </Pressable>
@@ -292,6 +327,10 @@ const styles = StyleSheet.create({
   counter: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   title: { fontFamily: serif, fontSize: 30, fontWeight: '700', marginTop: 6 },
   box: { borderRadius: 14, padding: 16, marginTop: 16 },
+  anunciosHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  megafono: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  anuncio: { flexDirection: 'row', alignItems: 'stretch', gap: 14, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 16, overflow: 'hidden' },
+  anuncioMarca: { width: 4, borderRadius: 2 },
   claves: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 18, paddingTop: 8 },
   bottom: { flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 20, paddingTop: 10 },
   navBtn: { flex: 1, paddingVertical: 10 },

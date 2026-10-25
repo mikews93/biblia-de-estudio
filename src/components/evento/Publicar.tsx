@@ -7,6 +7,7 @@ import { Platform, Pressable, Share, StyleSheet, Switch, Text, View } from 'reac
 
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, Card, ErrorText, Field, SectionTitle, useAction } from '@/components/comunidad/ui';
+import AvisarGrupos from '@/components/evento/AvisarGrupos';
 import { EstadoPill } from '@/components/evento/piezas';
 import { ChevronDownIcon, ChevronUpIcon, LiveIcon, ScreenIcon, ShareIcon } from '@/components/icons';
 import Qr from '@/components/Qr';
@@ -101,6 +102,7 @@ export default function PublicarEvento({ m, books }: { m: Mensaje; books: Book[]
                 <Button label="Proyectar" icon={ScreenIcon} kind="outline" onPress={() => abrir('/proyectar')} style={{ flex: 1, minWidth: 180 }} />
               </View>
               <Button label={copiado ? 'Enlace copiado' : 'Compartir el enlace'} icon={ShareIcon} kind="quiet" onPress={compartir} style={{ alignSelf: 'flex-start' }} />
+              <AvisarGrupos evento={evento} />
               {cambios && !editar && (
                 <View style={[styles.notice, { backgroundColor: colors.warmSoft }]}>
                   <Text style={{ color: colors.text, flex: 1, fontSize: 14, lineHeight: 20 }}>Cambiaste el mensaje después de publicarlo.</Text>

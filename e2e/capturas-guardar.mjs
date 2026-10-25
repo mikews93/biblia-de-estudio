@@ -41,7 +41,7 @@ async function recorrido(prefix, opts) {
   await p.getByRole('button', { name: /Encuentro de grupo ·/ }).waitFor();
   await wait(4500);
   await p.getByRole('button', { name: /Encuentro de grupo ·/ }).click();
-  const pasaje = p.getByPlaceholder('Por ejemplo, Lucas 15:11-32');
+  const pasaje = p.getByLabel('Pasaje: escribe una cita, unas palabras o una idea');
   await pasaje.fill('Nehemías 4:7-23');
   await pasaje.press('Enter');
   await p.getByPlaceholder('Cómo lo llamarás').fill('Con la espada en una mano');

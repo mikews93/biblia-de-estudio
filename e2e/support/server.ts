@@ -24,14 +24,17 @@ process.env.DATABASE_URL ??= 'postgres://postgres:postgres@127.0.0.1:5432/biblia
 process.env.DATA_DIR = path.join(DIST, 'data');
 // Los avisos push van al servicio simulado de este mismo servidor (mock-push.ts).
 process.env.PUSH_HOSTS = 'localhost,127.0.0.1';
+// Quienes cuidan Zarza en las pruebas (/cuidar: iglesias y círculos de solteros; e2e/circulo.spec.ts, e2e/iglesias.spec.ts).
+process.env.CUIDADORES ??= 'cuidadora@prueba.test,cuidar-e2e@prueba.test';
 // Las fotos de perfil van a una carpeta servida como el resto de dist/, y Facebook es el simulado.
 process.env.FOTOS_STORE_DIR ??= path.join(DIST, 'fotos-prueba');
 process.env.FOTOS_URL ??= '/fotos-prueba';
 configureFacebook(`http://localhost:${PORT}`);
+process.env.AUTH_SECRET ??= 'secreto-de-prueba-para-auth-js';
 
 type Handler = (request: Request) => Promise<Response>;
 const handlers = new Map<string, Promise<Record<string, Handler>>>();
-const FUNCTIONS = ['audio', 'buscar', 'comentario', 'comunidades', 'estudiar', 'facebook', 'notificaciones', 'podcast-grabado', 'sincronizar', 'vivo'];
+const FUNCTIONS = ['audio', 'buscar', 'comentario', 'auth', 'comunidades', 'estudiar', 'notificaciones', 'podcast-grabado', 'sincronizar', 'vivo'];
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -80,7 +83,10 @@ async function api(name: string, req: IncomingMessage, res: ServerResponse) {
     duplex: 'half',
   });
   const response = await handler(request);
-  res.writeHead(response.status, Object.fromEntries(response.headers));
+  // Varias cookies van en cabeceras Set-Cookie separadas (Object.fromEntries las juntaría en una).
+  const headers: Record<string, string | string[]> = Object.fromEntries(response.headers);
+  if (response.headers.getSetCookie().length) headers['set-cookie'] = response.headers.getSetCookie();
+  res.writeHead(response.status, headers);
   if (!response.body) return res.end();
   for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) res.write(chunk);
   res.end();
@@ -91,6 +97,8 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   const pathname = decodeURIComponent(url.pathname);
   if (pathname.startsWith('/__push') && (await handlePush(req, res))) return;
   if (pathname.startsWith('/__facebook/')) return handleFacebook(req, res);
+  // Como la reescritura de vercel.json: todo /api/auth/… va a la función api/auth.ts.
+  if (pathname.startsWith('/api/auth/')) return api('auth', req, res);
   if (pathname.startsWith('/api/')) return api(pathname.slice(5).replace(/\/$/, ''), req, res);
   // Como vercel.json: los archivos que existen se sirven tal cual; el resto de rutas abren la app.
   let p = await file(path.join(DIST, path.normalize(pathname)));

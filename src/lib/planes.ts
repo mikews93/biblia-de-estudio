@@ -168,12 +168,14 @@ export function splitByTime(readings: Reading[], minutes: number, w: Words | nul
   return days;
 }
 
-/** Los días del plan: por tiempo en los de a tu ritmo; uno por fecha en los de temporada. */
+/** Los días del plan: por tiempo en los de a tu ritmo; uno por fecha en los de temporada; uno por día en los de un tema. */
 export function planDays(plan: MyPlan, def: PlanDef | undefined, w: Words | null): PlanDay[] {
   if (def?.season) {
     const dates = seasonDates(def.season, Number(plan.id.split('-').pop()), plan.readings.length);
     return plan.readings.map((_, i) => ({ readings: [i], title: def.days?.[i], date: dates[i] }));
   }
+  // Los planes para un momento de la vida van un capítulo por día, con su título
+  if (def?.tema) return plan.readings.map((_, i) => ({ readings: [i], title: def.days?.[i] }));
   return splitByTime(plan.readings, plan.minutes, w).map((readings) => ({ readings }));
 }
 
@@ -211,7 +213,7 @@ export async function startPlan(def: PlanDef, books: Book[], opts: { minutes: nu
     title: def.title,
     readings: expand(def, books),
     minutes: opts.minutes,
-    daysPerWeek: def.season ? 7 : opts.daysPerWeek,
+    daysPerWeek: def.season || def.tema ? 7 : opts.daysPerWeek,
     started: season?.start ?? todayKey(),
     done: {},
   };

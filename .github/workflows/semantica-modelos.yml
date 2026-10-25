@@ -1,0 +1,40 @@
+name: Modelos semánticos
+
+# Copia los modelos de embeddings de pipeline/semantica/modelos.txt (Hugging Face) a la versión
+# «semantica-modelos-v1» de este repositorio, para calcular los vectores de los versículos aunque huggingface.co no se
+# pueda abrir desde el entorno de desarrollo. Cada archivo queda como <repo>__<ruta> con «/» cambiada por «__».
+
+on:
+  push:
+    paths:
+      - pipeline/semantica/modelos.txt
+      - .github/workflows/semantica-modelos.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  descargar:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: semantica-modelos-v1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar
+        run: |
+          mkdir -p modelos
+          grep -v '^#' pipeline/semantica/modelos.txt | while read -r repo file; do
+            [ -z "$repo" ] && continue
+            name=$(echo "$repo/$file" | sed 's#/#__#g')
+            code=$(curl -sL --retry 3 --retry-all-errors -o "modelos/$name" -w '%{http_code}' "https://huggingface.co/$repo/resolve/main/$file")
+            echo "$code $(stat -c %s "modelos/$name") $name"
+            [ "$code" = 200 ] || { rm -f "modelos/$name"; exit 1; }
+          done
+          cd modelos && sha256sum * | tee ../sha256.txt
+      - name: Publicar los archivos
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Modelos semánticos" \
+            --notes "Copias de modelos de embeddings con licencia libre (MIT / Apache-2.0) para pipeline/semantica." --prerelease
+          gh release upload "$TAG" modelos/* sha256.txt --clobber

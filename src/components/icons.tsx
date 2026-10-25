@@ -6,6 +6,7 @@ import Svg, { Circle, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { Line, STROKE, type IconProps as Props } from './iconLine';
 
 export {
+  AppleLogo,
   CameraIcon,
   CheckIcon,
   ChurchIcon,
@@ -14,6 +15,7 @@ export {
   DevicesIcon,
   DownloadIcon,
   FacebookLogo,
+  GoogleLogo,
   KeyIcon,
   OfflineIcon,
   OpenBookIcon,
@@ -208,6 +210,17 @@ export const BellIcon = (p: Props) => (
 );
 
 /** Corazón: devocional, diario y «me gusta». Con «filled», relleno. */
+/** Llama: la racha devocional. */
+export const FlameIcon = ({ filled, ...p }: Props & { filled?: boolean }) => (
+  <Line {...p}>
+    <Path
+      d="M12 21c-3.8 0-6.5-2.7-6.5-6.3 0-2.5 1.4-4.3 2.9-5.9.3 1.5.9 2.6 1.9 3.2-.2-3.4 1.1-6.2 3.6-8.5.3 2.8 1.6 4.6 3 6.2 1 1.2 1.6 2.6 1.6 4.3 0 4-2.7 7-6.5 7z"
+      fill={filled ? p.color : 'none'}
+    />
+    {!filled && <Path d="M12 21c-1.6 0-2.7-1.1-2.7-2.7 0-1.4.9-2.4 2-3.4.3 1 .9 1.6 1.6 1.9.4-.8.6-1.6.5-2.6 1.3 1 2.2 2.3 2.2 4 0 1.6-1.2 2.8-3.6 2.8z" />}
+  </Line>
+);
+
 export const HeartIcon = ({ filled, ...p }: Props & { filled?: boolean }) => (
   <Line {...p}>
     <Path
@@ -222,6 +235,14 @@ export const LockIcon = (p: Props) => (
   <Line {...p}>
     <Rect x={5} y={10.5} width={14} height={10} rx={2.5} />
     <Path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2" />
+  </Line>
+);
+
+/** Escudo: quien lidera y cuida un círculo de solteros. */
+export const ShieldIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M12 3.2 19 6v5.2c0 4.4-2.9 8-7 9.6-4.1-1.6-7-5.2-7-9.6V6l7-2.8Z" />
+    <Path d="m9 12 2.2 2.2L15.2 10" />
   </Line>
 );
 
@@ -561,5 +582,60 @@ export const RepeatIcon = (p: Props) => (
     <Path d="M19 4.5V9h-4.5" />
     <Path d="M19 12a7 7 0 0 1-12 4.9L5 15" />
     <Path d="M5 19.5V15h4.5" />
+  </Line>
+);
+
+/** Campana tachada: avisos silenciados. */
+export const BellOffIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M8.2 4.6A6 6 0 0 1 18 9c0 2.6.5 4.4 1.1 5.6" />
+    <Path d="M6.2 7.6A6 6 0 0 0 6 9c0 4.5-1.5 6.5-2.5 7.5H16.5" />
+    <Path d="M10 20a2.2 2.2 0 0 0 4 0" />
+    <Path d="M4 3.5 20 20.5" />
+  </Line>
+);
+
+/** Puerta con flecha hacia fuera: salir de un grupo, darse de baja. */
+export const ExitIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M13.5 4.5H7a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 7 19.5h6.5" />
+    <Path d="M10.5 12h9" />
+    <Path d="M16.5 8.5 20 12l-3.5 3.5" />
+  </Line>
+);
+
+/** Megáfono: los anuncios al final de un mensaje. */
+export const MegaphoneIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4 10v4a1 1 0 0 0 1 1h2l8 4.5V4.5L7 9H5a1 1 0 0 0-1 1z" />
+    <Path d="M7 15l1.2 4.2a1 1 0 0 0 1 .8h1.3" />
+    <Path d="M18.5 9.5a3.5 3.5 0 0 1 0 5" />
+  </Line>
+);
+
+/** Papelera: borrar o descartar. */
+export const TrashIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4.5 6.5h15" />
+    <Path d="M9.5 6.5V4.8a.8.8 0 0 1 .8-.8h3.4a.8.8 0 0 1 .8.8v1.7" />
+    <Path d="M6.5 6.5l.9 12.1A1.5 1.5 0 0 0 8.9 20h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12.1" />
+    <Path d="M10.2 10.5v6M13.8 10.5v6" />
+  </Line>
+);
+
+/** Dos hojas: hacer una copia. */
+export const CopyIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M9 8.5h9.5A1.5 1.5 0 0 1 20 10v9.5a1.5 1.5 0 0 1-1.5 1.5H9A1.5 1.5 0 0 1 7.5 19.5V10A1.5 1.5 0 0 1 9 8.5z" />
+    <Path d="M16.5 8.5V5A1.5 1.5 0 0 0 15 3.5H5.5A1.5 1.5 0 0 0 4 5v9.5A1.5 1.5 0 0 0 5.5 16h2" />
+  </Line>
+);
+
+/** Martillo: «Hombres de pie», construir con otros (Nehemías 4). */
+export const HammerIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="m13.6 5.2 5.2 5.2-2.3 2.3-5.2-5.2 2.3-2.3Z" />
+    <Path d="m12.4 9.5-7.3 7.3a1.6 1.6 0 0 0 2.3 2.3l7.3-7.3" />
+    <Path d="m13.6 5.2 1.2-1.2a2.4 2.4 0 0 1 3 .3" />
   </Line>
 );

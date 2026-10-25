@@ -65,11 +65,35 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       const yo = await call('yo', {}, ana.llave);
       expect(yo.status).toBe(200);
       expect(yo.json).toEqual({
-        usuario: { id: ana.id, nombre: ana.nombre, correo: null, foto: null, bio: null, iglesia: null, ciudad: null, conClave: false, facebook: null },
+        usuario: { id: ana.id, nombre: ana.nombre, correo: null, foto: null, bio: null, iglesia: null, ciudad: null, apodo: null, conClave: false, cuentas: [], racha: 0, etapa: null, servicio: 0 },
         grupos: [],
         iglesia: null,
         cuidador: false,
       });
+    });
+
+    it('la racha devocional se guarda en la cuenta y caduca sola', async () => {
+      const ana = await persona('Ana');
+      const hoy = new Date().toISOString().slice(0, 10);
+      await call('racha', { dias: 41, vence: hoy }, ana.llave);
+      expect((await call('yo', {}, ana.llave)).json.usuario.racha).toBe(41);
+      await call('racha', { dias: 41, vence: '2020-01-01' }, ana.llave);
+      expect((await call('yo', {}, ana.llave)).json.usuario.racha).toBe(0);
+      await call('racha', { dias: 'mucho', vence: 'mañana' }, ana.llave);
+      expect((await call('yo', {}, ana.llave)).json.usuario.racha).toBe(0);
+      expect((await call('racha', { dias: 3, vence: hoy })).status).toBe(401);
+    });
+
+    it('las veces que sirvió se guardan en la cuenta y se ven en sus publicaciones', async () => {
+      const ana = await persona('Ana');
+      await call('servicio', { total: 42 }, ana.llave);
+      expect((await call('yo', {}, ana.llave)).json.usuario.servicio).toBe(42);
+      await call('publicar', { tipo: 'reflexion', audiencia: 'todos', texto: 'Hoy guié el estudio de la célula.' }, ana.llave);
+      const muro = await call('muro', { filtro: 'todos' }, ana.llave);
+      expect(muro.json.publicaciones.find((p: { autorId: string }) => p.autorId === ana.id).autorServicio).toBe(42);
+      await call('servicio', { total: -3 }, ana.llave);
+      expect((await call('yo', {}, ana.llave)).json.usuario.servicio).toBe(0);
+      expect((await call('servicio', { total: 3 })).status).toBe(401);
     });
 
     it('valida nombre, correo y contraseña', async () => {
@@ -140,7 +164,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       expect((await call('pedirAmistad', { codigo }, ana.llave)).json.error).toBe('Ese es tu propio código');
 
       let red = (await call('amigos', {}, ana.llave)).json;
-      expect(red.recibidas).toEqual([{ id: beto.id, nombre: beto.nombre, foto: null }]);
+      expect(red.recibidas).toEqual([{ id: beto.id, nombre: beto.nombre, foto: null, racha: 0, servicio: 0 }]);
       expect((await call('persona', { usuario: ana.id }, beto.llave)).json.persona.relacion).toBe('enviada');
 
       expect((await call('responderAmistad', { usuario: beto.id }, ana.llave)).json.relacion).toBe('amigos');
@@ -384,7 +408,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
         [beto.id, 'miembro', true, false],
       ]);
       const resumen = (await call('yo', {}, beto.llave)).json.grupos;
-      expect(resumen).toEqual([{ id: g.id, nombre: g.nombre, tipo: 'celula', miembros: 2, leyeronHoy: 1, lectura: visto.lectura }]);
+      expect(resumen).toEqual([{ id: g.id, nombre: g.nombre, tipo: 'celula', miembros: 2, leyeronHoy: 1, lectura: visto.lectura, soyAdmin: false, avisos: true }]);
     });
 
     it('el plan dice «pronto» antes de empezar y «terminado» después del último día', async () => {

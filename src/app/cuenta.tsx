@@ -4,41 +4,45 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 
 import Appear from '@/components/Appear';
 import { ProgresoCuenta } from '@/components/Sincronia';
+import MisGrupos from '@/components/comunidad/MisGrupos';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
-import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, FlagIcon, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
-import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
-import {
-  disconnectFacebook,
-  facebook,
-  facebookAvailable,
-  MAX_BIO,
-  MAX_PLACE,
-  pickPhoto,
-  removePhoto,
-  resumeFacebook,
-  saveProfile,
-} from '@/lib/perfil';
+import { Avatar, Button, Chips, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
+import { ProviderLogo } from '@/components/comunidad/ProviderButtons';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FlagIcon, KeyIcon, LampIcon, LockIcon, PeopleIcon, PinIcon } from '@/components/icons';
+import { deleteAccount, protectAccount, signOut, updateUser, useAccount } from '@/lib/comunidad';
+import { firstName, greeting } from '@/lib/daily';
+import { useRacha } from '@/lib/racha';
+import { MAX_APODO, MAX_BIO, MAX_PLACE, pickPhoto, removePhoto, saveProfile } from '@/lib/perfil';
+import { desconectar, entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, retomarViaje } from '@/lib/proveedores';
+import { useServicio } from '@/lib/servicioUso';
 import { HAY_SOSTENER } from '@/lib/sostener';
-import { Colors, isDark, serif, useColors } from '@/lib/theme';
+import { ETAPAS, type Etapa } from '@/lib/circulo';
+import { cambiarEtapa } from '@/lib/circuloApi';
+import { Colors, isDark, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 /** Tu perfil: la foto, cómo te ven los demás, las cuentas conectadas, cómo entrar y la sesión. */
 export default function AccountScreen() {
   const colors = useColors();
   const { ready, usuario, iglesia: anfitriona, cuidador } = useAccount();
+  const racha = useRacha();
+  const { modo } = useSettings().settings;
+  const etapaAction = useAction();
+  const servicio = useServicio();
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [church, setChurch] = useState('');
   const [city, setCity] = useState('');
+  const [nick, setNick] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
-  const [fbReady, setFbReady] = useState(false);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [viaje, setViaje] = useState<Proveedor | null>(null);
   const profileAction = useAction();
   const photoAction = useAction();
-  const fbAction = useAction();
+  const extAction = useAction();
   const loginAction = useAction();
   const deleteAction = useAction();
 
@@ -53,16 +57,17 @@ export default function AccountScreen() {
       setBio(usuario.bio ?? '');
       setChurch(usuario.iglesia ?? '');
       setCity(usuario.ciudad ?? '');
+      setNick(usuario.apodo ?? '');
       setEmail(usuario.correo ?? '');
     }
     // También cuando llegan del servidor datos más nuevos que los guardados en el dispositivo.
-  }, [usuario?.id, usuario?.nombre, usuario?.bio, usuario?.iglesia, usuario?.ciudad, usuario?.correo]);
+  }, [usuario?.id, usuario?.nombre, usuario?.bio, usuario?.iglesia, usuario?.ciudad, usuario?.apodo, usuario?.correo]);
 
   useEffect(() => {
-    facebookAvailable().then(setFbReady);
-    // Si se fue a Facebook en esta misma pestaña, al volver se termina de conectar.
-    fbAction.run(async () => {
-      if (await resumeFacebook()) flash('Facebook quedó conectado');
+    proveedoresDisponibles().then(setProveedores);
+    // Si se fue al proveedor en esta misma pestaña, al volver se termina de conectar.
+    extAction.run(async () => {
+      if (await retomarViaje()) flash('Cuenta conectada');
     });
   }, []);
 
@@ -87,14 +92,23 @@ export default function AccountScreen() {
     name.trim() !== usuario.nombre ||
     bio.trim() !== (usuario.bio ?? '') ||
     church.trim() !== (usuario.iglesia ?? '') ||
-    city.trim() !== (usuario.ciudad ?? '');
+    city.trim() !== (usuario.ciudad ?? '') ||
+    nick.trim() !== (usuario.apodo ?? '');
   const hasPassword = usuario.conClave ?? Boolean(usuario.correo);
   const place = [usuario.iglesia, usuario.ciudad].filter(Boolean).join(' · ');
 
   const save = () =>
     profileAction
-      .run(() => saveProfile({ nombre: name, bio, iglesia: church, ciudad: city }))
+      .run(() => saveProfile({ nombre: name, bio, iglesia: church, ciudad: city, apodo: nick }))
       .then((ok) => ok && flash('Perfil guardado'));
+
+  const changeEtapa = (v: Etapa | 'nada') =>
+    etapaAction
+      .run(async () => {
+        const r = await cambiarEtapa(v === 'nada' ? null : v);
+        updateUser({ ...usuario, etapa: r.etapa });
+      })
+      .then((ok) => ok && flash('Etapa guardada'));
 
   const choosePhoto = () => photoAction.run(pickPhoto).then((ok) => ok && flash('Foto actualizada'));
 
@@ -103,18 +117,28 @@ export default function AccountScreen() {
     photoAction.run(removePhoto);
   };
 
-  const connect = () => fbAction.run(async () => (await facebook('conectar')) && flash('Facebook quedó conectado'));
+  const cuentas = usuario.cuentas ?? [];
+  const conectada = (p: Proveedor) => cuentas.find((c) => c.proveedor === p);
+  // Los que se pueden conectar aquí y los ya conectados (aunque en este dispositivo no se ofrezcan).
+  const filas = [...proveedores, ...cuentas.map((c) => c.proveedor).filter((p) => !proveedores.includes(p))];
 
-  const disconnect = async () => {
-    if (!(await confirm('¿Desconectar Facebook?', 'Ya no podrás entrar con Facebook. Tu foto y tu nombre se quedan como están.', 'Desconectar'))) return;
-    fbAction.run(disconnectFacebook);
+  const connect = (p: Proveedor) => {
+    setViaje(p);
+    extAction.run(async () => (await entrarCon(p, 'conectar')) && flash(`${NOMBRE[p]} quedó conectado`)).finally(() => setViaje(null));
+  };
+
+  const disconnect = async (p: Proveedor) => {
+    const msg = `Ya no podrás entrar con ${NOMBRE[p]}. Tu foto y tu nombre se quedan como están.`;
+    if (!(await confirm(`¿Desconectar ${NOMBRE[p]}?`, msg, 'Desconectar'))) return;
+    setViaje(p);
+    extAction.run(() => desconectar(p)).finally(() => setViaje(null));
   };
 
   const out = async () => {
     const msg = hasPassword
       ? 'Tu progreso queda guardado en tu cuenta. Podrás volver a entrar con tu correo y tu contraseña.'
-      : usuario.facebook
-        ? 'Tu progreso queda guardado en tu cuenta. Podrás volver a entrar con Facebook.'
+      : cuentas.length
+        ? `Tu progreso queda guardado en tu cuenta. Podrás volver a entrar con ${NOMBRE[cuentas[0].proveedor]}.`
         : 'Tu cuenta no tiene correo: si sales, no podrás volver a entrar en ella.';
     if (!(await confirm('¿Cerrar sesión en este dispositivo?', msg, 'Cerrar sesión'))) return;
     await signOut();
@@ -148,7 +172,7 @@ export default function AccountScreen() {
               accessibilityLabel={usuario.foto ? 'Cambiar la foto' : 'Poner una foto'}
               style={[styles.photo, { borderColor: colors.surface, backgroundColor: colors.surface }]}
             >
-              <Avatar name={usuario.nombre} foto={usuario.foto} size={104} filled />
+              <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} servicio={servicio.total} size={104} filled />
               {photoAction.busy && (
                 <View style={[styles.photoBusy, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
                   <ActivityIndicator color="#fff" />
@@ -187,9 +211,26 @@ export default function AccountScreen() {
         <ProgresoCuenta />
       </Appear>
 
+      <Appear delay={50}>
+        <MisGrupos />
+      </Appear>
+
       <Appear delay={60}>
         <Section colors={colors} title="Sobre ti" hint="Lo ven tus amigos, tus grupos y la comunidad.">
           <Field label="Tu nombre" value={name} onChangeText={setName} maxLength={40} autoComplete="name" />
+          <View>
+            <Field
+              label="Cómo te saludamos"
+              value={nick}
+              onChangeText={setNick}
+              maxLength={MAX_APODO}
+              autoComplete="nickname"
+              placeholder={firstName(name) || 'Tu apodo'}
+            />
+            <Text style={[styles.counter, styles.preview, { color: colors.muted }]}>
+              En Hoy: «{greeting()}, {nick.trim() || firstName(name) || 'amigo'}»
+            </Text>
+          </View>
           <View>
             <Field
               label="Unas líneas sobre ti"
@@ -218,26 +259,49 @@ export default function AccountScreen() {
         </Section>
       </Appear>
 
-      {(fbReady || usuario.facebook) && (
+      {modo !== 'jovenes' && (
+        <Appear delay={90}>
+          <Section colors={colors} title="Tu etapa" hint="Solo la ven las personas de tu círculo de solteros, si entras a uno.">
+            <Chips options={ETAPAS_PERFIL} value={usuario.etapa ?? 'nada'} onChange={changeEtapa} />
+            <ErrorText>{etapaAction.error}</ErrorText>
+          </Section>
+        </Appear>
+      )}
+
+      {filas.length > 0 && (
         <Appear delay={100}>
-          <Section colors={colors} title="Cuentas conectadas">
-            <View style={styles.service}>
-              <FacebookLogo size={36} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Facebook</Text>
-                <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
-                  {usuario.facebook
-                    ? `Conectado como ${usuario.facebook}. Puedes entrar con Facebook en cualquier dispositivo.`
-                    : 'Entra con un toque y, si no tienes foto, usa la de tu Facebook.'}
-                </Text>
-              </View>
-              {usuario.facebook ? (
-                <Button label="Desconectar" kind="quiet" onPress={disconnect} busy={fbAction.busy} />
-              ) : (
-                <Button label="Conectar" kind="outline" onPress={connect} busy={fbAction.busy} disabled={!fbReady} style={styles.small} />
-              )}
+          <Section colors={colors} title="Entrar con un toque" hint="Conecta tus cuentas para entrar en cualquier dispositivo sin escribir la contraseña.">
+            <View style={[styles.services, { borderColor: colors.border }]}>
+              {filas.map((p, i) => {
+                const c = conectada(p);
+                return (
+                  <View key={p} style={[styles.service, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
+                    <View style={[styles.serviceLogo, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                      <ProviderLogo proveedor={p} size={20} color={colors.text} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{NOMBRE[p]}</Text>
+                      <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }} numberOfLines={2}>
+                        {c ? (c.nombre ? `Conectado como ${c.nombre}` : 'Conectado') : 'Sin conectar'}
+                      </Text>
+                    </View>
+                    {c ? (
+                      <Button label="Desconectar" kind="quiet" onPress={() => disconnect(p)} busy={extAction.busy && viaje === p} />
+                    ) : (
+                      <Button
+                        label="Conectar"
+                        kind="outline"
+                        onPress={() => connect(p)}
+                        busy={extAction.busy && viaje === p}
+                        disabled={!proveedores.includes(p)}
+                        style={styles.small}
+                      />
+                    )}
+                  </View>
+                );
+              })}
             </View>
-            <ErrorText>{fbAction.error}</ErrorText>
+            <ErrorText>{extAction.error}</ErrorText>
           </Section>
         </Appear>
       )}
@@ -251,7 +315,7 @@ export default function AccountScreen() {
             hasPassword
               ? `Entras con ${usuario.correo}. Puedes cambiar el correo o la contraseña.`
               : usuario.correo
-                ? `Tu correo es ${usuario.correo}. Elige una contraseña para entrar también sin Facebook.`
+                ? `Tu correo es ${usuario.correo}. Elige una contraseña para entrar también con ella.`
                 : 'Añade un correo y una contraseña para abrir tu cuenta en otro teléfono o en el navegador.'
           }
         >
@@ -326,6 +390,25 @@ export default function AccountScreen() {
           <ChevronRightIcon color={colors.muted} size={20} />
         </Pressable>
       </Appear>
+
+      {modo !== 'jovenes' && (
+        <Appear delay={197}>
+          <Pressable
+            onPress={() => go('/circulo')}
+            accessibilityRole="link"
+            style={[styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: colors.border }]}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: colors.accentSoft }]}>
+              <PeopleIcon color={colors.accent} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Círculo de solteros</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Conoce a solteros de tu iglesia, con la Palabra en el centro</Text>
+            </View>
+            <ChevronRightIcon color={colors.muted} size={20} />
+          </Pressable>
+        </Appear>
+      )}
 
       {cuidador && (
         <Appear delay={198}>
@@ -433,6 +516,11 @@ function IconLabel({ colors, Icon, label }: { colors: Colors; Icon: (p: { color:
   );
 }
 
+const ETAPAS_PERFIL: { value: Etapa | 'nada'; label: string }[] = [
+  ...ETAPAS.map((e) => ({ value: e.value, label: e.label })),
+  { value: 'nada', label: 'Prefiero no decir' },
+];
+
 const shadow = (colors: Colors) =>
   isDark(colors) ? null : { boxShadow: '0 1px 2px rgba(60, 40, 20, 0.06), 0 8px 24px rgba(60, 40, 20, 0.06)' };
 
@@ -473,11 +561,21 @@ const styles = StyleSheet.create({
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardTitle: { fontFamily: serif, fontSize: 19, fontWeight: '700' },
   counter: { fontSize: 12, textAlign: 'right', marginTop: 4 },
+  preview: { textAlign: 'left' },
   pair: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   pairItem: { flexGrow: 1, flexBasis: 200 },
   iconLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
   label: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-  service: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  services: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: -4 },
+  service: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  serviceLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   small: { paddingVertical: 8, paddingHorizontal: 16, minHeight: 38 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
   rowIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

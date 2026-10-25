@@ -2,8 +2,12 @@
 import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 
+import { LuzDeLaFoto } from '@/components/comunidad/AroDeLuz';
 import type { IconProps } from '@/components/iconLine';
 import { initials } from '@/lib/comunidad';
+import { useCrecer } from '@/lib/crecer';
+import { resplandorDe } from '@/lib/resplandor';
+import { nivelDe } from '@/lib/servicio';
 import { Colors, sans, serif, useColors } from '@/lib/theme';
 
 /** Un ícono de línea delante de un texto corto (títulos pequeños, enlaces): mismo color, centrados. */
@@ -86,6 +90,8 @@ export function Field({
 }: TextInputProps & { label?: string; /** Algo a la derecha dentro del campo, como «Mostrar». */ trailing?: ReactNode }) {
   const colors = useColors();
   const [focused, setFocused] = useState(false);
+  // Los de varias líneas crecen a medida que se escribe (en la web hay que medirlos).
+  const crecer = useCrecer(typeof props.value === 'string' ? props.value : undefined, !!props.multiline);
   return (
     <View style={{ alignSelf: 'stretch' }}>
       {label && <Text style={[styles.label, { color: focused ? colors.accent : colors.muted }]}>{label}</Text>}
@@ -93,6 +99,11 @@ export function Field({
         <TextInput
           placeholderTextColor={colors.muted}
           {...props}
+          ref={props.multiline ? (crecer.ref as never) : undefined}
+          onLayout={(e) => {
+            crecer.onLayout?.();
+            props.onLayout?.(e);
+          }}
           onFocus={(e) => {
             setFocused(true);
             props.onFocus?.(e);
@@ -128,38 +139,50 @@ export function Avatar({
   foto,
   filled,
   size = 40,
+  racha = 0,
+  servicio = 0,
 }: {
   name: string;
   foto?: string | null;
   filled?: boolean;
   size?: number;
+  /** Racha devocional viva: desde 3 días, un aro de luz que crece con la racha (src/lib/resplandor.ts). */
+  racha?: number;
+  /** Veces que ha servido: desde el primer nivel, una corona de estrellas sobre la foto (src/lib/servicio.ts). */
+  servicio?: number;
 }) {
   const colors = useColors();
   const [broken, setBroken] = useState<string | null>(null);
   const round = { width: size, height: size, borderRadius: size / 2 };
-  if (foto && broken !== foto) {
-    return (
+  const foto_ =
+    foto && broken !== foto ? (
       <Image
         source={{ uri: foto }}
         onError={() => setBroken(foto)}
         accessibilityIgnoresInvertColors
         style={[round, { backgroundColor: colors.accentSoft }, filled && { borderWidth: 2, borderColor: colors.accent }]}
       />
+    ) : (
+      <View
+        style={[
+          styles.avatar,
+          round,
+          { borderColor: filled ? colors.accent : colors.border },
+          filled && { backgroundColor: colors.accent },
+        ]}
+      >
+        <Text style={{ color: filled ? colors.surface : colors.muted, fontWeight: '700', fontSize: size * 0.36 }}>
+          {initials(name)}
+        </Text>
+      </View>
     );
-  }
+  const luz = resplandorDe(racha)?.intensidad ?? 0;
+  const estrellas = nivelDe(servicio)?.nivel ?? 0;
+  if (!luz && !estrellas) return foto_;
   return (
-    <View
-      style={[
-        styles.avatar,
-        round,
-        { borderColor: filled ? colors.accent : colors.border },
-        filled && { backgroundColor: colors.accent },
-      ]}
-    >
-      <Text style={{ color: filled ? colors.surface : colors.muted, fontWeight: '700', fontSize: size * 0.36 }}>
-        {initials(name)}
-      </Text>
-    </View>
+    <LuzDeLaFoto size={size} racha={racha} intensidad={luz} servicio={estrellas}>
+      {foto_}
+    </LuzDeLaFoto>
   );
 }
 

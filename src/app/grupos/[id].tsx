@@ -10,8 +10,9 @@ import Prayer from '@/components/comunidad/Prayer';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import EnVivoGrupo from '@/components/vivo/EnVivoGrupo';
-import { Avatar, Button, Card, Meter, SectionTitle, text } from '@/components/comunidad/ui';
-import { Grupo, Miembro, api, chapterHref, refreshGroups, tipoLabel, useAccount } from '@/lib/comunidad';
+import { Avatar, Button, Card, ErrorText, Meter, SectionTitle, text, useAction } from '@/components/comunidad/ui';
+import { BellIcon, BellOffIcon, ChevronRightIcon } from '@/components/icons';
+import { Grupo, Miembro, api, chapterHref, refreshGroups, setGroupAlerts, tipoLabel, useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import { planById } from '@/lib/planesCatalogo';
 import { seasonTint } from '@/lib/retos';
@@ -21,17 +22,20 @@ import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 type Tab = 'notas' | 'oracion' | 'reunion';
+const TABS: Tab[] = ['notas', 'oracion', 'reunion'];
 
 const longDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'long' });
 
 export default function GroupScreen() {
-  const { id, nuevo } = useLocalSearchParams<{ id: string; nuevo?: string }>();
+  const { id, nuevo, tab: tabParam } = useLocalSearchParams<{ id: string; nuevo?: string; tab?: string }>();
   const colors = useColors();
   const { ready, usuario } = useAccount();
   const [group, setGroup] = useState<Grupo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
-  const [tab, setTab] = useState<Tab>('notas');
+  // Un aviso abre la pestaña de lo que llegó: una nota, una petición o una guía para la reunión.
+  const [tab, setTab] = useState<Tab>(TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'notas');
+  const alertsAction = useAction();
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
@@ -171,7 +175,7 @@ export default function GroupScreen() {
         <View style={styles.members}>
           {group.miembros.map((m) => (
             <View key={m.id} style={styles.member}>
-              <Avatar name={m.nombre} foto={m.foto} filled={m.leyoHoy} />
+              <Avatar name={m.nombre} foto={m.foto} racha={m.racha} servicio={m.servicio} filled={m.leyoHoy} />
               <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }} numberOfLines={1}>
                 {m.soyYo ? 'Tú' : m.nombre.split(' ')[0]}
               </Text>
@@ -258,12 +262,20 @@ export default function GroupScreen() {
       <SectionTitle>Personas</SectionTitle>
       {group.miembros.map((m) => (
         <View key={m.id} style={[styles.personRow, { borderColor: colors.border }]}>
-          <Avatar name={m.nombre} foto={m.foto} size={32} />
-          <Text style={{ color: colors.text, flex: 1 }}>
-            {m.nombre}
-            {m.soyYo ? ' (tú)' : ''}
-            {m.rol === 'admin' ? <Text style={{ color: colors.muted }}> · administra</Text> : null}
-          </Text>
+          <Pressable
+            onPress={() => navigate(() => router.push(`/comunidades/persona/${m.id}`), 'forward')}
+            accessibilityRole="link"
+            accessibilityLabel={`Ver el perfil de ${m.nombre}`}
+            style={({ pressed }) => [styles.personLink, pressed && { opacity: 0.7 }]}
+          >
+            <Avatar name={m.nombre} foto={m.foto} racha={m.racha} servicio={m.servicio} size={32} />
+            <Text style={{ color: colors.text, flex: 1 }}>
+              {m.nombre}
+              {m.soyYo ? ' (tú)' : ''}
+              {m.rol === 'admin' ? <Text style={{ color: colors.muted }}> · administra</Text> : null}
+            </Text>
+            {!group.soyAdmin || m.soyYo ? <ChevronRightIcon color={colors.muted} size={16} /> : null}
+          </Pressable>
           {group.soyAdmin && !m.soyYo && (
             <>
               {m.rol !== 'admin' && (
@@ -278,6 +290,35 @@ export default function GroupScreen() {
           )}
         </View>
       ))}
+      {/* Avisos de este grupo: se pueden silenciar sin salir */}
+      <Pressable
+        onPress={() =>
+          alertsAction.run(async () => {
+            const avisos = await setGroupAlerts(group.id, group.avisos === false);
+            setGroup({ ...group, avisos });
+          })
+        }
+        disabled={alertsAction.busy}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: group.avisos !== false }}
+        style={({ pressed }) => [styles.alerts, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.8 }]}
+      >
+        <View style={[styles.alertsIcon, { backgroundColor: group.avisos === false ? colors.accentSoft : colors.warmSoft }]}>
+          {group.avisos === false ? <BellOffIcon color={colors.muted} size={19} /> : <BellIcon color={colors.warm} size={19} />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>
+            {group.avisos === false ? 'Avisos silenciados' : 'Te avisamos de este grupo'}
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
+            {group.avisos === false
+              ? 'No te llegan sus notas, peticiones ni lo que empieza en vivo. Toca para volver a recibirlos.'
+              : 'Notas, peticiones de oración, guías para la reunión y cuando algo empieza en vivo. Toca para silenciarlo.'}
+          </Text>
+        </View>
+      </Pressable>
+      <ErrorText>{alertsAction.error}</ErrorText>
+
       <View style={styles.footer}>
         {group.soyAdmin && <Button label="Cambiar el código de invitación" kind="quiet" onPress={newCode} />}
         <Button label="Salir del grupo" kind="quiet" onPress={() => leave()} />
@@ -377,5 +418,8 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 32 },
   tab: { paddingVertical: 10, marginRight: 24, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   personRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  personLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  alerts: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, padding: 14, marginTop: 24 },
+  alertsIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   footer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 20 },
 });

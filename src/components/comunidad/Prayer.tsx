@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CheckIcon, PrayIcon } from '@/components/icons';
+import { CheckIcon, HeartIcon, PrayIcon } from '@/components/icons';
 import { Peticion, ago, api } from '@/lib/comunidad';
+import { autorVisible } from '@/lib/pedirOracion';
 import { useColors } from '@/lib/theme';
 
 import { confirm } from './confirm';
-import { Button, ErrorText, Field, IconText, SectionTitle, text, useAction } from './ui';
+import { ComponerPeticion, EnviarAnimo, MisAnimos } from './PedirOracion';
+import { IconText, SectionTitle, text } from './ui';
 
-/** Peticiones de oración del grupo. En vez de «me gusta», cada quien dice «estoy orando». */
+/**
+ * Peticiones de oración del grupo. En vez de «me gusta», cada quien dice «estoy orando» y puede enviar un ánimo que
+ * solo lee quien pidió: no hay comentarios a la vista de todos, para que nadie exponga su dolor (src/lib/pedirOracion.ts).
+ */
 export default function Prayer({ group }: { group: string }) {
   const colors = useColors();
   const [items, setItems] = useState<Peticion[] | null>(null);
-  const [draft, setDraft] = useState('');
-  const { busy, error, run } = useAction();
+  const [animando, setAnimando] = useState<string | null>(null);
+  const [viendo, setViendo] = useState<string | null>(null);
 
   const load = useCallback(() => {
     api<{ peticiones: Peticion[] }>('peticiones', { grupo: group })
@@ -22,13 +27,6 @@ export default function Prayer({ group }: { group: string }) {
   }, [group]);
 
   useEffect(load, [load]);
-
-  const add = () =>
-    run(async () => {
-      await api('nuevaPeticion', { grupo: group, texto: draft });
-      setDraft('');
-      load();
-    });
 
   const toggle = async (p: Peticion) => {
     // Respuesta inmediata en pantalla; el servidor confirma al recargar.
@@ -39,28 +37,37 @@ export default function Prayer({ group }: { group: string }) {
     load();
   };
 
-  const answered = async (p: Peticion) => {
-    await api('editarPeticion', { peticion: p.id, respondida: !p.respondida }).catch(() => {});
+  const edit = async (p: Peticion, cambio: Record<string, unknown>) => {
+    await api('editarPeticion', { peticion: p.id, ...cambio }).catch(() => {});
     load();
   };
 
   const remove = async (p: Peticion) => {
-    if (!(await confirm('¿Borrar esta petición?', 'Se borrará para todo el grupo.', 'Borrar'))) return;
-    await api('editarPeticion', { peticion: p.id, borrar: true }).catch(() => {});
-    load();
+    if (!(await confirm('¿Borrar esta petición?', 'Se borrará para todo el grupo, con sus ánimos.', 'Borrar'))) return;
+    edit(p, { borrar: true });
   };
 
   const open = items?.filter((p) => !p.respondida) ?? [];
   const done = items?.filter((p) => p.respondida) ?? [];
 
   const row = (p: Peticion) => (
-    <View key={p.id} style={[styles.item, { borderColor: colors.border }]}>
+    <View key={p.id} style={[styles.item, { borderColor: colors.border }]} testID="peticion-grupo">
       <Text style={[text.body, { color: colors.text }]}>{p.texto}</Text>
       <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>
-        {p.autor} · {ago(p.creado)}
+        {p.mia ? (p.anonima ? 'Tú, sin tu nombre' : 'Tú') : autorVisible(p.autor)} · {ago(p.creado)}
       </Text>
+
+      {p.mia && p.vencida && !p.respondida && (
+        <View style={[styles.vencida, { backgroundColor: colors.accentSoft }]}>
+          <Text style={{ color: colors.text, fontSize: 13, flex: 1 }}>Pasó un mes: tu grupo ya no la ve.</Text>
+          <Pressable onPress={() => edit(p, { renovar: true })} hitSlop={8} accessibilityRole="button">
+            <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>Seguir pidiendo</Text>
+          </Pressable>
+        </View>
+      )}
+
       <View style={styles.actions}>
-        {!p.respondida && (
+        {!p.respondida && !p.mia && (
           <Pressable
             onPress={() => toggle(p)}
             accessibilityRole="button"
@@ -72,15 +79,24 @@ export default function Prayer({ group }: { group: string }) {
             </IconText>
           </Pressable>
         )}
+        {!p.respondida && !p.mia && (
+          <Pressable
+            onPress={() => setAnimando(animando === p.id ? null : p.id)}
+            accessibilityRole="button"
+            style={[styles.pray, { borderColor: colors.border }]}
+          >
+            <IconText icon={p.yoAnime ? CheckIcon : HeartIcon} color={colors.warm} size={14} gap={5}>
+              <Text style={{ color: colors.warm, fontWeight: '700', fontSize: 13 }}>{p.yoAnime ? 'Le enviaste ánimo' : 'Enviar ánimo'}</Text>
+            </IconText>
+          </Pressable>
+        )}
         <Text style={{ color: colors.muted, fontSize: 13, flex: 1 }}>
           {p.orando > 0 ? `${p.orando} ${p.orando === 1 ? 'persona ora' : 'personas oran'} por esto` : ''}
         </Text>
         {p.mia && (
           <>
-            <Pressable onPress={() => answered(p)} hitSlop={8}>
-              <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>
-                {p.respondida ? 'Reabrir' : 'Dios respondió'}
-              </Text>
+            <Pressable onPress={() => edit(p, { respondida: !p.respondida })} hitSlop={8}>
+              <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>{p.respondida ? 'Reabrir' : 'Dios respondió'}</Text>
             </Pressable>
             <Pressable onPress={() => remove(p)} hitSlop={8}>
               <Text style={{ color: colors.muted, fontSize: 13 }}>Borrar</Text>
@@ -88,14 +104,33 @@ export default function Prayer({ group }: { group: string }) {
           </>
         )}
       </View>
+
+      {p.mia && !!p.animos && (
+        <Pressable onPress={() => setViendo(viendo === p.id ? null : p.id)} hitSlop={6} style={{ marginTop: 10 }} accessibilityRole="button">
+          <IconText icon={HeartIcon} color={colors.warm} size={14} gap={6}>
+            <Text style={{ color: colors.warm, fontWeight: '700', fontSize: 13 }}>
+              {viendo === p.id ? 'Ocultar' : `${p.animos === 1 ? 'Te enviaron un ánimo' : `Te enviaron ${p.animos} ánimos`} ›`}
+            </Text>
+          </IconText>
+        </Pressable>
+      )}
+      {viendo === p.id && <MisAnimos peticion={p.id} />}
+      {animando === p.id && (
+        <EnviarAnimo
+          peticion={p.id}
+          onCancelar={() => setAnimando(null)}
+          onEnviado={() => {
+            setAnimando(null);
+            load();
+          }}
+        />
+      )}
     </View>
   );
 
   return (
     <View style={{ gap: 10 }}>
-      <Field value={draft} onChangeText={setDraft} multiline maxLength={500} placeholder="¿Por qué podemos orar contigo?" />
-      <Button label="Compartir petición" onPress={add} busy={busy} disabled={!draft.trim()} />
-      <ErrorText>{error}</ErrorText>
+      <ComponerPeticion grupo={group} boton="Compartir petición" onEnviada={load} />
 
       {items === null ? (
         <ActivityIndicator color={colors.accent} />
@@ -118,6 +153,7 @@ export default function Prayer({ group }: { group: string }) {
 
 const styles = StyleSheet.create({
   item: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 14 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' },
   pray: { borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 6 },
+  vencida: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, marginTop: 10 },
 });

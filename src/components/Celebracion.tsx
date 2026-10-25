@@ -13,8 +13,15 @@ import { lanzarConfeti } from '@/lib/confeti';
 import { CloseIcon } from './icons';
 import { hechos, DIAS, useSemanas } from '@/lib/semanas';
 import { useOraciones } from '@/lib/oraciones';
+import { diasCon, useActividad, type Registro } from '@/lib/actividad';
+import { reportarRacha, reportarServicio, useAccount } from '@/lib/comunidad';
+import { useDiario, type Entrada } from '@/lib/diario';
 import { useProgress } from '@/lib/progress';
+import { huellasDeRacha, useRacha } from '@/lib/racha';
+import { useAvisoRacha } from '@/lib/rachaAviso';
+import { calcularRacha, fechaLocal } from '@/lib/rachaTexto';
 import { celebrado, huellasDe, iniciar, porCelebrar, semanasConMeta, useSellos, type Sello as SelloDef } from '@/lib/sellos';
+import { useServicio } from '@/lib/servicioUso';
 import { leerAlmacen } from '@/lib/sincronia';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -23,7 +30,7 @@ import { navigate } from '@/lib/transition';
 const DURA = 7000;
 
 /** Pantallas donde no se interrumpe: se proyectan o se siguen en grupo, o la ayuda en caso de abuso. */
-const SIN_FIESTA = [/^\/vivo\/./, /\/proyectar$/, /\/presentar$/, /^\/evento\//, /^\/pareja\/ayuda/];
+export const SIN_FIESTA = [/^\/vivo\/./, /\/proyectar$/, /\/presentar$/, /^\/evento\//, /^\/pareja\/ayuda/];
 
 export default function Celebracion() {
   const colors = useColors();
@@ -35,6 +42,16 @@ export default function Celebracion() {
   const [giro] = useState(() => new Animated.Value(0));
 
   useHuellasGuardadas();
+  const racha = useRacha();
+  useAvisoRacha(racha);
+  const { usuario } = useAccount();
+  useEffect(() => {
+    if (usuario) reportarRacha(racha.actual, racha.vence);
+  }, [usuario, racha.actual, racha.vence]);
+  const servicio = useServicio();
+  useEffect(() => {
+    if (usuario) reportarServicio(servicio.total);
+  }, [usuario, servicio.total]);
 
   const pendiente = porCelebrar(estado);
   const quieto = SIN_FIESTA.some((r) => r.test(pathname));
@@ -139,19 +156,31 @@ function Rayos({ color }: { color: string }) {
 
 /**
  * Huellas que salen de lo que la app ya guarda: los días con la Palabra, las semanas con la meta cumplida, las
- * oraciones respondidas y las semanas del sermón completas. La primera vez se suman sin celebrar.
+ * oraciones respondidas, las semanas del sermón completas y la racha devocional. La primera vez se suman sin celebrar.
  */
 function useHuellasGuardadas() {
   const progreso = useProgress();
   const oraciones = useOraciones();
   const { semanas } = useSemanas();
+  const registro = useActividad();
+  const diario = useDiario();
   useEffect(() => {
     let vivo = true;
     (async () => {
-      const [p, o, s] = (await Promise.all([leerAlmacen('progreso'), leerAlmacen('oraciones'), leerAlmacen('semanas')])) as [
+      const [p, o, s, r, d, t] = (await Promise.all([
+        leerAlmacen('progreso'),
+        leerAlmacen('oraciones'),
+        leerAlmacen('semanas'),
+        leerAlmacen('actividad'),
+        leerAlmacen('diario'),
+        leerAlmacen('taller'),
+      ])) as [
         { days: string[] } | undefined,
         { id: string; respondida?: unknown }[] | undefined,
         Parameters<typeof hechos>[0][] | undefined,
+        Registro | undefined,
+        Entrada[] | undefined,
+        { id: string; terminado?: string; ocasiones?: { fecha: string }[] }[] | undefined,
       ];
       if (!vivo) return;
       const dias = p?.days ?? [];
@@ -159,12 +188,27 @@ function useHuellasGuardadas() {
       await huellasDe('meta', semanasConMeta(dias));
       await huellasDe('respondida', (o ?? []).filter((x) => x.respondida).map((x) => x.id));
       await huellasDe('sermon', (s ?? []).filter((w) => hechos(w) >= DIAS).map((w) => w.id));
+      const devocionales = diasCon(r ?? {}, 'devocional');
+      for (const e of d ?? []) devocionales.add(fechaLocal(e.created));
+      await huellasDeRacha([...devocionales], calcularRacha(devocionales, fechaLocal()).mejor);
+      // El servicio de antes de contarlo (src/lib/servicio.ts): estudios profundos, mensajes terminados y predicados.
+      await huellasDe(
+        'profundo',
+        Object.entries(r ?? {})
+          .filter(([, e]) => e.tipo === 'profundo')
+          .map(([k]) => {
+            const [fecha, , ref] = k.split('|');
+            return `${fecha}|${ref}`;
+          }),
+      );
+      await huellasDe('escrito', (t ?? []).filter((m) => m.terminado).map((m) => m.id));
+      await huellasDe('guiar', (t ?? []).flatMap((m) => (m.ocasiones ?? []).map((x) => `ocasion:${m.id}|${x.fecha}`)));
       await iniciar();
     })().catch(() => {});
     return () => {
       vivo = false;
     };
-  }, [progreso, oraciones, semanas]);
+  }, [progreso, oraciones, semanas, registro, diario]);
 }
 
 const styles = StyleSheet.create({

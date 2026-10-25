@@ -1,13 +1,15 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { GroupTypeIcon } from '@/components/comunidad/MisGrupos';
 import Post from '@/components/comunidad/Post';
 import { confirm } from '@/components/comunidad/confirm';
 import { ChurchIcon, PeopleIcon, PinIcon } from '@/components/icons';
 import { Avatar, Button, ErrorText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { CheckIcon } from '@/components/icons';
 import { Persona, Publicacion, answerFriend, askFriend, block, getPerson, removeFriend, unblock } from '@/lib/social';
+import { tipoLabel } from '@/lib/comunidad';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -65,8 +67,8 @@ export default function PersonScreen() {
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
       <Stack.Screen options={{ title: person.nombre }} />
-      <View style={styles.head}>
-        <Avatar name={person.nombre} foto={person.foto} size={96} filled />
+      <View style={[styles.head, person.servicio ? { paddingTop: 26 } : null]}>
+        <Avatar name={person.nombre} foto={person.foto} racha={person.racha} servicio={person.servicio} size={96} filled />
         <Text style={[styles.name, { color: colors.text }]}>{person.nombre}</Text>
         {person.bio ? <Text style={[styles.bio, { color: colors.text }]}>{person.bio}</Text> : null}
         <View style={styles.facts}>
@@ -101,6 +103,8 @@ export default function PersonScreen() {
         <ErrorText>{error}</ErrorText>
       </View>
 
+      {person.relacion !== 'bloqueada' && person.grupos && person.grupos.length > 0 && <SharedGroups person={person} />}
+
       {person.relacion === 'bloqueada' ? (
         <Text style={[text.body, styles.blocked, { color: colors.muted }]}>
           Bloqueaste a esta persona. No ves lo que comparte y ella no ve lo tuyo.
@@ -112,6 +116,42 @@ export default function PersonScreen() {
         <Button label="Bloquear a esta persona" kind="quiet" onPress={blockPerson} busy={busy} style={styles.block} />
       )}
     </ScrollView>
+  );
+}
+
+/** Los grupos que compartes con esta persona; los demás grupos de alguien son privados. */
+function SharedGroups({ person }: { person: Persona }) {
+  const colors = useColors();
+  const yo = person.relacion === 'yo';
+  return (
+    <View testID="grupos-en-comun">
+      <SectionTitle>{yo ? 'Tus grupos' : 'Grupos en común'}</SectionTitle>
+      <View style={styles.groups}>
+        {person.grupos!.map((g) => (
+          <Pressable
+            key={g.id}
+            onPress={() => navigate(() => router.push(`/grupos/${g.id}`), 'forward')}
+            accessibilityRole="link"
+            style={({ pressed }) => [styles.group, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.75 }]}
+          >
+            <View style={[styles.groupIcon, { backgroundColor: colors.accentSoft }]}>
+              <GroupTypeIcon tipo={g.tipo} color={colors.text} size={17} />
+            </View>
+            <View style={{ flexShrink: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }} numberOfLines={1}>
+                {g.nombre}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }}>
+                {tipoLabel(g.tipo)} · {g.miembros} {g.miembros === 1 ? 'persona' : 'personas'}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
+      {!yo && (
+        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>Solo ves los grupos en que están los dos.</Text>
+      )}
+    </View>
   );
 }
 
@@ -147,4 +187,7 @@ const styles = StyleSheet.create({
   fact: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   blocked: { marginTop: 24, textAlign: 'center' },
   block: { alignSelf: 'center', marginTop: 32 },
+  groups: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  group: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 10, paddingLeft: 10, paddingRight: 16, maxWidth: '100%' },
+  groupIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 });

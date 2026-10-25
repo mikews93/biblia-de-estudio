@@ -108,3 +108,15 @@ export async function reportarError(
   });
   if (!res.ok) await fail(res, 'No se pudo enviar el aviso');
 }
+
+/** Una línea de contexto para la imagen de un versículo, sacada de los comentarios (null si no hay notas). */
+export async function getContexto(book: string, chapter: number, verse: number): Promise<string | null> {
+  const res = await fetch(`${API}/api/comentario`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contexto: { libro: book, capitulo: chapter, versiculo: verse } }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.error ?? 'No se pudo traer el contexto');
+  return body?.texto ?? null;
+}
