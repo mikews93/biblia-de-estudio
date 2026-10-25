@@ -225,6 +225,14 @@ export const LockIcon = (p: Props) => (
   </Line>
 );
 
+/** Escudo: quien lidera y cuida un círculo de solteros. */
+export const ShieldIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M12 3.2 19 6v5.2c0 4.4-2.9 8-7 9.6-4.1-1.6-7-5.2-7-9.6V6l7-2.8Z" />
+    <Path d="m9 12 2.2 2.2L15.2 10" />
+  </Line>
+);
+
 /** Banderín: «Algo suena raro» en un estudio. */
 export const FlagIcon = (p: Props) => (
   <Line {...p}>

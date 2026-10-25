@@ -6,6 +6,7 @@ import { text } from '@/components/comunidad/ui';
 import {
   BellIcon,
   BooksIcon,
+  ChurchIcon,
   HeartIcon,
   ListenIcon,
   LockIcon,
@@ -19,7 +20,7 @@ import { Colors, isDark, serif, useColors } from '@/lib/theme';
 // La política de privacidad que piden las tiendas (App Store y Google Play), también en
 // https://biblia.migueblanco.com/privacidad. Si cambia lo que la app guarda o a quién lo envía, hay que cambiarla aquí
 // y en las fichas de las tiendas (etiquetas de privacidad y «Seguridad de los datos»).
-const ACTUALIZADA = '22 de octubre de 2026';
+const ACTUALIZADA = '25 de octubre de 2026';
 
 type Parte = {
   icon: (p: IconProps) => React.ReactNode;
@@ -71,6 +72,16 @@ const PARTES: Parte[] = [
       'Lo que publicas lo ven tus amigos, tu grupo o toda la comunidad, según elijas al publicar.',
       'Puedes reportar una publicación y bloquear a una persona desde su perfil. Si varias personas reportan algo, se oculta para todos.',
       'En el Modo Jóvenes no hay publicaciones públicas.',
+    ],
+  },
+  {
+    icon: ChurchIcon,
+    titulo: 'El Círculo de solteros',
+    puntos: [
+      'Es solo para mayores de 18 años de una iglesia que usa Zarza. Tu fecha de nacimiento la ven solo los líderes de tu círculo, que aprueban cada entrada.',
+      'Tu etapa («abierto a conocer a alguien», por ejemplo) y tus respuestas de la semana las ven solo las personas de tu círculo.',
+      '«Me gustaría conocerte» es secreto y vence a los 30 días. Los mensajes de «Conocernos» son solo de los dos: los líderes no los leen, solo reciben lo que alguien reporta.',
+      'Al salir del círculo se borran tus marcas y se cierra tu «Conocernos».',
     ],
   },
   {

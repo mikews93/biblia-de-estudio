@@ -3,6 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import CirculosIglesia from '@/components/circulo/CirculosIglesia';
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { ChevronDownIcon, ChurchIcon, FlagIcon, HeartIcon, type IconProps, PeopleIcon, QrIcon, SparkIcon } from '@/components/icons';
@@ -357,6 +358,7 @@ function Iglesias({ iglesias, colors, onDone }: { iglesias: IglesiaCuidada[]; co
 
 function IglesiaFila({ iglesia, colors, onDone }: { iglesia: IglesiaCuidada; colors: Colors; onDone: () => void }) {
   const act = useAction();
+  const [circulos, setCirculos] = useState(false);
   const toggle = async () => {
     if (iglesia.activa && !(await confirm('Pausar iglesia', `Sus ${iglesia.miembros} miembros vuelven a la lámpara de siempre y el código deja de servir.`, 'Pausar'))) return;
     if (await act.run(() => cambiarIglesia(iglesia.id, { activa: !iglesia.activa }))) onDone();
@@ -384,7 +386,9 @@ function IglesiaFila({ iglesia, colors, onDone }: { iglesia: IglesiaCuidada; col
             onPress={() => navigate(() => router.push(`/iglesia/${iglesia.codigo}` as never), 'forward')}
           />
         )}
+        <Button label={circulos ? 'Ocultar círculos' : 'Círculos de solteros'} icon={PeopleIcon} kind="quiet" onPress={() => setCirculos(!circulos)} />
       </View>
+      {circulos && <CirculosIglesia iglesia={iglesia.id} colors={colors} />}
       <ErrorText>{act.error}</ErrorText>
     </View>
   );

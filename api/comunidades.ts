@@ -23,6 +23,7 @@ import { promisify } from 'node:util';
 import postgres from 'postgres';
 
 import { downloadPhoto, facebookDialog, facebookPage, facebookProfile, facebookReady, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
+import { CIRCULO_SCHEMA, circuloActions } from './_circulo';
 import { CUIDAR_SCHEMA, cuidarActions } from './_cuidar';
 import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
@@ -257,11 +258,13 @@ type User = {
   conClave: boolean;
   /** El nombre de su cuenta de Facebook conectada, o null. */
   facebook: string | null;
+  /** Soltero, abierto a conocer a alguien, en una relación o casado (api/_circulo.ts); solo la ve su círculo. */
+  etapa: string | null;
 };
 
 // Las columnas de User, para cada consulta que devuelve la cuenta a la app.
 const USER_COLUMNS = `u.id, u.nombre, u.correo, u.foto, u.bio, u.iglesia, u.ciudad, u.clave_hash is not null as "conClave",
-  u.facebook_nombre as facebook`;
+  u.facebook_nombre as facebook, u.etapa`;
 /** El plan del grupo: un libro a un ritmo fijo, o un reto de temporada («adviento-2026») con sus fechas. */
 type Plan = { libro: string | null; inicio: string | null; porDia: number; reto: string | null };
 
@@ -281,7 +284,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -1352,6 +1355,8 @@ Object.assign(actions, parejaActions({ auth, fail: (message, status) => new Fail
 // «Zarza para Iglesias» (api/_iglesias.ts) y «Cuidar Zarza» (api/_cuidar.ts), con la misma cuenta.
 Object.assign(actions, iglesiaActions({ auth, fail: (message, status) => new Fail(message, status) }));
 Object.assign(actions, cuidarActions({ auth, fail: (message, status) => new Fail(message, status), books }));
+// «Círculo de solteros» (api/_circulo.ts): sus acciones empiezan por «circulo» (y las de /cuidar, por «cuidar»).
+Object.assign(actions, circuloActions({ auth, fail: (message, status) => new Fail(message, status) }));
 
 // --- Avisos push de la comunidad (api/_push.ts). Solo llegan a quien los activó en la pantalla de notificaciones. ---
 
