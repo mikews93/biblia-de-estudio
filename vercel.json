@@ -22,7 +22,7 @@
       "maxDuration": 30
     },
     "api/buscar.ts": {
-      "includeFiles": "dist/data/{books.json,versions.json,text/rv1909/**,semantica/**}",
+      "includeFiles": "{dist/data/{books.json,versions.json,text/rv1909/**,semantica/**},node_modules/onnxruntime-node/bin/napi-v6/linux/x64/{onnxruntime_binding.node,libonnxruntime.so.1,libonnxruntime_providers_shared.so}}",
       "maxDuration": 60,
       "excludeFiles": "{dist/**,node_modules/onnxruntime-web/**,node_modules/onnxruntime-node/bin/napi-v6/{darwin,win32,linux/arm64}/**,node_modules/onnxruntime-node/bin/napi-v6/linux/x64/libonnxruntime_providers_{cuda,tensorrt}.so,node_modules/@img/sharp-wasm32/**}"
     },

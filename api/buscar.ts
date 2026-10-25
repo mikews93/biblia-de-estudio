@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       const { refs, semantica } = await quickSearch(query, books, MAX_QUICK);
       const found = (await Promise.all(refs.map((r) => verify(r, books, biblia, rv)))).filter((x) => x !== null);
       return Response.json(
-        { results: found.map((f) => ({ ...f, reason: '' })), semantica },
+        { results: found.filter((f) => f.text.trim()).map((f) => ({ ...f, reason: '' })), semantica },
         { headers: { 'Cache-Control': 'public, max-age=3600' } },
       );
     } catch (err) {
