@@ -12,7 +12,10 @@ import { playChapter } from '@/lib/audio';
 import { Book, Verse, getChapter } from '@/lib/data';
 import { parseDevocional, saveEntrada } from '@/lib/diario';
 import { useRacha } from '@/lib/racha';
-import { diasLabel, siguienteHito } from '@/lib/rachaTexto';
+import { diasLabel, fechaLocal, siguienteHito } from '@/lib/rachaTexto';
+import { resplandorNuevo } from '@/lib/resplandor';
+import Resplandor from '@/components/Resplandor';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RachaChip } from '@/components/Racha';
 import { Source } from '@/lib/estudio';
 import { studyKeep, useKept } from '@/lib/recordado';
@@ -794,6 +797,20 @@ const styles = StyleSheet.create({
 /** Al terminar: cuántos días seguidos lleva la racha y cuánto falta para la próxima insignia. */
 function RachaAmen({ colors }: { colors: Colors }) {
   const racha = useRacha();
+  // El día en que la racha llega a una meta, la luz sale sola (una vez).
+  const nueva = racha.hoyHecho ? resplandorNuevo(racha.actual) : null;
+  const [brilla, setBrilla] = useState(false);
+  useEffect(() => {
+    if (!nueva) return;
+    const clave = `${fechaLocal()}|${nueva.dias}`;
+    AsyncStorage.getItem('resplandor-visto')
+      .then((visto) => {
+        if (visto === clave) return;
+        AsyncStorage.setItem('resplandor-visto', clave).catch(() => {});
+        setBrilla(true);
+      })
+      .catch(() => {});
+  }, [nueva]);
   if (!racha.hoyHecho) return null;
   const meta = siguienteHito(racha.actual);
   return (
@@ -803,6 +820,7 @@ function RachaAmen({ colors }: { colors: Colors }) {
         {racha.actual === 1 ? 'Hoy empieza tu racha devocional.' : `${diasLabel(racha.actual)} seguidos con tu devocional.`}
         {meta ? ` ${meta - racha.actual === 1 ? 'Mañana' : `En ${meta - racha.actual} días`} ganas una insignia nueva.` : ''}
       </Text>
+      {brilla && nueva && <Resplandor nivel={nueva} dias={racha.actual} onClose={() => setBrilla(false)} />}
     </Appear>
   );
 }

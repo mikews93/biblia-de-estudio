@@ -49,7 +49,7 @@ export type ResumenGrupo = {
   lectura: Lectura | null;
 };
 export type Plan = { libro: string | null; inicio: string | null; porDia: number; reto?: string | null };
-export type Miembro = { id: string; nombre: string; foto: string | null; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
+export type Miembro = { id: string; nombre: string; foto: string | null; racha?: number; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
 export type Grupo = {
   id: string;
   nombre: string;
@@ -278,6 +278,18 @@ export async function reportReading(book: string, chapter: number) {
   if (!account.llave) return;
   await api('leido', { libro: book, capitulo: chapter }).catch(() => {});
   refreshGroups().catch(() => {});
+}
+
+let rachaEnviada = '';
+
+/** Pone al día la racha devocional en la cuenta (el aro de luz de la foto en la comunidad). Solo si cambió. */
+export async function reportarRacha(dias: number, vence: string | null) {
+  const clave = `${dias}|${vence}`;
+  if (clave === rachaEnviada || !(await sessionKey())) return;
+  rachaEnviada = clave;
+  await api('racha', { dias, vence }).catch(() => {
+    rachaEnviada = '';
+  });
 }
 
 export function useAccount() {

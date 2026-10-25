@@ -1,10 +1,13 @@
 // La racha devocional en pantalla: la tarjeta grande de Mi diario (cuántos días seguidos, los últimos siete días,
 // cómo va hoy y la próxima insignia), la fila de insignias y la pastilla pequeña de Hoy y del final del devocional.
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import Resplandor from '@/components/Resplandor';
 import Sello from '@/components/Sello';
 import { ChevronRightIcon, FlameIcon, HeartIcon, MoonIcon } from '@/components/icons';
+import { resplandorDe } from '@/lib/resplandor';
 import type { Racha } from '@/lib/rachaTexto';
 import { diasLabel, fechaLocal, siguienteHito, sumarDias } from '@/lib/rachaTexto';
 import { avance, selloPorId, sellosPara, useSellos } from '@/lib/sellos';
@@ -44,15 +47,25 @@ export function RachaTarjeta({ racha, colors, onHoy }: Props) {
   const proxima = meta ? selloPorId(`racha-${meta}`) : undefined;
   const viva = racha.actual > 0;
   const riesgo = racha.estado === 'riesgo';
+  // Escondido: tocar la llama enciende la luz de la racha (src/lib/resplandor.ts).
+  const luz = resplandorDe(racha.actual);
+  const [brilla, setBrilla] = useState(false);
   // El día libre usado en los últimos seis días (el de antes ya no cuenta).
   const ultimoLibre = racha.descansos.filter((d) => d > sumarDias(hoy, -7)).at(-1);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: riesgo ? colors.warm : colors.border }]} testID="racha">
       <View style={styles.top}>
-        <View style={[styles.medalla, { backgroundColor: viva ? colors.warmSoft : colors.accentSoft }]}>
+        <Pressable
+          onPress={luz ? () => setBrilla(true) : undefined}
+          disabled={!luz}
+          style={({ pressed }) => [styles.medalla, { backgroundColor: viva ? colors.warmSoft : colors.accentSoft }, pressed && { transform: [{ scale: 0.94 }] }]}
+          accessibilityRole={luz ? 'button' : undefined}
+          accessibilityLabel={luz ? 'Llama de la racha' : undefined}
+          testID="racha-llama"
+        >
           <FlameIcon color={viva ? colors.warm : colors.muted} size={36} filled={racha.hoyHecho} strokeWidth={1.6} />
-        </View>
+        </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={[styles.kicker, { color: viva ? colors.warm : colors.muted }]}>RACHA DEVOCIONAL</Text>
           <View style={styles.numero}>
@@ -134,6 +147,8 @@ export function RachaTarjeta({ racha, colors, onHoy }: Props) {
           <ChevronRightIcon color={colors.muted} size={18} />
         </Pressable>
       )}
+
+      {brilla && luz && <Resplandor nivel={luz} dias={racha.actual} onClose={() => setBrilla(false)} />}
 
       {onHoy && !racha.hoyHecho && (
         <Pressable
