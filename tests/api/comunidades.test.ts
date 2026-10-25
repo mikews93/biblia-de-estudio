@@ -65,11 +65,23 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       const yo = await call('yo', {}, ana.llave);
       expect(yo.status).toBe(200);
       expect(yo.json).toEqual({
-        usuario: { id: ana.id, nombre: ana.nombre, correo: null, foto: null, bio: null, iglesia: null, ciudad: null, apodo: null, conClave: false, cuentas: [] },
+        usuario: { id: ana.id, nombre: ana.nombre, correo: null, foto: null, bio: null, iglesia: null, ciudad: null, apodo: null, conClave: false, cuentas: [], racha: 0 },
         grupos: [],
         iglesia: null,
         cuidador: false,
       });
+    });
+
+    it('la racha devocional se guarda en la cuenta y caduca sola', async () => {
+      const ana = await persona('Ana');
+      const hoy = new Date().toISOString().slice(0, 10);
+      await call('racha', { dias: 41, vence: hoy }, ana.llave);
+      expect((await call('yo', {}, ana.llave)).json.usuario.racha).toBe(41);
+      await call('racha', { dias: 41, vence: '2020-01-01' }, ana.llave);
+      expect((await call('yo', {}, ana.llave)).json.usuario.racha).toBe(0);
+      await call('racha', { dias: 'mucho', vence: 'mañana' }, ana.llave);
+      expect((await call('yo', {}, ana.llave)).json.usuario.racha).toBe(0);
+      expect((await call('racha', { dias: 3, vence: hoy })).status).toBe(401);
     });
 
     it('valida nombre, correo y contraseña', async () => {
@@ -140,7 +152,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       expect((await call('pedirAmistad', { codigo }, ana.llave)).json.error).toBe('Ese es tu propio código');
 
       let red = (await call('amigos', {}, ana.llave)).json;
-      expect(red.recibidas).toEqual([{ id: beto.id, nombre: beto.nombre, foto: null }]);
+      expect(red.recibidas).toEqual([{ id: beto.id, nombre: beto.nombre, foto: null, racha: 0 }]);
       expect((await call('persona', { usuario: ana.id }, beto.llave)).json.persona.relacion).toBe('enviada');
 
       expect((await call('responderAmistad', { usuario: beto.id }, ana.llave)).json.relacion).toBe('amigos');

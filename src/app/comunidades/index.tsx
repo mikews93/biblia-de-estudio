@@ -7,6 +7,7 @@ import { EntradaEventos } from '@/components/evento/piezas';
 import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
 import { Avatar, Button, Card, Chips, ErrorText, text } from '@/components/comunidad/ui';
+import { useRacha } from '@/lib/racha';
 import { useAccount } from '@/lib/comunidad';
 import { useOnline } from '@/lib/conexion';
 import { Audiencia, Publicacion, network, wall } from '@/lib/social';
@@ -17,6 +18,7 @@ import { navigate } from '@/lib/transition';
 export default function Comunidad() {
   const colors = useColors();
   const { ready, usuario } = useAccount();
+  const racha = useRacha();
   const online = useOnline();
   // En el Modo Jóvenes solo se ve lo de los amigos y los grupos: nada de desconocidos.
   const jovenes = useSettings().settings.modo === 'jovenes';
@@ -81,7 +83,7 @@ export default function Comunidad() {
           headerRight: () =>
             usuario ? (
               <Pressable onPress={() => go('/cuenta')} hitSlop={8} style={{ marginRight: 16 }} accessibilityLabel="Tu cuenta">
-                <Avatar name={usuario.nombre} foto={usuario.foto} size={30} />
+                <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} size={30} />
               </Pressable>
             ) : null,
         }}
@@ -104,7 +106,7 @@ export default function Comunidad() {
         <>
           <Pressable onPress={() => go('/comunidades/publicar')} accessibilityRole="button">
             <Card style={styles.composer}>
-              <Avatar name={usuario.nombre} foto={usuario.foto} size={36} filled />
+              <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} size={36} filled />
               <Text style={{ color: colors.muted, flex: 1, fontSize: 15 }}>
                 {jovenes ? 'Pregúntales algo a tus amigos…' : 'Pregúntale algo a la comunidad…'}
               </Text>

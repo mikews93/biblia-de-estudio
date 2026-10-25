@@ -158,6 +158,8 @@ alter table usuarios add column if not exists facebook_id text unique;
 alter table usuarios add column if not exists facebook_nombre text;
 alter table usuarios add column if not exists fotos_dia date;
 alter table usuarios add column if not exists fotos_n int not null default 0;
+alter table usuarios add column if not exists racha int not null default 0;
+alter table usuarios add column if not exists racha_vence date;
 -- Cada quien puede silenciar los avisos de un grupo sin salir de él.
 alter table miembros add column if not exists avisos boolean not null default true;
 create table if not exists cuentas_externas (
@@ -281,12 +283,19 @@ type User = {
   conClave: boolean;
   /** Las cuentas de Google, Apple o Facebook con las que puede entrar, con el nombre que tiene en cada una. */
   cuentas: { proveedor: Proveedor; nombre: string | null }[];
+  /** Su racha devocional viva (0 si no hay): la foto de perfil brilla más mientras más larga. */
+  racha: number;
 };
+
+// La racha devocional que la app cuenta (src/lib/rachaTexto.ts), viva hasta su último día; un día de margen por las
+// zonas horarias. Se muestra como un aro de luz alrededor de la foto de perfil.
+const RACHA = `case when u.racha_vence >= current_date - 1 then u.racha else 0 end`;
 
 // Las columnas de User, para cada consulta que devuelve la cuenta a la app.
 const USER_COLUMNS = `u.id, u.nombre, u.correo, u.foto, u.bio, u.iglesia, u.ciudad, u.apodo, u.clave_hash is not null as "conClave",
   coalesce((select json_agg(json_build_object('proveedor', c.proveedor, 'nombre', c.nombre) order by c.creado)
-    from cuentas_externas c where c.usuario_id = u.id), '[]'::json) as cuentas`;
+    from cuentas_externas c where c.usuario_id = u.id), '[]'::json) as cuentas,
+  case when u.racha_vence >= current_date - 1 then u.racha else 0 end as racha`;
 /** El plan del grupo: un libro a un ritmo fijo, o un reto de temporada («adviento-2026») con sus fechas. */
 type Plan = { libro: string | null; inicio: string | null; porDia: number; reto: string | null };
 
@@ -638,7 +647,7 @@ type Fragment = postgres.PendingQuery<postgres.Row[]>;
 async function posts(sql: Sql, me: string, where: Fragment, limit = PAGE) {
   const rows = await sql<PostRow[]>`
     select p.id, p.tipo, p.audiencia, p.libro, p.capitulo, p.versiculo, p.version, p.cita, p.texto, p.datos,
-      p.creado, p.actualizado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", p.usuario_id = ${me} as mia,
+      p.creado, p.actualizado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", ${sql.unsafe(RACHA)} as "autorRacha", p.usuario_id = ${me} as mia,
       (select count(*)::int from me_gusta g where g.publicacion_id = p.id) as "meGusta",
       exists (select 1 from me_gusta g where g.publicacion_id = p.id and g.usuario_id = ${me}) as "yoMeGusta",
       (select count(*)::int from comentarios c where c.publicacion_id = p.id) as comentarios
@@ -887,6 +896,15 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  /** La app cuenta la racha devocional y la pone al día aquí, para el aro de luz de la foto de perfil. */
+  async racha({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const dias = Number.isInteger(body.dias) && (body.dias as number) >= 0 ? Math.min(body.dias as number, 100_000) : 0;
+    const vence = typeof body.vence === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.vence) && !isNaN(Date.parse(body.vence)) ? body.vence : null;
+    await sql`update usuarios set racha = ${vence ? dias : 0}, racha_vence = ${vence} where id = ${user.id}`;
+    return {};
+  },
+
   async leido({ sql, body, request }) {
     const user = await auth(sql, request);
     const book = await bookOf(body.libro);
@@ -944,7 +962,7 @@ const actions: Record<string, Handler> = {
     const reading = await todaysReading(planOf(g), today);
     const read = await readToday(sql, id, reading, today);
     const members = await sql<{ id: string; nombre: string; foto: string | null; rol: string }[]>`
-      select u.id, u.nombre, u.foto, m.rol from miembros m join usuarios u on u.id = m.usuario_id
+      select u.id, u.nombre, u.foto, ${sql.unsafe(RACHA)} as racha, m.rol from miembros m join usuarios u on u.id = m.usuario_id
       where m.grupo_id = ${id} order by m.rol = 'admin' desc, m.unido`;
     return {
       grupo: {
@@ -1194,7 +1212,8 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const post = await visiblePost(sql, user.id, body.id);
     const comentarios = await sql`
-      select c.id, c.texto, c.creado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", c.usuario_id = ${user.id} as mio
+      select c.id, c.texto, c.creado, u.id as "autorId", u.nombre as autor, u.foto as "autorFoto", ${sql.unsafe(RACHA)} as "autorRacha",
+        c.usuario_id = ${user.id} as mio
       from comentarios c join usuarios u on u.id = c.usuario_id
       where c.publicacion_id = ${post.id} and not ${blocked(sql, user.id, sql`c.usuario_id`)}
       order by c.creado limit 200`;
@@ -1291,14 +1310,14 @@ const actions: Record<string, Handler> = {
     const codigo = await friendCode(sql, user.id);
     const [{ compartir }] = await sql<{ compartir: boolean }[]>`
       select compartir_lecturas as compartir from usuarios where id = ${user.id}`;
-    const links = await sql<{ id: string; nombre: string; foto: string | null; estado: string }[]>`
-      select u.id, u.nombre, u.foto, case when a.aceptada then 'amigos' when a.de = ${user.id} then 'enviada' else 'recibida' end as estado
+    const links = await sql<{ id: string; nombre: string; foto: string | null; racha: number; estado: string }[]>`
+      select u.id, u.nombre, u.foto, ${sql.unsafe(RACHA)} as racha, case when a.aceptada then 'amigos' when a.de = ${user.id} then 'enviada' else 'recibida' end as estado
       from amistades a join usuarios u on u.id = case when a.de = ${user.id} then a.para else a.de end
       where a.de = ${user.id} or a.para = ${user.id}
       order by u.nombre`;
     // Sugerencias: gente de tus grupos con la que aún no tienes amistad.
     const sugerencias = await sql`
-      select distinct on (u.id) u.id, u.nombre, u.foto, g.nombre as grupo
+      select distinct on (u.id) u.id, u.nombre, u.foto, ${sql.unsafe(RACHA)} as racha, g.nombre as grupo
       from miembros mine join miembros other on other.grupo_id = mine.grupo_id and other.usuario_id <> ${user.id}
       join usuarios u on u.id = other.usuario_id join grupos g on g.id = mine.grupo_id
       where mine.usuario_id = ${user.id} and not ${blocked(sql, user.id, sql`u.id`)}
@@ -1306,7 +1325,8 @@ const actions: Record<string, Handler> = {
       order by u.id limit 30`;
     const bloqueadas = await sql`
       select u.id, u.nombre, u.foto from bloqueos b join usuarios u on u.id = b.a where b.de = ${user.id} order by u.nombre`;
-    const pick = (estado: string) => links.filter((l) => l.estado === estado).map(({ id, nombre, foto }) => ({ id, nombre, foto }));
+    const pick = (estado: string) =>
+      links.filter((l) => l.estado === estado).map(({ id, nombre, foto, racha }) => ({ id, nombre, foto, racha }));
     return {
       codigo,
       bloqueadas,
@@ -1391,7 +1411,7 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const id = uuid(body.usuario);
     const [p] = await sql<{ id: string; nombre: string; foto: string | null; amigos: number }[]>`
-      select u.id, u.nombre, u.foto, u.bio, u.iglesia, u.ciudad,
+      select u.id, u.nombre, u.foto, u.bio, u.iglesia, u.ciudad, ${sql.unsafe(RACHA)} as racha,
         (select count(*)::int from amistades a where a.aceptada and (a.de = u.id or a.para = u.id)) as amigos
       from usuarios u where u.id = ${id}`;
     if (!p) throw new Fail('Esa persona ya no está en la comunidad', 404);

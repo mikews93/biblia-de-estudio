@@ -14,6 +14,7 @@ import { CloseIcon } from './icons';
 import { hechos, DIAS, useSemanas } from '@/lib/semanas';
 import { useOraciones } from '@/lib/oraciones';
 import { diasCon, useActividad, type Registro } from '@/lib/actividad';
+import { reportarRacha, useAccount } from '@/lib/comunidad';
 import { useDiario, type Entrada } from '@/lib/diario';
 import { useProgress } from '@/lib/progress';
 import { huellasDeRacha, useRacha } from '@/lib/racha';
@@ -40,7 +41,12 @@ export default function Celebracion() {
   const [giro] = useState(() => new Animated.Value(0));
 
   useHuellasGuardadas();
-  useAvisoRacha(useRacha());
+  const racha = useRacha();
+  useAvisoRacha(racha);
+  const { usuario } = useAccount();
+  useEffect(() => {
+    if (usuario) reportarRacha(racha.actual, racha.vence);
+  }, [usuario, racha.actual, racha.vence]);
 
   const pendiente = porCelebrar(estado);
   const quieto = SIN_FIESTA.some((r) => r.test(pathname));
