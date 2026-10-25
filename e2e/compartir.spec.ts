@@ -118,3 +118,41 @@ test('una ocasión trae sus versículos, su fondo y su dedicatoria, y la IA busc
   await expect(page.getByText('Para lo que contaste')).toBeVisible();
   await expect(page.getByText('Pide no estar afanosos y presentar todo a Dios en oración.')).toBeVisible();
 });
+
+test('al llegar a la última parte de presentar, los versículos del sermón quedan como tarjetas para compartir', async ({ page }) => {
+  const now = new Date().toISOString();
+  const parte = (n: number, titulo: string, texto: string) => ({ id: `pl-${n}`, titulo, ayuda: '', texto, minutos: 5 });
+  const mensaje = {
+    id: 'para-llevar',
+    tipo: 'sermon',
+    titulo: 'El Padre que corre',
+    pasaje: { book: 'luk', chapter: 15, from: 20, to: 24 },
+    plantilla: 'expositiva',
+    observacion: '',
+    tema: '',
+    complemento: '',
+    necesidad: '',
+    gracia: '',
+    secciones: [parte(1, 'Lejos', 'Romanos 5:8 y Lucas 15:20.'), parte(2, 'En casa', 'Salmos 103:13.')],
+    revision: [],
+    seguimiento: '',
+    minutos: 10,
+    creado: now,
+    actualizado: now,
+  };
+  await page.addInitScript((value) => window.localStorage.setItem('taller', value), JSON.stringify([mensaje]));
+  await page.goto('/taller/para-llevar/presentar');
+  await page.getByText('Siguiente', { exact: true }).click();
+  await expect(page.getByText('Lejos', { exact: true })).toBeVisible();
+  await expect(page.getByText('PARA LLEVAR A CASA')).toHaveCount(0);
+  await page.getByText('Siguiente', { exact: true }).click();
+  await expect(page.getByText('Los versículos de hoy, listos para compartir')).toBeVisible();
+  // El pasaje y luego las citas de las partes, sin repetir Lucas 15:20.
+  await expect(page.getByRole('button', { name: /^Compartir / })).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Compartir Romanos 5:8' })).toBeVisible();
+  await page.getByRole('button', { name: 'Compartir Salmos 103:13' }).click();
+  await expect(page.getByText('Compartir Salmos 103:13', { exact: true })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Fondo Montes' })).toBeChecked();
+  await page.getByRole('tab', { name: 'Dedicar' }).click();
+  await expect(page.getByLabel('Dedicatoria')).toHaveValue('El Padre que corre');
+});

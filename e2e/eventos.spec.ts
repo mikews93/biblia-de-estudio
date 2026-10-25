@@ -113,6 +113,15 @@ test('publica un sermón como evento y la congregación lo sigue en vivo con sus
   await page.goto(`/evento/${codigo}`);
   await page.getByRole('button', { name: 'Terminar el evento' }).click();
   await expect(telefono.getByText('El mensaje terminó')).toBeVisible({ timeout: 25_000 });
+  // Los versículos del mensaje quedan como tarjetas para compartir: el pasaje y los de los puntos.
+  await expect(telefono.getByText('Comparte lo que oíste hoy')).toBeVisible();
+  await expect(telefono.getByRole('button', { name: 'Compartir Lucas 15:11' })).toBeVisible();
+  await expect(telefono.getByRole('button', { name: 'Compartir Romanos 2:4' })).toBeVisible();
+  await telefono.getByRole('button', { name: 'Compartir Lucas 15:13' }).click();
+  await expect(telefono.getByText('Compartir Lucas 15:13', { exact: true })).toBeVisible();
+  await telefono.getByRole('tab', { name: 'Dedicar' }).click();
+  await expect(telefono.getByLabel('Dedicatoria')).toHaveValue(titulo);
+  await telefono.keyboard.press('Escape');
   await telefono.getByText('Mis eventos ›').click();
   await expect(telefono.getByText('EVENTOS QUE SEGUÍ')).toBeVisible();
   await expect(telefono.getByText(titulo).last()).toBeVisible();

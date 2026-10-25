@@ -6,12 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AmbienteBoton from '@/components/Ambiente';
 import { IconText } from '@/components/comunidad/ui';
 import { LiveDot } from '@/components/evento/piezas';
+import ParaLlevar from '@/components/ParaLlevar';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon, PeopleIcon } from '@/components/icons';
 import { CreditoVersion, Tramos, useVersion } from '@/components/vivo/Guion';
 import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
 import { dinamica } from '@/lib/dinamicas';
+import { citasDeParte } from '@/lib/guion';
 import { codigoLegible, interactuarEvento, moverEvento, useMisEventos } from '@/lib/eventos';
 import { enPasaje, ideaCentral, pasajeLabel, tituloDe, useTaller } from '@/lib/taller';
 import { sans, serif, useColors, useSettings } from '@/lib/theme';
@@ -215,6 +217,9 @@ export default function PresentarScreen() {
             )}
             {!s.texto.trim() && !s.paraGrupo?.trim() && !s.claves?.trim() && !d && (
               <Text style={{ color: colors.muted, fontSize: size * 0.8, marginTop: 16 }}>{s.ayuda}</Text>
+            )}
+            {index === sections.length - 1 && (
+              <ParaLlevar titulo={tituloDe(m, books)} pasaje={m.pasaje} citas={sections.flatMap((x) => citasDeParte(x, books))} books={books} colors={colors} para="presentar" />
             )}
           </>
         ) : (

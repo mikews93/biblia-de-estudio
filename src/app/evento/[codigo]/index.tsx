@@ -6,6 +6,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, 
 import { Avatar, Button, Card, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { InteraccionEvento, LanzarInteraccion } from '@/components/evento/Interaccion';
 import { CitaDesplegable, EstadoPill, LiveDot, useEventoEnVivo } from '@/components/evento/piezas';
+import ParaLlevar from '@/components/ParaLlevar';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CommentIcon, HourglassIcon, LiveIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
 import { Tramos, useTic } from '@/components/vivo/Guion';
 import { LIVE_RED } from '@/components/vivo/piezas';
@@ -142,6 +143,9 @@ export default function EventoScreen() {
           </Aviso>
         )}
         {terminado && guardado && <Terminado s={guardado} pasaje={pasaje} colors={colors} />}
+        {terminado && (
+          <ParaLlevar titulo={evento.titulo} pasaje={evento.pasaje} citas={puntos.flatMap((p) => p.citas)} books={books} colors={colors} para="escuchar" />
+        )}
 
         <View onLayout={(e) => (listaY.current = e.nativeEvent.layout.y)} style={{ marginTop: 22 }}>
           {puntos.map((p, i) => {

@@ -36,8 +36,8 @@ import { navigate } from '@/lib/transition';
 type Props = {
   verse: VerseToShare;
   onClose: () => void;
-  /** Cómo empieza la imagen (por ejemplo, desde una ocasión): fondo y dedicatoria. */
-  inicial?: { fondo?: string; dedicatoria?: string };
+  /** Cómo empieza la imagen (por ejemplo, desde una ocasión o un sermón): fondo, letra y dedicatoria. */
+  inicial?: { fondo?: string; letra?: string; dedicatoria?: string };
 };
 
 type Pestaña = 'fondo' | 'letra' | 'dedicar' | 'estudio';
@@ -80,7 +80,8 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
   const [fondo, setFondo] = useState<Fondo>(inicial?.fondo ? fondoPorNombre(inicial.fondo) : FONDOS[0]);
   // Una ocasión trae su fondo: entonces no se cambia por el último que se usó.
   const fondoFijo = !!inicial?.fondo;
-  const [letra, setLetra] = useState<Letra>(LETRAS[0]);
+  const letraFija = !!inicial?.letra;
+  const [letra, setLetra] = useState<Letra>(inicial?.letra ? letraPorId(inicial.letra) : LETRAS[0]);
   const [destacadas, setDestacadas] = useState<number[]>([]);
   const [dedicatoria, setDedicatoria] = useState(inicial?.dedicatoria ?? '');
   const [contexto, setContexto] = useState('');
@@ -100,10 +101,10 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
         if (!raw) return;
         const p = JSON.parse(raw) as { fondo?: string; letra?: string };
         if (p.fondo && !fondoFijo) setFondo(fondoPorNombre(p.fondo));
-        if (p.letra) setLetra(letraPorId(p.letra));
+        if (p.letra && !letraFija) setLetra(letraPorId(p.letra));
       })
       .catch(() => {});
-  }, [fondoFijo]);
+  }, [fondoFijo, letraFija]);
 
   useEffect(() => {
     let vivo = true;
