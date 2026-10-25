@@ -1,16 +1,17 @@
 import { Link, Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { CheckIcon } from '@/components/icons';
 import { signIn, signUp, useAccount } from '@/lib/comunidad';
-import { facebook, facebookAvailable, resumeFacebook } from '@/lib/perfil';
+import { entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, retomarViaje } from '@/lib/proveedores';
 import { verseHref } from '@/lib/routes';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-import { DevicesIcon, FacebookLogo, OpenBookIcon, PeopleIcon, SparkIcon } from './icons';
+import { DevicesIcon, OpenBookIcon, PeopleIcon, SparkIcon } from './icons';
+import ProviderButtons from './ProviderButtons';
 import { Button, Field, text, useAction } from './ui';
 
 type Mode = 'entrar' | 'registro';
@@ -32,7 +33,7 @@ const VERSE: Record<Mode, { text: string; cite: string; href: string }> = {
 const BENEFITS = [
   { Icon: SparkIcon, title: 'Estudia con IA', body: 'Te explica el pasaje, el griego y el hebreo, y te acompaña en el Taller.' },
   { Icon: PeopleIcon, title: 'Lee en compañía', body: 'Grupos de tu iglesia, célula o familia, amigos y oración.' },
-  { Icon: DevicesIcon, title: 'En todos tus dispositivos', body: 'Entra con tu correo desde el teléfono o el navegador.' },
+  { Icon: DevicesIcon, title: 'En todos tus dispositivos', body: 'Entra desde el teléfono o el navegador y sigue donde lo dejaste.' },
 ];
 
 /** Vuelve a la pantalla que pidió la cuenta; si se abrió el enlace directo, a Comunidad. */
@@ -53,20 +54,23 @@ export default function AccountForm({ mode }: { mode: Mode }) {
   const longEnough = password.length >= 8;
   const complete = signingUp ? name.trim() && email.trim() && longEnough : email.trim() && password;
   const verse = VERSE[mode];
-  const [fbReady, setFbReady] = useState(false);
-  const fb = useAction();
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [viaje, setViaje] = useState<Proveedor | null>(null);
+  const ext = useAction();
 
   useEffect(() => {
-    // En iPhone, Apple pide ofrecer «Iniciar sesión con Apple» junto a otro inicio con terceros (regla 4.8):
-    // hasta tenerlo, allí se entra solo con correo.
-    if (Platform.OS !== 'ios') facebookAvailable().then(setFbReady);
-    // Al volver de Facebook en esta misma pestaña (si el navegador no dejó abrir otra ventana).
-    fb.run(async () => {
-      if (await resumeFacebook()) leave();
+    proveedoresDisponibles().then(setProveedores);
+    // Al volver del proveedor en esta misma pestaña (si el navegador no dejó abrir otra ventana).
+    ext.run(async () => {
+      if (await retomarViaje()) leave();
     });
   }, []);
 
-  const withFacebook = () => fb.run(async () => (await facebook('entrar')) && leave());
+  const withProvider = (p: Proveedor) => {
+    setViaje(p);
+    ext.run(async () => (await entrarCon(p, 'entrar')) && leave()).finally(() => setViaje((v) => (v === p ? null : v)));
+  };
+  const nombres = proveedores.map((p) => NOMBRE[p]);
 
   const submit = () => {
     if (!complete || busy) return;
@@ -91,7 +95,9 @@ export default function AccountForm({ mode }: { mode: Mode }) {
         <Text style={[text.body, styles.subtitle, { color: colors.muted }]}>
           {signingUp
             ? 'Es gratis. Leer la Biblia nunca necesita cuenta; con ella estudias con IA y lees en compañía.'
-            : 'Entra con tu correo y tu contraseña para seguir donde lo dejaste.'}
+            : nombres.length
+              ? `Entra con ${[...nombres, 'tu correo'].join(', ').replace(/, ([^,]*)$/, ' o $1')} para seguir donde lo dejaste.`
+              : 'Entra con tu correo y tu contraseña para seguir donde lo dejaste.'}
         </Text>
       </Appear>
 
@@ -110,6 +116,17 @@ export default function AccountForm({ mode }: { mode: Mode }) {
             </View>
           ) : (
             <View style={{ gap: 16 }}>
+              {proveedores.length > 0 && (
+                <>
+                  <ProviderButtons proveedores={proveedores} busy={ext.busy ? viaje : null} onPress={withProvider} />
+                  {ext.error ? <ErrorNote colors={colors}>{ext.error}</ErrorNote> : null}
+                  <View style={styles.or}>
+                    <View style={[styles.orLine, { backgroundColor: colors.border }]} />
+                    <Text style={{ color: colors.muted, fontSize: 13 }}>{signingUp ? 'o crea tu cuenta con tu correo' : 'o con tu correo'}</Text>
+                    <View style={[styles.orLine, { backgroundColor: colors.border }]} />
+                  </View>
+                </>
+              )}
               {signingUp && (
                 <Field
                   label="Tu nombre"
@@ -172,29 +189,7 @@ export default function AccountForm({ mode }: { mode: Mode }) {
                 disabled={!complete}
                 style={{ marginTop: 4 }}
               />
-              {error || fb.error ? (
-                <View style={[styles.error, { backgroundColor: colors.accentSoft, borderLeftColor: colors.accent }]} accessibilityRole="alert">
-                  <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{error || fb.error}</Text>
-                </View>
-              ) : null}
-              {fbReady && (
-                <>
-                  <View style={styles.or}>
-                    <View style={[styles.orLine, { backgroundColor: colors.border }]} />
-                    <Text style={{ color: colors.muted, fontSize: 13 }}>o</Text>
-                    <View style={[styles.orLine, { backgroundColor: colors.border }]} />
-                  </View>
-                  <Pressable
-                    // Se puede volver a tocar mientras espera, por si se cerró la ventana de Facebook.
-                    onPress={withFacebook}
-                    accessibilityRole="button"
-                    style={[styles.facebook, { borderColor: colors.border, backgroundColor: colors.background }, fb.busy && { opacity: 0.6 }]}
-                  >
-                    {fb.busy ? <ActivityIndicator color={colors.accent} /> : <FacebookLogo size={22} />}
-                    <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Continuar con Facebook</Text>
-                  </Pressable>
-                </>
-              )}
+              {error || (ext.error && !proveedores.length) ? <ErrorNote colors={colors}>{error || ext.error}</ErrorNote> : null}
               <Text style={[text.small, { color: colors.muted, textAlign: 'center', marginTop: 4 }]}>
                 {signingUp ? 'Al crear tu cuenta aceptas cómo cuidamos tus datos: ' : 'Cómo cuidamos tus datos: '}
                 <Link href="/privacidad" style={{ color: colors.accent, fontWeight: '600' }}>
@@ -230,6 +225,14 @@ export default function AccountForm({ mode }: { mode: Mode }) {
         </Link>
       </Appear>
     </ScrollView>
+  );
+}
+
+function ErrorNote({ colors, children }: { colors: Colors; children: string | null }) {
+  return (
+    <View style={[styles.error, { backgroundColor: colors.accentSoft, borderLeftColor: colors.accent }]} accessibilityRole="alert">
+      <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{children}</Text>
+    </View>
   );
 }
 
@@ -279,16 +282,6 @@ const styles = StyleSheet.create({
   check: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   or: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   orLine: { flex: 1, height: StyleSheet.hairlineWidth },
-  facebook: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderRadius: 24,
-    minHeight: 46,
-    paddingHorizontal: 20,
-  },
   error: { borderRadius: 10, borderLeftWidth: 3, paddingHorizontal: 14, paddingVertical: 10 },
   benefits: { gap: 18, marginTop: 28, paddingHorizontal: 4 },
   benefit: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },

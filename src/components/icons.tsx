@@ -6,6 +6,7 @@ import Svg, { Circle, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { Line, STROKE, type IconProps as Props } from './iconLine';
 
 export {
+  AppleLogo,
   CameraIcon,
   CheckIcon,
   ChurchIcon,
@@ -14,6 +15,7 @@ export {
   DevicesIcon,
   DownloadIcon,
   FacebookLogo,
+  GoogleLogo,
   KeyIcon,
   OfflineIcon,
   OpenBookIcon,

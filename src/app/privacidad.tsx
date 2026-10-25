@@ -42,7 +42,7 @@ const PARTES: Parte[] = [
     titulo: 'Si creas una cuenta',
     puntos: [
       'Guardamos tu nombre, tu correo y tu contraseña cifrada. La foto, la biografía, la iglesia y la ciudad son opcionales.',
-      'Si entras con Facebook, recibimos tu nombre, tu correo, tu foto de perfil y un identificador de Facebook. Nada más.',
+      'Si entras con Google, Apple o Facebook, recibimos tu nombre, tu correo, tu foto de perfil (Apple no la da) y un identificador de esa cuenta. Nada más: no vemos tu contraseña ni publicamos nada en tu nombre.',
       'Tu progreso, notas, diario, oraciones y «Mis preguntas» se guardan en tu cuenta para verlos en tus otros dispositivos. Son privados: nadie más los ve.',
     ],
   },

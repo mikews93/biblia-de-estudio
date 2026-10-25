@@ -37,7 +37,7 @@
     "api/notificaciones.ts": {
       "maxDuration": 60
     },
-    "api/facebook.ts": {
+    "api/auth.ts": {
       "maxDuration": 30
     },
     "api/vivo.ts": {
@@ -47,6 +47,10 @@
     }
   },
   "rewrites": [
+    {
+      "source": "/api/auth/(.*)",
+      "destination": "/api/auth?ruta=$1"
+    },
     {
       "source": "/((?!api/|data/|_expo/|assets/|audio/).*)",
       "destination": "/app.html"

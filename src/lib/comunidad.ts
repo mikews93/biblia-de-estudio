@@ -23,10 +23,10 @@ export type Usuario = {
   ciudad?: string | null;
   /** Cómo quiere que la app la salude en Hoy; si falta, su primer nombre. */
   apodo?: string | null;
-  /** Si tiene contraseña: una cuenta creada con Facebook puede tener correo y no contraseña. */
+  /** Si tiene contraseña: una cuenta creada con Google, Apple o Facebook puede tener correo y no contraseña. */
   conClave?: boolean;
-  /** El nombre de la cuenta de Facebook conectada, o null. */
-  facebook?: string | null;
+  /** Las cuentas de Google, Apple o Facebook con las que entra, con su nombre en cada una. */
+  cuentas?: { proveedor: 'google' | 'apple' | 'facebook'; nombre: string | null }[];
 };
 export type TipoGrupo = 'iglesia' | 'celula' | 'familia' | 'amigos';
 export type Lectura = {
