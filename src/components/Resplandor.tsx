@@ -1,10 +1,11 @@
 // El huevo de pascua de la racha devocional (src/lib/resplandor.ts): una luz que llena la pantalla, más intensa
 // mientras más larga es la racha. Rayos que giran despacio, chispas que suben y, en el centro, el dibujo de la meta
-// (la chispa, la llama, el corazón que arde, el rostro de Moisés, la zarza, la gloria). Con «reducir movimiento»,
-// la luz queda quieta.
+// (la chispa, la llama, el corazón que arde, el rostro de Moisés, la zarza, la gloria, la cruz). Al año, el fuego
+// baja del cielo, estalla y cuenta los días; a los siete años la noche se vuelve luz blanca. Con «reducir
+// movimiento», la luz queda quieta.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg';
 
 import type { Resplandor as Nivel } from '@/lib/resplandor';
 import { diasLabel } from '@/lib/rachaTexto';
@@ -17,6 +18,11 @@ const ORO = '#F2B45A';
 const BRASA = '#E07B2E';
 const BLANCO = '#FFF6DE';
 
+// La pantalla de luz clara de la meta casi inalcanzable (la estatura de Cristo): de la noche a la luz blanca.
+const LUZ = '#FFF8EA';
+const TINTA = '#3B2A12';
+const ORO_HONDO = '#B97A1E';
+
 type Props = { nivel: Nivel; dias: number; onClose: () => void };
 
 export default function Resplandor({ nivel, dias, onClose }: Props) {
@@ -26,7 +32,15 @@ export default function Resplandor({ nivel, dias, onClose }: Props) {
   const giro = useRef(new Animated.Value(0)).current;
   const pulso = useRef(new Animated.Value(0)).current;
   const destello = useRef(new Animated.Value(0)).current;
+  // Solo en las metas grandes (un año y siete años): el fuego que cae, la onda al llegar, la cuenta y el amanecer.
+  const caida = useRef(new Animated.Value(0)).current;
+  const onda = useRef(new Animated.Value(0)).current;
+  const cuenta = useRef(new Animated.Value(0)).current;
+  const letras = useRef(new Animated.Value(0)).current;
+  const amanece = useRef(new Animated.Value(0)).current;
   const n = nivel.intensidad;
+  const grande = n >= 6;
+  const claro = n >= 7;
   const lado = Math.min(width, height);
 
   useEffect(() => {
@@ -39,37 +53,62 @@ export default function Resplandor({ nivel, dias, onClose }: Props) {
         if (reducir) {
           entra.setValue(1);
           pulso.setValue(0.5);
+          letras.setValue(1);
+          cuenta.setValue(dias);
+          amanece.setValue(claro ? 1 : 0);
           return;
         }
-        Animated.timing(entra, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: native }).start();
-        // Desde los 40 días, un destello de luz al abrirse (el rostro que resplandece).
-        if (n >= 4) {
+        const t = (v: Animated.Value, toValue: number, duration: number, easing = Easing.out(Easing.cubic)) =>
+          Animated.timing(v, { toValue, duration, easing, useNativeDriver: native });
+        // La cuenta va por el hilo de JS (cambia un texto), nunca por el nativo.
+        const contar = Animated.timing(cuenta, { toValue: dias, duration: claro ? 2600 : 2000, easing: Easing.out(Easing.exp), useNativeDriver: false });
+        const llegar = Animated.parallel([
+          t(entra, 1, 900),
+          // A los siete años, la noche se vuelve luz detrás del destello blanco (así no pasa por un gris).
+          Animated.sequence([t(destello, 1, 200), Animated.delay(claro ? 500 : 0), t(destello, 0, claro ? 2000 : 1600, Easing.out(Easing.quad))]),
+          t(onda, 1, 2200, Easing.out(Easing.quad)),
+          // El color del texto cambia con el amanecer: va por JS (el hilo nativo no anima colores en todas partes).
+          ...(claro ? [Animated.sequence([Animated.delay(220), Animated.timing(amanece, { toValue: 1, duration: 420, useNativeDriver: false })])] : []),
+        ]);
+        if (grande) {
+          // Primero la oscuridad y el fuego (o la luz) que baja del cielo; al llegar al centro, estalla.
           Animated.sequence([
-            Animated.timing(destello, { toValue: 1, duration: 260, useNativeDriver: native }),
-            Animated.timing(destello, { toValue: 0, duration: 1400, easing: Easing.out(Easing.quad), useNativeDriver: native }),
+            Animated.delay(250),
+            t(caida, 1, 1300, Easing.in(Easing.quad)),
+            Animated.parallel([llegar, Animated.sequence([Animated.delay(300), contar]), Animated.sequence([Animated.delay(1700), t(letras, 1, 900)])]),
           ]).start();
+        } else {
+          llegar.start();
+          letras.setValue(1);
+          cuenta.setValue(dias);
         }
-        Animated.loop(Animated.timing(giro, { toValue: 1, duration: 60_000 / (1 + n * 0.25), easing: Easing.linear, useNativeDriver: native })).start();
+        Animated.loop(t(giro, 1, 60_000 / (1 + n * 0.25), Easing.linear)).start();
         Animated.loop(
-          Animated.sequence([
-            Animated.timing(pulso, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: native }),
-            Animated.timing(pulso, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: native }),
-          ]),
+          Animated.sequence([t(pulso, 1, 1600, Easing.inOut(Easing.sin)), t(pulso, 0, 1600, Easing.inOut(Easing.sin))]),
         ).start();
       });
     return () => {
       vivo = false;
     };
-  }, [entra, giro, pulso, destello, n]);
+  }, [entra, giro, pulso, destello, caida, onda, cuenta, letras, amanece, n, dias, grande, claro]);
 
-  const luz = lado * (0.7 + n * 0.12);
+  const luz = lado * (0.7 + Math.min(n, 6) * 0.12 + (claro ? 0.3 : 0));
   const rotar = giro.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const contrario = giro.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
   const latido = pulso.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.06] });
+  const textoColor = (oscuro: string, enLuz: string) => (claro ? amanece.interpolate({ inputRange: [0, 1], outputRange: [oscuro, enLuz] }) : oscuro);
+  const columna = Math.min(220, lado * 0.5);
 
   return (
     <Modal transparent animationType="none" visible onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={`${nivel.titulo}. Toca para cerrar`}>
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: NOCHE, opacity: entra.interpolate({ inputRange: [0, 1], outputRange: [0, 0.97] }) }]} />
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: NOCHE, opacity: grande ? 0.985 : entra.interpolate({ inputRange: [0, 1], outputRange: [0, 0.97] }) },
+          ]}
+        />
+        {claro && <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: LUZ, opacity: amanece }]} />}
 
         <View style={styles.centro} pointerEvents="none">
           {/* El halo */}
@@ -77,9 +116,9 @@ export default function Resplandor({ nivel, dias, onClose }: Props) {
             <Svg width={luz} height={luz} viewBox="0 0 100 100">
               <Defs>
                 <RadialGradient id="halo" cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse">
-                  <Stop offset="0" stopColor={BLANCO} stopOpacity={0.55 + n * 0.07} />
-                  <Stop offset="0.25" stopColor={ORO} stopOpacity={0.35 + n * 0.06} />
-                  <Stop offset="0.6" stopColor={BRASA} stopOpacity={0.12 + n * 0.03} />
+                  <Stop offset="0" stopColor={claro ? '#FFFFFF' : BLANCO} stopOpacity={Math.min(1, 0.55 + n * 0.07)} />
+                  <Stop offset="0.25" stopColor={ORO} stopOpacity={Math.min(0.85, 0.35 + n * 0.06)} />
+                  <Stop offset="0.6" stopColor={claro ? ORO : BRASA} stopOpacity={0.12 + Math.min(n, 6) * 0.03} />
                   <Stop offset="1" stopColor={BRASA} stopOpacity={0} />
                 </RadialGradient>
               </Defs>
@@ -87,18 +126,69 @@ export default function Resplandor({ nivel, dias, onClose }: Props) {
             </Svg>
           </Animated.View>
 
-          {/* Los rayos: más y más largos con la racha */}
+          {/* Las ondas de luz que salen al llegar el fuego (metas grandes) */}
+          {grande &&
+            [0, 0.18, 0.36].map((d, i) => (
+              <Animated.View
+                key={i}
+                style={{
+                  position: 'absolute',
+                  width: lado * 0.5,
+                  height: lado * 0.5,
+                  borderRadius: lado,
+                  borderWidth: claro ? 3 : 2.5,
+                  borderColor: i === 1 ? ORO : claro ? ORO_HONDO : BLANCO,
+                  opacity: onda.interpolate({ inputRange: [0, d + 0.01, d + 0.15, 1], outputRange: [0, 0.95, 0.7, 0] }),
+                  transform: [{ scale: onda.interpolate({ inputRange: [0, d, 1], outputRange: [0.2, 0.2, 3.4 - i * 0.5] }) }],
+                }}
+              />
+            ))}
+
+          {/* Los rayos: más y más largos con la racha; en las metas grandes, una segunda corona gira al revés */}
           {n >= 2 && (
             <Animated.View style={{ position: 'absolute', opacity: entra, transform: [{ rotate: rotar }] }}>
-              <Rayos lado={luz * 1.15} cuantos={6 + n * 4} intensidad={n} />
+              <Rayos lado={luz * 1.15} cuantos={6 + Math.min(n, 6) * 4} intensidad={n} claro={claro} />
+            </Animated.View>
+          )}
+          {grande && (
+            <Animated.View style={{ position: 'absolute', opacity: entra, transform: [{ rotate: contrario }] }}>
+              <Rayos lado={luz * 0.95} cuantos={claro ? 48 : 36} intensidad={n} claro={claro} finos />
             </Animated.View>
           )}
 
-          {!quieto && <Chispas cuantas={4 + n * 5} ancho={width} alto={height} intensidad={n} />}
+          {!quieto && <Chispas cuantas={4 + Math.min(n, 6) * 5 + (claro ? 20 : 0)} ancho={width} alto={height} intensidad={n} claro={claro} />}
+          {grande && !quieto && <Estallido lado={lado} onda={onda} cuantas={claro ? 56 : 40} claro={claro} />}
+
+          {/* El fuego que desciende de los cielos (2 Crónicas 7:1), o la luz en los siete años */}
+          {grande && !quieto && (
+            <Animated.View
+              style={{
+                position: 'absolute',
+                width: columna,
+                height: height * 0.75,
+                opacity: Animated.subtract(1, onda.interpolate({ inputRange: [0, 0.12], outputRange: [0, 1], extrapolate: 'clamp' })),
+                transform: [{ translateY: caida.interpolate({ inputRange: [0, 1], outputRange: [-height * 1.2, -height * 0.375] }) }],
+              }}
+            >
+              <Svg width={columna} height={height * 0.75} viewBox="0 0 100 100" preserveAspectRatio="none">
+                <Defs>
+                  <LinearGradient id="columna" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor={claro ? BLANCO : BRASA} stopOpacity={0} />
+                    <Stop offset="0.6" stopColor={claro ? ORO : BRASA} stopOpacity={0.6} />
+                    <Stop offset="0.9" stopColor={ORO} stopOpacity={0.95} />
+                    <Stop offset="1" stopColor={BLANCO} stopOpacity={1} />
+                  </LinearGradient>
+                </Defs>
+                <Path d="M30 0h40l26 90c0 6-20 10-46 10S4 96 4 90z" fill="url(#columna)" fillOpacity={0.35} />
+                <Path d="M38 0h24l14 92c0 5-12 8-26 8s-26-3-26-8z" fill="url(#columna)" />
+                <Path d="M46 0h8l6 94c0 3-4 5-10 5s-10-2-10-5z" fill={BLANCO} fillOpacity={0.9} />
+              </Svg>
+            </Animated.View>
+          )}
 
           {/* El dibujo de la meta */}
-          <Animated.View style={{ opacity: entra, transform: [{ scale: latido }] }}>
-            <Centro tipo={nivel.centro} size={Math.min(150, lado * 0.36)} />
+          <Animated.View style={{ opacity: entra, transform: [{ scale: grande ? Animated.multiply(latido, entra.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] })) : latido }] }}>
+            <Centro tipo={nivel.centro} size={Math.min(grande ? 170 : 150, lado * (grande ? 0.42 : 0.36))} />
           </Animated.View>
         </View>
 
@@ -106,36 +196,58 @@ export default function Resplandor({ nivel, dias, onClose }: Props) {
           style={[styles.textos, { opacity: entra, transform: [{ translateY: entra.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}
           pointerEvents="none"
         >
-          <Text style={styles.kicker}>{diasLabel(dias).toUpperCase()} SEGUIDOS</Text>
-          <Text style={styles.titulo}>{nivel.titulo}</Text>
-          <Text style={styles.verso}>«{nivel.versiculo.texto}»</Text>
-          <Text style={styles.ref}>{nivel.versiculo.ref}</Text>
-          <Text style={styles.cerrar}>Toca para seguir</Text>
+          {grande ? (
+            <>
+              <Cifra valor={cuenta} style={[styles.cifra, { color: textoColor(ORO, ORO_HONDO) }]} />
+              <Animated.Text style={[styles.kicker, { color: textoColor(ORO, ORO_HONDO) }]}>
+                {claro ? 'DÍAS SEGUIDOS · SIETE AÑOS' : 'DÍAS SEGUIDOS · UN AÑO'}
+              </Animated.Text>
+            </>
+          ) : (
+            <Text style={styles.kicker}>{diasLabel(dias).toUpperCase()} SEGUIDOS</Text>
+          )}
+          <Animated.View style={{ opacity: letras, alignItems: 'center', transform: [{ translateY: letras.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }}>
+            <Animated.Text style={[styles.titulo, claro && { color: textoColor(BLANCO, TINTA) }]}>{nivel.titulo}</Animated.Text>
+            <Animated.Text style={[styles.verso, claro && { color: textoColor('#F3E6CF', '#5A4320') }]}>«{nivel.versiculo.texto}»</Animated.Text>
+            <Animated.Text style={[styles.ref, claro && { color: textoColor(ORO, ORO_HONDO) }]}>{nivel.versiculo.ref}</Animated.Text>
+            <Animated.Text style={[styles.cerrar, claro && { color: textoColor('#BBA88C', '#8A7350') }]}>Toca para seguir</Animated.Text>
+          </Animated.View>
         </Animated.View>
 
-        {n >= 4 && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: BLANCO, opacity: destello }]} />}
+        {n >= 4 && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: claro ? '#FFFFFF' : BLANCO, opacity: destello }]} />}
       </Pressable>
     </Modal>
   );
 }
 
-function Rayos({ lado, cuantos, intensidad }: { lado: number; cuantos: number; intensidad: number }) {
-  const largo = 30 + intensidad * 3;
+/** La cuenta de los días, de 0 a la meta. Lleva su propio estado para no volver a dibujar toda la luz en cada número. */
+function Cifra({ valor, style }: { valor: Animated.Value; style: object }) {
+  const [numero, setNumero] = useState(0);
+  useEffect(() => {
+    const id = valor.addListener(({ value }) => setNumero(Math.round(value)));
+    return () => valor.removeListener(id);
+  }, [valor]);
+  return <Animated.Text style={style}>{numero}</Animated.Text>;
+}
+
+function Rayos({ lado, cuantos, intensidad, claro, finos }: { lado: number; cuantos: number; intensidad: number; claro?: boolean; finos?: boolean }) {
+  const largo = 30 + Math.min(intensidad, 6) * 3 + (claro ? 6 : 0);
+  const id = finos ? 'rayoFino' : 'rayo';
   return (
     <Svg width={lado} height={lado} viewBox="0 0 100 100">
       <Defs>
-        <RadialGradient id="rayo" cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse">
-          <Stop offset="0.15" stopColor={BLANCO} stopOpacity={0.5} />
+        <RadialGradient id={id} cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse">
+          <Stop offset="0.15" stopColor={claro ? ORO_HONDO : BLANCO} stopOpacity={claro ? 0.55 : finos ? 0.35 : 0.5} />
           <Stop offset="1" stopColor={ORO} stopOpacity={0} />
         </RadialGradient>
       </Defs>
       <G>
         {Array.from({ length: cuantos }, (_, i) => {
-          const a = (i / cuantos) * Math.PI * 2;
-          const ancho = (i % 2 ? 0.035 : 0.06) * (1 + intensidad * 0.08);
-          const r = i % 2 ? largo * 0.75 : largo + 12;
+          const a = (i / cuantos) * Math.PI * 2 + (finos ? Math.PI / cuantos : 0);
+          const ancho = (finos ? 0.012 : i % 2 ? 0.035 : 0.06) * (1 + Math.min(intensidad, 6) * 0.08);
+          const r = finos ? largo * (i % 3 ? 0.7 : 0.95) : i % 2 ? largo * 0.75 : largo + 12;
           const p = (ang: number, rr: number) => `${(50 + Math.cos(ang) * rr).toFixed(2)} ${(50 + Math.sin(ang) * rr).toFixed(2)}`;
-          return <Path key={i} d={`M${p(a - ancho, 8)} L${p(a, r)} L${p(a + ancho, 8)} Z`} fill="url(#rayo)" />;
+          return <Path key={i} d={`M${p(a - ancho, 8)} L${p(a, r)} L${p(a + ancho, 8)} Z`} fill={`url(#${id})`} />;
         })}
       </G>
     </Svg>
@@ -143,12 +255,12 @@ function Rayos({ lado, cuantos, intensidad }: { lado: number; cuantos: number; i
 }
 
 /** Chispas que suben desde abajo y se apagan, cada una a su ritmo. */
-function Chispas({ cuantas, ancho, alto, intensidad }: { cuantas: number; ancho: number; alto: number; intensidad: number }) {
+function Chispas({ cuantas, ancho, alto, intensidad, claro }: { cuantas: number; ancho: number; alto: number; intensidad: number; claro?: boolean }) {
   const chispas = useMemo(
     () =>
       Array.from({ length: cuantas }, (_, i) => ({
         x: ((i * 37) % 100) / 100,
-        size: 3 + ((i * 13) % 5) + intensidad * 0.4,
+        size: 3 + ((i * 13) % 5) + Math.min(intensidad, 6) * 0.4,
         dur: 2600 + ((i * 557) % 2400),
         delay: (i * 233) % 2200,
         deriva: (((i * 71) % 40) - 20) * 1.5,
@@ -175,16 +287,50 @@ function Chispas({ cuantas, ancho, alto, intensidad }: { cuantas: number; ancho:
             width: c.size,
             height: c.size,
             borderRadius: c.size,
-            backgroundColor: i % 3 ? ORO : BLANCO,
+            backgroundColor: claro ? (i % 3 ? ORO : ORO_HONDO) : i % 3 ? ORO : BLANCO,
             opacity: c.t.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 1, 0.6, 0] }),
             transform: [
-              { translateY: c.t.interpolate({ inputRange: [0, 1], outputRange: [0, -alto * (0.45 + intensidad * 0.05)] }) },
+              { translateY: c.t.interpolate({ inputRange: [0, 1], outputRange: [0, -alto * (0.45 + Math.min(intensidad, 6) * 0.05)] }) },
               { translateX: c.t.interpolate({ inputRange: [0, 1], outputRange: [0, c.deriva] }) },
             ],
           }}
         />
       ))}
     </View>
+  );
+}
+
+/** Al llegar el fuego al centro, brasas que salen disparadas hacia todos lados y caen despacio. */
+function Estallido({ lado, onda, cuantas, claro }: { lado: number; onda: Animated.Value; cuantas: number; claro?: boolean }) {
+  const brasas = useMemo(
+    () =>
+      Array.from({ length: cuantas }, (_, i) => {
+        const a = (i / cuantas) * Math.PI * 2 + ((i * 53) % 10) / 20;
+        const lejos = lado * (0.32 + ((i * 29) % 30) / 60);
+        return { x: Math.cos(a) * lejos, y: Math.sin(a) * lejos, size: 3 + ((i * 7) % 5), color: i % 4 === 0 ? BLANCO : i % 3 ? ORO : claro ? ORO_HONDO : BRASA };
+      }),
+    [cuantas, lado, claro],
+  );
+  return (
+    <>
+      {brasas.map((b, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            position: 'absolute',
+            width: b.size,
+            height: b.size,
+            borderRadius: b.size,
+            backgroundColor: b.color,
+            opacity: onda.interpolate({ inputRange: [0, 0.02, 0.55, 1], outputRange: [0, 1, 0.8, 0] }),
+            transform: [
+              { translateX: onda.interpolate({ inputRange: [0, 1], outputRange: [0, b.x] }) },
+              { translateY: onda.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, b.y, b.y + lado * 0.12] }) },
+            ],
+          }}
+        />
+      ))}
+    </>
   );
 }
 
@@ -247,6 +393,19 @@ function Centro({ tipo, size }: { tipo: Nivel['centro']; size: number }) {
           <Circle cx={50} cy={52} r={6} fill={BLANCO} />
         </>
       )}
+      {tipo === 'cristo' && (
+        <>
+          {/* La plenitud de Cristo: la cruz dentro de un sol, con doce rayos */}
+          {Array.from({ length: 12 }, (_, i) => {
+            const a = (i / 12) * Math.PI * 2;
+            const p = (r: number) => `${(50 + Math.cos(a) * r).toFixed(1)} ${(50 + Math.sin(a) * r).toFixed(1)}`;
+            return <Path key={i} d={`M${p(38)}L${p(i % 2 ? 44 : 48)}`} stroke={ORO_HONDO} strokeWidth={3} strokeLinecap="round" />;
+          })}
+          <Circle cx={50} cy={50} r={33} fill="#FFFFFF" stroke={ORO} strokeWidth={3} />
+          <Circle cx={50} cy={50} r={27} fill="none" stroke={ORO} strokeWidth={1.2} strokeOpacity={0.7} />
+          <Path d="M45 26h10v14h12v10H55v24H45V50H33V40h12z" fill={ORO_HONDO} />
+        </>
+      )}
     </Svg>
   );
 }
@@ -255,6 +414,7 @@ const styles = StyleSheet.create({
   centro: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: '28%' },
   textos: { position: 'absolute', left: 24, right: 24, bottom: '9%', alignItems: 'center', maxWidth: 520, alignSelf: 'center' },
   kicker: { color: ORO, fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+  cifra: { fontFamily: serif, fontSize: 64, lineHeight: 70, fontWeight: '700', fontVariant: ['tabular-nums'] },
   titulo: { color: BLANCO, fontFamily: serif, fontSize: 30, textAlign: 'center', marginTop: 8 },
   verso: { color: '#F3E6CF', fontFamily: serif, fontStyle: 'italic', fontSize: 17, lineHeight: 26, textAlign: 'center', marginTop: 14 },
   ref: { color: ORO, fontSize: 13, fontWeight: '700', marginTop: 8 },

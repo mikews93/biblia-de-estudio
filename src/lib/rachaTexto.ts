@@ -33,7 +33,7 @@ export type Racha = {
 export const SEMANA = 7;
 
 /** Las metas de la racha, con su sello (src/lib/racha.ts). */
-export const HITOS = [3, 7, 21, 40, 100, 365] as const;
+export const HITOS = [3, 7, 21, 40, 100, 365, 2555] as const;
 
 const DIA = 86_400_000;
 const num = (fecha: string) => {

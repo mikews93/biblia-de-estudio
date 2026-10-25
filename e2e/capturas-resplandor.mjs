@@ -39,8 +39,8 @@ async function post(body, llave) {
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM });
 
-async function page({ racha, desktop = false, theme = 'claro', cuenta } = {}) {
-  const scheme = { colorScheme: theme === 'oscuro' ? 'dark' : 'light', locale: 'es-CO', timezoneId: ZONA };
+async function page({ racha, desktop = false, theme = 'claro', cuenta, quieto = false } = {}) {
+  const scheme = { colorScheme: theme === 'oscuro' ? 'dark' : 'light', locale: 'es-CO', timezoneId: ZONA, reducedMotion: quieto ? 'reduce' : 'no-preference' };
   const ctx = await browser.newContext(
     desktop ? { viewport: { width: 1280, height: 860 }, ...scheme } : { ...devices['Pixel 7'], viewport: { width: 412, height: 915 }, ...scheme },
   );
@@ -67,14 +67,50 @@ for (const [dias, opts, nombre] of [
   [40, {}, 'r-40'],
   [40, { theme: 'oscuro' }, 'r-40-oscuro'],
   [100, {}, 'r-100'],
-  [365, {}, 'r-365'],
   [365, { desktop: true }, 'r-365-computador'],
+  [2555, { desktop: true }, 'r-2555-computador'],
 ]) {
   const p = await page({ racha: dias, ...opts });
   await p.goto(`${BASE}/diario`);
+  await p.getByTestId('racha-llama').waitFor();
+  // Que termine de cargar (años de devocionales en el diario) antes de tocar la llama.
+  await wait(4000);
   await p.getByTestId('racha-llama').click();
-  await wait(4500);
+  await wait(6000);
   await shot(p, nombre);
+  await p.context().close();
+}
+
+// El final de las metas grandes, ya quieto (con «reducir movimiento» la pantalla sale entera de una vez).
+for (const [dias, opts, nombre] of [
+  [365, {}, 'r-365-final'],
+  [2555, {}, 'r-2555-final'],
+  [2555, { desktop: true }, 'r-2555-final-computador'],
+]) {
+  const p = await page({ racha: dias, quieto: true, ...opts });
+  await p.goto(`${BASE}/diario`);
+  await p.getByTestId('racha-llama').waitFor();
+  await wait(3000);
+  await p.getByTestId('racha-llama').click();
+  await wait(2500);
+  await shot(p, nombre);
+  await p.context().close();
+}
+
+// Las metas grandes, cuadro a cuadro: el fuego (o la luz) que baja, el estallido y el final.
+for (const dias of [365, 2555]) {
+  const p = await page({ racha: dias });
+  await p.goto(`${BASE}/diario`);
+  await p.getByTestId('racha-llama').waitFor();
+  // Que termine de cargar (años de devocionales en el diario) antes de tocar la llama.
+  await wait(4000);
+  await p.getByTestId('racha-llama').click();
+  let antes = 0;
+  for (const [ms, cuadro] of [[3300, 'a'], [4600, 'b'], [6500, 'c'], [22000, 'd']]) {
+    await wait(ms - antes);
+    antes = ms;
+    await shot(p, `r-${dias}-${cuadro}`);
+  }
   await p.context().close();
 }
 
@@ -86,6 +122,7 @@ const gente = [
   ['Daniel Ruiz', 7, 'Primera semana completa con el devocional. ¡Vamos!'],
   ['Eva Suárez', 3, 'Empezando de nuevo, tres días seguidos.'],
   ['Felipe Díaz', 0, '¿Por dónde me recomiendan empezar a leer la Biblia?'],
+  ['Gloria Pérez', 2600, 'Siete años leyendo cada mañana con mi esposo. Él sigue siendo nuevo cada día.'],
 ];
 const cuentas = [];
 for (const [nombre, dias] of gente) {
@@ -106,7 +143,7 @@ for (const [pre, opts] of [
 ]) {
   const p = await page({ racha: 40, cuenta: ana, ...opts });
   await p.goto(`${BASE}/comunidades`);
-  await p.getByText('Un año leyendo').waitFor();
+  await p.getByText('Siete años leyendo').waitFor();
   await wait(1200);
   await shot(p, `${pre}-1-muro`);
   await p.goto(`${BASE}/comunidades/amigos`);
