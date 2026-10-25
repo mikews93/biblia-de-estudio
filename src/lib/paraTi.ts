@@ -17,6 +17,8 @@ export type AjustesParaTi = {
   ocultos: TemaId[];
   /** Fecha (AAAA-MM-DD) en que dijo «Ya tengo con quién hablar» en la tarjeta «No estás solo». */
   ayudaVista?: string;
+  /** false: no preguntar «¿cómo sigues?» (src/lib/acompanar.ts). */
+  acompanar?: boolean;
 };
 
 export const PARA_TI_INICIAL: AjustesParaTi = { activo: true, temas: [], ocultos: [] };
