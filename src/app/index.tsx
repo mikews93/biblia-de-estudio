@@ -9,6 +9,7 @@ import {
   BellIcon,
   BooksIcon,
   RouteIcon,
+  SunriseIcon,
   ShareIcon,
   DownloadIcon,
   HeartIcon,
@@ -370,6 +371,7 @@ function Today() {
           onPress={() => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward')}
         />
         <Tile icon={ShareIcon} label="Para alguien" colors={colors} onPress={() => navigate(() => router.push('/ocasiones' as never), 'forward')} />
+        <Tile icon={SunriseIcon} label="Mi año" colors={colors} onPress={() => navigate(() => router.push('/mi-ano' as never), 'forward')} />
         <Tile icon={RouteIcon} label="Recorridos" colors={colors} onPress={() => navigate(() => router.push('/recorridos' as never), 'forward')} />
         <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
         <Tile icon={WordJourneyIcon} label="Palabras" colors={colors} onPress={() => navigate(() => router.push(palabrasHref() as never), 'forward')} />

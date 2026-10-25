@@ -227,3 +227,33 @@ test('el carrusel para Historias arma 3 láminas, suma una con la palabra origin
   await expect(page.getByText('Láminas descargadas')).toBeVisible();
   await expect.poll(() => nombres.sort()).toEqual(['juan-3-16-1.png', 'juan-3-16-2.png', 'juan-3-16-3.png', 'juan-3-16-4.png']);
 });
+
+test('Mi año con la Palabra resume lo guardado y se descarga como imagen para Historias', async ({ page }) => {
+  const año = new Date().getFullYear();
+  const dia = (m: number, d: number) => `${año}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const ms = (m: number, d: number) => new Date(año, m - 1, d, 12).getTime();
+  await page.addInitScript(
+    (datos) => Object.entries(datos).forEach(([k, v]) => window.localStorage.setItem(k, JSON.stringify(v))),
+    {
+      progreso: { chapters: { psa: [23, 91], jhn: [3] }, days: [dia(1, 5), dia(1, 6), dia(2, 1)] },
+      resaltados: { 'psa.23.1': { color: 'amarillo', at: ms(2, 1) }, 'jhn.3.16': { color: 'verde', at: ms(1, 5) } },
+      notas: { 'psa.23.1': { text: 'Él me cuida', created: ms(2, 1), updated: ms(2, 1) } },
+      sellos: { huellas: { 'palabra:H7462': dia(2, 1), [`dia:${dia(3, 3)}`]: dia(3, 3) }, ganados: {}, iniciado: true },
+    },
+  );
+  await page.goto('/mi-ano');
+  await expect(page.getByText(`Tu ${año} con la Palabra`)).toBeVisible();
+  await expect(page.getByText('días con la Palabra')).toBeVisible();
+  await expect(page.getByText('MI VERSÍCULO DEL AÑO')).toBeVisible();
+  await expect(page.getByText('Salmos 23:1', { exact: true })).toBeVisible();
+  await expect(page.getByText('capítulos leídos', { exact: true })).toBeVisible();
+  await expect(page.getByText('el libro al que más volviste')).toBeVisible();
+  const [d] = await Promise.all([page.waitForEvent('download'), page.getByText('Descargar', { exact: true }).click()]);
+  expect(d.suggestedFilename()).toBe(`mi-ano-con-la-palabra-${año}.png`);
+});
+
+test('Mi año sin nada guardado invita a empezar', async ({ page }) => {
+  await page.goto('/mi-ano');
+  await expect(page.getByText(/Tu año empieza hoy/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Empezar con la lectura de hoy' })).toBeVisible();
+});
