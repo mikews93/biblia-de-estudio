@@ -89,7 +89,7 @@ export function verseFontSize(text: string, format: ImageFormat) {
 
 export const verseUrl = (v: VerseToShare) => `${SITE}${verseHref(v.book, v.chapter, v.verse)}`;
 
-const caption = (v: VerseToShare) => `${v.reference}${v.version ? ` (${v.version})` : ''}`;
+export const caption = (v: VerseToShare) => `${v.reference}${v.version ? ` (${v.version})` : ''}`;
 
 /**
  * Comparte un texto que ya lleva su enlace dentro. No se pasa `url` aparte: el navegador (y iOS) lo
@@ -124,13 +124,13 @@ export function wrapWords(measure: (t: string) => number, words: string[], maxWi
   return lines;
 }
 
-const SERIF = 'Georgia, "Iowan Old Style", "Times New Roman", serif';
-const SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+export const SERIF = 'Georgia, "Iowan Old Style", "Times New Roman", serif';
+export const SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
 /** El tamaño de la dedicatoria en la imagen de 1080 px. */
 export const DEDICATORIA_SIZE = 64;
 
-function loadSvg(svg: string): Promise<HTMLImageElement> {
+export function loadSvg(svg: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);

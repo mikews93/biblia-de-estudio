@@ -10,6 +10,7 @@ import { captureRef } from 'react-native-view-shot';
 import { IconText } from '@/components/comunidad/ui';
 import { CommentaryIcon, PeopleIcon, SparkIcon } from '@/components/icons';
 import EnviarAmigo from '@/components/EnviarAmigo';
+import Laminas from '@/components/Laminas';
 import VerseArt from '@/components/VerseArt';
 import {
   IMAGE_SIZE,
@@ -28,6 +29,7 @@ import { useAccount } from '@/lib/comunidad';
 import { getContexto } from '@/lib/comentarios';
 import { getInterlinear, Word } from '@/lib/data';
 import { DEDICATORIAS, FONDOS, Fondo, LETRAS, Letra, fondoPorNombre, idsUnicos, letraPorId, useLetras } from '@/lib/fondos';
+import { GANCHOS, compartirLaminas, drawLaminas, laminasDe } from '@/lib/laminas';
 import { huella } from '@/lib/sellos';
 import { highlightOf } from '@/lib/highlights';
 import { Audiencia, publish } from '@/lib/social';
@@ -78,6 +80,9 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
   const colors = useColors();
   const { width: screen, height: alto } = useWindowDimensions();
   const [format, setFormat] = useState<ImageFormat>('cuadrado');
+  // Carrusel de láminas para Historias (solo en la web, donde se dibujan con canvas).
+  const [carrusel, setCarrusel] = useState(false);
+  const [gancho, setGancho] = useState(GANCHOS[0]);
   const [fondo, setFondo] = useState<Fondo>(inicial?.fondo ? fondoPorNombre(inicial.fondo) : FONDOS[0]);
   // Una ocasión trae su fondo: entonces no se cambia por el último que se usó.
   const fondoFijo = !!inicial?.fondo;
@@ -162,7 +167,10 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
     setBusy(true);
     setNote(null);
     try {
-      if (Platform.OS === 'web') {
+      if (carrusel) {
+        const r = await compartirLaminas(await drawLaminas(verse, look, gancho), verse, download);
+        if (r === 'descargadas') setNote(download ? 'Láminas descargadas' : 'Este navegador no comparte varias imágenes: las descargamos para que las subas.');
+      } else if (Platform.OS === 'web') {
         const blob = await drawVerseImage(verse, format, look);
         if (download) {
           downloadImage(blob, verse);
@@ -232,22 +240,29 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
           <ScrollView style={styles.scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <Text style={[styles.title, { color: colors.text }]}>Compartir {verse.reference}</Text>
 
-            <VerseArt
-              viewRef={preview}
-              text={verse.text}
-              caption={caption}
-              format={format}
-              look={look}
-              width={previewWidth}
-              onWordPress={destacar}
-            />
-            <Text style={[styles.hint, { color: colors.muted }]}>
-              {destacadas.length ? 'Toca otra vez una palabra para quitarle el color' : 'Toca una palabra del versículo para destacarla'}
-            </Text>
+            {carrusel ? (
+              <Laminas verse={verse} look={look} gancho={gancho} onGancho={setGancho} alto={alto} />
+            ) : (
+              <>
+                <VerseArt
+                  viewRef={preview}
+                  text={verse.text}
+                  caption={caption}
+                  format={format}
+                  look={look}
+                  width={previewWidth}
+                  onWordPress={destacar}
+                />
+                <Text style={[styles.hint, { color: colors.muted }]}>
+                  {destacadas.length ? 'Toca otra vez una palabra para quitarle el color' : 'Toca una palabra del versículo para destacarla'}
+                </Text>
+              </>
+            )}
 
             <View style={styles.row}>
-              {chip('Publicación', format === 'cuadrado', () => setFormat('cuadrado'))}
-              {chip('Historia', format === 'historia', () => setFormat('historia'))}
+              {chip('Publicación', !carrusel && format === 'cuadrado', () => (setCarrusel(false), setFormat('cuadrado')))}
+              {chip('Historia', !carrusel && format === 'historia', () => (setCarrusel(false), setFormat('historia')))}
+              {Platform.OS === 'web' && chip('Carrusel', carrusel, () => setCarrusel(true))}
               <Pressable onPress={sorprender} style={[styles.chip, styles.surprise, { borderColor: colors.border }]} accessibilityRole="button">
                 <IconText icon={SparkIcon} color={colors.text} size={16}>
                   <Text style={{ color: colors.text, fontWeight: '600' }}>Sorpréndeme</Text>
@@ -402,7 +417,13 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
               accessibilityRole="button"
             >
               <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>
-                {busy ? 'Preparando…' : dedicatoria.trim() ? 'Enviar imagen' : 'Compartir imagen'}
+                {busy
+                  ? 'Preparando…'
+                  : carrusel
+                    ? `Compartir ${laminasDe(look).length} láminas`
+                    : dedicatoria.trim()
+                      ? 'Enviar imagen'
+                      : 'Compartir imagen'}
               </Text>
             </Pressable>
             <View style={styles.row}>

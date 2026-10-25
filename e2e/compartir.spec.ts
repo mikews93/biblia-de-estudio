@@ -204,3 +204,26 @@ test('un versículo enviado a un amigo le llega con su imagen, y su «Amén» vu
   await pa.context().close();
   await pb.context().close();
 });
+
+test('el carrusel para Historias arma 3 láminas, suma una con la palabra original y las descarga todas', async ({ page }) => {
+  await page.goto('/juan/3');
+  await page.getByText('Porque de tal manera amó Dios al mundo').click();
+  await page.getByRole('button', { name: 'Compartir', exact: true }).click();
+  await page.getByRole('radio', { name: 'Carrusel' }).click();
+  await expect(page.getByLabel('Lámina 1: Pregunta')).toBeVisible();
+  await expect(page.getByLabel(/^Lámina \d/)).toHaveCount(3);
+  await expect(page.getByLabel('Lámina 3: ¿Qué te dice?')).toBeVisible();
+
+  await page.getByRole('radio', { name: '¿Lo sabías?' }).click();
+  await expect(page.getByLabel('Pregunta para empezar')).toHaveValue('¿Lo sabías?');
+  await page.getByRole('tab', { name: 'Estudio' }).click();
+  await page.getByRole('radio', { name: /amó/ }).click();
+  await expect(page.getByLabel('Lámina 3: A fondo')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Compartir 4 láminas' })).toBeVisible();
+
+  const nombres: string[] = [];
+  page.on('download', (d) => nombres.push(d.suggestedFilename()));
+  await page.getByText('Descargar', { exact: true }).click();
+  await expect(page.getByText('Láminas descargadas')).toBeVisible();
+  await expect.poll(() => nombres.sort()).toEqual(['juan-3-16-1.png', 'juan-3-16-2.png', 'juan-3-16-3.png', 'juan-3-16-4.png']);
+});
