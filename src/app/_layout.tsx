@@ -127,6 +127,7 @@ function AppStack() {
           <Stack.Screen name="privacidad" options={{ title: 'Privacidad' }} />
           <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
           <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
+          <Stack.Screen name="iglesia/postular" options={{ title: 'Postular mi iglesia' }} />
           <Stack.Screen name="iglesia/[codigo]" options={{ title: 'Iglesia anfitriona' }} />
           <Stack.Screen name="cuidar" options={{ title: 'Cuidar Zarza' }} />
           <Stack.Screen name="modo" options={{ title: '' }} />

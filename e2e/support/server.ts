@@ -24,8 +24,8 @@ process.env.DATABASE_URL ??= 'postgres://postgres:postgres@127.0.0.1:5432/biblia
 process.env.DATA_DIR = path.join(DIST, 'data');
 // Los avisos push van al servicio simulado de este mismo servidor (mock-push.ts).
 process.env.PUSH_HOSTS = 'localhost,127.0.0.1';
-// Quien cuida Zarza en las pruebas (crea iglesias y círculos de solteros en /cuidar).
-process.env.CUIDADORES ??= 'cuidadora@prueba.test';
+// Quienes cuidan Zarza en las pruebas (/cuidar: iglesias y círculos de solteros; e2e/circulo.spec.ts, e2e/iglesias.spec.ts).
+process.env.CUIDADORES ??= 'cuidadora@prueba.test,cuidar-e2e@prueba.test';
 // Las fotos de perfil van a una carpeta servida como el resto de dist/, y Facebook es el simulado.
 process.env.FOTOS_STORE_DIR ??= path.join(DIST, 'fotos-prueba');
 process.env.FOTOS_URL ??= '/fotos-prueba';

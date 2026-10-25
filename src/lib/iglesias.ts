@@ -29,3 +29,31 @@ export async function salirIglesia() {
   await api('iglesiaSalir');
   await refreshGroups();
 }
+
+// ——— Postular una iglesia y ser su encargado ———
+
+/** Lo que una iglesia acepta al postularse. La revisa una persona de Cuidar Zarza antes de aprobarla. */
+export const DECLARACION_FE =
+  'Creemos en un solo Dios, eterno en tres personas: Padre, Hijo y Espíritu Santo. Jesucristo es Dios hecho hombre: ' +
+  'murió por nuestros pecados y resucitó. La Biblia es la Palabra de Dios, y la salvación es por gracia, por medio de la fe.';
+
+export type DatosPostulacion = {
+  nombre: string;
+  ciudad: string;
+  direccion: string;
+  denominacion: string;
+  responsable: string;
+  cargo: string;
+  contacto: string;
+  enlace: string;
+  mensaje: string;
+};
+export type Postulacion = { id: string; nombre: string; estado: 'pendiente' | 'aprobada' | 'rechazada'; motivo: string | null };
+export type IglesiaEncargada = IglesiaPublica & { activa: boolean; pausa: string | null; semana: number };
+
+export const postularIglesia = (datos: DatosPostulacion) =>
+  api<{ postulacion: Postulacion }>('iglesiaPostular', { ...datos, fe: true });
+
+export const miEncargo = () => api<{ postulacion: Postulacion | null; iglesia: IglesiaEncargada | null }>('iglesiaEncargo');
+
+export const nuevoCodigoIglesia = () => api<{ codigo: string }>('iglesiaNuevoCodigo');
