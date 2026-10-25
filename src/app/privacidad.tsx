@@ -79,6 +79,7 @@ const PARTES: Parte[] = [
     puntos: [
       'Hoy puede mostrarte un versículo y un plan para lo que estás orando. Lo elige tu dispositivo con tu diario de oración, tus temas y los capítulos que leíste.',
       'Tus oraciones no se envían a ningún servidor ni a la IA para esto, no guardamos tus temas y no medimos qué te muestra Hoy. Lo apagas en «Mis temas».',
+      'Si respondes «¿Cómo sigues?», tu respuesta se queda solo en ese dispositivo: no se guarda en tu cuenta.',
     ],
   },
   {

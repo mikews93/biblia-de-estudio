@@ -75,4 +75,20 @@ await shot(ro, 'o-6-no-estas-solo');
 
 await hoy('d', { desktop: true });
 
+// «¿Cómo sigues?»: una carga escrita hace cinco días
+async function comoSigues(prefix, opts) {
+  const p = await page({ ...opts, oraciones: [{ id: 'c1', titulo: 'Tristeza desde que perdí el trabajo', created: Date.now() - 5 * DIA, versiculos: [] }] });
+  await p.goto(`${BASE}/`);
+  await wait(3500);
+  await hasta(p, 'como-sigues');
+  await shot(p, `${prefix}-7-como-sigues`);
+  await p.getByRole('button', { name: 'Igual' }).click();
+  await shot(p, `${prefix}-8-igual`);
+  await p.getByRole('button', { name: 'Todavía no' }).click();
+  await hasta(p, 'como-sigues');
+  await shot(p, `${prefix}-9-hablar`);
+}
+await comoSigues('m', {});
+await comoSigues('o', { theme: 'oscuro' });
+
 await browser.close();

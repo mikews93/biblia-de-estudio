@@ -70,6 +70,24 @@ export default function MisTemas() {
 
       {ajustes.activo && (
         <>
+          <View style={[styles.hero, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>Preguntarme cómo sigo</Text>
+              <Text style={[text.small, { color: colors.muted, marginTop: 4, lineHeight: 19 }]}>
+                Cuando oras por una carga, Hoy te pregunta de vez en cuando cómo vas, como mucho una vez por semana, y te anima a
+                hablarlo con alguien de confianza. Sin avisos y sin presión.
+              </Text>
+            </View>
+            <Switch
+              value={ajustes.acompanar !== false}
+              onValueChange={(v) => cambiar({ acompanar: v })}
+              trackColor={{ true: colors.accent, false: colors.border }}
+              thumbColor={colors.surface}
+              {...(Platform.OS === 'web' ? ({ activeThumbColor: colors.surface } as object) : {})}
+              accessibilityLabel="Preguntarme cómo sigo"
+            />
+          </View>
+
           <SectionTitle>¿Por qué estás orando estos días?</SectionTitle>
           <Text style={[text.small, { color: colors.muted, marginTop: -4, marginBottom: 12 }]}>
             Elige los que quieras. Pesan más que lo que el teléfono reconoce en tu diario.

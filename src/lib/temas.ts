@@ -36,11 +36,14 @@ export type Tema = {
   plan?: string;
   /** En los temas de tristeza y ansiedad, una vez y sin insistir: buscar ayuda también es cuidarse. */
   cuidado?: boolean;
+  /** Cargas que no se llevan solo: Hoy pregunta de vez en cuando cómo sigue la persona (src/lib/acompanar.ts). */
+  acompanar?: boolean;
 };
 
 export const TEMAS: Tema[] = [
   {
     id: 'ansiedad',
+    acompanar: true,
     nombre: 'Ansiedad y preocupación',
     tuyo: 'tu ansiedad',
     plan: 'paz-ansiedad',
@@ -64,6 +67,7 @@ export const TEMAS: Tema[] = [
   },
   {
     id: 'tristeza',
+    acompanar: true,
     nombre: 'Tristeza y depresión',
     tuyo: 'tu tristeza',
     plan: 'alma-abatida',
@@ -87,6 +91,7 @@ export const TEMAS: Tema[] = [
   },
   {
     id: 'duelo',
+    acompanar: true,
     nombre: 'Duelo por alguien que partió',
     tuyo: 'tu duelo',
     plan: 'esperanza-duelo',
@@ -104,6 +109,7 @@ export const TEMAS: Tema[] = [
   },
   {
     id: 'soledad',
+    acompanar: true,
     nombre: 'Soledad',
     tuyo: 'tu soledad',
     plan: 'nunca-solo',
@@ -121,6 +127,7 @@ export const TEMAS: Tema[] = [
   },
   {
     id: 'culpa',
+    acompanar: true,
     nombre: 'Culpa y perdón',
     tuyo: 'tu deseo de perdón',
     plan: 'libre-condenacion',
@@ -138,6 +145,7 @@ export const TEMAS: Tema[] = [
   },
   {
     id: 'miedo',
+    acompanar: true,
     nombre: 'Miedo',
     tuyo: 'tu miedo',
     plan: 'no-temas',
@@ -155,6 +163,7 @@ export const TEMAS: Tema[] = [
   },
   {
     id: 'libertad',
+    acompanar: true,
     nombre: 'Tentación y adicción',
     tuyo: 'tu lucha por ser libre',
     plan: 'libres',

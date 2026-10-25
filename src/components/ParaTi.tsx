@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import ComoSigues from '@/components/ComoSigues';
 import PlanIcon from '@/components/PlanIcon';
 import { Button } from '@/components/comunidad/ui';
 import { CheckIcon, ChevronRightIcon, CloseIcon, LockIcon, PrayIcon } from '@/components/icons';
@@ -43,10 +44,10 @@ export default function ParaTiHoy({ books, comun, colors }: { books: Book[]; com
   const cambiar = (patch: Partial<typeof ajustes>) => update({ paraTi: { ...ajustes, ...patch } });
   const hayAlgo = r.versiculo || r.planes.length > 0;
 
-  if (!(r.riesgo && !vistaAyuda) && !hayAlgo) return null;
   return (
     <View style={{ gap: 16 }}>
       {r.riesgo && !vistaAyuda && <NoEstasSolo colors={colors} onListo={() => cambiar({ ayudaVista: todayKey() })} />}
+      {ajustes.activo && ajustes.acompanar !== false && <ComoSigues oraciones={oraciones} ocultos={ajustes.ocultos} colors={colors} />}
       {hayAlgo && (
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} testID="para-ti">
           {r.versiculo && <Versiculo key={r.versiculo.palabra.ref.join('.')} r={r} books={books} colors={colors} />}
@@ -267,7 +268,7 @@ function Porque({
  * Si una petición reciente habla de no querer vivir, antes que un versículo: quién puede escuchar hoy. No pasa por
  * ningún servidor ni dispara avisos.
  */
-function NoEstasSolo({ colors, onListo }: { colors: Colors; onListo: () => void }) {
+export function NoEstasSolo({ colors, onListo }: { colors: Colors; onListo?: () => void }) {
   const [pais, setPais] = useState<string | null>(paisDelTelefono);
   const [eligiendo, setEligiendo] = useState(false);
   const linea = LINEAS_VIDA.find((l) => l.pais === pais) ?? null;
@@ -320,9 +321,11 @@ function NoEstasSolo({ colors, onListo }: { colors: Colors; onListo: () => void 
         )}
       </View>
 
-      <Pressable onPress={onListo} hitSlop={8} style={{ alignSelf: 'center', marginTop: 14 }} accessibilityRole="button">
-        <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 14 }}>Ya tengo con quién hablar</Text>
-      </Pressable>
+      {onListo && (
+        <Pressable onPress={onListo} hitSlop={8} style={{ alignSelf: 'center', marginTop: 14 }} accessibilityRole="button">
+          <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 14 }}>Ya tengo con quién hablar</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
