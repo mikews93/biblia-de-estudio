@@ -2,6 +2,9 @@
   "name": "biblia-de-estudio",
   "version": "1.0.0",
   "main": "expo-router/entry",
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
     "@auth/core": "^0.41.3",
