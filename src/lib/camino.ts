@@ -31,6 +31,8 @@ export type EtapaCamino = {
   ayuda?: boolean;
   /** La pregunta cuya respuesta sirve de «propósito» en «Lo que sí importa». */
   proposito?: number;
+  /** Maneras de decirlo, para tomar como ejemplo. */
+  frases?: { para: string; texto: string }[];
 };
 
 export const CAMINO: EtapaCamino[] = [
@@ -166,6 +168,12 @@ export const CAMINO: EtapaCamino[] = [
       '¿Qué te frena para acercarte a alguien, o para darle una oportunidad a quien se acerca a ti?',
       'Si te dicen que no, ¿cómo te gustaría responder? Escribe lo que dirías, con respeto y sin reproches.',
       '¿Cómo puedes decir que no, o que sí, con honestidad y bondad, sin jugar con el corazón del otro?',
+    ],
+    frases: [
+      { para: 'Para invitar', texto: 'Me gustaría conocerte mejor. ¿Te animas a tomar un café el sábado después del servicio, con el grupo?' },
+      { para: 'Si te dicen que no', texto: 'Gracias por decírmelo con sinceridad. Sigamos sirviendo juntos como siempre.' },
+      { para: 'Para decir que no', texto: 'Gracias por invitarme y por hacerlo con tanto respeto. No siento que debamos ir por ese camino, pero valoro mucho tu amistad.' },
+      { para: 'Para decir que ahora no', texto: 'Me honra tu invitación. Estoy en una etapa de preparación y prefiero no empezar algo ahora. Gracias por entenderlo.' },
     ],
   },
 ];
