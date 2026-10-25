@@ -41,6 +41,8 @@ import { Ruta } from '@/components/SemanaSermon';
 import { palabraDeLaSemana, palabraHref, palabrasHref } from '@/lib/palabras';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
+import { useRacha } from '@/lib/racha';
+import { RachaChip } from '@/components/Racha';
 import { seasonTint } from '@/lib/retos';
 import { ganadosRecientes, sellosPara, siguienteSello, useSellos } from '@/lib/sellos';
 import { diaDeHoy, semanaActiva, siguiente, useSemanas } from '@/lib/semanas';
@@ -66,6 +68,7 @@ function Today() {
   const saludo = greetingName(usuario);
   const { settings } = useSettings();
   const progress = useProgress();
+  const racha = useRacha();
   const plans = usePlans();
   const words = useWords();
   const due = dueCards(useCards()).length;
@@ -215,9 +218,15 @@ function Today() {
             >
               <View style={styles.devotionalLabel}>
                 <HeartIcon color={colors.surface} size={18} strokeWidth={2} />
-                <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>Haz el devocional de hoy</Text>
+                <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>
+                  {racha.hoyHecho ? 'Devocional de hoy hecho' : 'Haz el devocional de hoy'}
+                </Text>
               </View>
-              <Text style={{ color: colors.accentSoft, fontSize: 13 }}>10 min</Text>
+              {racha.actual > 0 ? (
+                <RachaChip dias={racha.actual} hecha={racha.hoyHecho} colors={colors} claro />
+              ) : (
+                <Text style={{ color: colors.accentSoft, fontSize: 13 }}>10 min</Text>
+              )}
             </Pressable>
           )}
           <View style={styles.row}>

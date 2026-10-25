@@ -1,9 +1,10 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import Appear from '@/components/Appear';
-import { CheckIcon, ClockIcon, HeartIcon, LockIcon, PrayIcon } from '@/components/icons';
+import { CheckIcon, ClockIcon, FlameIcon, HeartIcon, LockIcon, PrayIcon } from '@/components/icons';
+import MiActividad from '@/components/MiActividad';
 import MiCamino from '@/components/MiCamino';
 import { OracionEditor, OracionesVista } from '@/components/Oraciones';
 import StudyPanel from '@/components/StudyPanel';
@@ -12,30 +13,37 @@ import { Book, getBooks } from '@/lib/data';
 import { verseOfTheDay } from '@/lib/daily';
 import { Entrada, deleteEntrada, toggleHecho, useDiario } from '@/lib/diario';
 import { useOraciones } from '@/lib/oraciones';
+import { useRacha } from '@/lib/racha';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-type Vista = 'devocionales' | 'oraciones' | 'camino';
+type Vista = 'actividad' | 'devocionales' | 'oraciones' | 'camino';
 const VISTAS: { key: Vista; label: string; icon: typeof HeartIcon }[] = [
+  { key: 'actividad', label: 'Actividad', icon: FlameIcon },
   { key: 'devocionales', label: 'Devocionales', icon: HeartIcon },
   { key: 'oraciones', label: 'Oraciones', icon: PrayIcon },
   { key: 'camino', label: 'Mi camino', icon: ClockIcon },
 ];
 
 /**
- * «Mi diario»: los devocionales (lo que la persona escribió al terminar cada uno), sus oraciones (con los versículos
+ * «Mi diario»: toda la actividad día por día con la racha devocional (?hoy=1 abre el devocional de hoy), los devocionales (lo que la persona escribió al terminar cada uno), sus oraciones (con los versículos
  * que la acompañan y lo que Dios respondió) y «Mi camino», todo junto a lo largo de los años.
  */
 export default function Diario() {
   const colors = useColors();
-  const params = useLocalSearchParams<{ vista?: string }>();
-  const [vista, setVista] = useState<Vista>(VISTAS.some((v) => v.key === params.vista) ? (params.vista as Vista) : 'devocionales');
+  const params = useLocalSearchParams<{ vista?: string; hoy?: string }>();
+  const [vista, setVista] = useState<Vista>(VISTAS.some((v) => v.key === params.vista) ? (params.vista as Vista) : 'actividad');
+  const { width } = useWindowDimensions();
+  const angosto = width < 440;
+  const racha = useRacha();
+  const [profundo, setProfundo] = useState(false);
   const entradas = useDiario();
   const oraciones = useOraciones();
   const [orarPor, setOrarPor] = useState<Entrada | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
-  const [today, setToday] = useState(false);
+  // El aviso de la racha abre Mi diario con el devocional de hoy.
+  const [today, setToday] = useState(params.hoy === '1');
   const daily = verseOfTheDay();
 
   useEffect(() => {
@@ -59,14 +67,14 @@ export default function Diario() {
               key={key}
               onPress={() => {
                 setVista(key);
-                router.setParams({ vista: key === 'devocionales' ? undefined : key });
+                router.setParams({ vista: key === 'actividad' ? undefined : key, hoy: undefined });
               }}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               style={[styles.tab, on && [styles.tabOn, { backgroundColor: colors.surface }]]}
             >
-              <Icon color={on ? colors.text : colors.muted} size={16} strokeWidth={on ? 2.1 : 1.8} />
-              <Text style={{ color: on ? colors.text : colors.muted, fontWeight: on ? '700' : '600', fontSize: 13 }} numberOfLines={1}>
+              {!angosto && <Icon color={on ? colors.text : colors.muted} size={16} strokeWidth={on ? 2.1 : 1.8} />}
+              <Text style={{ color: on ? colors.text : colors.muted, fontWeight: on ? '700' : '600', fontSize: angosto ? 12.5 : 13 }} numberOfLines={1}>
                 {label}
               </Text>
             </Pressable>
@@ -74,7 +82,9 @@ export default function Diario() {
         })}
       </View>
 
-      {vista === 'oraciones' ? (
+      {vista === 'actividad' ? (
+        <MiActividad colors={colors} onDevocional={() => setToday(true)} onProfundo={() => setProfundo(true)} />
+      ) : vista === 'oraciones' ? (
         <OracionesVista />
       ) : vista === 'camino' ? (
         <MiCamino entradas={entradas} oraciones={oraciones} />
@@ -100,6 +110,7 @@ export default function Diario() {
             <View style={styles.summary}>
               <Stat value={entradas.length} label={entradas.length === 1 ? 'devocional' : 'devocionales'} colors={colors} />
               <Stat value={`${hechos}/${pasos.length}`} label="pasos dados" colors={colors} />
+              <Stat value={racha.actual} label={racha.actual === 1 ? 'día de racha' : 'días de racha'} colors={colors} warm={racha.actual > 0} />
             </View>
             {dailyBook && !doneToday && (
               <Pressable
@@ -152,6 +163,10 @@ export default function Diario() {
           onClose={() => setToday(false)}
         />
       )}
+
+      {profundo && dailyBook && (
+        <StudyPanel book={dailyBook} chapter={daily.chapter} verse={daily.verse} enfoque="profundo" onClose={() => setProfundo(false)} />
+      )}
     </ScrollView>
   );
 }
@@ -193,10 +208,10 @@ function Week({ entradas, colors }: { entradas: Entrada[]; colors: Colors }) {
   );
 }
 
-function Stat({ value, label, colors }: { value: number | string; label: string; colors: Colors }) {
+function Stat({ value, label, colors, warm }: { value: number | string; label: string; colors: Colors; warm?: boolean }) {
   return (
     <View style={{ marginRight: 22 }}>
-      <Text style={{ fontFamily: serif, fontSize: 26, color: colors.text }}>{value}</Text>
+      <Text style={{ fontFamily: serif, fontSize: 26, color: warm ? colors.warm : colors.text }}>{value}</Text>
       <Text style={{ fontSize: 12, color: colors.muted }}>{label}</Text>
     </View>
   );

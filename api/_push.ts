@@ -48,7 +48,9 @@ create index if not exists suscripciones_usuario on suscripciones (usuario_id);
 alter table suscripciones add column if not exists despertar int;
 alter table suscripciones add column if not exists despertar_dias int not null default 127;
 alter table suscripciones add column if not exists despertar_enviado date;
-alter table suscripciones add column if not exists pospuesto timestamptz;`;
+alter table suscripciones add column if not exists pospuesto timestamptz;
+alter table suscripciones add column if not exists racha boolean not null default true;
+alter table suscripciones add column if not exists racha_enviado date;`;
 
 const b64 = (buf: Buffer) => buf.toString('base64url');
 const unb64 = (s: string) => Buffer.from(s, 'base64url');

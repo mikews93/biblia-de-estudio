@@ -334,6 +334,21 @@ export function SelloIcono({ dibujo, color }: { dibujo: Dibujo; color: string })
           <Path d="M9.5 12.5h5M9.5 15h3.5" />
         </>
       );
+    case 'llama': // una llama encendida: la racha
+      return (
+        <>
+          <Path d="M12 21c-3.8 0-6.5-2.7-6.5-6.3 0-2.5 1.4-4.3 2.9-5.9.3 1.5.9 2.6 1.9 3.2-.2-3.4 1.1-6.2 3.6-8.5.3 2.8 1.6 4.6 3 6.2 1 1.2 1.6 2.6 1.6 4.3 0 4-2.7 7-6.5 7z" />
+          <Path d="M12 21c-1.6 0-2.7-1.1-2.7-2.7 0-1.4.9-2.4 2-3.4.3 1 .9 1.6 1.6 1.9.4-.8.6-1.6.5-2.6 1.3 1 2.2 2.3 2.2 4 0 1.6-1.2 2.8-3.6 2.8z" fill={color} />
+        </>
+      );
+    case 'corona': // tú coronas el año
+      return (
+        <>
+          <Path d="M4.5 17 3.5 8.5l4.8 3.6L12 6l3.7 6.1 4.8-3.6-1 8.5z" />
+          <Path d="M5 20.5h14" />
+          <Circle cx={12} cy={13.5} r={1.3} fill={color} />
+        </>
+      );
     default:
       return <Rect x={6} y={6} width={12} height={12} rx={3} />;
   }

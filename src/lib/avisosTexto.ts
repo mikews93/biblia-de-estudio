@@ -1,6 +1,8 @@
 // Qué dice el recordatorio diario y cuándo toca enviarlo. Sin dependencias: lo usan el servidor
 // (api/notificaciones.ts, que lo envía) y la app (la vista previa en la pantalla de notificaciones).
 
+import type { EstadoRacha } from './rachaTexto';
+
 export type Aviso = {
   title: string;
   body: string;
@@ -22,6 +24,8 @@ export type EstadoAvisos = {
   tarjetas?: string[];
   /** El desafío de temporada en curso, con sus días aún sin leer. */
   reto?: { titulo: string; icono?: string; url: string; dias: DiaReto[] };
+  /** La racha devocional (src/lib/rachaTexto.ts): cuántos días lleva y el último día para no perderla. */
+  racha?: EstadoRacha;
 };
 
 export type Preferencias = { lectura: boolean; tarjetas: boolean; reto: boolean };

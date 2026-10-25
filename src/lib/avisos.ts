@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { EstadoAvisos, HORA_POR_DEFECTO } from './avisosTexto';
+import type { EstadoRacha } from './rachaTexto';
 import { DESPERTADOR_POR_DEFECTO, Despertador } from './despertarTexto';
 import { sessionKey } from './comunidad';
 import { Book } from './data';
@@ -22,7 +23,7 @@ import { Card } from './tarjetas';
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const KEY = 'avisos';
 
-export type Tipo = 'lectura' | 'tarjetas' | 'reto' | 'comunidad';
+export type Tipo = 'lectura' | 'tarjetas' | 'reto' | 'racha' | 'comunidad';
 
 export type Ajustes = {
   /** La dirección de la suscripción de este dispositivo, o null si están apagadas. */
@@ -39,7 +40,7 @@ export type Ajustes = {
 const DEFAULTS: Ajustes = {
   endpoint: null,
   hora: HORA_POR_DEFECTO,
-  avisos: { lectura: true, tarjetas: true, reto: true, comunidad: true },
+  avisos: { lectura: true, tarjetas: true, reto: true, racha: true, comunidad: true },
   despertar: DESPERTADOR_POR_DEFECTO,
 };
 
@@ -342,7 +343,8 @@ export function lecturaPendiente(plans: MyPlan[], books: Book[], last: { book: s
 
 /**
  * Lo que el servidor necesita saber: qué toca leer (la siguiente lectura de un plan, o donde se quedó), el último
- * día con lectura, las fechas de repaso de las tarjetas y los días pendientes del desafío de temporada.
+ * día con lectura, las fechas de repaso de las tarjetas, los días pendientes del desafío de temporada y la racha
+ * devocional (para avisar la noche antes de perderla).
  */
 export function buildEstado(input: {
   plans: MyPlan[];
@@ -351,13 +353,15 @@ export function buildEstado(input: {
   books: Book[];
   last: { book: string; chapter: number } | null;
   today: string;
+  racha?: EstadoRacha;
 }): EstadoAvisos {
-  const { plans, cards, days, books, last, today } = input;
+  const { plans, cards, days, books, last, today, racha } = input;
   const name = (id: string) => books.find((b) => b.id === id)?.name ?? id;
   const estado: EstadoAvisos = {};
 
   const read = days.filter((d) => d <= today).sort().at(-1);
   if (read) estado.leido = read;
+  if (racha) estado.racha = racha;
 
   const active = plans.filter((p) => !p.finished);
   for (const p of active) {

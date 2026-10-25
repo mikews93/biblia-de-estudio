@@ -13,7 +13,12 @@ import { lanzarConfeti } from '@/lib/confeti';
 import { CloseIcon } from './icons';
 import { hechos, DIAS, useSemanas } from '@/lib/semanas';
 import { useOraciones } from '@/lib/oraciones';
+import { diasCon, useActividad, type Registro } from '@/lib/actividad';
+import { useDiario, type Entrada } from '@/lib/diario';
 import { useProgress } from '@/lib/progress';
+import { huellasDeRacha, useRacha } from '@/lib/racha';
+import { useAvisoRacha } from '@/lib/rachaAviso';
+import { calcularRacha, fechaLocal } from '@/lib/rachaTexto';
 import { celebrado, huellasDe, iniciar, porCelebrar, semanasConMeta, useSellos, type Sello as SelloDef } from '@/lib/sellos';
 import { leerAlmacen } from '@/lib/sincronia';
 import { serif, useColors } from '@/lib/theme';
@@ -35,6 +40,7 @@ export default function Celebracion() {
   const [giro] = useState(() => new Animated.Value(0));
 
   useHuellasGuardadas();
+  useAvisoRacha(useRacha());
 
   const pendiente = porCelebrar(estado);
   const quieto = SIN_FIESTA.some((r) => r.test(pathname));
@@ -139,19 +145,29 @@ function Rayos({ color }: { color: string }) {
 
 /**
  * Huellas que salen de lo que la app ya guarda: los días con la Palabra, las semanas con la meta cumplida, las
- * oraciones respondidas y las semanas del sermón completas. La primera vez se suman sin celebrar.
+ * oraciones respondidas, las semanas del sermón completas y la racha devocional. La primera vez se suman sin celebrar.
  */
 function useHuellasGuardadas() {
   const progreso = useProgress();
   const oraciones = useOraciones();
   const { semanas } = useSemanas();
+  const registro = useActividad();
+  const diario = useDiario();
   useEffect(() => {
     let vivo = true;
     (async () => {
-      const [p, o, s] = (await Promise.all([leerAlmacen('progreso'), leerAlmacen('oraciones'), leerAlmacen('semanas')])) as [
+      const [p, o, s, r, d] = (await Promise.all([
+        leerAlmacen('progreso'),
+        leerAlmacen('oraciones'),
+        leerAlmacen('semanas'),
+        leerAlmacen('actividad'),
+        leerAlmacen('diario'),
+      ])) as [
         { days: string[] } | undefined,
         { id: string; respondida?: unknown }[] | undefined,
         Parameters<typeof hechos>[0][] | undefined,
+        Registro | undefined,
+        Entrada[] | undefined,
       ];
       if (!vivo) return;
       const dias = p?.days ?? [];
@@ -159,12 +175,15 @@ function useHuellasGuardadas() {
       await huellasDe('meta', semanasConMeta(dias));
       await huellasDe('respondida', (o ?? []).filter((x) => x.respondida).map((x) => x.id));
       await huellasDe('sermon', (s ?? []).filter((w) => hechos(w) >= DIAS).map((w) => w.id));
+      const devocionales = diasCon(r ?? {}, 'devocional');
+      for (const e of d ?? []) devocionales.add(fechaLocal(e.created));
+      await huellasDeRacha([...devocionales], calcularRacha(devocionales, fechaLocal()).mejor);
       await iniciar();
     })().catch(() => {});
     return () => {
       vivo = false;
     };
-  }, [progreso, oraciones, semanas]);
+  }, [progreso, oraciones, semanas, registro, diario]);
 }
 
 const styles = StyleSheet.create({

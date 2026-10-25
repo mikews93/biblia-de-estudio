@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { anotar } from './actividad';
 import { reportReading } from './comunidad';
 import { lanzarConfeti } from './confeti';
 import { markPlanReading } from './planes';
@@ -50,6 +51,7 @@ export async function markChapterRead(book: string, chapter: number) {
   const days = state.days.includes(today()) ? state.days : nuevoDia(state.days);
   write({ chapters: { ...state.chapters, [book]: [...read].sort((a, b) => a - b) }, days });
   cambio();
+  anotar('capitulo', `${book}.${chapter}`, '');
   reportReading(book, chapter);
   markPlanReading(book, chapter);
 }
