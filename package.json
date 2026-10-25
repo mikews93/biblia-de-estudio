@@ -5,6 +5,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
     "@expo/metro-runtime": "~58.0.14",
+    "@huggingface/transformers": "^4.3.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@vercel/blob": "^2.8.2",
     "expo": "~58.0.14",
@@ -46,6 +47,7 @@
     "data": "python3 pipeline/build_data.py",
     "comentarios": "python3 pipeline/build_comentarios.py && python3 pipeline/importar_comentario.py --entorno",
     "teologia": "python3 pipeline/build_teologia.py --publicar",
+    "semantica": "sh pipeline/semantica/traer.sh",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

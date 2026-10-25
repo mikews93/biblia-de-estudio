@@ -28,6 +28,34 @@ const text = (version: string, book: string, chapter: number, verse: number) =>
 const rv = (book: string, chapter: number, verse: number) => text('rv1909', book, chapter, verse);
 
 describe('/api/buscar', () => {
+  // La búsqueda rápida no usa la IA ni la cuenta. Aquí no hay vectores (dist/data/semantica), así que es por palabras.
+  describe.skipIf(!HAS_DATA)('modo rápido', () => {
+    const quick = (body: Record<string, unknown>) => buscar(request('/api/buscar', { ...body, modo: 'rapido' }));
+
+    it('sin cuenta y sin IA: encuentra el versículo de un fragmento recordado, con su texto real', async () => {
+      const before = aiRequests.length;
+      const res = await quick({ query: 'todo lo puedo en Cristo' });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.semantica).toBe(false);
+      expect(body.results[0]).toEqual({ ref: 'php.4.13', label: 'Filipenses 4:13', text: rv('php', 4, 13), reason: '', version: 'rv1909' });
+      expect(body.results.length).toBeLessThanOrEqual(20);
+      expect(aiRequests.length).toBe(before);
+    });
+
+    it('trae el texto en la versión libre que se lee, y en RV1909 con una versión con derechos', async () => {
+      const bes = await (await quick({ query: 'Mira que te mando que te esfuerces', version: 'bes' })).json();
+      expect(bes.results[0]).toMatchObject({ ref: 'jos.1.9', version: 'bes', text: text('bes', 'jos', 1, 9) });
+      const nbla = await (await quick({ query: 'Mira que te mando que te esfuerces', version: 'nbla' })).json();
+      expect(nbla.results[0]).toMatchObject({ ref: 'jos.1.9', version: 'rv1909' });
+    });
+
+    it('valida igual que la búsqueda con IA', async () => {
+      expect((await (await quick({ query: 'a' })).json()).error).toBe('Escribe un poco más lo que buscas');
+      expect((await (await quick({ query: 'ansiedad', version: 'inventada' })).json()).error).toBe('Versión no válida');
+    });
+  });
+
   it('sin cuenta: 401', async () => {
     const res = await buscar(request('/api/buscar', { query: 'ansiedad' }));
     expect(res.status).toBe(401);

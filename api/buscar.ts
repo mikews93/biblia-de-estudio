@@ -5,6 +5,8 @@
 // Con una versión con derechos (src/lib/licenciadas.ts) la IA trabaja con la RV1909, como en el estudio (ver
 // api/_investigar.ts), y la app muestra cada resultado en la versión de la persona.
 // Respuesta: { results: [{ ref, label, text, reason, version }], note? } | { error }. «version» es la versión del texto.
+// Con «modo: "rapido"» no hay IA ni hace falta cuenta: semántica + palabras (api/_semantica.ts), en un momento y sin
+// coste; «reason» va vacío y «semantica» dice si se usó el modelo o solo las palabras.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
@@ -12,6 +14,7 @@ import path from 'node:path';
 
 import { needsAccount } from './_cuenta';
 import { Biblia, type Lectura, lectura } from './_investigar';
+import { quickSearch } from './_semantica';
 import { formatRef, parseRef } from '../src/lib/refs';
 
 // Buscar es una tarea corta y frecuente: Sonnet cuesta la mitad que Opus y aquí rinde igual.
@@ -20,6 +23,7 @@ const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data'
 const MAX_QUERY = 200;
 const MAX_CANDIDATES = 24;
 const MAX_RESULTS = 12;
+const MAX_QUICK = 20;
 const MAX_VERSES = 6; // un pasaje propuesto no puede pasar de seis versículos
 
 type Book = { id: string; name: string; abbr: string; chapters: number; testament: 'AT' | 'NT'; interlinear: boolean };
@@ -87,17 +91,15 @@ function badRequest(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
-  const denied = await needsAccount(request);
-  if (denied) return denied;
-  let query: string;
-  let pedida: unknown;
-  try {
-    const body = (await request.json()) as { query?: unknown; version?: unknown };
-    query = String(body.query ?? '').trim();
-    pedida = body.version;
-  } catch {
-    return badRequest('JSON no válido');
+  const body = (await request.json().catch(() => null)) as { query?: unknown; version?: unknown; modo?: unknown } | null;
+  const rapido = body?.modo === 'rapido';
+  if (!rapido) {
+    const denied = await needsAccount(request);
+    if (denied) return denied;
   }
+  if (!body || typeof body !== 'object') return badRequest('JSON no válido');
+  const query = String(body.query ?? '').trim();
+  const pedida = body.version;
   if (query.length < 3) return badRequest('Escribe un poco más lo que buscas');
   if (query.length > MAX_QUERY) return badRequest('La búsqueda es demasiado larga');
   // La versión que lee la persona; con una con derechos, la IA lee la RV1909 (lectura() la cambia).
@@ -109,6 +111,20 @@ export async function POST(request: Request) {
   const system = rules(version);
   const biblia = new Biblia(request, version, books);
   const rv = version.id === 'rv1909' ? biblia : new Biblia(request, (await lectura(undefined))!, books);
+
+  if (rapido) {
+    try {
+      const { refs, semantica } = await quickSearch(query, books, MAX_QUICK);
+      const found = (await Promise.all(refs.map((r) => verify(r, books, biblia, rv)))).filter((x) => x !== null);
+      return Response.json(
+        { results: found.map((f) => ({ ...f, reason: '' })), semantica },
+        { headers: { 'Cache-Control': 'public, max-age=3600' } },
+      );
+    } catch (err) {
+      console.error('buscar rápido', err);
+      return badRequest('No se pudo hacer la búsqueda. Inténtalo de nuevo.', 502);
+    }
+  }
 
   try {
     // 1. Propuesta

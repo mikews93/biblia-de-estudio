@@ -1,0 +1,46 @@
+name: Vectores semánticos
+
+# Calcula el vector de cada versículo (pipeline/semantica/vectores.mjs, modelo multilingual-e5-small) y lo publica en
+# la versión «semantica-vectores-v1» de este repositorio, de donde lo trae pipeline/semantica/traer.sh al construir la
+# web. Se lanza al cambiar el script o a mano (unos 20 minutos).
+
+on:
+  push:
+    paths:
+      - pipeline/semantica/vectores.mjs
+      - .github/workflows/semantica-vectores.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: semantica-vectores
+  cancel-in-progress: true
+
+jobs:
+  calcular:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: semantica-vectores-v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - name: Textos de la Biblia
+        run: npm run data
+      - name: Vectores
+        run: node pipeline/semantica/vectores.mjs public/data semantica
+      - name: Publicar los archivos
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Vectores semánticos" \
+            --notes "Vectores de los versículos para la búsqueda rápida por idea (multilingual-e5-small, MIT)." --prerelease
+          gh release upload "$TAG" semantica/meta.json semantica/vectores.i8 semantica/escalas.f32 --clobber

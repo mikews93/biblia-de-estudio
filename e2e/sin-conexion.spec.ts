@@ -63,6 +63,16 @@ test('se descarga la traducción completa y se lee sin conexión; lo demás avis
   await expect(visible(page, judas[0][1].slice(0, 40))).toBeVisible();
   await expect(visible(page, 'Sin conexión')).toBeVisible();
 
+  // Buscar por idea o por unas palabras recordadas: sin internet, por palabras en lo descargado
+  await page.goto('/buscar');
+  const box = page.getByRole('textbox').filter({ visible: true }).first();
+  await box.fill('Mira que te mando que te esfuerces');
+  await box.press('Enter');
+  await expect(visible(page, 'Sin conexión · RV1909')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('link', { name: /^Josué 1:9/ }).filter({ visible: true }).first()).toContainText('esfuerces y seas valiente');
+  await expect(visible(page, /buscado por palabras en la RV1909 descargada/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Afinar con la IA' })).toHaveCount(0);
+
   // Otra versión, no descargada, avisa
   await page.evaluate(() => localStorage.setItem('ajustes', JSON.stringify({ version: 'bes' })));
   await page.goto('/romanos/1');
@@ -84,7 +94,7 @@ test('se descarga la traducción completa y se lee sin conexión; lo demás avis
   await expect(visible(page, 'Nada descargado aún')).toBeVisible();
 });
 
-test('buscar por idea sin conexión avisa sin llamar a la IA', async ({ page, context }) => {
+test('buscar por idea sin conexión y sin nada descargado avisa sin llamar al servidor', async ({ page, context }) => {
   await page.goto('/buscar');
   await withServiceWorker(page);
   // La pantalla ya cargada; luego se corta la red
@@ -93,5 +103,5 @@ test('buscar por idea sin conexión avisa sin llamar a la IA', async ({ page, co
   await offline(context, true);
   await box.fill('el amor de Dios por el mundo');
   await box.press('Enter');
-  await expect(visible(page, 'Buscar por idea necesita internet')).toBeVisible();
+  await expect(visible(page, 'Descarga una versión para buscar sin conexión')).toBeVisible();
 });

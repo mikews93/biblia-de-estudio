@@ -227,7 +227,7 @@ type Indexed = { ref: string; book: string; text: string; plain: string };
 let indexed: Promise<Indexed[]> | null = null;
 
 /** Todos los versículos de la RV1909 (la única versión que va dentro de la función), leídos una vez por instancia. */
-function rv1909Index(books: Book[]): Promise<Indexed[]> {
+export function rv1909Index(books: Book[]): Promise<Indexed[]> {
   indexed ??= Promise.all(
     books.flatMap((b) =>
       Array.from({ length: b.chapters }, (_, i) =>
