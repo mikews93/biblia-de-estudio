@@ -8,9 +8,14 @@ export default defineConfig({
   resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     setupFiles: ['tests/setup.ts'],
     testTimeout: 20_000,
     hookTimeout: 30_000,
+    // Las de api/ comparten una sola base: cada archivo corre las migraciones de su función (alter table … toma un
+    // candado exclusivo) mientras otro consulta, y en paralelo eso a veces termina en «deadlock detected». Van en fila.
+    projects: [
+      { extends: true, test: { name: 'lib', include: ['src/**/*.test.ts'] } },
+      { extends: true, test: { name: 'api', include: ['tests/**/*.test.ts'], fileParallelism: false } },
+    ],
   },
 });
