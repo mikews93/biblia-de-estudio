@@ -3,7 +3,7 @@
 
 import { api } from './comunidad';
 import type { Coincidencias, Importa, ProgresoCamino } from './camino';
-import type { Etapa, Pasaje } from './circulo';
+import type { Etapa, Pasaje, Sexo } from './circulo';
 
 export type Persona = { id: string; nombre: string; foto: string | null };
 
@@ -20,13 +20,24 @@ export type PersonaCirculo = Persona & {
   /** Si yo la marqué con «Me gustaría conocerte» (solo lo sé yo). */
   marcada: boolean;
   puedoMarcar: boolean;
+  /** Su iglesia, solo en un círculo con iglesias hermanas. */
+  iglesia: string | null;
 };
 
 export type Progreso = { dia: number; abierto: boolean; terminado: boolean };
 
 export type ConocerResumen = { id: string; otro: Persona; progreso: Progreso; mensajesNuevos: number; terminado: boolean };
 
-export type CirculoOpcion = { id: string; nombre: string; edadMin: number | null; edadMax: number | null; miembros: number; lleno: boolean };
+export type CirculoOpcion = {
+  id: string;
+  nombre: string;
+  edadMin: number | null;
+  edadMax: number | null;
+  miembros: number;
+  lleno: boolean;
+  /** Las otras iglesias del círculo. */
+  hermanas: string[];
+};
 export type Liderado = { id: string; nombre: string; iglesia: string; pendientes: number; reportes: number };
 
 export type EstadoCirculo = {
@@ -36,7 +47,7 @@ export type EstadoCirculo = {
   acuerdo: string[];
   camino: ProgresoCamino;
   importa: Importa | null;
-  miembro: { circulo: { id: string; nombre: string }; estado: 'pendiente' | 'aprobado' | 'pausado'; edad: number } | null;
+  miembro: { circulo: { id: string; nombre: string; iglesias?: string[] }; estado: 'pendiente' | 'aprobado' | 'pausado'; edad: number } | null;
   circulos?: CirculoOpcion[];
   lideres?: Persona[];
   semana?: {
@@ -67,7 +78,10 @@ export type PersonaLider = Persona & {
   solteria: boolean;
   /** El día en que terminó el camino de preparación. */
   caminoTerminado: string | null;
+  /** Su iglesia, solo en un círculo con iglesias hermanas. */
+  iglesia: string | null;
 };
+export type IglesiaCirculo = { id: string; nombre: string; ciudad: string | null; propia: boolean };
 export type Reporte = { id: number; motivo: string; detalle: string | null; creado: string; de: string; a: string; aId: string };
 export type PanelLider = {
   circulo: { id: string; nombre: string; iglesia: string; edadMin: number | null; edadMax: number | null; max: number };
@@ -77,6 +91,11 @@ export type PanelLider = {
   conociendose: number;
   /** Cuántas personas de la iglesia terminaron 1, 2… etapas del camino. */
   camino: number[];
+  /** La iglesia del círculo primero, después sus hermanas. */
+  iglesias: IglesiaCirculo[];
+  maxHermanas: number;
+  /** Solo números: cuántos hombres y cuántas mujeres hay (sin contar pedidos). */
+  balance: { hombres: number; mujeres: number };
 };
 
 export const estadoCamino = () =>
@@ -86,8 +105,8 @@ export const guardarImporta = (importa: Importa) => api<{ importa: Importa }>('c
 
 export const estadoCirculo = () => api<EstadoCirculo>('circuloEstado');
 export const cambiarEtapa = (etapa: Etapa | null) => api<{ etapa: Etapa | null }>('circuloEtapa', { etapa });
-export const pedirEntrar = (circulo: string, nacimiento: string, etapa: Etapa) =>
-  api('circuloPedir', { circulo, nacimiento, etapa, acepto: true });
+export const pedirEntrar = (circulo: string, nacimiento: string, etapa: Etapa, sexo: Sexo) =>
+  api('circuloPedir', { circulo, nacimiento, etapa, sexo, acepto: true });
 export const salirCirculo = () => api('circuloSalir');
 export const responderSemana = (texto: string) => api('circuloResponder', { texto });
 export const borrarRespuestaSemana = () => api('circuloBorrarRespuesta');
@@ -104,10 +123,13 @@ export const pedirAcompanamiento = (id: string) => api('circuloAcompanar', { id 
 
 export const panelLider = (circulo: string) => api<PanelLider>('circuloLider', { circulo });
 export const aprobar = (usuario: string, si: boolean) => api('circuloAprobar', { usuario, si });
+export const sumarHermana = (circulo: string, codigo: string) =>
+  api<{ iglesia: { id: string; nombre: string } }>('circuloHermana', { circulo, codigo });
+export const quitarHermana = (circulo: string, iglesia: string) => api('circuloHermana', { circulo, iglesia, quitar: true });
 export const revisar = (usuario: string, que: 'reactivar' | 'pausar' | 'quitar' | 'revisado') => api('circuloRevisar', { usuario, que });
 
 // Para quien cuida Zarza (/cuidar)
-export type CirculoCuidado = CirculoOpcion & { pendientes: number; max: number; lideres: { id: string; nombre: string; correo: string | null }[] };
+export type CirculoCuidado = Omit<CirculoOpcion, 'lleno'> & { pendientes: number; max: number; hombres: number; mujeres: number; lideres: { id: string; nombre: string; correo: string | null }[] };
 export const circulosDeIglesia = (iglesia: string) => api<{ circulos: CirculoCuidado[] }>('cuidarCirculos', { iglesia }).then((r) => r.circulos);
 export const nuevoCirculo = (iglesia: string, nombre: string, edadMin: string, edadMax: string) =>
   api('cuidarNuevoCirculo', { iglesia, nombre, edadMin: edadMin || null, edadMax: edadMax || null });

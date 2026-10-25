@@ -16,6 +16,10 @@
 // finanzas), y en el círculo cada uno ve en qué coincide con los demás, sin porcentajes. Si dos dicen sí y no en algo
 // que uno no negocia, no pueden marcarse.
 //
+// Un círculo puede sumar iglesias hermanas de la misma ciudad (sus líderes escriben el código de la otra iglesia): así
+// el grupo es más grande y más parejo, porque en casi todas las iglesias hay menos hombres que mujeres. Al entrar se
+// pregunta si es hombre o mujer, y los líderes solo ven cuántos hay de cada uno.
+//
 // Los círculos y sus líderes los crea quien cuida Zarza (/cuidar). El guion bajo hace que Vercel no la publique como
 // función: sus acciones van por /api/comunidades, con la misma cuenta y la misma base de Neon.
 
@@ -28,6 +32,7 @@ import {
   DIAS_TRAS_CERRAR,
   EDAD_MINIMA,
   MAX_CIRCULO,
+  MAX_HERMANAS,
   MAX_MARCAS_ABIERTAS,
   MAX_MARCAS_MES,
   MOTIVOS_REPORTE,
@@ -41,8 +46,10 @@ import {
   fechaValida,
   puedeEntrar,
   semanaDe,
+  sexoDe,
 } from '../src/lib/circulo';
 import { CAMINO, ETAPAS_CAMINO, type Importa, coincidencias, importaValido, progresoCamino } from '../src/lib/camino';
+import { limpiarCodigo } from './_iglesias';
 import { notifyUser } from './_push';
 import { esCuidador } from './_senales';
 
@@ -144,7 +151,14 @@ create table if not exists circulo_importa (
   usuario_id uuid primary key references usuarios on delete cascade,
   datos jsonb not null,
   actualizado timestamptz not null default now()
-);`;
+);
+create table if not exists circulo_iglesias (
+  circulo_id uuid not null references circulos on delete cascade,
+  iglesia_id uuid not null references iglesias_anfitrionas on delete cascade,
+  creado timestamptz not null default now(),
+  primary key (circulo_id, iglesia_id)
+);
+alter table circulo_miembros add column if not exists sexo text;`;
 
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
@@ -197,6 +211,26 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
 
   async function exigirLider(sql: Sql, yo: Yo, circuloId: string) {
     if (!(await lidera(sql, yo, circuloId))) throw fail('Solo los líderes de este círculo pueden hacer esto.', 403);
+  }
+
+  /** El círculo `c` es de la iglesia `iglesia` o la sumó como hermana. */
+  const deIglesia = (sql: Sql, iglesia: string) => sql`
+    (c.iglesia_id = ${iglesia} or exists (select 1 from circulo_iglesias ci where ci.circulo_id = c.id and ci.iglesia_id = ${iglesia}))`;
+
+  /** La iglesia del círculo primero y después sus hermanas. */
+  async function iglesiasDe(sql: Sql, circuloId: string) {
+    return sql<{ id: string; nombre: string; ciudad: string | null; propia: boolean }[]>`
+      select i.id, i.nombre, i.ciudad, i.id = c.iglesia_id as propia from circulos c
+        join iglesias_anfitrionas i on i.id = c.iglesia_id or i.id in (select iglesia_id from circulo_iglesias where circulo_id = c.id)
+      where c.id = ${circuloId} order by (i.id = c.iglesia_id) desc, i.nombre`;
+  }
+
+  /** Cuántos hombres y mujeres hay en el círculo (sin contar pedidos). Solo números. */
+  async function balanceDe(sql: Sql, circuloId: string) {
+    const [b] = await sql<{ hombres: number; mujeres: number }[]>`
+      select count(*) filter (where sexo = 'h')::int as hombres, count(*) filter (where sexo = 'm')::int as mujeres
+      from circulo_miembros where circulo_id = ${circuloId} and estado <> 'pendiente'`;
+    return b;
   }
 
   const bloqueo = (sql: Sql, x: string, y: string) => sql`
@@ -307,15 +341,25 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
 
       if (!m) {
         const circulos = iglesia
-          ? await sql<{ id: string; nombre: string; edadMin: number | null; edadMax: number | null; miembros: number }[]>`
+          ? await sql<{ id: string; nombre: string; edadMin: number | null; edadMax: number | null; miembros: number; hermanas: string[] }[]>`
               select c.id, c.nombre, c.edad_min as "edadMin", c.edad_max as "edadMax",
-                (select count(*)::int from circulo_miembros m where m.circulo_id = c.id and m.estado <> 'pendiente') as miembros
-              from circulos c where c.iglesia_id = ${iglesia.id} order by c.edad_min nulls first, c.nombre`
+                (select count(*)::int from circulo_miembros m where m.circulo_id = c.id and m.estado <> 'pendiente') as miembros,
+                array(
+                  select i.nombre from iglesias_anfitrionas i
+                  where i.id <> ${iglesia.id} and (i.id = c.iglesia_id or i.id in (select iglesia_id from circulo_iglesias where circulo_id = c.id))
+                  order by i.nombre
+                ) as hermanas
+              from circulos c where ${deIglesia(sql, iglesia.id)} order by c.edad_min nulls first, c.nombre`
           : [];
         return { ...base, miembro: null, circulos: circulos.map((c) => ({ ...c, lleno: c.miembros >= MAX_CIRCULO })) };
       }
 
-      const miembro = { circulo: { id: m.circulo_id, nombre: m.nombre }, estado: m.estado, edad: edad(m.nacimiento, hoy) };
+      const iglesias = await iglesiasDe(sql, m.circulo_id);
+      const miembro = {
+        circulo: { id: m.circulo_id, nombre: m.nombre, iglesias: iglesias.map((i) => i.nombre) },
+        estado: m.estado,
+        edad: edad(m.nacimiento, hoy),
+      };
       if (m.estado !== 'aprobado') return { ...base, miembro };
 
       const semana = semanaDe(hoy);
@@ -327,8 +371,11 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
       const lideres = await sql<{ id: string; nombre: string; foto: string | null }[]>`
         select u.id, u.nombre, u.foto from circulo_lideres l join usuarios u on u.id = l.usuario_id
         where l.circulo_id = ${m.circulo_id} order by u.nombre`;
-      const gente = await sql<{ id: string; nombre: string; foto: string | null; bio: string | null; etapa: Etapa | null }[]>`
-        select u.id, u.nombre, u.foto, u.bio, u.etapa from circulo_miembros x join usuarios u on u.id = x.usuario_id
+      // En un círculo con iglesias hermanas, cada persona lleva el nombre de la suya.
+      const gente = await sql<{ id: string; nombre: string; foto: string | null; bio: string | null; etapa: Etapa | null; iglesia: string | null }[]>`
+        select u.id, u.nombre, u.foto, u.bio, u.etapa,
+          ${iglesias.length > 1 ? sql`(select i.nombre from iglesia_miembros im join iglesias_anfitrionas i on i.id = im.iglesia_id where im.usuario_id = u.id limit 1)` : sql`null`} as iglesia
+        from circulo_miembros x join usuarios u on u.id = x.usuario_id
         where x.circulo_id = ${m.circulo_id} and x.estado = 'aprobado' and u.id <> ${yo.id}
           and not exists (select 1 from bloqueos b where (b.de = ${yo.id} and b.a = u.id) or (b.de = u.id and b.a = ${yo.id}))
         order by u.nombre`;
@@ -459,14 +506,17 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
       if (!puedeEntrar(etapa)) throw fail('El círculo es para personas solteras.');
       if (body.acepto !== true) throw fail('Para entrar hay que aceptar el acuerdo del círculo.');
       if (!fechaValida(body.nacimiento)) throw fail('Escribe tu fecha de nacimiento');
+      const sexo = sexoDe(body.sexo);
+      if (!sexo) throw fail('Elige si eres hombre o mujer');
       const anios = edad(body.nacimiento, hoy);
       if (anios < EDAD_MINIMA) throw fail(`El círculo es solo para mayores de ${EDAD_MINIMA} años.`, 403);
       if (anios > 120) throw fail('Revisa tu fecha de nacimiento');
       const [c] = await sql<{ id: string; nombre: string; edad_min: number | null; edad_max: number | null }[]>`
         select c.id, c.nombre, c.edad_min, c.edad_max from circulos c
-          join iglesia_miembros im on im.iglesia_id = c.iglesia_id and im.usuario_id = ${yo.id}
-          join iglesias_anfitrionas i on i.id = c.iglesia_id and i.activa
-        where c.id = ${circuloId}`;
+          join iglesia_miembros im on im.usuario_id = ${yo.id}
+          join iglesias_anfitrionas i on i.id = im.iglesia_id and i.activa
+        where c.id = ${circuloId}
+          and (c.iglesia_id = im.iglesia_id or exists (select 1 from circulo_iglesias ci where ci.circulo_id = c.id and ci.iglesia_id = im.iglesia_id))`;
       if (!c) throw fail('Ese círculo no es de tu iglesia.', 404);
       if ((c.edad_min && anios < c.edad_min) || (c.edad_max && anios > c.edad_max)) throw fail('Ese círculo es para otra edad. Elige el tuyo.');
       if (await miembroDe(sql, yo.id)) throw fail('Ya estás en un círculo. Sal de él para pedir otro.', 409);
@@ -474,7 +524,7 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
       if (!mio) throw fail('Antes de entrar, responde «Lo que sí importa».', 403);
       if (mio.solteria && etapa === 'abierto') throw fail('Dijiste que te sientes llamado a la soltería en esta etapa: entra solo para hacer amistades.');
       await sql`update usuarios set etapa = ${etapa} where id = ${yo.id}`;
-      await sql`insert into circulo_miembros (usuario_id, circulo_id, nacimiento) values (${yo.id}, ${c.id}, ${body.nacimiento})`;
+      await sql`insert into circulo_miembros (usuario_id, circulo_id, nacimiento, sexo) values (${yo.id}, ${c.id}, ${body.nacimiento}, ${sexo})`;
       await avisarLideres(sql, c.id, {
         title: `${yo.nombre} quiere entrar a ${c.nombre}`,
         body: 'Revisa su pedido: tú decides si entra al círculo.',
@@ -709,8 +759,10 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
         select c.id, c.nombre, i.nombre as iglesia, c.edad_min as "edadMin", c.edad_max as "edadMax"
         from circulos c join iglesias_anfitrionas i on i.id = c.iglesia_id where c.id = ${id}`;
       if (!c) throw fail('Ese círculo no existe.', 404);
-      const gente = await sql<{ id: string; nombre: string; foto: string | null; bio: string | null; correo: string | null; etapa: Etapa | null; estado: string; nacimiento: string }[]>`
-        select u.id, u.nombre, u.foto, u.bio, u.correo, u.etapa, m.estado, to_char(m.nacimiento, 'YYYY-MM-DD') as nacimiento
+      const iglesias = await iglesiasDe(sql, id);
+      const gente = await sql<{ id: string; nombre: string; foto: string | null; bio: string | null; correo: string | null; etapa: Etapa | null; estado: string; nacimiento: string; iglesia: string | null }[]>`
+        select u.id, u.nombre, u.foto, u.bio, u.correo, u.etapa, m.estado, to_char(m.nacimiento, 'YYYY-MM-DD') as nacimiento,
+          (select i.nombre from iglesia_miembros im join iglesias_anfitrionas i on i.id = im.iglesia_id where im.usuario_id = u.id limit 1) as iglesia
         from circulo_miembros m join usuarios u on u.id = m.usuario_id where m.circulo_id = ${id} order by m.creado`;
       const reportes = await sql<{ id: number; motivo: string; detalle: string | null; creado: string; de: string; a: string; aId: string }[]>`
         select r.id::int, r.motivo, r.detalle, r.creado, d.nombre as de, x.nombre as a, x.id as "aId"
@@ -727,12 +779,12 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
           : []
         ).map((r) => [r.usuario_id, r.fecha]),
       );
-      // Para la iglesia, solo números: cuántas personas van en cada etapa del camino. Nunca quiénes ni qué escribieron.
+      // Para las iglesias del círculo, solo números: cuántas personas van en cada etapa del camino. Nunca quiénes ni qué
+      // escribieron.
       const porEtapa = await sql<{ hechas: number; n: number }[]>`
         select e.hechas, count(*)::int as n from (
           select ce.usuario_id, count(*)::int as hechas from camino_etapas ce
-            join iglesia_miembros im on im.usuario_id = ce.usuario_id
-            join circulos c on c.iglesia_id = im.iglesia_id and c.id = ${id}
+            join iglesia_miembros im on im.usuario_id = ce.usuario_id and im.iglesia_id in ${sql(iglesias.map((i) => i.id))}
           group by ce.usuario_id
         ) e group by e.hechas`;
       const camino = Array.from({ length: ETAPAS_CAMINO }, (_, i) => porEtapa.find((r) => r.hechas === i + 1)?.n ?? 0);
@@ -741,6 +793,7 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
         ...publico(importas.get(g.id)),
         solteria: !!importas.get(g.id)?.solteria,
         caminoTerminado: terminaron.get(g.id) ?? null,
+        iglesia: iglesias.length > 1 ? g.iglesia : null,
       });
       return {
         circulo: { ...c, max: MAX_CIRCULO },
@@ -749,7 +802,33 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
         reportes,
         conociendose,
         camino,
+        iglesias: iglesias.map(({ id: iid, nombre, ciudad, propia }) => ({ id: iid, nombre, ciudad, propia })),
+        maxHermanas: MAX_HERMANAS,
+        balance: await balanceDe(sql, id),
       };
+    },
+
+    /**
+     * Sumar una iglesia hermana al círculo con el código de esa iglesia (quien lo tiene es parte de ella), o quitarla.
+     * Quienes ya entraron desde ella se quedan; solo deja de aceptar pedidos nuevos de esa iglesia.
+     */
+    async circuloHermana({ sql, body, request }) {
+      const yo = await auth(sql, request);
+      const id = idDe(body.circulo);
+      await exigirLider(sql, yo, id);
+      if (body.quitar === true) {
+        await sql`delete from circulo_iglesias where circulo_id = ${id} and iglesia_id = ${idDe(body.iglesia)}`;
+        return {};
+      }
+      const codigo = limpiarCodigo(body.codigo);
+      if (!codigo) throw fail('Escribe el código de la otra iglesia');
+      const [i] = await sql<{ id: string; nombre: string; activa: boolean }[]>`select id, nombre, activa from iglesias_anfitrionas where codigo = ${codigo}`;
+      if (!i || !i.activa) throw fail('No hay ninguna iglesia activa con ese código.', 404);
+      const iglesias = await iglesiasDe(sql, id);
+      if (iglesias.some((x) => x.id === i.id)) throw fail(`${i.nombre} ya está en este círculo.`);
+      if (iglesias.length - 1 >= MAX_HERMANAS) throw fail(`Un círculo puede sumar hasta ${MAX_HERMANAS} iglesias hermanas.`);
+      await sql`insert into circulo_iglesias (circulo_id, iglesia_id) values (${id}, ${i.id}) on conflict do nothing`;
+      return { iglesia: { id: i.id, nombre: i.nombre } };
     },
 
     async circuloAprobar({ sql, body, request }) {
@@ -809,10 +888,15 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
       const yo = await auth(sql, request);
       if (!esCuidador(yo.correo)) throw fail('Solo quienes cuidan Zarza pueden ver esto.', 403);
       const iglesia = idDe(body.iglesia);
-      const circulos = await sql<{ id: string; nombre: string; edadMin: number | null; edadMax: number | null; miembros: number; pendientes: number }[]>`
+      const circulos = await sql<
+        { id: string; nombre: string; edadMin: number | null; edadMax: number | null; miembros: number; pendientes: number; hombres: number; mujeres: number; hermanas: string[] }[]
+      >`
         select c.id, c.nombre, c.edad_min as "edadMin", c.edad_max as "edadMax",
           (select count(*)::int from circulo_miembros m where m.circulo_id = c.id and m.estado <> 'pendiente') as miembros,
-          (select count(*)::int from circulo_miembros m where m.circulo_id = c.id and m.estado = 'pendiente') as pendientes
+          (select count(*)::int from circulo_miembros m where m.circulo_id = c.id and m.estado = 'pendiente') as pendientes,
+          (select count(*)::int from circulo_miembros m where m.circulo_id = c.id and m.estado <> 'pendiente' and m.sexo = 'h') as hombres,
+          (select count(*)::int from circulo_miembros m where m.circulo_id = c.id and m.estado <> 'pendiente' and m.sexo = 'm') as mujeres,
+          array(select i.nombre from circulo_iglesias ci join iglesias_anfitrionas i on i.id = ci.iglesia_id where ci.circulo_id = c.id order by i.nombre) as hermanas
         from circulos c where c.iglesia_id = ${iglesia} order by c.edad_min nulls first, c.nombre`;
       const lideres = await sql<{ circulo_id: string; id: string; nombre: string; correo: string | null }[]>`
         select l.circulo_id, u.id, u.nombre, u.correo from circulo_lideres l join usuarios u on u.id = l.usuario_id

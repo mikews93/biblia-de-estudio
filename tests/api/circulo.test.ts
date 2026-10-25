@@ -30,9 +30,9 @@ async function persona(name: string, extra: Record<string, unknown> = {}) {
 }
 
 /** Una iglesia con un círculo de 18 a 35 y una líder. */
-async function iglesia() {
+async function iglesia(nombre = 'Vida Nueva') {
   const cuida = (await call()('entrar', { correo: cuidadora.correo, clave: 'una clave larga' })).json.llave as string;
-  const ig = await call()('cuidarNuevaIglesia', { nombre: 'Vida Nueva' }, cuida);
+  const ig = await call()('cuidarNuevaIglesia', { nombre }, cuida);
   expect(ig.status).toBe(200);
   const nuevo = await call()('cuidarNuevoCirculo', { iglesia: ig.json.iglesia.id, nombre: 'Jóvenes adultos', edadMin: 18, edadMax: 35 }, cuida);
   expect(nuevo.status).toBe(200);
@@ -51,12 +51,12 @@ async function camino(llave: string) {
 }
 
 /** Alguien de la iglesia que hizo el camino, responde «Lo que sí importa», entra al círculo y la líder aprueba. */
-async function miembro(name: string, ig: Awaited<ReturnType<typeof iglesia>>, etapa = 'abierto', conCamino = true) {
+async function miembro(name: string, ig: Awaited<ReturnType<typeof iglesia>>, etapa = 'abierto', conCamino = true, sexo = 'm') {
   const p = await persona(name);
   if (conCamino) await camino(p.llave);
   expect((await importa(p.llave)).status).toBe(200);
   await call()('iglesiaUnirme', { codigo: ig.codigo }, p.llave);
-  const r = await call()('circuloPedir', { circulo: ig.circulo, nacimiento: '2000-05-10', acepto: true, etapa }, p.llave);
+  const r = await call()('circuloPedir', { circulo: ig.circulo, nacimiento: '2000-05-10', acepto: true, etapa, sexo }, p.llave);
   expect(r.status).toBe(200);
   expect((await call()('circuloAprobar', { usuario: p.id, si: true }, ig.lider.llave)).status).toBe(200);
   return p;
@@ -76,8 +76,9 @@ describe.skipIf(!DB_URL)('/api/comunidades: círculo de solteros', () => {
     expect(r.json.circulos).toEqual([expect.objectContaining({ id: ig.circulo, nombre: 'Jóvenes adultos', edadMin: 18, edadMax: 35, lleno: false })]);
 
     const pedir = (extra: Record<string, unknown>) =>
-      call()('circuloPedir', { circulo: ig.circulo, nacimiento: '2000-05-10', acepto: true, etapa: 'abierto', ...extra }, ana.llave);
+      call()('circuloPedir', { circulo: ig.circulo, nacimiento: '2000-05-10', acepto: true, etapa: 'abierto', sexo: 'm', ...extra }, ana.llave);
     expect((await pedir({ nacimiento: '2010-01-01' })).status).toBe(403);
+    expect((await pedir({ sexo: 'x' })).json.error).toMatch(/hombre o mujer/);
     expect((await pedir({ nacimiento: '1980-01-01' })).json.error).toMatch(/otra edad/);
     expect((await pedir({ acepto: false })).status).toBe(400);
     expect((await pedir({ etapa: 'casado' })).status).toBe(400);
@@ -285,5 +286,53 @@ describe.skipIf(!DB_URL)('/api/comunidades: círculo de solteros', () => {
     expect(r.json.circulos).toEqual([
       expect.objectContaining({ nombre: 'Jóvenes adultos', max: 30, lideres: [expect.objectContaining({ id: ig.lider.id })] }),
     ]);
+  });
+
+  it('iglesias hermanas: el líder suma otra iglesia con su código y ve cuántos hombres y mujeres hay', async () => {
+    const ig = await iglesia();
+    const otra = await iglesia('Betel');
+    await miembro('Marta', ig, 'abierto', false, 'm');
+    await miembro('Lucía', ig, 'abierto', false, 'm');
+    await miembro('Pedro', ig, 'abierto', false, 'h');
+
+    // Alguien de Betel todavía no ve el círculo de Vida Nueva
+    const juan = await persona('Juan');
+    expect((await importa(juan.llave)).status).toBe(200);
+    await call()('iglesiaUnirme', { codigo: otra.codigo }, juan.llave);
+    let r = await call()('circuloEstado', {}, juan.llave);
+    expect(r.json.circulos.map((c: { id: string }) => c.id)).not.toContain(ig.circulo);
+    const pedir = () => call()('circuloPedir', { circulo: ig.circulo, nacimiento: '2000-05-10', acepto: true, etapa: 'abierto', sexo: 'h' }, juan.llave);
+    expect((await pedir()).status).toBe(404);
+
+    // Solo un líder del círculo suma hermanas, con un código que exista
+    expect((await call()('circuloHermana', { circulo: ig.circulo, codigo: otra.codigo }, juan.llave)).status).toBe(403);
+    expect((await call()('circuloHermana', { circulo: ig.circulo, codigo: 'NOEXISTE' }, ig.lider.llave)).status).toBe(404);
+    expect((await call()('circuloHermana', { circulo: ig.circulo, codigo: otra.codigo.toLowerCase() }, ig.lider.llave)).status).toBe(200);
+    expect((await call()('circuloHermana', { circulo: ig.circulo, codigo: otra.codigo }, ig.lider.llave)).json.error).toMatch(/ya está/);
+
+    r = await call()('circuloEstado', {}, juan.llave);
+    expect(r.json.circulos).toEqual(expect.arrayContaining([expect.objectContaining({ id: ig.circulo, hermanas: ['Vida Nueva'] })]));
+    expect((await pedir()).status).toBe(200);
+    expect((await call()('circuloAprobar', { usuario: juan.id, si: true }, ig.lider.llave)).status).toBe(200);
+
+    // En un círculo compartido cada persona lleva el nombre de su iglesia
+    r = await call()('circuloEstado', {}, juan.llave);
+    expect(r.json.miembro.circulo.iglesias).toEqual(['Vida Nueva', 'Betel']);
+    expect(r.json.personas).toEqual(expect.arrayContaining([expect.objectContaining({ nombre: expect.stringContaining('Pedro'), iglesia: 'Vida Nueva' })]));
+
+    const panel = (await call()('circuloLider', { circulo: ig.circulo }, ig.lider.llave)).json;
+    expect(panel.balance).toEqual({ hombres: 2, mujeres: 2 });
+    expect(panel.iglesias).toEqual([
+      expect.objectContaining({ nombre: 'Vida Nueva', propia: true }),
+      expect.objectContaining({ id: otra.iglesiaId, nombre: 'Betel', propia: false }),
+    ]);
+    expect(panel.miembros).toEqual(expect.arrayContaining([expect.objectContaining({ id: juan.id, iglesia: 'Betel' })]));
+
+    // Quitar la hermana no saca a quien ya entró
+    expect((await call()('circuloHermana', { circulo: ig.circulo, iglesia: otra.iglesiaId, quitar: true }, ig.lider.llave)).status).toBe(200);
+    r = await call()('circuloEstado', {}, juan.llave);
+    expect(r.json.miembro.estado).toBe('aprobado');
+    const cuidar = (await call()('cuidarCirculos', { iglesia: ig.iglesiaId }, ig.cuida)).json.circulos;
+    expect(cuidar[0]).toMatchObject({ hombres: 2, mujeres: 2, hermanas: [] });
   });
 });
