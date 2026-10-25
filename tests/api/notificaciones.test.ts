@@ -12,6 +12,7 @@ import { client, DB_URL, ensureSchema, HAS_DATA, Post, prepareEnv, request, uniq
 let POST: Post;
 let GET: Post;
 let comunidades: Post;
+let vivoPOST: Post;
 let server: Server;
 let base: string;
 let sql: ReturnType<typeof postgres>;
@@ -21,6 +22,7 @@ beforeAll(async () => {
   process.env.PUSH_HOSTS = '127.0.0.1';
   ({ POST, GET } = await import('../../api/notificaciones'));
   ({ POST: comunidades } = await import('../../api/comunidades'));
+  ({ POST: vivoPOST } = await import('../../api/vivo'));
   server = createServer((req, res) => {
     void handlePush(req, res).then((handled) => {
       if (!handled) res.writeHead(404).end();
@@ -316,5 +318,97 @@ describe.skipIf(!DB_URL || !HAS_DATA)('avisos de la comunidad', () => {
         tag: `grupo-${id}`,
       },
     ]);
+  });
+
+  /** Un grupo de Ana con Beto y Caro dentro; Beto y Caro con avisos activos. */
+  async function grupoConTres() {
+    const [ana, beto, caro] = [await persona('Ana'), await persona('Beto'), await persona('Caro')];
+    const { id } = (await com()('crearGrupo', { nombre: 'Grupo de conexión', tipo: 'celula' }, ana.llave)).json;
+    const { grupo } = (await com()('grupo', { grupo: id }, ana.llave)).json;
+    await com()('unirse', { codigo: grupo.codigo }, beto.llave);
+    await com()('unirse', { codigo: grupo.codigo }, caro.llave);
+    const subBeto = nuevaSuscripcion(base);
+    const subCaro = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: subBeto }, beto.llave);
+    await call('guardar', { suscripcion: subCaro }, caro.llave);
+    return { ana, beto, caro, id, subBeto, subCaro };
+  }
+
+  it('lo que alguien manda al grupo avisa a los demás, y se puede silenciar un grupo', async () => {
+    const { ana, beto, caro, id, subBeto, subCaro } = await grupoConTres();
+    const silenciar = await com()('avisosGrupo', { grupo: id, si: false }, caro.llave);
+    expect(silenciar.json).toEqual({ avisos: false });
+
+    await com()('nuevaNota', { grupo: id, libro: 'jhn', capitulo: 3, versiculo: 16, texto: 'Tanto nos amó' }, ana.llave);
+    await com()('nuevaPeticion', { grupo: id, texto: 'Por la salud de mi mamá' }, ana.llave);
+    await com()('compartirGuia', { grupo: id, titulo: 'El padre que corre', pasaje: 'Lucas 15:11-32', texto: 'Preguntas…' }, ana.llave);
+
+    expect(deliveredTo(subBeto.id).map((e) => e.aviso)).toEqual([
+      { title: `${ana.nombre} dejó una nota en Juan 3:16`, body: 'Grupo de conexión · Tanto nos amó', url: `/grupos/${id}?tab=notas`, tag: `grupo-notas-${id}` },
+      { title: `${ana.nombre} pidió oración en Grupo de conexión`, body: 'Por la salud de mi mamá', url: `/grupos/${id}?tab=oracion`, tag: `grupo-oracion-${id}` },
+      {
+        title: `${ana.nombre} compartió «El padre que corre» con Grupo de conexión`,
+        body: 'Lucas 15:11-32 · Ábrelo para prepararte para la reunión.',
+        url: `/grupos/${id}?tab=reunion`,
+        tag: `grupo-guia-${id}`,
+      },
+    ]);
+    expect(deliveredTo(subCaro.id)).toHaveLength(0);
+
+    // El perfil y la pantalla del grupo dicen si sus avisos llegan.
+    const yo = (await com()('yo', {}, caro.llave)).json;
+    expect(yo.grupos).toEqual([expect.objectContaining({ id, avisos: false, soyAdmin: false })]);
+    expect((await com()('grupo', { grupo: id }, beto.llave)).json.grupo.avisos).toBe(true);
+    expect((await com()('avisosGrupo', { grupo: id, si: true }, (await persona('Dani')).llave)).status).toBe(403);
+  });
+
+  it('un evento en vivo avisa a los grupos elegidos la primera vez que empieza', async () => {
+    const { ana, beto, id, subBeto, subCaro } = await grupoConTres();
+    const otra = await persona('Eva');
+    const ajeno = (await com()('crearGrupo', { nombre: 'Otro grupo', tipo: 'amigos' }, otra.llave)).json.id;
+    const vivo = async (accion: string, body: Record<string, unknown>, llave: string) => {
+      const res = await vivoPOST(request('/api/vivo', { accion, ...body }, llave));
+      return { status: res.status, json: (await res.json()) as Record<string, any> };
+    };
+    const { evento } = (
+      await vivo('publicar', { mensaje: 'm-grupo', titulo: 'El hijo que vuelve', puntos: [{ titulo: 'Se fue', texto: '', citas: [] }] }, ana.llave)
+    ).json;
+    // Solo cuentan los grupos de quien predica.
+    expect((await vivo('gruposEvento', { codigo: evento.codigo, grupos: [id, ajeno, 'no-es-id'] }, ana.llave)).json).toEqual({ grupos: [id] });
+    expect((await vivo('gruposEvento', { codigo: evento.codigo, grupos: [id] }, beto.llave)).status).toBe(403);
+    expect((await vivo('ver', { codigo: evento.codigo }, ana.llave)).json.evento.grupos).toEqual([id]);
+    expect(deliveredTo(subBeto.id)).toHaveLength(0);
+
+    await vivo('mover', { codigo: evento.codigo, estado: 'en-vivo' }, ana.llave);
+    await vivo('mover', { codigo: evento.codigo, punto: 0 }, ana.llave);
+    await vivo('mover', { codigo: evento.codigo, estado: 'terminado' }, ana.llave);
+    await vivo('mover', { codigo: evento.codigo, estado: 'en-vivo' }, ana.llave);
+    const aviso = {
+      title: `${ana.nombre} empezó en vivo: «El hijo que vuelve»`,
+      body: 'Grupo de conexión · Toca para seguir el mensaje en tu teléfono.',
+      url: `/evento/${evento.codigo}`,
+      tag: `evento-${evento.codigo}`,
+    };
+    expect(deliveredTo(subBeto.id).map((e) => e.aviso)).toEqual([aviso]);
+    expect(deliveredTo(subCaro.id).map((e) => e.aviso)).toEqual([aviso]);
+
+    // Ya en vivo: elegir otro grupo le avisa al momento.
+    const otroDeAna = (await com()('crearGrupo', { nombre: 'Familia', tipo: 'familia' }, ana.llave)).json.id;
+    const { grupo } = (await com()('grupo', { grupo: otroDeAna }, ana.llave)).json;
+    await com()('unirse', { codigo: grupo.codigo }, otra.llave);
+    const subEva = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: subEva }, otra.llave);
+    await vivo('gruposEvento', { codigo: evento.codigo, grupos: [id, otroDeAna] }, ana.llave);
+    expect(deliveredTo(subEva.id).map((e) => e.aviso.body)).toEqual(['Familia · Toca para seguir el mensaje en tu teléfono.']);
+    expect(deliveredTo(subBeto.id)).toHaveLength(1);
+  });
+
+  it('el perfil de alguien muestra solo los grupos en común', async () => {
+    const { ana, beto, id } = await grupoConTres();
+    await com()('crearGrupo', { nombre: 'Solo de Beto', tipo: 'amigos' }, beto.llave);
+    const visto = (await com()('persona', { usuario: beto.id }, ana.llave)).json.persona;
+    expect(visto.grupos).toEqual([{ id, nombre: 'Grupo de conexión', tipo: 'celula', miembros: 3 }]);
+    const propio = (await com()('persona', { usuario: beto.id }, beto.llave)).json.persona;
+    expect(propio.grupos.map((g: { nombre: string }) => g.nombre).sort()).toEqual(['Grupo de conexión', 'Solo de Beto']);
   });
 });

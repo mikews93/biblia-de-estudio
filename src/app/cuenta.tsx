@@ -4,6 +4,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 
 import Appear from '@/components/Appear';
 import { ProgresoCuenta } from '@/components/Sincronia';
+import MisGrupos from '@/components/comunidad/MisGrupos';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
@@ -185,6 +186,10 @@ export default function AccountScreen() {
 
       <Appear delay={40}>
         <ProgresoCuenta />
+      </Appear>
+
+      <Appear delay={50}>
+        <MisGrupos />
       </Appear>
 
       <Appear delay={60}>

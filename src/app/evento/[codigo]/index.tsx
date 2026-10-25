@@ -3,10 +3,10 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
-import { Avatar, Button, Card, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
+import { Avatar, Button, Card, ErrorText, Field, IconText, text, useAction } from '@/components/comunidad/ui';
 import { InteraccionEvento, LanzarInteraccion } from '@/components/evento/Interaccion';
 import { CitaDesplegable, EstadoPill, LiveDot, useEventoEnVivo } from '@/components/evento/piezas';
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CommentIcon, HourglassIcon, LiveIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
+import { BellIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, CommentIcon, HourglassIcon, LiveIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
 import { Tramos, useTic } from '@/components/vivo/Guion';
 import { LIVE_RED } from '@/components/vivo/piezas';
 import { useAccount } from '@/lib/comunidad';
@@ -386,6 +386,14 @@ function Controles({ evento, books, onCambio, colors }: { evento: Evento; books:
             )}
           </View>
         ) : (
+          <>
+          {evento.estado === 'pronto' && !!evento.grupos?.length && (
+            <IconText icon={BellIcon} color={colors.warm} size={13}>
+              <Text style={{ color: colors.muted, fontSize: 13 }}>
+                Al empezar se avisa a {evento.grupos.length === 1 ? 'tu grupo' : `tus ${evento.grupos.length} grupos`}.
+              </Text>
+            </IconText>
+          )}
           <Button
             label={evento.estado === 'pronto' ? 'Empezar en vivo' : 'Volver a abrirlo en vivo'}
             icon={LiveIcon}
@@ -393,6 +401,7 @@ function Controles({ evento, books, onCambio, colors }: { evento: Evento; books:
             onPress={() => mover({ estado: 'en-vivo' })}
             busy={busy}
           />
+          </>
         )}
         <ErrorText>{error}</ErrorText>
       </View>

@@ -49,6 +49,8 @@ export type Evento = {
   resultados?: Resultados | null;
   /** Solo para quien lo publicó: el mensaje del Taller. */
   mensaje?: string;
+  /** Solo para quien lo publicó: los grupos a los que se avisa cuando empieza en vivo. */
+  grupos?: string[];
 };
 
 /**
@@ -203,6 +205,12 @@ export async function publicarMensaje(m: Mensaje, books: Book[], version: string
 
 export const moverEvento = async (codigo: string, cambio: { punto?: number; estado?: EstadoEvento }) =>
   ponerMio((await accion<{ evento: Evento }>('mover', { codigo, ...cambio })).evento);
+
+/** Los grupos a los que se avisa cuando el evento empieza en vivo (si ya empezó, se les avisa al momento). */
+export async function gruposEvento(e: Evento, grupos: string[]) {
+  const r = await accion<{ grupos: string[] }>('gruposEvento', { codigo: e.codigo, grupos });
+  return ponerMio({ ...e, grupos: r.grupos });
+}
 
 export const verMiEvento = async (codigo: string) => ponerMio((await accion<{ evento: Evento }>('ver', { codigo })).evento);
 

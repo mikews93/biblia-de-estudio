@@ -3,7 +3,7 @@
 
 import { HighlightColor } from './highlights';
 import { ImageFormat } from './compartir';
-import { api } from './comunidad';
+import { api, type TipoGrupo } from './comunidad';
 
 export type TipoPublicacion = 'lectura' | 'resaltado' | 'imagen' | 'pregunta' | 'reflexion';
 export type Audiencia = 'amigos' | 'todos';
@@ -58,6 +58,8 @@ export type Persona = PersonaBreve & {
   ciudad: string | null;
   amigos: number;
   relacion: Relacion;
+  /** Los grupos que compartes con esta persona (en tu propio perfil, todos los tuyos). */
+  grupos?: { id: string; nombre: string; tipo: TipoGrupo; miembros: number }[];
 };
 
 export type NuevaPublicacion = {

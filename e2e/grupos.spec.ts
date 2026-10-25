@@ -303,3 +303,47 @@ test('si el único admin sale del grupo, pasa a administrarlo quien lleva más t
   await pa.context().close();
   await pb.context().close();
 });
+
+test('Mis grupos en el perfil: abrir, silenciar sus avisos y darse de baja; los grupos en común se ven en el perfil de alguien', async ({ browser, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Perfil');
+  const beto = await cuentaNueva(request, 'Beto Perfil');
+  const conexion = nombreUnico('Conexión');
+  const familia = nombreUnico('Familia');
+  const g = await grupoCon(request, conexion, ana, [beto]);
+  await grupoCon(request, familia, beto, []);
+
+  const pb = await navegador(browser, beto);
+  await pb.goto('/cuenta');
+  const mis = pb.getByTestId('mis-grupos');
+  await expect(mis.getByText('Mis grupos')).toBeVisible();
+  await expect(mis.getByText(conexion)).toBeVisible();
+  await expect(mis.getByText(familia)).toBeVisible();
+  await expect(mis.getByText('Célula · 1 persona · administras')).toBeVisible();
+
+  // Tocar un grupo muestra lo que se puede hacer con él.
+  await mis.getByRole('button', { name: new RegExp(conexion) }).click();
+  await mis.getByRole('button', { name: 'Silenciar sus avisos' }).click();
+  await expect(mis.getByRole('button', { name: 'Recibir sus avisos' })).toBeVisible();
+  expect((await api(request, beto, 'grupo', { grupo: g.id })).grupo.avisos).toBe(false);
+
+  // En el perfil de Ana, Beto ve solo el grupo que comparten, y de ahí llega al grupo.
+  await pb.goto(`/comunidades/persona/${ana.usuario.id}`);
+  const comun = pb.getByTestId('grupos-en-comun');
+  await expect(comun.getByText('Grupos en común')).toBeVisible();
+  await expect(comun.getByText(conexion)).toBeVisible();
+  await expect(comun.getByText(familia)).toHaveCount(0);
+  await comun.getByRole('link', { name: new RegExp(conexion) }).click();
+  await expect(pb.getByText('Avisos silenciados')).toBeVisible();
+  // Desde la lista del grupo se abre el perfil de cada persona.
+  await pb.getByRole('link', { name: `Ver el perfil de ${ana.usuario.nombre}` }).click();
+  await expect(pb).toHaveURL(new RegExp(`/comunidades/persona/${ana.usuario.id}`));
+
+  // Darse de baja desde el perfil.
+  await pb.goto('/cuenta');
+  await mis.getByRole('button', { name: new RegExp(conexion) }).click();
+  await mis.getByRole('button', { name: 'Darme de baja' }).click();
+  await expect(mis.getByText(conexion)).toHaveCount(0);
+  await expect(mis.getByText(familia)).toBeVisible();
+  const { grupo } = await api(request, ana, 'grupo', { grupo: g.id });
+  expect(grupo.miembros.map((m: { nombre: string }) => m.nombre)).toEqual([ana.usuario.nombre]);
+});

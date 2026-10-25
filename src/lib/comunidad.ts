@@ -47,6 +47,10 @@ export type ResumenGrupo = {
   miembros: number;
   leyeronHoy: number;
   lectura: Lectura | null;
+  /** Si administras el grupo (servidores viejos no lo envían). */
+  soyAdmin?: boolean;
+  /** Si te llegan sus avisos: notas, peticiones, guías y lo que empieza en vivo. */
+  avisos?: boolean;
 };
 export type Plan = { libro: string | null; inicio: string | null; porDia: number; reto?: string | null };
 export type Miembro = { id: string; nombre: string; foto: string | null; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
@@ -58,6 +62,7 @@ export type Grupo = {
   plan: Plan;
   lectura: Lectura | null;
   soyAdmin: boolean;
+  avisos?: boolean;
   semana: { dias: number; meta: number };
   miembros: Miembro[];
 };
@@ -242,6 +247,22 @@ export async function refreshGroups() {
   const r = await api<{ usuario: Usuario; grupos: ResumenGrupo[]; iglesia?: IglesiaAnfitriona | null; cuidador?: boolean }>('yo');
   set({ usuario: r.usuario, grupos: r.grupos, iglesia: r.iglesia ?? null, cuidador: !!r.cuidador });
   save();
+}
+
+/** Sale de un grupo (darse de baja) y pone al día la lista de grupos. */
+export async function leaveGroup(grupo: string) {
+  await api('salir', { grupo });
+  set({ grupos: account.grupos?.filter((g) => g.id !== grupo) ?? null });
+  save();
+  refreshGroups().catch(() => {});
+}
+
+/** Silencia o enciende los avisos de un grupo, sin salir de él. */
+export async function setGroupAlerts(grupo: string, si: boolean) {
+  const r = await api<{ avisos: boolean }>('avisosGrupo', { grupo, si });
+  set({ grupos: account.grupos?.map((g) => (g.id === grupo ? { ...g, avisos: r.avisos } : g)) ?? null });
+  save();
+  return r.avisos;
 }
 
 /** Error que muestran las funciones con IA cuando hace falta entrar; las pantallas lo cambian por <Welcome>. */
