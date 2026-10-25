@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { anotar } from './actividad';
+import { markStudyDay } from './progress';
+import { chapterHref, verseHref } from './routes';
 import { cambio, registrar } from './sincronia';
 
 // Diario devocional: lo que la persona escribe al terminar un devocional (la frase que la detuvo,
@@ -64,6 +67,10 @@ registrar<Entrada[]>({
 export async function saveEntrada(entrada: Entrada) {
   await load();
   save([entrada, ...state.filter((e) => e.id !== entrada.id)]);
+  // En Mi diario y en la racha devocional: el día cuenta aunque luego se borre la entrada.
+  const { book, chapter, verse } = entrada;
+  markStudyDay();
+  anotar('devocional', `${book}.${chapter}${verse ? `.${verse}` : ''}`, entrada.reference, verse ? verseHref(book, chapter, verse) : chapterHref(book, chapter));
 }
 
 export async function toggleHecho(id: string) {

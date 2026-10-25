@@ -8,6 +8,8 @@ import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import { todayKey, usePlans } from '@/lib/planes';
 import { useProgress } from '@/lib/progress';
+import { useRacha } from '@/lib/racha';
+import { rachaParaAvisos } from '@/lib/rachaTexto';
 import { useCards } from '@/lib/tarjetas';
 import { getLastRead } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -23,6 +25,9 @@ export default function AvisosSync() {
   const plans = usePlans();
   const cards = useCards();
   const progress = useProgress();
+  const r = useRacha();
+  const racha = rachaParaAvisos(r);
+  const rachaJson = JSON.stringify(racha ?? null);
   const { llave, ready } = useAccount();
   const [books, setBooks] = useState<Book[]>([]);
   const account = useRef<string | null | undefined>(undefined);
@@ -36,12 +41,13 @@ export default function AvisosSync() {
     if (!endpoint || !books.length) return;
     let alive = true;
     getLastRead().then((last) => {
-      if (alive) sincronizar(buildEstado({ plans, cards, days: progress.days, books, last, today: todayKey() }));
+      if (alive) sincronizar(buildEstado({ plans, cards, days: progress.days, books, last, today: todayKey(), racha }));
     });
     return () => {
       alive = false;
     };
-  }, [endpoint, books, plans, cards, progress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endpoint, books, plans, cards, progress, rachaJson]);
 
   useEffect(() => {
     if (!ready) return;

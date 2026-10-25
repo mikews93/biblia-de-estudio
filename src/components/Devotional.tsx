@@ -11,6 +11,9 @@ import VerseImage from '@/components/VerseImage';
 import { playChapter } from '@/lib/audio';
 import { Book, Verse, getChapter } from '@/lib/data';
 import { parseDevocional, saveEntrada } from '@/lib/diario';
+import { useRacha } from '@/lib/racha';
+import { diasLabel, siguienteHito } from '@/lib/rachaTexto';
+import { RachaChip } from '@/components/Racha';
 import { Source } from '@/lib/estudio';
 import { studyKeep, useKept } from '@/lib/recordado';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
@@ -345,6 +348,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
               Tu devocional de {passage} quedó en tu diario. Solo tú lo ves.
             </Text>
           </Appear>
+          <RachaAmen colors={colors} />
 
           {(!!frase || !!paso.trim()) && (
             <Appear delay={260} style={[styles.summary, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -701,6 +705,7 @@ function Label({ children, colors, style }: { children: ReactNode; colors: Color
 }
 
 const styles = StyleSheet.create({
+  racha: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginTop: 14, alignSelf: 'center' },
   header: { paddingTop: 16 },
   segments: { flexDirection: 'row', gap: 6, marginBottom: 18 },
   segmentHit: { flex: 1 },
@@ -785,3 +790,19 @@ const styles = StyleSheet.create({
   doneMark: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
   doneTitle: { fontFamily: serif, fontSize: 34, textAlign: 'center', marginTop: 4, marginBottom: 6 },
 });
+
+/** Al terminar: cuántos días seguidos lleva la racha y cuánto falta para la próxima insignia. */
+function RachaAmen({ colors }: { colors: Colors }) {
+  const racha = useRacha();
+  if (!racha.hoyHecho) return null;
+  const meta = siguienteHito(racha.actual);
+  return (
+    <Appear delay={220} style={[styles.racha, { backgroundColor: colors.warmSoft }]}>
+      <RachaChip dias={racha.actual} hecha colors={colors} />
+      <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20, flexShrink: 1 }}>
+        {racha.actual === 1 ? 'Hoy empieza tu racha devocional.' : `${diasLabel(racha.actual)} seguidos con tu devocional.`}
+        {meta ? ` ${meta - racha.actual === 1 ? 'Mañana' : `En ${meta - racha.actual} días`} ganas una insignia nueva.` : ''}
+      </Text>
+    </Appear>
+  );
+}

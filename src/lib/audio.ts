@@ -10,6 +10,7 @@ import * as Speech from 'expo-speech';
 import { Platform } from 'react-native';
 import { useEffect, useSyncExternalStore } from 'react';
 
+import { anotar } from './actividad';
 import { getBooks } from './data';
 import { Line, SPEAKERS, chunks, pickVoices } from './podcast';
 import { lineStarts } from './podcastTiempos';
@@ -221,6 +222,7 @@ type LecturaResponse = Omit<ChapterAudio, 'label'> & { version: { id: string; na
 
 /** Lectura del capítulo con la versión elegida (Bible Brain, o LibriVox si no hay clave). */
 export function playChapter(book: string, chapter: number, title: string, versionId?: string) {
+  anotar('escuchar', `${book}.${chapter}`, title);
   const id = start('lectura', book, chapter, title);
   loadVersions();
   return playFile(id, async () => {
@@ -236,6 +238,7 @@ export function playChapter(book: string, chapter: number, title: string, versio
 type Recording = { titulo: string; duracion: number; timestamps: [number, number][]; credito: string };
 
 function playRecording(kind: 'dramatizado' | 'podcast', book: string, chapter: number, title: string, label: string) {
+  anotar(kind, `${book}.${chapter}`, title);
   const id = start(kind, book, chapter, title);
   const base = `${API}/audio/${kind}/${recordingId(book, chapter)}`;
   return playFile(id, async () => {
@@ -261,6 +264,7 @@ type OriginalTimings = {
 /** El capítulo leído en hebreo o en griego, con los tiempos de cada palabra para resaltar el interlineal. */
 export function playOriginal(book: string, chapter: number, title: string) {
   huella('original', `${book}.${chapter}`);
+  anotar('original', `${book}.${chapter}`, title);
   const id = start('original', book, chapter, title);
   return playFile(id, async () => {
     const meta = await fetchJson<OriginalTimings>(`${API}/audio/original/${recordingId(book, chapter)}.json`);
@@ -346,6 +350,7 @@ export function playRecordedPodcast(
   title: string,
   { remote, lines = [], from = 0 }: { remote?: RemoteRecording; lines?: Line[]; from?: number } = {},
 ) {
+  anotar('podcast', `${book}.${chapter}`, title);
   const id = start('podcast', book, chapter, title);
   const base = `${API}/audio/podcast/${recordingId(book, chapter)}`;
   return playFile(
@@ -381,6 +386,7 @@ function stopSpeech() {
 export function playSpeech(book: string, chapter: number, title: string, lines: Line[], from = 0) {
   const same = state.kind === 'podcast' && state.speech && state.book === book && state.chapter === chapter;
   if (!same) {
+    anotar('podcast', `${book}.${chapter}`, title);
     start('podcast', book, chapter, title);
     set({ loading: false, audio: null, speech: { lines, index: 0, playing: false } });
   } else {

@@ -157,7 +157,7 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
     expect((await call('leer', { endpoint: sub.endpoint })).json).toEqual({
       existe: true,
       hora: 21 * 60,
-      avisos: { lectura: true, tarjetas: false, reto: true, comunidad: true },
+      avisos: { lectura: true, tarjetas: false, reto: true, racha: true, comunidad: true },
       despertar: null,
     });
     await call('guardar', { suscripcion: sub, hora: 21 * 60, despertar: { activo: true, hora: 330, dias: 0b0111110 } });
@@ -202,6 +202,43 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
     await sql`update suscripciones set despertar = ${Math.max(0, now.minutos - 2)}, despertar_enviado = null where endpoint = ${libre.endpoint}`;
     await enviar();
     expect(deliveredTo(libre.id)).toHaveLength(0);
+  });
+
+  it('la noche del último día de la racha devocional avisa una sola vez; sin racha o con el aviso apagado, no', async () => {
+    // Una zona donde ahora son entre las 8 y las 11 de la noche.
+    const zona = Array.from({ length: 27 }, (_, i) => i - 12)
+      .map((n) => (n === 0 ? 'UTC' : `Etc/GMT${n > 0 ? '+' : '-'}${Math.abs(n)}`))
+      .find((z) => {
+        const m = localNow(z).minutos;
+        return m >= 20 * 60 && m < 23 * 60;
+      })!;
+    const hoy = localNow(zona).fecha;
+    const apagado = { lectura: false, tarjetas: false, reto: false };
+    const sub = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: sub, zona, avisos: apagado, estado: { racha: { dias: 6, vence: hoy } } });
+    const otro = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: otro, zona, avisos: { ...apagado, racha: false }, estado: { racha: { dias: 6, vence: hoy } } });
+    const aSalvo = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: aSalvo, zona, avisos: apagado, estado: { racha: { dias: 6, vence: '2999-01-01' } } });
+
+    const r = await enviar();
+    expect(r.json.rachas).toBeGreaterThanOrEqual(1);
+    expect(deliveredTo(sub.id).map((e) => e.aviso)).toEqual([
+      {
+        title: 'Tu racha de 6 días te espera',
+        body: 'Hoy es el último día para no perderla. Diez minutos con la Palabra bastan. Te falta un día para los 7.',
+        url: '/diario?hoy=1',
+        tag: 'racha',
+      },
+    ]);
+    await enviar();
+    expect(deliveredTo(sub.id)).toHaveLength(1);
+    expect(deliveredTo(otro.id)).toHaveLength(0);
+    expect(deliveredTo(aSalvo.id)).toHaveLength(0);
+    // Datos raros de la racha se limpian.
+    await call('estado', { endpoint: sub.endpoint, estado: { racha: { dias: -1, vence: 'mañana' } } });
+    const [row] = await sql`select estado from suscripciones where endpoint = ${sub.endpoint}`;
+    expect(row.estado).toEqual({});
   });
 
   it('«10 minutos más» lo vuelve a mandar; apagar el despertador lo quita', async () => {

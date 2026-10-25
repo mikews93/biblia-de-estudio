@@ -208,6 +208,17 @@ export const BellIcon = (p: Props) => (
 );
 
 /** Corazón: devocional, diario y «me gusta». Con «filled», relleno. */
+/** Llama: la racha devocional. */
+export const FlameIcon = ({ filled, ...p }: Props & { filled?: boolean }) => (
+  <Line {...p}>
+    <Path
+      d="M12 21c-3.8 0-6.5-2.7-6.5-6.3 0-2.5 1.4-4.3 2.9-5.9.3 1.5.9 2.6 1.9 3.2-.2-3.4 1.1-6.2 3.6-8.5.3 2.8 1.6 4.6 3 6.2 1 1.2 1.6 2.6 1.6 4.3 0 4-2.7 7-6.5 7z"
+      fill={filled ? p.color : 'none'}
+    />
+    {!filled && <Path d="M12 21c-1.6 0-2.7-1.1-2.7-2.7 0-1.4.9-2.4 2-3.4.3 1 .9 1.6 1.6 1.9.4-.8.6-1.6.5-2.6 1.3 1 2.2 2.3 2.2 4 0 1.6-1.2 2.8-3.6 2.8z" />}
+  </Line>
+);
+
 export const HeartIcon = ({ filled, ...p }: Props & { filled?: boolean }) => (
   <Line {...p}>
     <Path

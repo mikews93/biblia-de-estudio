@@ -5,7 +5,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, SectionTitle, useAction } from '@/components/comunidad/ui';
-import { CandleIcon, CardsIcon, ChevronRightIcon, CommentIcon, type IconProps, OpenBookIcon, PlusSquareIcon, ShareIcon, SunIcon } from '@/components/icons';
+import { CandleIcon, CardsIcon, ChevronRightIcon, CommentIcon, FlameIcon, type IconProps, OpenBookIcon, PlusSquareIcon, ShareIcon, SunIcon } from '@/components/icons';
 import { Ajustes, Soporte, Tipo, activar, buildEstado, cambiar, desactivar, permiso, probar, soporte, useAvisos } from '@/lib/avisos';
 import { dailyMessage, horaLabel } from '@/lib/avisosTexto';
 import { diasLabel } from '@/lib/despertarTexto';
@@ -29,6 +29,7 @@ const TIPOS: { tipo: Tipo; icon: (p: IconProps) => ReactNode; title: string; det
   { tipo: 'lectura', icon: OpenBookIcon, title: 'Lectura del día', detail: 'Lo que toca en tu plan o donde te quedaste. Si ya leíste, no te escribimos.' },
   { tipo: 'tarjetas', icon: CardsIcon, title: 'Tarjetas para repasar', detail: 'Cuántas tarjetas te esperan ese día para no olvidar lo estudiado.' },
   { tipo: 'reto', icon: CandleIcon, title: 'Desafío de temporada', detail: 'El día y la lectura de Adviento, Cuaresma o Año Nuevo, si te uniste.' },
+  { tipo: 'racha', icon: FlameIcon, title: 'Racha devocional', detail: 'La noche del último día de tu racha, a las 8, si aún no hiciste el devocional.' },
   { tipo: 'comunidad', icon: CommentIcon, title: 'Comunidad', detail: 'Comentarios, me gusta, invitaciones de amistad y quién se une a tus grupos. Llegan al momento.' },
 ];
 

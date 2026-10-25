@@ -33,6 +33,8 @@ export type Tipo =
   | 'pareja-dia' // un día de un plan en pareja respondido por los dos
   | 'pareja' // un plan en pareja terminado juntos
   | 'dia' // un día con la Palabra
+  | 'devocional' // un día con el devocional terminado (src/lib/racha.ts)
+  | 'racha' // cada día de la mejor racha devocional («racha:1» … «racha:21»)
   | 'meta' // una semana con la meta de 5 de 7 días
   | 'mision' // una misión del Modo Jóvenes (src/lib/jovenes.ts)
   | 'profunda' // una misión con sus tres estrellas: entendida, pensada y vivida
@@ -46,7 +48,7 @@ const DE_ESTUDIO: Tipo[] = ['palabra', 'historia', 'original', 'lugar', 'persona
 
 export type Publico = 'todos' | 'jovenes' | 'ninos';
 
-export type Familia = 'palabras' | 'pasaporte' | 'escrituras' | 'oracion' | 'juntos' | 'constancia' | (string & {});
+export type Familia = 'palabras' | 'pasaporte' | 'escrituras' | 'oracion' | 'juntos' | 'devocional' | 'constancia' | (string & {});
 
 export type FamiliaDef = { id: Familia; titulo: string; subtitulo: string };
 
@@ -56,6 +58,7 @@ const FAMILIAS_BASE: FamiliaDef[] = [
   { id: 'escrituras', titulo: 'Escudriñar', subtitulo: 'Promesas cumplidas y manuscritos comparados' },
   { id: 'oracion', titulo: 'Piedras de memoria', subtitulo: 'Lo que Dios ha respondido, solo para ti' },
   { id: 'juntos', titulo: 'Juntos', subtitulo: 'Compañía, nunca competencia' },
+  { id: 'devocional', titulo: 'Racha devocional', subtitulo: 'Días seguidos con tu devocional, con un día libre por semana' },
   { id: 'constancia', titulo: 'Constancia', subtitulo: 'Días con la Palabra, a tu ritmo' },
 ];
 
@@ -81,6 +84,9 @@ export type Dibujo =
   | 'pulpito'
   | 'lampara'
   | 'sol'
+  // La racha devocional
+  | 'llama'
+  | 'corona'
   // Los del Modo Jóvenes: el dibujo de cada ruta y dos más
   | 'cruz'
   | 'huella'
@@ -443,6 +449,109 @@ const CATALOGO: Sello[] = [
     dibujo: 'pulpito',
     versiculo: v('Santiago 1:22', 'jas', 1, 22, 'Mas sed hacedores de la palabra, y no tan solamente oidores.'),
     ir: { label: 'Del sermón a tu semana', href: '/semana' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-3',
+    familia: 'devocional',
+    titulo: 'Pan de cada día',
+    como: 'Haz tu devocional 3 días seguidos.',
+    logro: 'Tres días seguidos con tu devocional.',
+    tipo: 'racha',
+    meta: 3,
+    dibujo: 'chispa',
+    versiculo: v('Mateo 6:11', 'mat', 6, 11, 'Danos hoy nuestro pan cotidiano.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-7',
+    familia: 'devocional',
+    titulo: 'De mañana',
+    como: 'Haz tu devocional 7 días seguidos.',
+    logro: 'Una semana entera con tu devocional.',
+    tipo: 'racha',
+    meta: 7,
+    dibujo: 'llama',
+    versiculo: v('Salmos 5:3', 'psa', 5, 3, 'Oh Jehová, de mañana oirás mi voz; de mañana me presentaré á ti, y esperaré.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-21',
+    familia: 'devocional',
+    titulo: 'Tres semanas, como Daniel',
+    como: 'Haz tu devocional 21 días seguidos.',
+    logro: 'Tres semanas seguidas: ya es un hábito.',
+    tipo: 'racha',
+    meta: 21,
+    dibujo: 'lampara',
+    versiculo: v(
+      'Daniel 10:12',
+      'dan',
+      10,
+      12,
+      'Daniel, no temas: porque desde el primer día que diste tu corazón á entender, y á afligirte en la presencia de tu Dios, fueron oídas tus palabras.',
+    ),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-40',
+    familia: 'devocional',
+    titulo: 'Cuarenta días',
+    como: 'Haz tu devocional 40 días seguidos.',
+    logro: 'Cuarenta días seguidos alimentándote de la Palabra.',
+    tipo: 'racha',
+    meta: 40,
+    dibujo: 'peregrino',
+    versiculo: v('Mateo 4:4', 'mat', 4, 4, 'Escrito está: No con solo el pan vivirá el hombre, mas con toda palabra que sale de la boca de Dios.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-100',
+    familia: 'devocional',
+    titulo: 'Todo el día',
+    como: 'Haz tu devocional 100 días seguidos.',
+    logro: 'Cien días seguidos meditando en su Palabra.',
+    tipo: 'racha',
+    meta: 100,
+    dibujo: 'libro',
+    versiculo: v('Salmos 119:97', 'psa', 119, 97, '¡Cuánto amo yo tu ley! todo el día es ella mi meditación.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'racha-365',
+    familia: 'devocional',
+    titulo: 'Coronas el año',
+    como: 'Haz tu devocional 365 días seguidos.',
+    logro: 'Un año entero, día tras día, con Él.',
+    tipo: 'racha',
+    meta: 365,
+    dibujo: 'corona',
+    versiculo: v('Salmos 65:11', 'psa', 65, 11, 'Tú coronas el año de tus bienes; y tus nubes destilan grosura.'),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
+    publico: 'todos',
+  },
+  {
+    id: 'devocionales-30',
+    familia: 'devocional',
+    titulo: 'En lo secreto',
+    como: 'Termina 30 devocionales, a tu ritmo.',
+    logro: 'Treinta devocionales a solas con tu Padre.',
+    tipo: 'devocional',
+    meta: 30,
+    dibujo: 'amen',
+    versiculo: v(
+      'Mateo 6:6',
+      'mat',
+      6,
+      6,
+      'Mas tú, cuando oras, éntrate en tu cámara, y cerrada tu puerta, ora á tu Padre que está en secreto; y tu Padre que ve en secreto, te recompensará en público.',
+    ),
+    ir: { label: 'Hacer el devocional de hoy', href: '/diario?hoy=1' },
     publico: 'todos',
   },
   {
