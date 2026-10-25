@@ -7,6 +7,7 @@ import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { CheckIcon, FlagIcon, HeartIcon, LockIcon, RouteIcon } from '@/components/icons';
+import { Balance, Hermanas } from '@/components/circulo/Hermanas';
 import { ETAPAS_CAMINO, fechaCorta } from '@/lib/camino';
 import { etapaCorta } from '@/lib/circulo';
 import { type PanelLider, type PersonaLider, aprobar, panelLider, rangoEdad, revisar } from '@/lib/circuloApi';
@@ -52,7 +53,9 @@ export default function LiderScreen() {
     contenido = (
       <>
         <Appear style={styles.head}>
-          <Text style={[styles.kicker, { color: colors.warm }]}>LIDERAS · {c.iglesia.toUpperCase()}</Text>
+          <Text style={[styles.kicker, { color: colors.warm }]}>
+            LIDERAS · {panel.iglesias.length > 1 ? `${panel.iglesias.length} IGLESIAS` : c.iglesia.toUpperCase()}
+          </Text>
           <Text style={[styles.title, { color: colors.text }]}>{c.nombre}</Text>
           <Text style={[text.small, { color: colors.muted, marginTop: 4 }]}>{rangoEdad(c)}</Text>
           <View style={[styles.stats, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -70,7 +73,9 @@ export default function LiderScreen() {
           </Text>
         </View>
 
-        <CaminoIglesia camino={panel.camino} colors={colors} />
+        <Balance hombres={panel.balance.hombres} mujeres={panel.balance.mujeres} colors={colors} />
+        <Hermanas circulo={c.id} iglesias={panel.iglesias} max={panel.maxHermanas} colors={colors} onDone={reload} />
+        <CaminoIglesia camino={panel.camino} varias={panel.iglesias.length > 1} colors={colors} />
 
         {panel.reportes.length > 0 && (
           <>
@@ -123,13 +128,13 @@ export default function LiderScreen() {
 }
 
 /** Cuántas personas de la iglesia van en cada etapa del camino. Solo números: nunca quiénes ni qué escribieron. */
-function CaminoIglesia({ camino, colors }: { camino: number[]; colors: Colors }) {
+function CaminoIglesia({ camino, varias, colors }: { camino: number[]; varias: boolean; colors: Colors }) {
   const total = camino.reduce((a, b) => a + b, 0);
   if (!total) return null;
   const max = Math.max(...camino, 1);
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 14 }]}>
-      <Text style={[styles.kicker, { color: colors.muted }]}>TU IGLESIA EN EL CAMINO DE PREPARACIÓN</Text>
+      <Text style={[styles.kicker, { color: colors.muted }]}>{varias ? 'TUS IGLESIAS' : 'TU IGLESIA'} EN EL CAMINO DE PREPARACIÓN</Text>
       <Text style={[text.small, { color: colors.muted, marginTop: 4 }]}>
         {total} {total === 1 ? 'persona lo empezó' : 'personas lo empezaron'} · {camino[ETAPAS_CAMINO - 1]} {camino[ETAPAS_CAMINO - 1] === 1 ? 'lo terminó' : 'lo terminaron'}
       </Text>
@@ -164,7 +169,7 @@ function Quien({ p, colors }: { p: PersonaLider; colors: Colors }) {
       <Avatar name={p.nombre} foto={p.foto} size={44} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }}>{p.nombre}</Text>
-        <Text style={[text.small, { color: colors.muted, marginTop: 2 }]}>{[`${p.edad} años`, etapaCorta(p.etapa)].filter(Boolean).join(' · ')}</Text>
+        <Text style={[text.small, { color: colors.muted, marginTop: 2 }]}>{[`${p.edad} años`, etapaCorta(p.etapa), p.iglesia].filter(Boolean).join(' · ')}</Text>
         <View style={[styles.row, { gap: 5, marginTop: 3 }]}>
           {p.caminoTerminado ? <CheckIcon color={colors.accent} size={13} strokeWidth={2.6} /> : <RouteIcon color={colors.muted} size={13} />}
           <Text style={[text.small, { color: p.caminoTerminado ? colors.accent : colors.muted }]}>

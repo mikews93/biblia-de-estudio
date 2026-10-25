@@ -158,6 +158,8 @@ function AppStack() {
           <Stack.Screen name="circulo/camino/index" options={{ title: 'Camino de preparación' }} />
           <Stack.Screen name="circulo/camino/[n]" options={{ title: 'Etapa' }} />
           <Stack.Screen name="circulo/importa" options={{ title: 'Lo que sí importa' }} />
+          <Stack.Screen name="hombres/index" options={{ title: 'Hombres de pie' }} />
+          <Stack.Screen name="hombres/[n]" options={{ title: 'Semana' }} />
           <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
           <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
         </Stack>

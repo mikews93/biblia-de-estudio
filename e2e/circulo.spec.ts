@@ -77,6 +77,7 @@ test('pedir entrar al círculo, ser aprobada y responder la pregunta de la seman
   await page.getByLabel('Día').filter({ visible: true }).fill('10');
   await page.getByLabel('Mes').filter({ visible: true }).fill('5');
   await page.getByLabel('Año').filter({ visible: true }).fill('2000');
+  await page.getByRole('radio', { name: 'Mujer' }).filter({ visible: true }).click();
   const pedir = page.getByRole('button', { name: 'Pedir entrar' }).filter({ visible: true });
   await expect(pedir).toBeDisabled();
   await page.getByRole('checkbox', { name: 'Acepto el acuerdo' }).filter({ visible: true }).click();
@@ -108,7 +109,7 @@ test('marcarse en secreto, que sea mutuo y empezar «Conocernos»', async ({ pag
     await camino(request, c.llave);
     await post(request, { accion: 'circuloImporta', importa: IMPORTA }, c.llave);
     await post(request, { accion: 'iglesiaUnirme', codigo }, c.llave);
-    await post(request, { accion: 'circuloPedir', circulo, nacimiento: '1998-03-02', etapa: 'abierto', acepto: true }, c.llave);
+    await post(request, { accion: 'circuloPedir', circulo, nacimiento: '1998-03-02', etapa: 'abierto', sexo: 'h', acepto: true }, c.llave);
     await post(request, { accion: 'circuloAprobar', usuario: c.usuario.id, si: true }, lider.llave);
     // Dos semanas anteriores respondidas: ya comparten algo
     for (const atras of [7, 14]) await post(request, { accion: 'circuloResponder', texto: `Mi respuesta de hace ${atras} días` }, c.llave, dia(atras));

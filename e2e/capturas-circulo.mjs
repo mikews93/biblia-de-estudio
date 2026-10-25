@@ -60,12 +60,14 @@ const IMPORTAS = {
 async function camino(llave, hasta = 7) {
   for (let n = 1; n <= hasta; n++) await post({ accion: 'caminoTerminar', etapa: n }, llave, dia(40 - n));
 }
-async function entra(nombre, bio, etapa, nacimiento, respuestas = SEMANAS) {
+const MUJERES = new Set(['Sara', 'Daniela', 'Camila', 'Valeria', 'Lucía', 'Paula', 'Juliana']);
+const sexo = (nombre) => (MUJERES.has(nombre.split(' ')[0]) ? 'm' : 'h');
+async function entra(nombre, bio, etapa, nacimiento, respuestas = SEMANAS, codigo = iglesia.codigo) {
   const c = await cuenta(nombre, bio);
   await camino(c.llave);
-  await post({ accion: 'circuloImporta', importa: IMPORTAS[nombre.split(' ')[0]] }, c.llave);
-  await post({ accion: 'iglesiaUnirme', codigo: iglesia.codigo }, c.llave);
-  await post({ accion: 'circuloPedir', circulo, nacimiento, etapa, acepto: true }, c.llave);
+  await post({ accion: 'circuloImporta', importa: IMPORTAS[nombre.split(' ')[0]] ?? IMPORTAS.Sara }, c.llave);
+  await post({ accion: 'iglesiaUnirme', codigo }, c.llave);
+  await post({ accion: 'circuloPedir', circulo, nacimiento, etapa, sexo: sexo(nombre), acepto: true }, c.llave);
   await post({ accion: 'circuloAprobar', usuario: c.usuario.id, si: true }, lidia.llave);
   for (const [atras, texto] of respuestas) await post({ accion: 'circuloResponder', texto }, c.llave, dia(atras));
   return c;
@@ -76,6 +78,12 @@ const daniela = await entra('Daniela Restrepo', 'Enfermera. Sirvo en el equipo d
 const andres = await entra('Andrés Mejía', 'Ingeniero. Leo un capítulo de Proverbios cada día.', 'abierto', '1996-11-03');
 const camila = await entra('Camila Torres', 'Estudio diseño. Aquí para hacer amigos que amen a Jesús.', 'soltero', '2002-06-15');
 const jonatan = await entra('Jonatán Arias', null, 'abierto', '1995-02-09', [SEMANAS[0]]);
+
+// Una iglesia hermana de la misma ciudad suma sus solteros al círculo
+const { iglesia: betel } = await post({ accion: 'cuidarNuevaIglesia', nombre: 'Iglesia Betel', ciudad: 'Medellín' }, cuida.llave);
+await post({ accion: 'circuloHermana', circulo, codigo: betel.codigo }, lidia.llave);
+await entra('Paula Gil', 'Sirvo con los adolescentes en Betel.', 'soltero', '2000-03-18', SEMANAS, betel.codigo);
+await entra('Juliana Ríos', 'Contadora. Me gusta caminar y orar en la mañana.', 'abierto', '1997-10-05', SEMANAS, betel.codigo);
 
 // Respuestas de esta semana
 await post({ accion: 'circuloResponder', texto: 'Me cuesta esperar sin ansiedad. Deleitarme en Él es buscarlo por quien es, no por lo que me da.' }, sara.llave);
@@ -96,7 +104,7 @@ const mateo = await cuenta('Mateo Pineda', 'Recién llegado a Vida Nueva. Me bau
 await camino(mateo.llave);
 await post({ accion: 'circuloImporta', importa: IMPORTAS.Mateo }, mateo.llave);
 await post({ accion: 'iglesiaUnirme', codigo: iglesia.codigo }, mateo.llave);
-await post({ accion: 'circuloPedir', circulo, nacimiento: '2000-09-09', etapa: 'abierto', acepto: true }, mateo.llave);
+await post({ accion: 'circuloPedir', circulo, nacimiento: '2000-09-09', etapa: 'abierto', sexo: 'h', acepto: true }, mateo.llave);
 await post({ accion: 'circuloReportar', usuario: jonatan.usuario.id, motivo: 'Me presionó o me incomodó', detalle: 'Me escribió varias veces por Facebook después del culto.' }, camila.llave);
 
 // Alguien de la iglesia que todavía no pidió entrar, y alguien sin iglesia
@@ -149,6 +157,7 @@ for (const [pref, opts] of [
   await vis(p.getByLabel('Día')).fill('14');
   await vis(p.getByLabel('Mes')).fill('2');
   await vis(p.getByLabel('Año')).fill('2001');
+  await vis(p.getByRole('radio', { name: 'Mujer' })).click();
   await vis(p.getByRole('checkbox', { name: 'Acepto el acuerdo' })).click();
   await vis(p.getByText('Pide entrar al círculo de Iglesia Vida Nueva')).scrollIntoViewIfNeeded();
   await shot(p, `${pref}-2-pedir`);
@@ -196,6 +205,8 @@ for (const [pref, opts] of [
   await p.goto(`${BASE}/circulo/lider/${circulo}`);
   await vis(p.getByText('Mateo Pineda')).waitFor();
   await shot(p, `${pref}-7-lider`);
+  await vis(p.getByText('IGLESIAS HERMANAS')).scrollIntoViewIfNeeded();
+  await shot(p, `${pref}-7b-hermanas`);
 
   p = await page(felipe, opts);
   await p.goto(`${BASE}/cuenta`);

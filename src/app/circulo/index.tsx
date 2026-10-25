@@ -22,7 +22,7 @@ import {
 import Reportar from '@/components/circulo/Reportar';
 import TextoPasaje from '@/components/circulo/TextoPasaje';
 import { ETAPAS_CAMINO } from '@/lib/camino';
-import { type Etapa, EDAD_MINIMA, etapaCorta } from '@/lib/circulo';
+import { type Etapa, type Sexo, EDAD_MINIMA, SEXOS, etapaCorta } from '@/lib/circulo';
 import {
   type CirculoOpcion,
   type EstadoCirculo,
@@ -42,6 +42,8 @@ import { Colors, isDark, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 const go = (href: string) => navigate(() => router.push(href as never), 'forward');
+/** «A», «A y B», «A, B y C». */
+const lista = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`);
 
 const ETAPAS_CIRCULO: { value: Etapa; label: string }[] = [
   { value: 'abierto', label: 'Abierto/a a conocer a alguien' },
@@ -232,10 +234,11 @@ function Entrar({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
   const [anio, setAnio] = useState('');
   const [circulo, setCirculo] = useState<string | null>(circulos.length === 1 && !circulos[0].lleno ? circulos[0].id : null);
   const [acepto, setAcepto] = useState(false);
+  const [sexo, setSexo] = useState<Sexo | ''>('');
   const act = useAction();
   const casado = estado.etapa === 'casado' || estado.etapa === 'relacion';
   const nacimiento = `${anio.padStart(4, '0')}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-  const completo = dia.length > 0 && mes.length > 0 && anio.length === 4 && !!circulo && acepto;
+  const completo = dia.length > 0 && mes.length > 0 && anio.length === 4 && !!sexo && !!circulo && acepto;
 
   if (!estado.iglesia) {
     return (
@@ -310,7 +313,7 @@ function Entrar({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
 
   const opciones = estado.importa.solteria ? ETAPAS_CIRCULO.filter((e) => e.value === 'soltero') : ETAPAS_CIRCULO;
   const enviar = async () => {
-    if (await act.run(() => pedirEntrar(circulo!, nacimiento, estado.importa!.solteria ? 'soltero' : etapa))) onDone();
+    if (await act.run(() => pedirEntrar(circulo!, nacimiento, estado.importa!.solteria ? 'soltero' : etapa, sexo as Sexo))) onDone();
   };
   const numero = (v: string, max: number) => v.replace(/\D/g, '').slice(0, max);
 
@@ -338,6 +341,12 @@ function Entrar({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
             <Field value={anio} onChangeText={(t) => setAnio(numero(t, 4))} placeholder="Año" keyboardType="number-pad" style={styles.fechaLarga} accessibilityLabel="Año" />
           </View>
           <Text style={[text.small, { color: colors.muted, marginTop: 6 }]}>Solo la ven los líderes. El círculo es para mayores de {EDAD_MINIMA}.</Text>
+
+          <Text style={[styles.label, { color: colors.muted }]}>Eres</Text>
+          <Chips options={SEXOS} value={sexo as Sexo} onChange={setSexo} />
+          <Text style={[text.small, { color: colors.muted, marginTop: 6, lineHeight: 19 }]}>
+            Los líderes solo ven cuántos hombres y mujeres hay, para cuidar que el grupo sea parejo.
+          </Text>
 
           <Text style={[styles.label, { color: colors.muted }]}>Tu círculo</Text>
           <View style={{ gap: 8 }}>
@@ -424,6 +433,12 @@ function OpcionCirculo({ c, on, onPress, colors }: { c: CirculoOpcion; on: boole
         <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
           {rangoEdad(c)} · {c.lleno ? 'Lleno' : `${c.miembros} ${c.miembros === 1 ? 'persona' : 'personas'}`}
         </Text>
+        {c.hermanas.length > 0 && (
+          <View style={styles.hermanas}>
+            <ChurchIcon color={colors.warm} size={13} />
+            <Text style={{ color: colors.warm, fontSize: 12, fontWeight: '600', flex: 1 }}>Con {lista(c.hermanas)}</Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -476,9 +491,13 @@ function Dentro({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
           ))}
         </View>
         <Text style={[styles.kicker, { color: colors.muted, marginTop: 12 }]}>
-          {estado.iglesia?.nombre?.toUpperCase()} · {(estado.personas?.length ?? 0) + 1} PERSONAS
+          {(m.circulo.iglesias && m.circulo.iglesias.length > 1 ? `${m.circulo.iglesias.length} IGLESIAS` : estado.iglesia?.nombre?.toUpperCase())} ·{' '}
+          {(estado.personas?.length ?? 0) + 1} PERSONAS
         </Text>
         <Text style={[styles.pairTitle, { color: colors.text }]}>{m.circulo.nombre}</Text>
+        {m.circulo.iglesias && m.circulo.iglesias.length > 1 && (
+          <Text style={[text.small, { color: colors.muted, marginTop: 4, textAlign: 'center' }]}>{lista(m.circulo.iglesias)}</Text>
+        )}
         {lideres.length > 0 && (
           <Text style={[text.small, { color: colors.muted, marginTop: 4 }]}>
             {lideres.length === 1 ? 'Líder' : 'Líderes'}: {lideres.map((l) => l.nombre).join(', ')}
@@ -692,6 +711,11 @@ function FilaPersona({ p, estado, colors, onDone }: { p: PersonaCirculo; estado:
           <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }} numberOfLines={1}>
             {p.nombre}
           </Text>
+          {!!p.iglesia && (
+            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
+              {p.iglesia}
+            </Text>
+          )}
           <View style={styles.tags}>
             {p.etapa === 'abierto' && (
               <View style={[styles.tag, { borderColor: colors.warm }]}>
@@ -812,6 +836,7 @@ const styles = StyleSheet.create({
   fechaCorta: { width: 72, textAlign: 'center' },
   fechaLarga: { width: 96, textAlign: 'center' },
   opcion: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, padding: 14 },
+  hermanas: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
   acuerdo: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14, gap: 10 },

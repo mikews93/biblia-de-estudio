@@ -95,8 +95,10 @@ function Circulo({ c, colors, onDone }: { c: CirculoCuidado; colors: Colors; onD
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.text, fontFamily: serif, fontSize: 17 }}>{c.nombre}</Text>
           <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
-            {rangoEdad(c)} · {c.miembros}/{c.max} personas{c.pendientes ? ` · ${c.pendientes} por aprobar` : ''}
+            {rangoEdad(c)} · {c.miembros}/{c.max} personas{c.miembros ? ` (${c.hombres} H, ${c.mujeres} M)` : ''}
+            {c.pendientes ? ` · ${c.pendientes} por aprobar` : ''}
           </Text>
+          {c.hermanas.length > 0 && <Text style={{ color: colors.warm, fontSize: 12, marginTop: 2 }}>Con {c.hermanas.join(', ')}</Text>}
         </View>
         <Button label="Panel" icon={ShieldIcon} kind="quiet" onPress={() => navigate(() => router.push(`/circulo/lider/${c.id}` as never), 'forward')} />
       </View>

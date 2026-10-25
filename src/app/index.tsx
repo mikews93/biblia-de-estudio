@@ -15,6 +15,7 @@ import {
   HeartIcon,
   LecternIcon,
   RingsIcon,
+  HammerIcon,
   MicIcon,
   PencilIcon,
   PeopleIcon,
@@ -396,6 +397,7 @@ function Today() {
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
         <Tile icon={RingsIcon} label="En pareja" colors={colors} onPress={() => navigate(() => router.push('/pareja' as never), 'forward')} />
+        <Tile icon={HammerIcon} label="Hombres de pie" colors={colors} onPress={() => navigate(() => router.push('/hombres' as never), 'forward')} />
         <Tile
           icon={LecternIcon}
           label="Del sermón"

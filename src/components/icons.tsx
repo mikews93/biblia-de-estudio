@@ -630,3 +630,12 @@ export const CopyIcon = (p: Props) => (
     <Path d="M16.5 8.5V5A1.5 1.5 0 0 0 15 3.5H5.5A1.5 1.5 0 0 0 4 5v9.5A1.5 1.5 0 0 0 5.5 16h2" />
   </Line>
 );
+
+/** Martillo: «Hombres de pie», construir con otros (Nehemías 4). */
+export const HammerIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="m13.6 5.2 5.2 5.2-2.3 2.3-5.2-5.2 2.3-2.3Z" />
+    <Path d="m12.4 9.5-7.3 7.3a1.6 1.6 0 0 0 2.3 2.3l7.3-7.3" />
+    <Path d="m13.6 5.2 1.2-1.2a2.4 2.4 0 0 1 3 .3" />
+  </Line>
+);

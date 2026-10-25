@@ -35,10 +35,22 @@ export const SEMANAS_EN_COMUN = 2;
 export const REPORTES_PAUSA = 2;
 /** Tras cerrar «Conocernos», dos personas no pueden volver a marcarse en este tiempo. */
 export const DIAS_TRAS_CERRAR = 90;
+/**
+ * Iglesias hermanas que puede sumar un círculo. En casi todas las iglesias hay menos hombres que mujeres
+ * (investigacion/mas-mujeres-que-hombres.md): unir iglesias de la misma ciudad hace el grupo más parejo.
+ */
+export const MAX_HERMANAS = 4;
+
+export type Sexo = 'h' | 'm';
+export const SEXOS: { value: Sexo; label: string }[] = [
+  { value: 'h', label: 'Hombre' },
+  { value: 'm', label: 'Mujer' },
+];
+export const sexoDe = (v: unknown): Sexo | null => (v === 'h' || v === 'm' ? v : null);
 
 export const ACUERDO = [
   'Tengo 18 años o más y no estoy casado ni casada.',
-  'Vengo a conocer personas de mi iglesia con respeto, sin presionar a nadie.',
+  'Vengo a conocer personas de mi iglesia y de sus iglesias hermanas con respeto, sin presionar a nadie.',
   'No pediré ni enviaré fotos íntimas, dinero ni datos privados.',
   'Las primeras veces que nos veamos será en la iglesia o en grupo.',
   'Si algo me incomoda, lo reporto. Los líderes del círculo me pueden pausar o quitar si no cumplo este acuerdo.',

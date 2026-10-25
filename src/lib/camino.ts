@@ -70,9 +70,10 @@ export const CAMINO: EtapaCamino[] = [
       '¿Dónde sirves hoy, y qué te dicen otros que haces bien?',
       '¿Por qué personas o qué causas sientes una carga especial: niños, misiones, enseñar, los pobres, quienes no conocen a Cristo?',
       '¿Te ves en misiones, predicando o sirviendo a tiempo completo? ¿Qué te dicen tus pastores o líderes?',
+      'Tu llamado no se queda en la iglesia. ¿Cómo puede servir a Dios lo que haces de lunes a viernes, en tu estudio o tu trabajo?',
       'Escribe tu propósito en una o dos frases. Si quieres, más adelante podrás compartirlo con tu círculo.',
     ],
-    proposito: 3,
+    proposito: 4,
   },
   {
     n: 3,
@@ -138,6 +139,7 @@ export const CAMINO: EtapaCamino[] = [
       'La Biblia honra las dos cosas. Pablo ve en la soltería una puerta para servir sin distracción, y presenta el matrimonio como un pacto que muestra el amor de Cristo por su iglesia. Ninguno es premio ni castigo.',
       'Casarse no es encontrar a alguien que te haga feliz, sino unirte a alguien con quien puedas seguir a Cristo mejor que por separado. Por eso la pregunta no es solo «¿me gusta?», sino «¿vamos hacia el mismo lugar?».',
       'Cuando el siervo de Abraham buscó esposa para Isaac, oró y esperó una señal de servicio: alguien que, sin que se lo pidieran, diera de beber también a diez camellos cansados. Rebeca era hermosa, pero lo que la mostró fue su corazón dispuesto. Conocerse es eso: descubrir si pueden aprender a servir juntos y ponerse de acuerdo. Y fue Rebeca quien decidió: «Sí, iré». No es un método para pedirle señales a Dios ni para que otros elijan por ti.',
+      'En casi todas las iglesias hay menos hombres que mujeres. Eso no es razón para unirte a alguien que no comparte tu fe, ni para desesperarte o pensar que Dios se olvidó de ti. Tampoco es razón para exigir perfección a los pocos que hay: busca fe y carácter, no un ideal.',
     ],
     pasajes: [
       { referencia: 'Génesis 2:18-24', pasaje: p('gen', 2, 18, 24) },
@@ -159,6 +161,7 @@ export const CAMINO: EtapaCamino[] = [
     intro: [
       'Muchos no se acercan por miedo al rechazo, y muchas esperan a alguien que no existe. Las dos cosas dejan a la iglesia llena de solteros que se miran de lejos. Acercarse con respeto, invitar a conversar o a compartir con el grupo, es un acto de valentía y de cortesía, no una apuesta.',
       'Invitar a alguien no significa que te deba algo. Un no es normal, no es un juicio sobre tu valor ni una razón para enojarte o alejarte: se puede seguir siendo amigos y hermanos. Y quien recibe la invitación puede responder con gracia y honestidad, mirando más allá de la primera impresión, el atractivo o la economía.',
+      'A los hombres: como en la iglesia suelen ser menos, su valentía con respeto cuenta mucho. No esperes a estar seguro de un sí; da el paso con calma y deja el resultado en manos de Dios.',
     ],
     pasajes: [
       { referencia: 'Josué 1:9', pasaje: p('jos', 1, 9) },
