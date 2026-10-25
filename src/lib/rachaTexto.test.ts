@@ -54,8 +54,8 @@ describe('racha devocional', () => {
     expect(calcularRacha([HOY, HOY, '2026-10-24', '2026-11-30', 'x'], HOY)).toMatchObject({ actual: 2 });
   });
 
-  it('las metas: 3, 7, 21, 40, 100, 365', () => {
-    expect([0, 3, 6, 21, 99, 365].map(siguienteHito)).toEqual([3, 7, 7, 40, 100, null]);
+  it('las metas: 3, 7, 21, 40, 100, 365 y siete años', () => {
+    expect([0, 3, 6, 21, 99, 365, 2555].map(siguienteHito)).toEqual([3, 7, 7, 40, 100, 2555, null]);
   });
 });
 

@@ -5,12 +5,12 @@
 
 export type Resplandor = {
   dias: number;
-  /** 1 a 6: cuánta luz, cuántos rayos y cuántas chispas. */
+  /** 1 a 7: cuánta luz, cuántos rayos y cuántas chispas. */
   intensidad: number;
   titulo: string;
   versiculo: { ref: string; texto: string };
   /** Lo que se dibuja en el centro. */
-  centro: 'chispa' | 'llama' | 'corazon' | 'rostro' | 'zarza' | 'gloria';
+  centro: 'chispa' | 'llama' | 'corazon' | 'rostro' | 'zarza' | 'gloria' | 'cristo';
 };
 
 // Versículos en la RV1909 (dominio público).
@@ -65,6 +65,19 @@ export const RESPLANDORES: Resplandor[] = [
       texto: 'El fuego descendió de los cielos, y consumió el holocausto y las víctimas; y la gloria de Jehová hinchió la casa.',
     },
     centro: 'gloria',
+  },
+  // Casi inalcanzable (idea de Mike): años de lectura, hasta parecerse a Cristo. La pantalla deja la noche y se vuelve
+  // luz blanca, como en el monte de la transfiguración (Mateo 17:2).
+  {
+    dias: 2555,
+    intensidad: 7,
+    titulo: 'La estatura de Cristo',
+    versiculo: {
+      ref: 'Efesios 4:13',
+      texto:
+        'Hasta que todos lleguemos á la unidad de la fe y del conocimiento del Hijo de Dios, á un varón perfecto, á la medida de la edad de la plenitud de Cristo.',
+    },
+    centro: 'cristo',
   },
 ];
 

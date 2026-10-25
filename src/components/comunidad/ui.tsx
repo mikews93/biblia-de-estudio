@@ -1,8 +1,8 @@
 // Piezas comunes de las pantallas de comunidades, con los colores del tema.
 import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
+import AroDeLuz from '@/components/comunidad/AroDeLuz';
 import type { IconProps } from '@/components/iconLine';
 import { initials } from '@/lib/comunidad';
 import { resplandorDe } from '@/lib/resplandor';
@@ -169,60 +169,6 @@ export function Avatar({
   return <AroDeLuz size={size} intensidad={luz.intensidad} racha={racha}>{foto_}</AroDeLuz>;
 }
 
-const ORO = '#F2B45A';
-const BRASA = '#E07B2E';
-
-/**
- * El aro de luz de la racha alrededor de la foto: fino y ámbar a los 3 días; con resplandor desde los 7; dorado y
- * brillante desde los 40 (el rostro de Moisés); con una llamita desde los 100. Ocupa el mismo lugar que la foto.
- */
-function AroDeLuz({ size, intensidad: n, racha, children }: { size: number; intensidad: number; racha: number; children: ReactNode }) {
-  const colors = useColors();
-  const grosor = Math.max(1.5, Math.min(3, size / 22)) + (n >= 4 ? 0.5 : 0);
-  const color = n >= 4 ? ORO : n >= 2 ? BRASA : colors.warm;
-  const brillo = n >= 2 ? Math.round(size * (0.08 + n * 0.035)) : 0;
-  const sombra =
-    brillo > 0
-      ? Platform.OS === 'web'
-        ? ({ boxShadow: `0 0 ${brillo}px ${Math.round(brillo / 3)}px ${n >= 4 ? 'rgba(242,180,90,0.75)' : 'rgba(224,123,46,0.5)'}` } as object)
-        : { shadowColor: color, shadowOpacity: n >= 4 ? 0.9 : 0.6, shadowRadius: brillo, shadowOffset: { width: 0, height: 0 }, elevation: 0 }
-      : null;
-  const llama = n >= 5 && size >= 30;
-  const chico = Math.max(14, size * 0.3);
-  return (
-    <View
-      style={{ width: size, height: size }}
-      accessible
-      accessibilityLabel={`Racha devocional de ${racha} días`}
-      testID="aro-de-luz"
-    >
-      {children}
-      <View
-        pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFill,
-          { borderRadius: size / 2, borderWidth: grosor, borderColor: color, margin: -grosor - 1 },
-          n >= 6 && { borderStyle: 'solid', outlineColor: 'rgba(255,246,222,0.9)', outlineWidth: 1.5, outlineStyle: 'solid' },
-          sombra,
-        ]}
-      />
-      {llama && (
-        <View
-          pointerEvents="none"
-          style={[styles.llamita, { width: chico, height: chico, borderRadius: chico / 2, backgroundColor: ORO, borderColor: colors.surface }]}
-        >
-          <Svg width={chico * 0.62} height={chico * 0.62} viewBox="0 0 24 24">
-            <Path
-              d="M12 21c-3.8 0-6.5-2.7-6.5-6.3 0-2.5 1.4-4.3 2.9-5.9.3 1.5.9 2.6 1.9 3.2-.2-3.4 1.1-6.2 3.6-8.5.3 2.8 1.6 4.6 3 6.2 1 1.2 1.6 2.6 1.6 4.3 0 4-2.7 7-6.5 7z"
-              fill="#FFF6DE"
-            />
-          </Svg>
-        </View>
-      )}
-    </View>
-  );
-}
-
 export function Chips<T extends string | number>({
   options,
   value,
@@ -306,7 +252,6 @@ const styles = StyleSheet.create({
   trailing: { position: 'absolute', right: 6, top: 0, bottom: 0, justifyContent: 'center' },
   card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16 },
   avatar: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  llamita: { position: 'absolute', right: -3, bottom: -3, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
   section: { fontSize: 12, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
