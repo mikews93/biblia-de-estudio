@@ -33,7 +33,7 @@ test('la imagen se arma con fondo, letra, dedicatoria y palabra original, y se d
   await expect(page.getByText('Oré por ti hoy', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Enviar imagen' })).toBeVisible();
 
-  await page.getByRole('tab', { name: 'Original' }).click();
+  await page.getByRole('tab', { name: 'Estudio' }).click();
   await page.getByRole('radio', { name: /amó/ }).click();
   await expect(page.getByText('ēgapēsen · amó')).toBeVisible();
 
@@ -62,7 +62,7 @@ test('la imagen publicada en Comunidad lleva su dedicatoria y su palabra origina
   await pa.getByRole('radio', { name: 'Fondo Olivo' }).click();
   await pa.getByRole('tab', { name: 'Dedicar' }).click();
   await pa.getByLabel('Dedicatoria').fill('Para Beto, me acordé de ti');
-  await pa.getByRole('tab', { name: 'Original' }).click();
+  await pa.getByRole('tab', { name: 'Estudio' }).click();
   await pa.getByRole('radio', { name: /amó/ }).click();
   await pa.getByText('Publicar en Comunidad').click();
   await pa.getByRole('radio', { name: 'Mis amigos' }).click();
@@ -77,4 +77,44 @@ test('la imagen publicada en Comunidad lleva su dedicatoria y su palabra origina
 
   await pa.context().close();
   await pb.context().close();
+});
+
+test('la línea de contexto sale de los comentarios y va al pie de la imagen', async ({ page }) => {
+  await page.goto('/juan/3');
+  await page.getByText('Porque de tal manera amó Dios al mundo').click();
+  await page.getByRole('button', { name: 'Compartir', exact: true }).click();
+  await page.getByRole('tab', { name: 'Estudio' }).click();
+  await page.getByRole('button', { name: 'Sugerir desde los comentarios' }).click();
+  // Sin comillas ni punto final, aunque la IA los ponga.
+  await expect(page.getByLabel('Contexto', { exact: true })).toHaveValue('Jesús se lo dice de noche a Nicodemo, un fariseo que vino a buscarlo');
+  // En la vista previa (y en el campo para editarla).
+  await expect(page.getByText('Jesús se lo dice de noche a Nicodemo, un fariseo que vino a buscarlo', { exact: true }).first()).toBeVisible();
+
+  // Queda guardada para todos: la segunda vez no se vuelve a escribir.
+  const res = await page.request.post('/api/comentario', { data: { contexto: { libro: 'jhn', capitulo: 3, versiculo: 16 } } });
+  expect(await res.json()).toEqual({ texto: 'Jesús se lo dice de noche a Nicodemo, un fariseo que vino a buscarlo', fuente: 'tosn' });
+});
+
+test('una ocasión trae sus versículos, su fondo y su dedicatoria, y la IA busca para lo que pasa', async ({ page, request }) => {
+  const cuenta = await cuentaNueva(request, 'Ana Ocasiones');
+  await conSesion(page, cuenta);
+  await page.addInitScript(() => window.localStorage.setItem('permiso-ia', 'si'));
+  await page.goto('/');
+  await page.getByText('Para alguien', { exact: true }).click();
+  await expect(page.getByText('¿A quién le hace falta hoy un versículo?')).toBeVisible();
+
+  await page.getByRole('radio', { name: /^Duelo/ }).click();
+  await expect(page.getByText('Versículos para enviar')).toBeVisible();
+  await page.getByRole('button', { name: 'Enviar Salmos 34:18' }).click();
+  await expect(page.getByText('Compartir Salmos 34:18')).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Fondo Estrellas' })).toBeChecked();
+  await page.getByRole('tab', { name: 'Dedicar' }).click();
+  await expect(page.getByLabel('Dedicatoria')).toHaveValue('Estoy contigo');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText('Compartir Salmos 34:18')).toHaveCount(0);
+
+  await page.getByLabel('Lo que está pasando').fill('mi amiga está muy angustiada por su trabajo');
+  await page.getByRole('button', { name: 'Buscar versículos' }).click();
+  await expect(page.getByText('Para lo que contaste')).toBeVisible();
+  await expect(page.getByText('Pide no estar afanosos y presentar todo a Dios en oración.')).toBeVisible();
 });

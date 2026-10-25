@@ -360,6 +360,7 @@ function datosDeImagen(raw: Json) {
   if (Array.isArray(raw.destacadas))
     datos.destacadas = [...new Set(raw.destacadas.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 400))].slice(0, 60);
   if (raw.dedicatoria && corto(raw.dedicatoria, 40)) datos.dedicatoria = corto(raw.dedicatoria, 40);
+  if (raw.contexto && corto(raw.contexto, 110)) datos.contexto = corto(raw.contexto, 110);
   const o = raw.original as Json | undefined;
   if (o && typeof o === 'object' && o.palabra && o.glosa)
     datos.original = { palabra: corto(o.palabra, 40), translit: corto(o.translit, 40), glosa: corto(o.glosa, 40) };

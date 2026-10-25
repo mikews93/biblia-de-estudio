@@ -8,11 +8,12 @@ import { SvgXml } from 'react-native-svg';
 import { captureRef } from 'react-native-view-shot';
 
 import { IconText } from '@/components/comunidad/ui';
-import { PeopleIcon, SparkIcon } from '@/components/icons';
+import { CommentaryIcon, PeopleIcon, SparkIcon } from '@/components/icons';
 import VerseArt from '@/components/VerseArt';
 import {
   IMAGE_SIZE,
   ImageFormat,
+  MAX_CONTEXTO,
   ImageLook,
   PalabraOriginal,
   VerseToShare,
@@ -23,6 +24,7 @@ import {
   shareVerse,
 } from '@/lib/compartir';
 import { useAccount } from '@/lib/comunidad';
+import { getContexto } from '@/lib/comentarios';
 import { getInterlinear, Word } from '@/lib/data';
 import { DEDICATORIAS, FONDOS, Fondo, LETRAS, Letra, fondoPorNombre, idsUnicos, letraPorId, useLetras } from '@/lib/fondos';
 import { huella } from '@/lib/sellos';
@@ -31,14 +33,19 @@ import { Audiencia, publish } from '@/lib/social';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-type Props = { verse: VerseToShare; onClose: () => void };
+type Props = {
+  verse: VerseToShare;
+  onClose: () => void;
+  /** Cómo empieza la imagen (por ejemplo, desde una ocasión): fondo y dedicatoria. */
+  inicial?: { fondo?: string; dedicatoria?: string };
+};
 
-type Pestaña = 'fondo' | 'letra' | 'dedicar' | 'original';
+type Pestaña = 'fondo' | 'letra' | 'dedicar' | 'estudio';
 const PESTAÑAS: { id: Pestaña; label: string }[] = [
   { id: 'fondo', label: 'Fondo' },
   { id: 'letra', label: 'Letra' },
   { id: 'dedicar', label: 'Dedicar' },
-  { id: 'original', label: 'Original' },
+  { id: 'estudio', label: 'Estudio' },
 ];
 
 // Palabras que no vale la pena poner al pie (artículos, conjunciones, preposiciones).
@@ -66,14 +73,18 @@ const PREF = 'compartir-estilo';
  * o como texto. La vista previa es la misma imagen que se comparte: fondo ilustrado o de color, letra, palabras
  * destacadas, una dedicatoria para alguien y, si se quiere, una palabra hebrea o griega al pie.
  */
-export default function VerseImage({ verse, onClose }: Props) {
+export default function VerseImage({ verse, onClose, inicial }: Props) {
   const colors = useColors();
   const { width: screen, height: alto } = useWindowDimensions();
   const [format, setFormat] = useState<ImageFormat>('cuadrado');
-  const [fondo, setFondo] = useState<Fondo>(FONDOS[0]);
+  const [fondo, setFondo] = useState<Fondo>(inicial?.fondo ? fondoPorNombre(inicial.fondo) : FONDOS[0]);
+  // Una ocasión trae su fondo: entonces no se cambia por el último que se usó.
+  const fondoFijo = !!inicial?.fondo;
   const [letra, setLetra] = useState<Letra>(LETRAS[0]);
   const [destacadas, setDestacadas] = useState<number[]>([]);
-  const [dedicatoria, setDedicatoria] = useState('');
+  const [dedicatoria, setDedicatoria] = useState(inicial?.dedicatoria ?? '');
+  const [contexto, setContexto] = useState('');
+  const [buscandoContexto, setBuscandoContexto] = useState<'no' | 'buscando' | 'sin-notas' | string>('no');
   const [original, setOriginal] = useState<PalabraOriginal | null>(null);
   const [originales, setOriginales] = useState<PalabraOriginal[] | null>(null);
   const [tab, setTab] = useState<Pestaña>('fondo');
@@ -88,11 +99,11 @@ export default function VerseImage({ verse, onClose }: Props) {
       .then((raw) => {
         if (!raw) return;
         const p = JSON.parse(raw) as { fondo?: string; letra?: string };
-        if (p.fondo) setFondo(fondoPorNombre(p.fondo));
+        if (p.fondo && !fondoFijo) setFondo(fondoPorNombre(p.fondo));
         if (p.letra) setLetra(letraPorId(p.letra));
       })
       .catch(() => {});
-  }, []);
+  }, [fondoFijo]);
 
   useEffect(() => {
     let vivo = true;
@@ -123,7 +134,18 @@ export default function VerseImage({ verse, onClose }: Props) {
   };
   const destacar = (i: number) => setDestacadas((d) => (d.includes(i) ? d.filter((x) => x !== i) : [...d, i]));
 
-  const look: ImageLook = { fondo, letra, destacadas, dedicatoria, original: original ?? undefined };
+  const sugerirContexto = async () => {
+    setBuscandoContexto('buscando');
+    try {
+      const t = await getContexto(verse.book, verse.chapter, verse.verse);
+      if (t) setContexto(t);
+      setBuscandoContexto(t ? 'no' : 'sin-notas');
+    } catch (e) {
+      setBuscandoContexto(e instanceof Error ? e.message : 'No se pudo traer el contexto');
+    }
+  };
+
+  const look: ImageLook = { fondo, letra, destacadas, dedicatoria, original: original ?? undefined, contexto };
   const size = IMAGE_SIZE[format];
   // La historia es alta: se limita para que debajo se vean las opciones.
   const previewWidth = Math.min(format === 'cuadrado' ? 320 : Math.min(240, (alto * 0.42 * 9) / 16), screen - 64);
@@ -304,8 +326,41 @@ export default function VerseImage({ verse, onClose }: Props) {
               </View>
             )}
 
-            {tab === 'original' && (
+            {tab === 'estudio' && (
               <View style={styles.panel}>
+                <Text style={[styles.ask, { color: colors.text }]}>Una línea de contexto</Text>
+                <Text style={[styles.hint, { color: colors.muted }]}>
+                  Quién lo dice, a quién y cuándo, para que el versículo no viaje fuera de su contexto.
+                </Text>
+                <TextInput
+                  value={contexto}
+                  onChangeText={setContexto}
+                  placeholder="Por ejemplo: Pablo lo escribe desde la cárcel"
+                  placeholderTextColor={colors.muted}
+                  maxLength={MAX_CONTEXTO}
+                  multiline
+                  style={[styles.input, styles.line, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
+                  accessibilityLabel="Contexto"
+                />
+                <Pressable
+                  onPress={sugerirContexto}
+                  disabled={buscandoContexto === 'buscando'}
+                  style={[styles.chip, { borderColor: colors.border }]}
+                  accessibilityRole="button"
+                >
+                  <IconText icon={CommentaryIcon} color={colors.text} size={16}>
+                    <Text style={{ color: colors.text, fontWeight: '600' }}>
+                      {buscandoContexto === 'buscando' ? 'Leyendo los comentarios…' : 'Sugerir desde los comentarios'}
+                    </Text>
+                  </IconText>
+                </Pressable>
+                {buscandoContexto === 'sin-notas' ? (
+                  <Text style={[styles.hint, { color: colors.muted }]}>Los comentarios no tienen notas de este versículo: escribe la tuya.</Text>
+                ) : buscandoContexto !== 'no' && buscandoContexto !== 'buscando' ? (
+                  <Text style={[styles.hint, { color: '#B3412E' }]}>{buscandoContexto}</Text>
+                ) : null}
+
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <Text style={[styles.ask, { color: colors.text }]}>Una palabra del idioma original</Text>
                 <Text style={[styles.hint, { color: colors.muted }]}>Elige una y se pone al pie de la imagen, con lo que significa.</Text>
                 {originales === null ? (
@@ -533,5 +588,6 @@ const styles = StyleSheet.create({
   font: { width: 92, borderWidth: 1, borderRadius: 14, paddingVertical: 10, alignItems: 'center', gap: 2 },
   word: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6, alignItems: 'center', maxWidth: 140 },
   line: { minHeight: 0 },
+  divider: { height: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginVertical: 6 },
   primary: { borderRadius: 24, paddingVertical: 13, alignSelf: 'stretch', alignItems: 'center' },
 });

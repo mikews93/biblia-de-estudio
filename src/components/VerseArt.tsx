@@ -2,7 +2,7 @@ import { ComponentRef, Ref, useId, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
-import { DEDICATORIA_SIZE, IMAGE_SIZE, ImageFormat, ImageLook, ORIGINAL_SIZE, siteBottom, verseFontSize } from '@/lib/compartir';
+import { CONTEXTO, DEDICATORIA_SIZE, IMAGE_SIZE, ImageFormat, ImageLook, ORIGINAL_SIZE, siteBottom, verseFontSize } from '@/lib/compartir';
 import { LETRA_DEDICATORIA, idsUnicos, palabras, useLetras } from '@/lib/fondos';
 import { sans, serif } from '@/lib/theme';
 
@@ -20,6 +20,7 @@ type Props = {
 /** La imagen del versículo dibujada con vistas: la vista previa al compartir y las imágenes del muro. */
 export default function VerseArt({ text, caption, format, look, width, viewRef, onWordPress }: Props) {
   const { fondo, letra, destacadas = [], dedicatoria, original } = look;
+  const contexto = look.contexto?.trim();
   const size = IMAGE_SIZE[format];
   const scale = width / size.width;
   const fontSize = verseFontSize(text, format) * letra.escala * scale;
@@ -79,6 +80,25 @@ export default function VerseArt({ text, caption, format, look, width, viewRef, 
       <Text style={[{ color: fondo.accent, fontFamily: sans, fontWeight: '700', fontSize: 40 * scale, marginTop: 56 * scale }, shadow]}>
         {caption}
       </Text>
+      {contexto ? (
+        <Text
+          style={[
+            {
+              color: fondo.muted,
+              fontFamily: serif,
+              fontStyle: 'italic',
+              fontSize: CONTEXTO.size * scale,
+              lineHeight: CONTEXTO.size * CONTEXTO.interlinea * scale,
+              marginTop: CONTEXTO.margen * scale,
+              maxWidth: CONTEXTO.ancho * scale,
+              textAlign: 'center',
+            },
+            shadow,
+          ]}
+        >
+          {contexto}
+        </Text>
+      ) : null}
       {original && (
         <>
           <Text style={[{ color: fondo.text, fontFamily: serif, fontSize: ORIGINAL_SIZE * scale, lineHeight: ORIGINAL_SIZE * 1.25 * scale, marginTop: 48 * scale }, shadow]}>

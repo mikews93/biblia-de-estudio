@@ -17,7 +17,15 @@ export type ImageStyle = Fondo;
 export const IMAGE_STYLES = FONDOS;
 
 /** Cómo se ve la imagen: fondo, letra, palabras destacadas y una dedicatoria opcional («Oré por ti hoy»). */
-export type ImageLook = { fondo: Fondo; letra: Letra; destacadas?: number[]; dedicatoria?: string; original?: PalabraOriginal };
+export type ImageLook = {
+  fondo: Fondo;
+  letra: Letra;
+  destacadas?: number[];
+  dedicatoria?: string;
+  original?: PalabraOriginal;
+  /** Una línea de contexto al pie («Pablo lo escribe desde la cárcel»), para que el versículo no viaje solo. */
+  contexto?: string;
+};
 
 /** Una palabra hebrea o griega del versículo, al pie de la imagen: «ἀγάπη · agápē · amor». */
 export type PalabraOriginal = { palabra: string; translit: string; glosa: string };
@@ -25,6 +33,10 @@ export type PalabraOriginal = { palabra: string; translit: string; glosa: string
 /** Alto de la palabra original al pie (en la imagen de 1080 px), con su separación. */
 export const ORIGINAL_SIZE = 58;
 const ORIGINAL_HEIGHT = 48 + ORIGINAL_SIZE * 1.25 + 34 * 1.3;
+
+/** La línea de contexto: letra, interlineado, separación y ancho en la imagen de 1080 px. */
+export const CONTEXTO = { size: 32, interlinea: 1.35, margen: 26, ancho: 760 };
+export const MAX_CONTEXTO = 110;
 
 /** Lo que guarda una publicación de imagen en Comunidad para dibujarse igual en el muro. */
 export type DatosImagen = {
@@ -34,6 +46,7 @@ export type DatosImagen = {
   destacadas?: number[];
   dedicatoria?: string;
   original?: PalabraOriginal;
+  contexto?: string;
 };
 
 export function datosDeImagen(format: ImageFormat, look: ImageLook): DatosImagen {
@@ -45,6 +58,7 @@ export function datosDeImagen(format: ImageFormat, look: ImageLook): DatosImagen
     ...(look.destacadas?.length ? { destacadas: look.destacadas } : {}),
     ...(dedic ? { dedicatoria: dedic } : {}),
     ...(look.original ? { original: look.original } : {}),
+    ...(look.contexto?.trim() ? { contexto: look.contexto.trim() } : {}),
   };
 }
 
@@ -55,6 +69,7 @@ export const lookDeDatos = (d: DatosImagen): ImageLook => ({
   destacadas: d.destacadas,
   dedicatoria: d.dedicatoria,
   original: d.original,
+  contexto: d.contexto,
 });
 
 /** Distancia de la marca del sitio al borde de abajo: en las historias queda fuera de la barra de Instagram. */
@@ -127,6 +142,7 @@ function loadSvg(svg: string): Promise<HTMLImageElement> {
 /** Dibuja la imagen del versículo (solo web). */
 export async function drawVerseImage(v: VerseToShare, format: ImageFormat, look: ImageLook): Promise<Blob> {
   const { fondo, letra, destacadas = [], dedicatoria, original } = look;
+  const contexto = look.contexto?.trim();
   const { width, height } = IMAGE_SIZE[format];
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -147,16 +163,20 @@ export async function drawVerseImage(v: VerseToShare, format: ImageFormat, look:
   const pad = 110;
   const words = palabras(v.text).map((w) => (letra.mayusculas ? w.toLocaleUpperCase('es') : w));
   const dedicHeight = dedic ? DEDICATORIA_SIZE * 1.2 + 36 : 0;
+  ctx.font = `italic ${CONTEXTO.size}px ${SERIF}`;
+  const lineasContexto = contexto ? wrapWords((t) => ctx.measureText(t).width, contexto.split(/\s+/), CONTEXTO.ancho) : [];
+  const contextoHeight = lineasContexto.length ? CONTEXTO.margen + lineasContexto.length * CONTEXTO.size * CONTEXTO.interlinea : 0;
+  const extra = dedicHeight + contextoHeight + (original ? ORIGINAL_HEIGHT : 0);
   let size = Math.round(verseFontSize(v.text, format) * letra.escala);
   let lines: number[][] = [];
   // Si aun así no cabe, se reduce hasta que quepa.
   for (; size >= 22; size -= 2) {
     ctx.font = `${size}px ${family}`;
     lines = wrapWords((t) => ctx.measureText(t).width, words, width - pad * 2);
-    if (lines.length * size * letra.interlinea < height - 420 - dedicHeight - (original ? ORIGINAL_HEIGHT : 0)) break;
+    if (lines.length * size * letra.interlinea < height - 420 - extra) break;
   }
   const lineHeight = size * letra.interlinea;
-  const blockHeight = dedicHeight + 60 + lines.length * lineHeight + 60 + 44 + (original ? ORIGINAL_HEIGHT : 0);
+  const blockHeight = extra + 60 + lines.length * lineHeight + 60 + 44;
   let y = (height - blockHeight) / 2;
 
   ctx.textBaseline = 'top';
@@ -196,9 +216,21 @@ export async function drawVerseImage(v: VerseToShare, format: ImageFormat, look:
   ctx.fillStyle = fondo.accent;
   ctx.font = `700 40px ${SANS}`;
   ctx.fillText(caption(v), width / 2, y);
+  y += 44;
+
+  if (lineasContexto.length) {
+    y += CONTEXTO.margen;
+    ctx.fillStyle = fondo.muted;
+    ctx.font = `italic ${CONTEXTO.size}px ${SERIF}`;
+    const ws = contexto!.split(/\s+/);
+    for (const linea of lineasContexto) {
+      ctx.fillText(linea.map((i) => ws[i]).join(' '), width / 2, y);
+      y += CONTEXTO.size * CONTEXTO.interlinea;
+    }
+  }
 
   if (original) {
-    y += 44 + 48;
+    y += 48;
     ctx.fillStyle = fondo.text;
     ctx.font = `${ORIGINAL_SIZE}px ${SERIF}`;
     ctx.fillText(original.palabra, width / 2, y);

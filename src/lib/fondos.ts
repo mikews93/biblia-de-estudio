@@ -377,6 +377,9 @@ export const DEDICATORIAS = ['Oré por ti hoy', 'Pensé en ti', 'Para ti, con ca
 /** Palabras del versículo, en el orden en que se dibujan (las comillas van pegadas a la primera y la última). */
 export function palabras(text: string) {
   const ws = text.trim().split(/\s+/);
+  // La RV1909 escribe en mayúsculas la primera palabra del capítulo («EN el principio»): en la imagen va normal.
+  if (ws[0] && ws[0].length > 1 && ws[0] === ws[0].toLocaleUpperCase('es') && /\p{Lu}{2}/u.test(ws[0]))
+    ws[0] = ws[0][0] + ws[0].slice(1).toLocaleLowerCase('es');
   return ws.map((w, i) => `${i === 0 ? '«' : ''}${w}${i === ws.length - 1 ? '»' : ''}`);
 }
 

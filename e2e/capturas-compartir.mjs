@@ -57,11 +57,11 @@ async function recorrido(prefix, opts) {
   await p.getByRole('radio', { name: 'Oré por ti hoy' }).scrollIntoViewIfNeeded();
   await shot(p, `${prefix}-3-dedicar`);
 
-  await p.getByRole('tab', { name: 'Original' }).click();
+  await p.getByRole('tab', { name: 'Estudio' }).click();
   await p.getByRole('radio', { name: /amó/ }).click();
   await p.getByRole('tab', { name: 'Fondo' }).click();
   await p.getByRole('radio', { name: 'Fondo Olivo' }).click();
-  await p.getByRole('tab', { name: 'Original' }).click();
+  await p.getByRole('tab', { name: 'Estudio' }).click();
   await p.getByRole('radio', { name: /amó/ }).scrollIntoViewIfNeeded();
   await shot(p, `${prefix}-4-original-olivo`);
   if (prefix === 'm') await descargar(p, 'imagen-1-olivo');
