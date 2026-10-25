@@ -22,12 +22,14 @@ beforeAll(async () => {
   ({ POST, GET } = await import('../../api/notificaciones'));
   ({ POST: comunidades } = await import('../../api/comunidades'));
   server = createServer((req, res) => {
+    if (req.url === '/expo') return void expoPush(req, res);
     void handlePush(req, res).then((handled) => {
       if (!handled) res.writeHead(404).end();
     });
   });
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  process.env.EXPO_PUSH_URL = `${base}/expo`;
   if (DB_URL) {
     await ensureSchema(comunidades);
     sql = postgres(DB_URL, { max: 1, onnotice: () => {} });
@@ -38,6 +40,20 @@ afterAll(async () => {
   server?.close();
   await sql?.end();
 });
+
+/** El servicio push de Expo simulado: guarda cada mensaje y da de baja los tokens que dicen «baja». */
+const expoEntregas: Record<string, any>[] = [];
+async function expoPush(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) {
+  let raw = '';
+  for await (const chunk of req) raw += chunk;
+  const msg = JSON.parse(raw);
+  expoEntregas.push({ ...msg, authorization: req.headers.authorization });
+  const data = String(msg.to).includes('baja')
+    ? { status: 'error', message: 'not registered', details: { error: 'DeviceNotRegistered' } }
+    : { status: 'ok', id: 'x' };
+  res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ data }));
+}
+const expoToken = (tag = 'ok') => `ExponentPushToken[${tag}${Date.now()}${Math.random().toString(36).slice(2, 8)}]`;
 
 const call = async (accion: string, body: Record<string, unknown> = {}, llave?: string) => {
   const res = await POST(request('/api/notificaciones', { accion, ...body }, llave));
@@ -235,6 +251,54 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
     await call('guardar', { suscripcion: sub });
     await call('quitar', { endpoint: sub.endpoint });
     expect((await call('probar', { endpoint: sub.endpoint })).status).toBe(404);
+  });
+});
+
+describe.skipIf(!DB_URL)('/api/notificaciones: la app nativa (tokens de Expo)', () => {
+  it('guarda el token sin claves y la prueba sale por el servicio de Expo, en el canal de avisos', async () => {
+    const token = expoToken();
+    expect((await call('guardar', { suscripcion: { endpoint: token }, zona: 'America/Bogota', hora: 450 })).json).toEqual({ cuenta: false });
+    expect((await call('probar', { endpoint: token })).json).toEqual({ enviado: true });
+    const e = expoEntregas.find((m) => m.to === token);
+    expect(e).toMatchObject({
+      to: token,
+      title: '¡Listo! Las notificaciones funcionan',
+      body: 'Te recordaremos tu lectura cada día a las 7:30 de la mañana.',
+      data: { url: '/notificaciones', tag: 'prueba' },
+      channelId: 'avisos',
+      collapseId: 'prueba',
+      priority: 'default',
+    });
+  });
+
+  it('el recordatorio diario llega al teléfono; el despertador no lo manda el servidor', async () => {
+    const token = expoToken();
+    await call('guardar', {
+      suscripcion: { endpoint: token },
+      zona: 'UTC',
+      hora: 0,
+      estado: { leido: '2000-01-01', lectura: { titulo: 'Juan 4', url: '/juan/4' } },
+      despertar: { activo: false, hora: 300, dias: 127 },
+    });
+    const now = localNow('UTC');
+    await sql`update suscripciones set hora = ${Math.max(0, now.minutos - 5)}, enviado = null where endpoint = ${token}`;
+    await enviar();
+    expect(expoEntregas.filter((m) => m.to === token).map((m) => m.data.url)).toEqual(['/juan/4']);
+    const [{ despertar }] = await sql`select despertar from suscripciones where endpoint = ${token}`;
+    expect(despertar).toBeNull();
+  });
+
+  it('si la app se desinstaló, Expo lo dice y la suscripción se borra', async () => {
+    const token = expoToken('baja');
+    await call('guardar', { suscripcion: { endpoint: token } });
+    expect((await call('probar', { endpoint: token })).status).toBe(410);
+    expect(await sql`select 1 from suscripciones where endpoint = ${token}`).toHaveLength(0);
+  });
+
+  it('rechaza tokens mal formados', async () => {
+    for (const endpoint of ['ExponentPushToken[]', 'ExponentPushToken[a b]', 'ExponentPushToken[abc]x', `ExponentPushToken[${'a'.repeat(300)}]`]) {
+      expect((await call('guardar', { suscripcion: { endpoint } })).status).toBe(400);
+    }
   });
 });
 

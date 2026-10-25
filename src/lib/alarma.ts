@@ -13,5 +13,18 @@ export async function permisoAlarma(): Promise<boolean> {
 
 export async function programarAlarma(_d: Despertador, _lectura?: string): Promise<void> {}
 
-/** Al tocar la alarma nativa se abre la pantalla de despertar. En la web lo hace el service worker. */
+/** En la web no hay permiso de alarmas exactas: el aviso lo manda el servidor. */
+export async function alarmaExacta(): Promise<boolean> {
+  return true;
+}
+
+export async function pedirAlarmaExacta(): Promise<boolean> {
+  return true;
+}
+
+export function useAlarmaExacta() {
+  return true;
+}
+
+/** Al tocar una notificación nativa se abre su pantalla. En la web lo hace el service worker. */
 export function useAbrirAlarma() {}
