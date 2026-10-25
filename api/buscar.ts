@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
   if (rapido) {
     try {
-      const { refs, semantica } = await quickSearch(query, books, MAX_QUICK);
+      const { refs, semantica } = await quickSearch(query, books, MAX_QUICK, undefined, version.licensed ? undefined : version.id);
       const found = (await Promise.all(refs.map((r) => verify(r, books, biblia, rv)))).filter((x) => x !== null);
       return Response.json(
         { results: found.filter((f) => f.text.trim()).map((f) => ({ ...f, reason: '' })), semantica },

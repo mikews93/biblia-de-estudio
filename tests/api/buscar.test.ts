@@ -50,6 +50,14 @@ describe('/api/buscar', () => {
       expect(nbla.results[0]).toMatchObject({ ref: 'jos.1.9', version: 'rv1909' });
     });
 
+    it('encuentra el versículo con las palabras de otra versión libre, aunque se lea la RV1909', async () => {
+      for (const version of ['bes', 'pdt']) {
+        const fragmento = text(version, 'php', 4, 6).split(/\s+/).slice(0, 7).join(' ');
+        const body = await (await quick({ query: fragmento, version: 'rv1909' })).json();
+        expect(body.results[0]).toMatchObject({ ref: 'php.4.6', version: 'rv1909', text: rv('php', 4, 6) });
+      }
+    });
+
     it('valida igual que la búsqueda con IA', async () => {
       expect((await (await quick({ query: 'a' })).json()).error).toBe('Escribe un poco más lo que buscas');
       expect((await (await quick({ query: 'ansiedad', version: 'inventada' })).json()).error).toBe('Versión no válida');

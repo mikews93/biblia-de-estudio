@@ -1,7 +1,7 @@
 // Cliente de /api/buscar: búsqueda de pasajes por idea, comprobada contra el texto de la versión que lee la persona.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { WordIndex } from './buscarPalabras';
+import { WordIndex, searchVersions } from './buscarPalabras';
 import { aiDenied, aiHeaders } from './comunidad';
 import { isOnline } from './conexion';
 import { type Book, getChapter } from './data';
@@ -77,22 +77,20 @@ export async function quickSearch(
 
 const indexes = new Map<string, Promise<WordIndex>>();
 
-/** La versión descargada en la que buscar sin conexión: la que se lee si está entera; si no, otra libre descargada. */
-export function offlineVersion(version: string, books: Book[]): string | null {
+/**
+ * Las versiones libres descargadas enteras en las que buscar sin conexión: la que se lee primero (si está), luego las
+ * demás. Cada quien recuerda el versículo con las palabras de su versión, así que se busca en todas.
+ */
+export function offlineVersions(version: string, books: Book[]): string[] {
   const { index } = downloadsState();
   const whole = (v: string) => !licensedById(v) && books.length > 0 && books.every((b) => index[textPack(v)]?.includes(b.id));
-  if (whole(version)) return version;
-  const others = Object.keys(index)
+  const all = Object.keys(index)
     .filter((p) => p.startsWith('texto:'))
     .map((p) => p.slice('texto:'.length));
-  return ['rv1909', ...others].find(whole) ?? null;
+  return [...new Set([version, 'rv1909', ...all])].filter(whole);
 }
 
-/** Búsqueda por palabras en el dispositivo. El índice de cada versión se arma una vez (un par de segundos). */
-export async function searchOffline(query: string, version: string, books: Book[], limit = 20): Promise<IdeaResult[]> {
-  await initDownloads();
-  const v = offlineVersion(version, books);
-  if (!v) throw new Error(NOTHING_DOWNLOADED);
+function wordIndex(v: string, books: Book[]): Promise<WordIndex> {
   let index = indexes.get(v);
   if (!index) {
     index = Promise.all(
@@ -105,10 +103,23 @@ export async function searchOffline(query: string, version: string, books: Book[
     index.catch(() => indexes.delete(v));
     indexes.set(v, index);
   }
-  const words = await index;
-  return words
-    .search(query, limit)
-    .map((h) => ({ ref: h.ref, label: formatRef(h.ref, books), text: words.text(h.ref), reason: '', version: v }));
+  return index;
+}
+
+/**
+ * Búsqueda por palabras en el dispositivo, en todas las versiones descargadas (la que se lee pesa más). El índice de
+ * cada versión se arma una vez (un par de segundos). El texto sale en la primera versión de la lista.
+ */
+export async function searchOffline(query: string, version: string, books: Book[], limit = 20): Promise<IdeaResult[]> {
+  await initDownloads();
+  const vs = offlineVersions(version, books);
+  if (!vs.length) throw new Error(NOTHING_DOWNLOADED);
+  const all = await Promise.all(vs.map(async (id) => ({ id, index: await wordIndex(id, books) })));
+  const shown = all[0].index;
+  return searchVersions(all, query, version)
+    .slice(0, limit)
+    .map((ref) => ({ ref, label: formatRef(ref, books), text: shown.text(ref), reason: '', version: vs[0] }))
+    .filter((r) => r.text);
 }
 
 // Búsquedas recientes, guardadas solo en este dispositivo

@@ -13,7 +13,7 @@ const MODEL = 'Xenova/multilingual-e5-small';
 const DTYPE = 'q8';
 const QUERY = 'query: ';
 const PASSAGE = 'passage: ';
-const VERSIONS = ['rv1909', 'blm']; // el vector de cada versículo es la media de estas versiones (antigua y actual)
+const VERSIONS = ['rv1909', 'blm', 'bes', 'pdt']; // el vector de cada versículo es la media de estas versiones (antigua y actuales)
 const BATCH = 64;
 
 const [dataDir, outDir] = process.argv.slice(2);

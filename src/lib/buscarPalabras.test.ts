@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { WordIndex, fuse, normalize, stem } from './buscarPalabras';
+import { WordIndex, fuse, normalize, searchVersions, stem } from './buscarPalabras';
 
 const docs = [
   { ref: 'php.4.13', text: 'Todo lo puedo en Cristo que me fortalece.' },
@@ -33,5 +33,25 @@ describe('búsqueda por palabras', () => {
 
   it('mezcla listas subiendo lo que sale en varias', () => {
     expect(fuse([{ refs: ['a', 'b'] }, { refs: ['b', 'c'] }])).toEqual(['b', 'a', 'c']);
+  });
+});
+
+describe('varias versiones', () => {
+  const rv = new WordIndex([
+    { ref: 'php.4.6', text: 'Por nada estéis afanosos; sino sean notorias vuestras peticiones delante de Dios.' },
+    { ref: 'mat.6.34', text: 'Así que, no os congojéis por el día de mañana.' },
+  ]);
+  const moderna = new WordIndex([
+    { ref: 'php.4.6', text: 'No se angustien por nada; más bien, en toda ocasión, presenten sus peticiones a Dios.' },
+    { ref: 'mat.6.34', text: 'Por lo tanto, no se angustien por el mañana.' },
+  ]);
+  const versions = [
+    { id: 'rv1909', index: rv },
+    { id: 'bes', index: moderna },
+  ];
+
+  it('encuentra el versículo con las palabras de cualquier versión y pone primero el fragmento recordado', () => {
+    expect(searchVersions(versions, 'no se angustien por nada', 'rv1909')[0]).toBe('php.4.6');
+    expect(searchVersions(versions, 'no os congojéis por el día de mañana', 'bes')[0]).toBe('mat.6.34');
   });
 });

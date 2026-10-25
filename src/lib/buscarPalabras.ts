@@ -60,6 +60,7 @@ export class WordIndex {
     this.plain = new Array(docs.length);
     this.lengths = new Uint16Array(docs.length);
     let total = 0;
+    const stems = new Map<string, string>(); // cada palabra distinta se reduce a su raíz una sola vez
     docs.forEach((d, i) => {
       const ws = words(d.text);
       this.plain[i] = ` ${ws.join(' ')} `;
@@ -67,7 +68,8 @@ export class WordIndex {
       total += ws.length;
       const counts = new Map<string, number>();
       for (const w of ws) {
-        const s = stem(w);
+        let s = stems.get(w);
+        if (s === undefined) stems.set(w, (s = stem(w)));
         counts.set(s, (counts.get(s) ?? 0) + 1);
       }
       for (const [s, n] of counts) {
@@ -123,4 +125,27 @@ export function fuse(lists: { refs: string[]; weight?: number }[], k = 60): stri
   for (const { refs, weight = 1 } of lists)
     refs.forEach((r, i) => score.set(r, (score.get(r) ?? 0) + weight / (k + i + 1)));
   return [...score].sort((a, b) => b[1] - a[1]).map(([r]) => r);
+}
+
+/** Parte de las palabras seguidas que tiene que coincidir para tomar la búsqueda como un fragmento recordado. */
+const PHRASE = 0.6;
+
+/**
+ * Búsqueda por palabras en varias versiones a la vez, mezclada (la que lee la persona pesa más), con el fragmento
+ * recordado casi palabra por palabra (en cualquier versión, desde 4 palabras) primero.
+ */
+export function searchVersions(versions: { id: string; index: WordIndex }[], query: string, reading?: string, limit = 40): string[] {
+  const lists = versions.map(({ id, index }) => ({ id, hits: index.search(query, limit) }));
+  const refs = fuse(lists.map(({ id, hits }) => ({ refs: hits.map((h) => h.ref), weight: id === reading ? 1.5 : 1 })));
+  return pinRecalled(refs, query, lists, reading);
+}
+
+/** Pone primero el fragmento recordado (si lo hay) en una lista ya mezclada con otras búsquedas. */
+export function pinRecalled(refs: string[], query: string, lists: { id: string; hits: Hit[] }[], reading?: string): string[] {
+  if (words(query).length < 4) return refs;
+  const best = lists
+    .flatMap(({ id, hits }) => hits.slice(0, 5).map((h) => ({ ...h, mine: id === reading })))
+    .filter((h) => (h.phrase ?? 0) >= PHRASE)
+    .sort((a, b) => (b.phrase ?? 0) - (a.phrase ?? 0) || Number(b.mine) - Number(a.mine) || b.score - a.score)[0];
+  return best ? [best.ref, ...refs.filter((r) => r !== best.ref)] : refs;
 }

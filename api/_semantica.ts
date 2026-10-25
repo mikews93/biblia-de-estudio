@@ -4,11 +4,13 @@
 // - La frase de la persona se convierte en vector aquí, con el mismo modelo pequeño (multilingual-e5-small, MIT) en
 //   Transformers.js. El modelo se descarga una vez por instancia a /tmp; si no se puede, queda solo la búsqueda por
 //   palabras, que es la misma que usa el teléfono sin conexión (src/lib/buscarPalabras.ts).
+// - Las palabras se buscan en todas las versiones libres de la app (la que lee la persona pesa más), porque cada quien
+//   recuerda el versículo con las palabras de su versión.
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { type Book, rv1909Index } from './_investigar';
-import { type Hit, WordIndex, fuse } from '../src/lib/buscarPalabras';
+import { type Book, load } from './_investigar';
+import { type Hit, WordIndex, fuse, pinRecalled } from '../src/lib/buscarPalabras';
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
 
@@ -17,7 +19,7 @@ type Vectors = Meta & { values: Int8Array; scales: Float32Array };
 export type Embed = (text: string) => Promise<Float32Array>;
 
 let vectors: Promise<Vectors | null> | null = null;
-let words: Promise<WordIndex> | null = null;
+const words = new Map<string, Promise<WordIndex>>();
 let embedder: Promise<Embed | null> | null = null;
 let failedAt = 0;
 /** Tras no poder cargar el modelo, cuánto esperar antes de volver a intentarlo (mientras tanto, solo palabras). */
@@ -37,10 +39,38 @@ function loadVectors(): Promise<Vectors | null> {
   return vectors;
 }
 
-function loadWords(books: Book[]): Promise<WordIndex> {
-  words ??= rv1909Index(books).then((vs) => new WordIndex(vs));
-  words.catch(() => (words = null));
-  return words;
+/** El índice de palabras de una versión libre, armado una vez por instancia. */
+function loadWords(version: string, books: Book[]): Promise<WordIndex> {
+  let index = words.get(version);
+  if (!index) {
+    // Un archivo por versión (pipeline/semantica/textos.mjs); sin él, sus capítulos uno a uno.
+    index = load<[string, string][]>(`semantica/textos/${version}.json`)
+      .then((rows) => rows.map(([ref, text]) => ({ ref, text })))
+      .catch(() =>
+        Promise.all(
+          books.flatMap((b) =>
+            Array.from({ length: b.chapters }, (_, i) =>
+              load<[number, string][]>(`text/${version}/${b.id}/${i + 1}.json`, []).then((vs) =>
+                vs.map(([n, t]) => ({ ref: `${b.id}.${i + 1}.${n}`, text: t })),
+              ),
+            ),
+          ),
+        ).then((chapters) => chapters.flat()),
+      )
+      .then((docs) => new WordIndex(docs));
+    index.catch(() => words.delete(version));
+    words.set(version, index);
+  }
+  return index;
+}
+
+/** Las versiones libres que están en esta instalación. */
+const freeVersions = () => load<{ id: string }[]>('versions.json', [{ id: 'rv1909' }]).then((vs) => vs.map((v) => v.id));
+
+/** La búsqueda por palabras en cada versión libre, por separado. */
+export async function searchWords(query: string, books: Book[]) {
+  const ids = await freeVersions();
+  return Promise.all(ids.map(async (id) => ({ id, hits: (await loadWords(id, books)).search(query, 40) })));
 }
 
 /** Convierte la frase en vector con Transformers.js (el modelo de los vectores), o null si no se puede cargar. */
@@ -85,9 +115,6 @@ export function nearest(v: Float32Array, vs: Vectors, limit: number, keep?: (ref
   return top.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-/** Parte de las palabras seguidas que tiene que coincidir para tomar la búsqueda como un fragmento recordado. */
-const PHRASE = 0.6;
-
 export type Quick = { refs: string[]; semantica: boolean };
 
 /**
@@ -95,22 +122,18 @@ export type Quick = { refs: string[]; semantica: boolean };
  * semántica pesa más: entiende «cuando tengo miedo» aunque el versículo diga «temor»); si no, solo palabras.
  * `embed` sustituye al modelo en las pruebas.
  */
-export async function quickSearch(query: string, books: Book[], limit = 20, embed?: Embed): Promise<Quick> {
-  const [vs, index] = await Promise.all([loadVectors(), loadWords(books)]);
-  const hits = index.search(query, 40);
-  const byWords = hits.map((h) => h.ref);
+export async function quickSearch(query: string, books: Book[], limit = 20, embed?: Embed, reading?: string): Promise<Quick> {
+  const [vs, lists] = await Promise.all([loadVectors(), searchWords(query, books)]);
+  const byWords = { refs: fuse(lists.map(({ id, hits }) => ({ refs: hits.map((h) => h.ref), weight: id === reading ? 1.5 : 1 }))) };
   const model = vs ? (embed ?? (await loadEmbedder(vs))) : null;
-  if (!vs || !model) return { refs: byWords.slice(0, limit), semantica: false };
-  const bySense = nearest(await model(query), vs, 40).map((h) => h.ref);
-  const mixed = fuse([{ refs: bySense, weight: 1.5 }, { refs: byWords }]);
+  const mixed = vs && model ? fuse([{ refs: nearest(await model(query), vs, 40).map((h) => h.ref), weight: 1.5 }, byWords]) : byWords.refs;
   // Un fragmento recordado casi palabra por palabra («no te dejaré ni te desampararé») va primero.
-  const recalled = query.trim().split(/\s+/).length >= 4 ? hits.find((h) => (h.phrase ?? 0) >= PHRASE)?.ref : undefined;
-  const refs = recalled ? [recalled, ...mixed.filter((r) => r !== recalled)] : mixed;
-  return { refs: refs.slice(0, limit), semantica: true };
+  return { refs: pinRecalled(mixed, query, lists, reading).slice(0, limit), semantica: !!(vs && model) };
 }
 
 /** Solo para las pruebas: vuelve a leer los archivos y el modelo. */
 export function resetForTests() {
-  vectors = words = embedder = null;
+  vectors = embedder = null;
+  words.clear();
   failedAt = 0;
 }
