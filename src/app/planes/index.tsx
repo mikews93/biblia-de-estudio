@@ -77,9 +77,19 @@ export default function Planes() {
         ))}
       </View>
 
+      <SectionTitle>Para un momento difícil</SectionTitle>
+      <Text style={[text.small, { color: colors.muted, marginTop: -4, marginBottom: 12 }]}>
+        Siete días, un capítulo cada día, para lo que estás viviendo. Todos terminan mirando a Jesús.
+      </Text>
+      <View style={{ gap: 10 }}>
+        {PLANS.filter((p) => p.tema).map((def) => (
+          <PlanRow key={def.id} def={def} colors={colors} onPress={() => open(def.id)} />
+        ))}
+      </View>
+
       <SectionTitle>A tu ritmo</SectionTitle>
       <View style={{ gap: 10 }}>
-        {PLANS.filter((p) => !p.season).map((def) => (
+        {PLANS.filter((p) => !p.season && !p.tema).map((def) => (
           <PlanRow key={def.id} def={def} colors={colors} onPress={() => open(def.id)} />
         ))}
         <Pressable

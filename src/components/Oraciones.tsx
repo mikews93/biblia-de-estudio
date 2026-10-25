@@ -33,6 +33,7 @@ const abrir = (v: Pick<Acompana, 'book' | 'chapter' | 'verse'>) => navigate(() =
 /** «Mis oraciones» en el diario: lo que la persona pide, los versículos que la acompañan y lo que Dios respondió. */
 export function OracionesVista() {
   const colors = useColors();
+  const { settings } = useSettings();
   const oraciones = useOraciones();
   const [filtro, setFiltro] = useState<'orando' | 'respondidas'>('orando');
   const [editando, setEditando] = useState<Oracion | 'nueva' | null>(null);
@@ -62,6 +63,17 @@ export function OracionesVista() {
           </View>
         </View>
         <Button label="Nueva petición" icon={PlusIcon} onPress={() => setEditando('nueva')} style={{ marginTop: 16 }} />
+        <Pressable
+          onPress={() => navigate(() => router.push('/mis-temas' as never), 'forward')}
+          hitSlop={6}
+          style={styles.misTemas}
+          accessibilityRole="link"
+        >
+          <LockIcon color={colors.muted} size={13} />
+          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}>
+            {settings.paraTi.activo ? 'Hoy te acompaña en lo que oras · Mis temas' : 'Mis temas en Hoy'}
+          </Text>
+        </Pressable>
       </Appear>
 
       {oraciones.length > 0 && (
@@ -498,6 +510,7 @@ const sombra = (colors: Colors) =>
   isDark(colors) ? null : { boxShadow: '0 1px 2px rgba(60, 40, 20, 0.05), 0 8px 24px rgba(60, 40, 20, 0.05)' };
 
 const styles = StyleSheet.create({
+  misTemas: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 },
   hero: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 22, padding: 20, marginBottom: 16 },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.4, marginBottom: 10 },
   heroVerse: { fontFamily: serif, fontSize: 18, lineHeight: 27, fontStyle: 'italic' },
