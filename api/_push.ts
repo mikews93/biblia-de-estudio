@@ -6,6 +6,10 @@
 //
 // Cada suscripción es una dirección del servicio push del navegador (Google, Mozilla, Apple, Microsoft).
 // Solo se envía a esos servicios: la dirección la manda el teléfono y no debe servir para llamar a otro sitio.
+//
+// La app nativa guarda en su lugar un token de Expo (ExponentPushToken[…], sin claves de cifrado): esos avisos van
+// por el servicio de Expo (https://docs.expo.dev/push-notifications/sending-notifications/). Si se activa la
+// seguridad de push en expo.dev, el token de acceso va en EXPO_ACCESS_TOKEN.
 
 import { createCipheriv, createECDH, createHmac, createPrivateKey, randomBytes, sign } from 'node:crypto';
 import type postgres from 'postgres';
@@ -52,11 +56,17 @@ alter table suscripciones add column if not exists pospuesto timestamptz;
 alter table suscripciones add column if not exists racha boolean not null default true;
 alter table suscripciones add column if not exists racha_enviado date;`;
 
+const EXPO_TOKEN = /^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,200}\]$/;
+
+/** ¿Es el token de Expo de la app nativa? */
+export const isExpoToken = (value: unknown): value is string => typeof value === 'string' && EXPO_TOKEN.test(value);
+
 const b64 = (buf: Buffer) => buf.toString('base64url');
 const unb64 = (s: string) => Buffer.from(s, 'base64url');
 
 /** ¿Es la dirección de un servicio push conocido? PUSH_HOSTS (separados por comas) añade otros, para las pruebas. */
 export function validEndpoint(value: unknown): value is string {
+  if (isExpoToken(value)) return true;
   if (typeof value !== 'string' || value.length > 1000) return false;
   let url: URL;
   try {
@@ -145,6 +155,7 @@ export function encrypt(payload: Buffer, sub: Pick<Suscripcion, 'p256dh' | 'auth
  * Nunca lanza: un aviso que no sale no debe romper lo que la persona estaba haciendo.
  */
 export async function sendPush(sub: Suscripcion, aviso: Aviso, keys: Vapid, ttl = 12 * 3600, urgency: 'normal' | 'high' = 'normal') {
+  if (isExpoToken(sub.endpoint)) return sendExpo(sub.endpoint, aviso, ttl, urgency);
   try {
     if (!validEndpoint(sub.endpoint)) return 'caducada';
     const headers: Record<string, string> = {
@@ -167,6 +178,43 @@ export async function sendPush(sub: Suscripcion, aviso: Aviso, keys: Vapid, ttl 
     return res.ok ? 'ok' : 'error';
   } catch (err) {
     console.error('push', err);
+    return 'error';
+  }
+}
+
+/** El mismo aviso por el servicio de Expo, para la app nativa. 'caducada' si la app se desinstaló. */
+export async function sendExpo(token: string, aviso: Aviso, ttl = 12 * 3600, urgency: 'normal' | 'high' = 'normal') {
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+    if (process.env.EXPO_ACCESS_TOKEN) headers.Authorization = `Bearer ${process.env.EXPO_ACCESS_TOKEN}`;
+    // EXPO_PUSH_URL solo cambia en las pruebas.
+    const res = await fetch(process.env.EXPO_PUSH_URL ?? 'https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        to: token,
+        title: aviso.title,
+        body: aviso.body,
+        data: { url: aviso.url, tag: aviso.tag },
+        sound: 'default',
+        ttl,
+        priority: urgency === 'high' ? 'high' : 'default',
+        // El canal de Android que crea la app (src/lib/pushNativo.native.ts).
+        channelId: 'avisos',
+        // En iPhone, un aviso nuevo con el mismo tema reemplaza al anterior.
+        ...(aviso.tag ? { collapseId: aviso.tag.slice(0, 64) } : {}),
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    const json = (await res.json().catch(() => null)) as { data?: { status?: string; details?: { error?: string } } } | null;
+    if (json?.data?.details?.error === 'DeviceNotRegistered') return 'caducada';
+    if (!res.ok || json?.data?.status !== 'ok') {
+      console.error('push expo', res.status, JSON.stringify(json));
+      return 'error';
+    }
+    return 'ok';
+  } catch (err) {
+    console.error('push expo', err);
     return 'error';
   }
 }

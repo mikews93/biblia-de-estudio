@@ -279,7 +279,7 @@ function StatusCard({
     <View style={[styles.cta, { backgroundColor: colors.accent }]}>
       <Text style={[styles.ctaTitle, { color: colors.surface }]}>Elige la hora y actívalas</Text>
       <Text style={{ color: colors.accentSoft, marginTop: 4, lineHeight: 20 }}>
-        El navegador te pedirá permiso. Puedes cambiarlas o apagarlas cuando quieras.
+        {Platform.OS === 'web' ? 'El navegador' : 'El teléfono'} te pedirá permiso. Puedes cambiarlas o apagarlas cuando quieras.
       </Text>
       <Pressable
         onPress={onEnable}

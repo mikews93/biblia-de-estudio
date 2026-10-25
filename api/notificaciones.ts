@@ -1,4 +1,4 @@
-// Función de Vercel para las notificaciones push de la web: guarda la suscripción de cada dispositivo con
+// Función de Vercel para las notificaciones push (de la web y de la app nativa): guarda la suscripción de cada dispositivo con
 // sus preferencias, y manda el recordatorio diario a la hora que cada quien eligió.
 //
 // Funciona sin cuenta (el recordatorio de lectura es para todos). Si la petición trae la llave de sesión,
@@ -19,7 +19,7 @@ import postgres from 'postgres';
 import { dailyMessage, DiaReto, EstadoAvisos, HORA_POR_DEFECTO, horaLabel, isDue, localNow, validZone } from '../src/lib/avisosTexto';
 import { despertarDue, despertarMessage, POSPONER_MINUTOS, validDias } from '../src/lib/despertarTexto';
 import { rachaDue, rachaMessage } from '../src/lib/rachaTexto';
-import { PUSH_SCHEMA, sendMany, sendPush, Suscripcion, validEndpoint, vapid } from './_push';
+import { isExpoToken, PUSH_SCHEMA, sendMany, sendPush, Suscripcion, validEndpoint, vapid } from './_push';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 
@@ -145,7 +145,8 @@ const actions: Record<string, Action> = {
   async guardar({ sql, body, request }) {
     const sub = (body.suscripcion ?? {}) as Json;
     const endpoint = endpointOf(sub.endpoint);
-    const { p256dh, auth } = keysOf(sub.keys);
+    // El token de Expo de la app nativa no lleva claves: el servicio de Expo cifra por su cuenta.
+    const { p256dh, auth } = isExpoToken(endpoint) ? { p256dh: '', auth: '' } : keysOf(sub.keys);
     const zona = validZone(body.zona) ? body.zona : 'UTC';
     const hora = isMinute(body.hora) ? body.hora : HORA_POR_DEFECTO;
     const despertar = despertarOf(body.despertar);
