@@ -19,6 +19,9 @@ export type Embed = (text: string) => Promise<Float32Array>;
 let vectors: Promise<Vectors | null> | null = null;
 let words: Promise<WordIndex> | null = null;
 let embedder: Promise<Embed | null> | null = null;
+let failedAt = 0;
+/** Tras no poder cargar el modelo, cuánto esperar antes de volver a intentarlo (mientras tanto, solo palabras). */
+const RETRY_MS = 5 * 60_000;
 
 /** Los vectores de los versículos (int8, uno por versículo, con su escala), o null si no están en esta instalación. */
 function loadVectors(): Promise<Vectors | null> {
@@ -42,6 +45,7 @@ function loadWords(books: Book[]): Promise<WordIndex> {
 
 /** Convierte la frase en vector con Transformers.js (el modelo de los vectores), o null si no se puede cargar. */
 function loadEmbedder(meta: Meta): Promise<Embed | null> {
+  if (!embedder && Date.now() - failedAt < RETRY_MS) return Promise.resolve(null);
   embedder ??= (async () => {
     const { env, pipeline } = await import('@huggingface/transformers');
     env.cacheDir = process.env.SEMANTICA_CACHE ?? '/tmp/modelos';
@@ -55,6 +59,7 @@ function loadEmbedder(meta: Meta): Promise<Embed | null> {
   })().catch((err) => {
     console.error('semantica: no se pudo cargar el modelo', err);
     embedder = null;
+    failedAt = Date.now();
     return null;
   });
   return embedder;
@@ -107,4 +112,5 @@ export async function quickSearch(query: string, books: Book[], limit = 20, embe
 /** Solo para las pruebas: vuelve a leer los archivos y el modelo. */
 export function resetForTests() {
   vectors = words = embedder = null;
+  failedAt = 0;
 }
