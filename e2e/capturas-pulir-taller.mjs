@@ -109,11 +109,17 @@ async function recorrido(prefix, opts) {
   const fila = p.getByLabel('Sermón: El Padre que corre');
   const caja = await fila.boundingBox();
   if (!opts.desktop) {
+    // Con el dedo (eventos táctiles de verdad): el ratón no desliza, en el computador está el clic derecho.
+    const cdp = await p.context().newCDPSession(p);
+    const toque = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
     const y = caja.y + caja.height / 2;
-    await p.mouse.move(caja.x + caja.width - 30, y);
-    await p.mouse.down();
-    for (let i = 1; i <= 10; i++) await p.mouse.move(caja.x + caja.width - 30 - i * 18, y + 1);
-    await p.mouse.up();
+    const x0 = caja.x + caja.width - 30;
+    await toque('touchStart', x0, y);
+    for (let i = 1; i <= 10; i++) {
+      await toque('touchMove', x0 - i * 18, y);
+      await wait(16);
+    }
+    await toque('touchEnd');
     await shot(p, `${prefix}-2-deslizar`);
     await p.getByRole('button', { name: 'Borrar', exact: true }).click();
     await wait(300);
@@ -125,10 +131,10 @@ async function recorrido(prefix, opts) {
   const f2 = await p.getByLabel('Sermón: El Padre que corre').boundingBox();
   if (opts.desktop) await p.mouse.click(f2.x + 60, f2.y + 40, { button: 'right' });
   else {
-    await p.mouse.move(f2.x + 60, f2.y + 40);
-    await p.mouse.down();
+    const cdp = await p.context().newCDPSession(p);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: f2.x + 60, y: f2.y + 40 }] });
     await wait(700);
-    await p.mouse.up();
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   }
   await p.getByText('Borrar este sermón').waitFor();
   await shot(p, `${prefix}-4-opciones`);

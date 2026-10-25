@@ -60,7 +60,8 @@ export default function Deslizable({
   const pan = useRef(
     PanResponder.create({
       // Solo un gesto claramente horizontal: el vertical sigue siendo para recorrer la lista.
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+      // «Capture»: se lo quita al Pressable de dentro, que ya tenía el toque.
+      onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
       onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, g) => {
         let v = base.current + g.dx;
@@ -93,7 +94,12 @@ export default function Deslizable({
   return (
     <View style={[styles.fila, style]}>
       <Animated.View
-        style={[styles.acciones, { width: total, opacity: x.interpolate({ inputRange: [-24, 0], outputRange: [1, 0], extrapolate: 'clamp' }) }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden={!abierta}>
+        style={[styles.acciones, { width: total, opacity: x.interpolate({ inputRange: [-24, 0], outputRange: [1, 0], extrapolate: 'clamp' }) }]}
+        importantForAccessibility={abierta ? 'auto' : 'no-hide-descendants'}
+        accessibilityElementsHidden={!abierta}
+        aria-hidden={!abierta}
+        pointerEvents={abierta ? 'auto' : 'none'}
+      >
         {acciones.map((a) => {
           const Icon = a.icon;
           return (

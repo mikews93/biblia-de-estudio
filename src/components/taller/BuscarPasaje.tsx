@@ -155,7 +155,7 @@ export default function BuscarPasaje({ books, pasaje, onElegir }: { books: Book[
             if (r && 'pasaje' in r && texto.trim() !== elegido) usar(r.pasaje);
           }}
           onSubmitEditing={() => enviar([texto])}
-          placeholder={oyendo !== null ? 'Te escucho…' : 'Una cita o una idea: «Lucas 15» o «el hijo que vuelve»'}
+          placeholder={oyendo !== null ? 'Te escucho…' : 'Una cita o una idea'}
           placeholderTextColor={colors.muted}
           returnKeyType="search"
           autoCorrect={false}

@@ -1,5 +1,6 @@
 // Todas las opciones de un borrador o de un sermón, al mantenerlo pulsado en la lista del Taller: abrirlo, presentarlo,
 // hacer una copia, pasarlo a Mis sermones (o devolverlo a borrador) y borrarlo.
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -25,7 +26,14 @@ export default function OpcionesMensaje({ m, books, onElegir, onClose }: { m: Me
   const colors = useColors();
   const terminado = esTerminado(m);
   const peligro = isDark(colors) ? PELIGRO.oscuro : PELIGRO.claro;
+  // Se abre con el dedo todavía encima: el toque al soltarlo no debe elegir la opción que quedó debajo.
+  const [listo, setListo] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setListo(true), 450);
+    return () => clearTimeout(t);
+  }, []);
   const elegir = (o: Opcion) => {
+    if (!listo) return;
     onClose();
     onElegir(o);
   };

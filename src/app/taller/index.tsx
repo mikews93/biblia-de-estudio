@@ -97,175 +97,177 @@ export default function TallerScreen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
-      <Stack.Screen options={{ title: 'Taller' }} />
-      <Text style={[text.title, { color: colors.text }]}>Taller</Text>
-      <Text style={[text.body, { color: colors.muted, marginTop: 6 }]}>
-        Prepara lo que vas a compartir: del pasaje a una idea central, de la idea a un bosquejo, y de ahí a presentarlo. La IA
-        te pregunta y sugiere, pero el mensaje lo escribes tú.
-      </Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
+        <Stack.Screen options={{ title: 'Taller' }} />
+        <Text style={[text.title, { color: colors.text }]}>Taller</Text>
+        <Text style={[text.body, { color: colors.muted, marginTop: 6 }]}>
+          Prepara lo que vas a compartir: del pasaje a una idea central, de la idea a un bosquejo, y de ahí a presentarlo. La IA
+          te pregunta y sugiere, pero el mensaje lo escribes tú.
+        </Text>
 
-      {pasaje && books.length > 0 && (
-        <View style={[styles.banner, { backgroundColor: colors.accentSoft }]}>
-          <Text style={{ color: colors.text }}>
-            Preparar con <Text style={{ fontWeight: '700' }}>{pasajeLabel(pasaje, books)}</Text>. Elige qué quieres preparar.
-          </Text>
-        </View>
-      )}
-
-      {!pasaje && (
-        <Pressable
-          onPress={() => navigate(() => router.push('/taller/tema'), 'forward')}
-          accessibilityRole="button"
-          accessibilityHint="Graba o escribe de qué quieres hablar y la IA busca pasajes, comentarios y teologías"
-          style={({ pressed }) => [styles.tema, { backgroundColor: colors.surface, borderColor: colors.accent }, pressed && { opacity: 0.8 }]}
-        >
-          <View style={[styles.temaMic, { backgroundColor: colors.accent }]}>
-            <MicIcon color={colors.surface} size={22} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.temaTitle, { color: colors.text }]}>Tengo algo de qué hablar</Text>
-            <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>
-              Grábalo o escríbelo. La IA te busca pasajes, comentarios y teologías, y te arma la maqueta.
+        {pasaje && books.length > 0 && (
+          <View style={[styles.banner, { backgroundColor: colors.accentSoft }]}>
+            <Text style={{ color: colors.text }}>
+              Preparar con <Text style={{ fontWeight: '700' }}>{pasajeLabel(pasaje, books)}</Text>. Elige qué quieres preparar.
             </Text>
           </View>
-          <ChevronRightIcon color={colors.accent} size={20} />
-        </Pressable>
-      )}
+        )}
 
-      <SectionTitle>Preparar</SectionTitle>
-      <View style={{ gap: 10 }}>
-        {TIPOS.map((t) => (
+        {!pasaje && (
           <Pressable
-            key={t.tipo}
-            onPress={() => crear(t.tipo)}
+            onPress={() => navigate(() => router.push('/taller/tema'), 'forward')}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.type, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+            accessibilityHint="Graba o escribe de qué quieres hablar y la IA busca pasajes, comentarios y teologías"
+            style={({ pressed }) => [styles.tema, { backgroundColor: colors.surface, borderColor: colors.accent }, pressed && { opacity: 0.8 }]}
           >
-            <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
-              {(() => {
-                const Icon = ICONOS[t.tipo];
-                return <Icon color={colors.accent} size={24} />;
-              })()}
+            <View style={[styles.temaMic, { backgroundColor: colors.accent }]}>
+              <MicIcon color={colors.surface} size={22} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.typeName, { color: colors.text }]}>
-                {t.nombre} <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '400' }}>· {t.duracion}</Text>
+              <Text style={[styles.temaTitle, { color: colors.text }]}>Tengo algo de qué hablar</Text>
+              <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>
+                Grábalo o escríbelo. La IA te busca pasajes, comentarios y teologías, y te arma la maqueta.
               </Text>
-              <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>{t.descripcion}</Text>
             </View>
-            <PlusIcon color={colors.accent} size={22} />
+            <ChevronRightIcon color={colors.accent} size={20} />
           </Pressable>
-        ))}
-      </View>
+        )}
 
-      <Pressable onPress={() => navigate(() => router.push('/taller/dinamicas'), 'forward')} style={{ marginTop: 14 }}>
-        <Text style={{ color: colors.accent, fontWeight: '700' }}>Ver las 23 dinámicas para grupos ›</Text>
-      </Pressable>
+        <SectionTitle>Preparar</SectionTitle>
+        <View style={{ gap: 10 }}>
+          {TIPOS.map((t) => (
+            <Pressable
+              key={t.tipo}
+              onPress={() => crear(t.tipo)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.type, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+            >
+              <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
+                {(() => {
+                  const Icon = ICONOS[t.tipo];
+                  return <Icon color={colors.accent} size={24} />;
+                })()}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.typeName, { color: colors.text }]}>
+                  {t.nombre} <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '400' }}>· {t.duracion}</Text>
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>{t.descripcion}</Text>
+              </View>
+              <PlusIcon color={colors.accent} size={22} />
+            </Pressable>
+          ))}
+        </View>
 
-      {ready && borradores.length > 0 && (
-        <>
-          <SectionTitle>Borradores</SectionTitle>
-          <View style={{ gap: 10 }}>
-            {borradores.map((m) => {
-              const mins = duracion(m);
-              const escritas = m.secciones.filter((x) => x.texto.trim() || x.claves?.trim() || x.paraGrupo?.trim()).length;
-              return (
-                <Deslizable
-                  key={m.id}
-                  acciones={acciones(m)}
-                  onPress={() => abrir(m)}
-                  onOpciones={() => setOpciones(m)}
-                  accessibilityLabel={`Borrador: ${tituloDe(m, books)}`}
-                >
-                  <Card>
-                    <View style={styles.cardHead}>
-                      <Text style={[styles.kicker, { color: colors.muted, flex: 1 }]}>
-                        {tipoInfo(m.tipo).nombre.toUpperCase()}
-                        {m.pasaje && m.titulo ? ` · ${pasajeLabel(m.pasaje, books).toUpperCase()}` : ''}
-                      </Text>
-                      {conBoton && <Mas onPress={() => setOpciones(m)} />}
-                    </View>
-                    <Text style={[styles.msgTitle, { color: colors.text }]}>{tituloDe(m, books)}</Text>
-                    <View style={styles.progreso}>
-                      <View style={[styles.barra, { backgroundColor: colors.accentSoft }]}>
-                        <View style={{ width: `${m.secciones.length ? (escritas / m.secciones.length) * 100 : 0}%`, height: '100%', borderRadius: 3, backgroundColor: colors.accent }} />
-                      </View>
-                      <Text style={{ color: colors.muted, fontSize: 12 }}>
-                        {escritas} de {m.secciones.length} partes
-                      </Text>
-                    </View>
-                    <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>
-                      {m.tema.trim() ? `${m.tema.trim()} · ` : ''}
-                      {mins ? `${mins} min · ` : ''}editado {ago(m.actualizado)}
-                    </Text>
-                  </Card>
-                </Deslizable>
-              );
-            })}
-          </View>
-          <Pista conBoton={conBoton} />
-        </>
-      )}
+        <Pressable onPress={() => navigate(() => router.push('/taller/dinamicas'), 'forward')} style={{ marginTop: 14 }}>
+          <Text style={{ color: colors.accent, fontWeight: '700' }}>Ver las 23 dinámicas para grupos ›</Text>
+        </Pressable>
 
-      {ready && terminados.length > 0 && (
-        <>
-          <SectionTitle>Mis sermones</SectionTitle>
-          {terminados.length > 4 && (
-            <Field value={buscar} onChangeText={setBuscar} placeholder="Buscar por título, pasaje o tema" accessibilityLabel="Buscar en Mis sermones" style={{ marginBottom: 10 }} />
-          )}
-          <View style={{ gap: 10 }}>
-            {terminados
-              .filter((m) => !buscar.trim() || fold(`${tituloDe(m, books)} ${pasajeLabel(m.pasaje, books)} ${m.tema} ${m.complemento}`).includes(fold(buscar)))
-              .map((m) => {
-                const veces = m.ocasiones?.length ?? 0;
-                const ultima = m.ocasiones?.[0];
+        {ready && borradores.length > 0 && (
+          <>
+            <SectionTitle>Borradores</SectionTitle>
+            <View style={{ gap: 10 }}>
+              {borradores.map((m) => {
+                const mins = duracion(m);
+                const escritas = m.secciones.filter((x) => x.texto.trim() || x.claves?.trim() || x.paraGrupo?.trim()).length;
                 return (
                   <Deslizable
                     key={m.id}
                     acciones={acciones(m)}
                     onPress={() => abrir(m)}
                     onOpciones={() => setOpciones(m)}
-                    accessibilityLabel={`Sermón: ${tituloDe(m, books)}`}
+                    accessibilityLabel={`Borrador: ${tituloDe(m, books)}`}
                   >
-                    <View style={[styles.sermon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.lomo, { backgroundColor: colors.warm }]} />
-                      <View style={{ flex: 1, paddingVertical: 14, paddingRight: conBoton ? 4 : 14 }}>
-                        <Text style={[styles.kicker, { color: colors.muted }]}>
+                    <Card>
+                      <View style={styles.cardHead}>
+                        <Text style={[styles.kicker, { color: colors.muted, flex: 1 }]}>
                           {tipoInfo(m.tipo).nombre.toUpperCase()}
-                          {m.pasaje ? ` · ${pasajeLabel(m.pasaje, books).toUpperCase()}` : ''}
+                          {m.pasaje && m.titulo ? ` · ${pasajeLabel(m.pasaje, books).toUpperCase()}` : ''}
                         </Text>
-                        <Text style={[styles.msgTitle, { color: colors.text }]}>{tituloDe(m, books)}</Text>
-                        {ideaCentral(m) ? (
-                          <Text style={{ color: colors.text, fontFamily: serif, fontStyle: 'italic', fontSize: 15, lineHeight: 21, marginTop: 4 }} numberOfLines={2}>
-                            {ideaCentral(m)}
-                          </Text>
-                        ) : null}
-                        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>
-                          {veces
-                            ? `Predicado ${veces === 1 ? 'una vez' : `${veces} veces`} · la última el ${fechaLarga(ultima!.fecha)}${ultima!.lugar ? `, ${ultima!.lugar}` : ''}`
-                            : `Terminado el ${fechaLarga(m.terminado!)}`}
+                        {conBoton && <Mas onPress={() => setOpciones(m)} />}
+                      </View>
+                      <Text style={[styles.msgTitle, { color: colors.text }]}>{tituloDe(m, books)}</Text>
+                      <View style={styles.progreso}>
+                        <View style={[styles.barra, { backgroundColor: colors.accentSoft }]}>
+                          <View style={{ width: `${m.secciones.length ? (escritas / m.secciones.length) * 100 : 0}%`, height: '100%', borderRadius: 3, backgroundColor: colors.accent }} />
+                        </View>
+                        <Text style={{ color: colors.muted, fontSize: 12 }}>
+                          {escritas} de {m.secciones.length} partes
                         </Text>
                       </View>
-                      <View style={{ justifyContent: conBoton ? 'flex-start' : 'center', paddingRight: 12, paddingTop: conBoton ? 10 : 0 }}>
-                        {conBoton ? <Mas onPress={() => setOpciones(m)} /> : <ChevronRightIcon color={colors.muted} size={18} />}
-                      </View>
-                    </View>
+                      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>
+                        {m.tema.trim() ? `${m.tema.trim()} · ` : ''}
+                        {mins ? `${mins} min · ` : ''}editado {ago(m.actualizado)}
+                      </Text>
+                    </Card>
                   </Deslizable>
                 );
               })}
-          </View>
-        </>
-      )}
-      {ready && terminados.length > 0 && borradores.length === 0 && <Pista conBoton={conBoton} />}
-      <Text style={{ color: colors.muted, fontSize: 12, marginTop: 28, lineHeight: 17 }}>
-        Los borradores se guardan mientras escribes, en este dispositivo y en tu cuenta si entraste. Al terminarlos pasan a
-        «Mis sermones». Los encuentros se pueden enviar a tus grupos.
-      </Text>
-      {opciones && <OpcionesMensaje m={opciones} books={books} onElegir={(o) => elegir(opciones, o)} onClose={() => setOpciones(null)} />}
-      {presentar && <ComoPresentar m={presentar} books={books} onClose={() => setPresentar(null)} />}
+            </View>
+            <Pista conBoton={conBoton} />
+          </>
+        )}
+
+        {ready && terminados.length > 0 && (
+          <>
+            <SectionTitle>Mis sermones</SectionTitle>
+            {terminados.length > 4 && (
+              <Field value={buscar} onChangeText={setBuscar} placeholder="Buscar por título, pasaje o tema" accessibilityLabel="Buscar en Mis sermones" style={{ marginBottom: 10 }} />
+            )}
+            <View style={{ gap: 10 }}>
+              {terminados
+                .filter((m) => !buscar.trim() || fold(`${tituloDe(m, books)} ${pasajeLabel(m.pasaje, books)} ${m.tema} ${m.complemento}`).includes(fold(buscar)))
+                .map((m) => {
+                  const veces = m.ocasiones?.length ?? 0;
+                  const ultima = m.ocasiones?.[0];
+                  return (
+                    <Deslizable
+                      key={m.id}
+                      acciones={acciones(m)}
+                      onPress={() => abrir(m)}
+                      onOpciones={() => setOpciones(m)}
+                      accessibilityLabel={`Sermón: ${tituloDe(m, books)}`}
+                    >
+                      <View style={[styles.sermon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View style={[styles.lomo, { backgroundColor: colors.warm }]} />
+                        <View style={{ flex: 1, paddingVertical: 14, paddingRight: conBoton ? 4 : 14 }}>
+                          <Text style={[styles.kicker, { color: colors.muted }]}>
+                            {tipoInfo(m.tipo).nombre.toUpperCase()}
+                            {m.pasaje ? ` · ${pasajeLabel(m.pasaje, books).toUpperCase()}` : ''}
+                          </Text>
+                          <Text style={[styles.msgTitle, { color: colors.text }]}>{tituloDe(m, books)}</Text>
+                          {ideaCentral(m) ? (
+                            <Text style={{ color: colors.text, fontFamily: serif, fontStyle: 'italic', fontSize: 15, lineHeight: 21, marginTop: 4 }} numberOfLines={2}>
+                              {ideaCentral(m)}
+                            </Text>
+                          ) : null}
+                          <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>
+                            {veces
+                              ? `Predicado ${veces === 1 ? 'una vez' : `${veces} veces`} · la última el ${fechaLarga(ultima!.fecha)}${ultima!.lugar ? `, ${ultima!.lugar}` : ''}`
+                              : `Terminado el ${fechaLarga(m.terminado!)}`}
+                          </Text>
+                        </View>
+                        <View style={{ justifyContent: conBoton ? 'flex-start' : 'center', paddingRight: 12, paddingTop: conBoton ? 10 : 0 }}>
+                          {conBoton ? <Mas onPress={() => setOpciones(m)} /> : <ChevronRightIcon color={colors.muted} size={18} />}
+                        </View>
+                      </View>
+                    </Deslizable>
+                  );
+                })}
+            </View>
+          </>
+        )}
+        {ready && terminados.length > 0 && borradores.length === 0 && <Pista conBoton={conBoton} />}
+        <Text style={{ color: colors.muted, fontSize: 12, marginTop: 28, lineHeight: 17 }}>
+          Los borradores se guardan mientras escribes, en este dispositivo y en tu cuenta si entraste. Al terminarlos pasan a
+          «Mis sermones». Los encuentros se pueden enviar a tus grupos.
+        </Text>
+        {opciones && <OpcionesMensaje m={opciones} books={books} onElegir={(o) => elegir(opciones, o)} onClose={() => setOpciones(null)} />}
+        {presentar && <ComoPresentar m={presentar} books={books} onClose={() => setPresentar(null)} />}
+      </ScrollView>
       {borrado && <AvisoBorrado {...borrado} onFin={() => setBorrado(null)} />}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -318,7 +320,6 @@ function AvisoBorrado({ titulo, terminado, deshacer, confirmar, onFin }: { titul
       style={[
         styles.aviso,
         { bottom: insets.bottom + 16, opacity: y, transform: [{ translateY: y.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] },
-        Platform.OS === 'web' && ({ position: 'fixed' } as object),
       ]}
     >
       <View style={[styles.avisoCaja, { backgroundColor: colors.text }]} accessibilityLiveRegion="polite">
