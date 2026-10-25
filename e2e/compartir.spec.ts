@@ -156,3 +156,51 @@ test('al llegar a la última parte de presentar, los versículos del sermón que
   await page.getByRole('tab', { name: 'Dedicar' }).click();
   await expect(page.getByLabel('Dedicatoria')).toHaveValue('El Padre que corre');
 });
+
+test('un versículo enviado a un amigo le llega con su imagen, y su «Amén» vuelve a quien lo envió', async ({ browser, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Envía');
+  const beto = await cuentaNueva(request, 'Beto Responde');
+  const carla = await cuentaNueva(request, 'Carla Desconocida');
+  await api(request, ana, 'pedirAmistad', { usuario: beto.usuario.id });
+  await api(request, beto, 'pedirAmistad', { usuario: ana.usuario.id });
+
+  // Solo a amigos.
+  const ajeno = await request.post('/api/comunidades', {
+    headers: { Authorization: `Bearer ${carla.llave}` },
+    data: { accion: 'enviarVersiculo', para: beto.usuario.id, libro: 'jhn', capitulo: 3, versiculo: 16, datos: {} },
+  });
+  expect(ajeno.status()).toBe(403);
+
+  const pa = await (await browser.newContext()).newPage();
+  await conSesion(pa, ana);
+  await pa.goto('/juan/3');
+  await pa.getByText('Porque de tal manera amó Dios al mundo').click();
+  await pa.getByRole('button', { name: 'Compartir', exact: true }).click();
+  await pa.getByRole('radio', { name: 'Fondo Mar' }).click();
+  await pa.getByRole('tab', { name: 'Dedicar' }).click();
+  await pa.getByLabel('Dedicatoria').fill('Pensé en ti, Beto');
+  await pa.getByText('Enviar a un amigo de Zarza').click();
+  await pa.getByRole('checkbox', { name: 'Beto Responde' }).click();
+  await pa.getByRole('button', { name: 'Enviar a Beto' }).click();
+  await expect(pa.getByText('Enviado a Beto')).toBeVisible();
+
+  const pb = await (await browser.newContext()).newPage();
+  await conSesion(pb, beto);
+  await pb.goto('/comunidades');
+  await expect(pb.getByRole('link', { name: 'Versículos para ti, 1 nuevos' })).toBeVisible();
+  await pb.getByRole('link', { name: 'Versículos para ti, 1 nuevos' }).click();
+  await expect(pb).toHaveURL(/\/recibidos$/);
+  await expect(pb.getByText('te envió un versículo')).toBeVisible();
+  await expect(pb.getByText('Pensé en ti, Beto')).toBeVisible();
+  await pb.getByRole('button', { name: 'Amén a Ana Envía' }).click();
+  await expect(pb.getByText('Respondiste «Amén» a Ana')).toBeVisible();
+  // Ya no aparece como nuevo.
+  await pb.goto('/comunidades');
+  await expect(pb.getByRole('link', { name: 'Versículos para ti', exact: true })).toBeVisible();
+
+  await pa.goto('/recibidos?ver=enviados');
+  await expect(pa.getByText('Beto dijo «Amén»')).toBeVisible();
+
+  await pa.context().close();
+  await pb.context().close();
+});

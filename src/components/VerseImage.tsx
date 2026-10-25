@@ -9,6 +9,7 @@ import { captureRef } from 'react-native-view-shot';
 
 import { IconText } from '@/components/comunidad/ui';
 import { CommentaryIcon, PeopleIcon, SparkIcon } from '@/components/icons';
+import EnviarAmigo from '@/components/EnviarAmigo';
 import VerseArt from '@/components/VerseArt';
 import {
   IMAGE_SIZE,
@@ -419,6 +420,7 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
             </View>
             {note && <Text style={{ color: colors.muted, textAlign: 'center' }}>{note}</Text>}
 
+            <EnviarAmigo verse={verse} format={format} look={look} onClose={onClose} />
             <PublishToCommunity verse={verse} format={format} look={look} onClose={onClose} />
           </ScrollView>
         </View>

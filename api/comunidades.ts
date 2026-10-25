@@ -2,7 +2,7 @@
 // notas compartidas en un versículo, peticiones de oración, preguntas para la reunión sugeridas por la IA y
 // guías de encuentro preparadas en el Taller.
 // También la red de la pestaña Comunidad: amigos, publicaciones (lo que cada quien lee, versículos resaltados,
-// imágenes de versículos y preguntas), «me gusta» y comentarios. Y «En pareja» (api/_pareja.ts): dos cuentas unidas
+// imágenes de versículos y preguntas), «me gusta» y comentarios; versículos enviados a un amigo con «Amén / Gracias». Y «En pareja» (api/_pareja.ts): dos cuentas unidas
 // por un código que hacen juntas un plan de devocionales.
 //
 // Todo va por POST con {"accion": "...", ...}. Para empezar basta un nombre: al registrarse se recibe una
@@ -55,6 +55,9 @@ const PAGE = 30;
 const REPORTS_TO_HIDE = 3;
 const POST_TYPES = ['resaltado', 'imagen', 'pregunta', 'reflexion'];
 const HIGHLIGHTS = ['amarillo', 'verde', 'azul', 'rosa'];
+// «Te envié un versículo»: cuántos se pueden mandar por hora y las respuestas posibles.
+const SENT_PER_HOUR = 30;
+const RESPUESTAS = ['amen', 'gracias'];
 
 const SCHEMA = `
 create table if not exists usuarios (
@@ -214,7 +217,24 @@ create table if not exists bloqueos (
   a uuid not null references usuarios on delete cascade,
   creado timestamptz not null default now(),
   primary key (de, a)
-);`;
+);
+create table if not exists versiculos_enviados (
+  id uuid primary key default gen_random_uuid(),
+  de uuid not null references usuarios on delete cascade,
+  para uuid not null references usuarios on delete cascade,
+  libro text not null,
+  capitulo int not null,
+  versiculo int not null,
+  version text not null,
+  cita text not null,
+  datos jsonb not null default '{}',
+  respuesta text,
+  respondido timestamptz,
+  visto boolean not null default false,
+  creado timestamptz not null default now()
+);
+create index if not exists versiculos_enviados_para on versiculos_enviados (para, creado desc);
+create index if not exists versiculos_enviados_de on versiculos_enviados (de, creado desc);`;
 
 const QUESTIONS_SYSTEM = `Preparas preguntas para la reunión de un grupo pequeño cristiano (una célula, una familia o un grupo de la iglesia) que lee la Biblia en una app gratuita en español.
 
@@ -1267,8 +1287,12 @@ const actions: Record<string, Handler> = {
     const bloqueadas = await sql`
       select u.id, u.nombre, u.foto from bloqueos b join usuarios u on u.id = b.a where b.de = ${user.id} order by u.nombre`;
     const pick = (estado: string) => links.filter((l) => l.estado === estado).map(({ id, nombre, foto }) => ({ id, nombre, foto }));
+    const [{ nuevos }] = await sql<{ nuevos: number }[]>`
+      select count(*)::int as nuevos from versiculos_enviados v
+      where v.para = ${user.id} and not v.visto and not ${blocked(sql, user.id, sql`v.de`)}`;
     return {
       codigo,
+      versiculosNuevos: nuevos,
       bloqueadas,
       compartirLecturas: compartir,
       amigos: pick('amigos'),
@@ -1322,6 +1346,75 @@ const actions: Record<string, Handler> = {
     const other = uuid(body.usuario);
     await sql`delete from amistades where (de = ${user.id} and para = ${other}) or (de = ${other} and para = ${user.id})`;
     return {};
+  },
+
+  // «Te envié un versículo»: la imagen de un versículo va directo a un amigo, con un aviso, y quien la recibe
+  // responde «Amén» o «Gracias» con un toque (le llega un aviso a quien la mandó).
+  async enviarVersiculo({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const para = uuid(body.para);
+    const [amigo] = await sql<{ nombre: string }[]>`
+      select u.nombre from usuarios u where u.id = ${para} and u.id in (${friendIds(sql, user.id)}) and not ${blocked(sql, user.id, para)}`;
+    if (!amigo) throw new Fail('Solo puedes enviar versículos a tus amigos', 403);
+    const book = await bookOf(body.libro);
+    const chapter = int(body.capitulo, 'Capítulo', 1, book.chapters);
+    const verse = int(body.versiculo, 'Versículo', 1, 200);
+    const quote = await verseText(body.version, book, chapter, verse);
+    const datos = datosDeImagen((body.datos ?? {}) as Json);
+    const [{ n }] = await sql<{ n: number }[]>`
+      select count(*)::int as n from versiculos_enviados where de = ${user.id} and creado > now() - interval '1 hour'`;
+    if (n >= SENT_PER_HOUR) throw new Fail('Has enviado muchos versículos en poco tiempo. Vuelve a intentarlo en un rato.', 429);
+    const [row] = await sql<{ id: string }[]>`
+      insert into versiculos_enviados (de, para, libro, capitulo, versiculo, version, cita, datos)
+      values (${user.id}, ${para}, ${book.id}, ${chapter}, ${verse}, ${quote.version}, ${quote.cita}, ${sql.json(datos as postgres.JSONValue)})
+      returning id`;
+    const dedicatoria = typeof datos.dedicatoria === 'string' ? `${datos.dedicatoria}: ` : '';
+    await notifyUser(sql, para, {
+      title: `${user.nombre} te envió un versículo`,
+      body: `${dedicatoria}${book.name} ${chapter}:${verse}. «${quote.cita.slice(0, 100)}${quote.cita.length > 100 ? '…' : ''}»`,
+      url: '/recibidos',
+      tag: `versiculo-${row.id}`,
+    });
+    return { id: row.id, para: amigo.nombre };
+  },
+
+  async versiculosRecibidos({ sql, request }) {
+    const user = await auth(sql, request);
+    const recibidos = await sql`
+      select v.id, v.libro, v.capitulo, v.versiculo, v.version, v.cita, v.datos, v.respuesta, v.visto, v.creado,
+        u.id as "deId", u.nombre as "deNombre", u.foto as "deFoto"
+      from versiculos_enviados v join usuarios u on u.id = v.de
+      where v.para = ${user.id} and not ${blocked(sql, user.id, sql`v.de`)}
+      order by v.creado desc limit 60`;
+    const enviados = await sql`
+      select v.id, v.libro, v.capitulo, v.versiculo, v.version, v.cita, v.datos, v.respuesta, v.creado,
+        u.id as "paraId", u.nombre as "paraNombre", u.foto as "paraFoto"
+      from versiculos_enviados v join usuarios u on u.id = v.para
+      where v.de = ${user.id}
+      order by v.creado desc limit 60`;
+    // Abrir la lista los marca como vistos.
+    await sql`update versiculos_enviados set visto = true where para = ${user.id} and not visto`;
+    return { recibidos, enviados };
+  },
+
+  async responderVersiculo({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const respuesta = String(body.respuesta);
+    if (!RESPUESTAS.includes(respuesta)) throw new Fail('Respuesta no válida');
+    const [row] = await sql<{ de: string; libro: string; capitulo: number; versiculo: number }[]>`
+      update versiculos_enviados set respuesta = ${respuesta}, respondido = now()
+      where id = ${uuid(body.id)} and para = ${user.id} and respuesta is null
+      returning de, libro, capitulo, versiculo`;
+    if (row) {
+      const book = await bookOf(row.libro);
+      await notifyUser(sql, row.de, {
+        title: respuesta === 'amen' ? `${user.nombre} dijo «Amén»` : `${user.nombre} te dio las gracias`,
+        body: `Por el versículo que le enviaste: ${book.name} ${row.capitulo}:${row.versiculo}.`,
+        url: '/recibidos?ver=enviados',
+        tag: `versiculo-respuesta-${uuid(body.id)}`,
+      });
+    }
+    return { respuesta };
   },
 
   // Bloquear: dejan de verse (publicaciones, comentarios, solicitudes y sugerencias) y la amistad se quita.
