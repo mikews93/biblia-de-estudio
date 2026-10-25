@@ -4,6 +4,7 @@ import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextIn
 
 import type { IconProps } from '@/components/iconLine';
 import { initials } from '@/lib/comunidad';
+import { useCrecer } from '@/lib/crecer';
 import { Colors, sans, serif, useColors } from '@/lib/theme';
 
 /** Un ícono de línea delante de un texto corto (títulos pequeños, enlaces): mismo color, centrados. */
@@ -86,6 +87,8 @@ export function Field({
 }: TextInputProps & { label?: string; /** Algo a la derecha dentro del campo, como «Mostrar». */ trailing?: ReactNode }) {
   const colors = useColors();
   const [focused, setFocused] = useState(false);
+  // Los de varias líneas crecen a medida que se escribe (en la web hay que medirlos).
+  const crecer = useCrecer(typeof props.value === 'string' ? props.value : undefined, !!props.multiline);
   return (
     <View style={{ alignSelf: 'stretch' }}>
       {label && <Text style={[styles.label, { color: focused ? colors.accent : colors.muted }]}>{label}</Text>}
@@ -93,6 +96,11 @@ export function Field({
         <TextInput
           placeholderTextColor={colors.muted}
           {...props}
+          ref={props.multiline ? (crecer.ref as never) : undefined}
+          onLayout={(e) => {
+            crecer.onLayout?.();
+            props.onLayout?.(e);
+          }}
           onFocus={(e) => {
             setFocused(true);
             props.onFocus?.(e);

@@ -563,3 +563,30 @@ export const RepeatIcon = (p: Props) => (
     <Path d="M5 19.5V15h4.5" />
   </Line>
 );
+
+/** Megáfono: los anuncios al final de un mensaje. */
+export const MegaphoneIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4 10v4a1 1 0 0 0 1 1h2l8 4.5V4.5L7 9H5a1 1 0 0 0-1 1z" />
+    <Path d="M7 15l1.2 4.2a1 1 0 0 0 1 .8h1.3" />
+    <Path d="M18.5 9.5a3.5 3.5 0 0 1 0 5" />
+  </Line>
+);
+
+/** Papelera: borrar o descartar. */
+export const TrashIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4.5 6.5h15" />
+    <Path d="M9.5 6.5V4.8a.8.8 0 0 1 .8-.8h3.4a.8.8 0 0 1 .8.8v1.7" />
+    <Path d="M6.5 6.5l.9 12.1A1.5 1.5 0 0 0 8.9 20h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12.1" />
+    <Path d="M10.2 10.5v6M13.8 10.5v6" />
+  </Line>
+);
+
+/** Dos hojas: hacer una copia. */
+export const CopyIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M9 8.5h9.5A1.5 1.5 0 0 1 20 10v9.5a1.5 1.5 0 0 1-1.5 1.5H9A1.5 1.5 0 0 1 7.5 19.5V10A1.5 1.5 0 0 1 9 8.5z" />
+    <Path d="M16.5 8.5V5A1.5 1.5 0 0 0 15 3.5H5.5A1.5 1.5 0 0 0 4 5v9.5A1.5 1.5 0 0 0 5.5 16h2" />
+  </Line>
+);

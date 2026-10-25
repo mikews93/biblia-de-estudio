@@ -6,7 +6,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, 
 import { Avatar, Button, Card, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { InteraccionEvento, LanzarInteraccion } from '@/components/evento/Interaccion';
 import { CitaDesplegable, EstadoPill, LiveDot, useEventoEnVivo } from '@/components/evento/piezas';
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CommentIcon, HourglassIcon, LiveIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CommentIcon, HourglassIcon, LiveIcon, MegaphoneIcon, PencilIcon, ScreenIcon, ShareIcon } from '@/components/icons';
 import { Tramos, useTic } from '@/components/vivo/Guion';
 import { LIVE_RED } from '@/components/vivo/piezas';
 import { useAccount } from '@/lib/comunidad';
@@ -23,11 +23,14 @@ import {
   useEventosSeguidos,
 } from '@/lib/eventos';
 import { minutosPlaneados, segundosDesde } from '@/lib/guion';
-import { pasajeLabel } from '@/lib/taller';
+import { ANUNCIOS, pasajeLabel } from '@/lib/taller';
 import { clock } from '@/lib/vivo';
 import { huella } from '@/lib/sellos';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+
+/** El último punto, con los anuncios del mensaje (src/lib/eventos.ts contenidoDe): con megáfono en vez de número. */
+const esAnuncios = (p: { titulo: string } | undefined, i: number, total: number) => !!p && i === total - 1 && p.titulo === ANUNCIOS;
 
 /**
  * La página del evento para la congregación: el bosquejo que avanza en vivo, los versículos de cada punto a un
@@ -159,6 +162,8 @@ export default function EventoScreen() {
                   >
                     {pasado ? (
                       <CheckIcon color={colors.muted} size={14} strokeWidth={2.4} />
+                    ) : esAnuncios(p, i, evento.total) ? (
+                      <MegaphoneIcon color={actual ? colors.surface : colors.warm} size={15} strokeWidth={2} />
                     ) : (
                       <Text style={{ color: actual ? colors.surface : colors.text, fontWeight: '800', fontSize: 13 }}>{i + 1}</Text>
                     )}
@@ -244,7 +249,7 @@ export default function EventoScreen() {
             >
               <LiveDot color={colors.warm} size={6} />
               <Text style={{ color: colors.background, fontWeight: '700', fontSize: 14 }}>
-                Punto {evento.punto + 1} de {evento.total}
+                {esAnuncios(evento.puntos[evento.punto], evento.punto, evento.total) ? 'Anuncios' : `Punto ${evento.punto + 1} de ${evento.total}`}
               </Text>
             </Pressable>
           </View>

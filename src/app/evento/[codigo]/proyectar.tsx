@@ -8,7 +8,7 @@ import { CloseIcon } from '@/components/icons';
 import Qr from '@/components/Qr';
 import { Book, getBooks } from '@/lib/data';
 import { codigoLegible, enlaceCorto, enlaceEvento, limpiarCodigo } from '@/lib/eventos';
-import { pasajeLabel } from '@/lib/taller';
+import { ANUNCIOS, pasajeLabel } from '@/lib/taller';
 import { serif } from '@/lib/theme';
 
 // La pantalla de la iglesia es oscura siempre, como en un auditorio con las luces bajas.
@@ -71,10 +71,13 @@ export default function ProyectarScreen() {
                     <View style={styles.liveRow}>
                       <LiveDot color={CALIDO} size={8} />
                       <Text style={styles.liveText}>
-                        PUNTO {evento.punto + 1} DE {evento.total}
+                        {evento.punto === evento.total - 1 && actual.titulo === ANUNCIOS ? 'AL TERMINAR' : `PUNTO ${evento.punto + 1} DE ${evento.total}`}
                       </Text>
                     </View>
                     <Text style={[styles.point, { textAlign: ancho ? 'left' : 'center' }]}>{actual.titulo}</Text>
+                    {actual.titulo === ANUNCIOS && !!actual.texto && (
+                      <Text style={[styles.how, { textAlign: ancho ? 'left' : 'center', marginTop: 10, lineHeight: 30 }]}>{actual.texto}</Text>
+                    )}
                   </>
                 ) : (
                   <>

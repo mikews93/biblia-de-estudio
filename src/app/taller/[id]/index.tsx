@@ -18,6 +18,7 @@ import {
   PlayIcon,
   SparkIcon,
 } from '@/components/icons';
+import BuscarPasaje from '@/components/taller/BuscarPasaje';
 import DocumentoVista from '@/components/taller/DocumentoVista';
 import PublicarEvento from '@/components/evento/Publicar';
 import { DinamicaCard, DinamicaPicker } from '@/components/taller/Dinamicas';
@@ -215,34 +216,14 @@ type StepProps = { m: Mensaje; set: (patch: Partial<Mensaje>) => void };
 
 function PasajeStep({ m, books, set }: StepProps & { books: Book[] }) {
   const colors = useColors();
-  // Sin los libros cargados, pasajeLabel daría el código interno («jhn 3:16»): se rellena cuando llegan.
-  const [input, setInput] = useState(books.length ? pasajeLabel(m.pasaje, books) : '');
-  const [error, setError] = useState<string | null>(null);
   const [verses, setVerses] = useState<Verse[] | null>(null);
   const [whole, setWhole] = useState(false);
   const p = m.pasaje;
 
   useEffect(() => {
-    if (books.length && m.pasaje && !input) setInput(pasajeLabel(m.pasaje, books));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [books.length]);
-
-  useEffect(() => {
     setVerses(null);
     if (p) getChapter(p.book, p.chapter).then((v) => setVerses(v.filter(([n]) => enPasaje(p, n)))).catch(() => {});
   }, [p?.book, p?.chapter, p?.from, p?.to]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const apply = () => {
-    if (!input.trim()) return;
-    const parsed = parsePasaje(input, books);
-    if (!parsed) {
-      setError('No reconozco ese pasaje. Prueba con «Juan 3:1-16» o «Salmos 23».');
-      return;
-    }
-    setError(null);
-    set({ pasaje: parsed });
-    setInput(pasajeLabel(parsed, books));
-  };
 
   return (
     <View style={{ marginTop: 16, gap: 14 }}>
@@ -254,17 +235,7 @@ function PasajeStep({ m, books, set }: StepProps & { books: Book[] }) {
           </Text>
         </View>
       )}
-      <Field
-        label="Pasaje"
-        value={input}
-        onChangeText={setInput}
-        onBlur={apply}
-        onSubmitEditing={apply}
-        placeholder="Por ejemplo, Lucas 15:11-32"
-        autoCapitalize="words"
-        returnKeyType="done"
-      />
-      <ErrorText>{error}</ErrorText>
+      <BuscarPasaje books={books} pasaje={m.pasaje} onElegir={(pasaje) => set({ pasaje })} />
       {p && (
         <Card>
           {verses ? (

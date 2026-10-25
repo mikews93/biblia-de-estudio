@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 
 import { ErrorText, IconText } from '@/components/comunidad/ui';
 import { LockIcon, MicIcon, PencilIcon } from '@/components/icons';
+import { useCrecer } from '@/lib/crecer';
 import { Colors, serif } from '@/lib/theme';
 import { listen, voiceSupported } from '@/lib/voz';
 
@@ -26,6 +27,7 @@ type Props = {
 
 export default function Cuaderno({ value, onChange, colors, max, label, placeholder, accessibilityLabel, dictarLabel = 'Dictar', minHeight = 200, onDictando }: Props) {
   const [focus, setFocus] = useState(false);
+  const crecer = useCrecer(value);
   const [dictando, setDictandoState] = useState(false);
   const [oyendo, setOyendo] = useState('');
   const [problema, setProblema] = useState<string | null>(null);
@@ -92,6 +94,8 @@ export default function Cuaderno({ value, onChange, colors, max, label, placehol
           </IconText>
         </View>
         <TextInput
+          ref={crecer.ref as never}
+          onLayout={crecer.onLayout}
           value={value}
           onChangeText={onChange}
           onFocus={() => setFocus(true)}
