@@ -123,6 +123,17 @@ describe.skipIf(!DB_URL || !HAS_DATA)('perfil', () => {
     );
   });
 
+  it('el apodo con que Hoy saluda se guarda, y una app que no lo manda no lo borra', async () => {
+    const ana = await persona('Ana');
+    expect((await call('guardarPerfil', { nombre: 'Ana María', apodo: ' Anita ' }, ana.llave)).json.usuario.apodo).toBe('Anita');
+    expect((await call('guardarPerfil', { nombre: 'Ana María', bio: 'Hola' }, ana.llave)).json.usuario.apodo).toBe('Anita');
+    expect((await call('yo', {}, ana.llave)).json.usuario.apodo).toBe('Anita');
+    expect((await call('guardarPerfil', { nombre: 'Ana María', apodo: '' }, ana.llave)).json.usuario.apodo).toBeNull();
+    expect((await call('guardarPerfil', { nombre: 'Ana', apodo: 'x'.repeat(25) }, ana.llave)).json.error).toBe(
+      'Es demasiado largo (máximo 24 caracteres)',
+    );
+  });
+
   it('la foto: se sube, reemplaza a la anterior, sale en las publicaciones y se puede quitar', async () => {
     const ana = await persona('Ana');
     const primera = (await call('subirFoto', { imagen: JPEG.toString('base64') }, ana.llave)).json.usuario.foto as string;
