@@ -65,7 +65,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       const yo = await call('yo', {}, ana.llave);
       expect(yo.status).toBe(200);
       expect(yo.json).toEqual({
-        usuario: { id: ana.id, nombre: ana.nombre, correo: null, foto: null, bio: null, iglesia: null, ciudad: null, conClave: false, facebook: null },
+        usuario: { id: ana.id, nombre: ana.nombre, correo: null, foto: null, bio: null, iglesia: null, ciudad: null, conClave: false, cuentas: [] },
         grupos: [],
         iglesia: null,
         cuidador: false,

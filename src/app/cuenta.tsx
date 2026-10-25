@@ -7,19 +7,11 @@ import { ProgresoCuenta } from '@/components/Sincronia';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, FlagIcon, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
+import { ProviderLogo } from '@/components/comunidad/ProviderButtons';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FlagIcon, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
-import {
-  disconnectFacebook,
-  facebook,
-  facebookAvailable,
-  MAX_BIO,
-  MAX_PLACE,
-  pickPhoto,
-  removePhoto,
-  resumeFacebook,
-  saveProfile,
-} from '@/lib/perfil';
+import { MAX_BIO, MAX_PLACE, pickPhoto, removePhoto, saveProfile } from '@/lib/perfil';
+import { desconectar, entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, retomarViaje } from '@/lib/proveedores';
 import { HAY_SOSTENER } from '@/lib/sostener';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -35,10 +27,11 @@ export default function AccountScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
-  const [fbReady, setFbReady] = useState(false);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [viaje, setViaje] = useState<Proveedor | null>(null);
   const profileAction = useAction();
   const photoAction = useAction();
-  const fbAction = useAction();
+  const extAction = useAction();
   const loginAction = useAction();
   const deleteAction = useAction();
 
@@ -59,10 +52,10 @@ export default function AccountScreen() {
   }, [usuario?.id, usuario?.nombre, usuario?.bio, usuario?.iglesia, usuario?.ciudad, usuario?.correo]);
 
   useEffect(() => {
-    facebookAvailable().then(setFbReady);
-    // Si se fue a Facebook en esta misma pestaña, al volver se termina de conectar.
-    fbAction.run(async () => {
-      if (await resumeFacebook()) flash('Facebook quedó conectado');
+    proveedoresDisponibles().then(setProveedores);
+    // Si se fue al proveedor en esta misma pestaña, al volver se termina de conectar.
+    extAction.run(async () => {
+      if (await retomarViaje()) flash('Cuenta conectada');
     });
   }, []);
 
@@ -103,18 +96,28 @@ export default function AccountScreen() {
     photoAction.run(removePhoto);
   };
 
-  const connect = () => fbAction.run(async () => (await facebook('conectar')) && flash('Facebook quedó conectado'));
+  const cuentas = usuario.cuentas ?? [];
+  const conectada = (p: Proveedor) => cuentas.find((c) => c.proveedor === p);
+  // Los que se pueden conectar aquí y los ya conectados (aunque en este dispositivo no se ofrezcan).
+  const filas = [...proveedores, ...cuentas.map((c) => c.proveedor).filter((p) => !proveedores.includes(p))];
 
-  const disconnect = async () => {
-    if (!(await confirm('¿Desconectar Facebook?', 'Ya no podrás entrar con Facebook. Tu foto y tu nombre se quedan como están.', 'Desconectar'))) return;
-    fbAction.run(disconnectFacebook);
+  const connect = (p: Proveedor) => {
+    setViaje(p);
+    extAction.run(async () => (await entrarCon(p, 'conectar')) && flash(`${NOMBRE[p]} quedó conectado`)).finally(() => setViaje(null));
+  };
+
+  const disconnect = async (p: Proveedor) => {
+    const msg = `Ya no podrás entrar con ${NOMBRE[p]}. Tu foto y tu nombre se quedan como están.`;
+    if (!(await confirm(`¿Desconectar ${NOMBRE[p]}?`, msg, 'Desconectar'))) return;
+    setViaje(p);
+    extAction.run(() => desconectar(p)).finally(() => setViaje(null));
   };
 
   const out = async () => {
     const msg = hasPassword
       ? 'Tu progreso queda guardado en tu cuenta. Podrás volver a entrar con tu correo y tu contraseña.'
-      : usuario.facebook
-        ? 'Tu progreso queda guardado en tu cuenta. Podrás volver a entrar con Facebook.'
+      : cuentas.length
+        ? `Tu progreso queda guardado en tu cuenta. Podrás volver a entrar con ${NOMBRE[cuentas[0].proveedor]}.`
         : 'Tu cuenta no tiene correo: si sales, no podrás volver a entrar en ella.';
     if (!(await confirm('¿Cerrar sesión en este dispositivo?', msg, 'Cerrar sesión'))) return;
     await signOut();
@@ -218,26 +221,40 @@ export default function AccountScreen() {
         </Section>
       </Appear>
 
-      {(fbReady || usuario.facebook) && (
+      {filas.length > 0 && (
         <Appear delay={100}>
-          <Section colors={colors} title="Cuentas conectadas">
-            <View style={styles.service}>
-              <FacebookLogo size={36} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Facebook</Text>
-                <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
-                  {usuario.facebook
-                    ? `Conectado como ${usuario.facebook}. Puedes entrar con Facebook en cualquier dispositivo.`
-                    : 'Entra con un toque y, si no tienes foto, usa la de tu Facebook.'}
-                </Text>
-              </View>
-              {usuario.facebook ? (
-                <Button label="Desconectar" kind="quiet" onPress={disconnect} busy={fbAction.busy} />
-              ) : (
-                <Button label="Conectar" kind="outline" onPress={connect} busy={fbAction.busy} disabled={!fbReady} style={styles.small} />
-              )}
+          <Section colors={colors} title="Entrar con un toque" hint="Conecta tus cuentas para entrar en cualquier dispositivo sin escribir la contraseña.">
+            <View style={[styles.services, { borderColor: colors.border }]}>
+              {filas.map((p, i) => {
+                const c = conectada(p);
+                return (
+                  <View key={p} style={[styles.service, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
+                    <View style={[styles.serviceLogo, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                      <ProviderLogo proveedor={p} size={20} color={colors.text} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{NOMBRE[p]}</Text>
+                      <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }} numberOfLines={2}>
+                        {c ? (c.nombre ? `Conectado como ${c.nombre}` : 'Conectado') : 'Sin conectar'}
+                      </Text>
+                    </View>
+                    {c ? (
+                      <Button label="Desconectar" kind="quiet" onPress={() => disconnect(p)} busy={extAction.busy && viaje === p} />
+                    ) : (
+                      <Button
+                        label="Conectar"
+                        kind="outline"
+                        onPress={() => connect(p)}
+                        busy={extAction.busy && viaje === p}
+                        disabled={!proveedores.includes(p)}
+                        style={styles.small}
+                      />
+                    )}
+                  </View>
+                );
+              })}
             </View>
-            <ErrorText>{fbAction.error}</ErrorText>
+            <ErrorText>{extAction.error}</ErrorText>
           </Section>
         </Appear>
       )}
@@ -251,7 +268,7 @@ export default function AccountScreen() {
             hasPassword
               ? `Entras con ${usuario.correo}. Puedes cambiar el correo o la contraseña.`
               : usuario.correo
-                ? `Tu correo es ${usuario.correo}. Elige una contraseña para entrar también sin Facebook.`
+                ? `Tu correo es ${usuario.correo}. Elige una contraseña para entrar también con ella.`
                 : 'Añade un correo y una contraseña para abrir tu cuenta en otro teléfono o en el navegador.'
           }
         >
@@ -477,7 +494,16 @@ const styles = StyleSheet.create({
   pairItem: { flexGrow: 1, flexBasis: 200 },
   iconLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
   label: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-  service: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  services: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: -4 },
+  service: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  serviceLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   small: { paddingVertical: 8, paddingHorizontal: 16, minHeight: 38 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 14 },
   rowIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
