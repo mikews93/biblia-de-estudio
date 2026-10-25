@@ -67,8 +67,8 @@ export default function PersonScreen() {
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.page}>
       <Stack.Screen options={{ title: person.nombre }} />
-      <View style={styles.head}>
-        <Avatar name={person.nombre} foto={person.foto} racha={person.racha} size={96} filled />
+      <View style={[styles.head, person.servicio ? { paddingTop: 26 } : null]}>
+        <Avatar name={person.nombre} foto={person.foto} racha={person.racha} servicio={person.servicio} size={96} filled />
         <Text style={[styles.name, { color: colors.text }]}>{person.nombre}</Text>
         {person.bio ? <Text style={[styles.bio, { color: colors.text }]}>{person.bio}</Text> : null}
         <View style={styles.facts}>

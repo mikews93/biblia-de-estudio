@@ -58,7 +58,7 @@ export type ResumenGrupo = {
   avisos?: boolean;
 };
 export type Plan = { libro: string | null; inicio: string | null; porDia: number; reto?: string | null };
-export type Miembro = { id: string; nombre: string; foto: string | null; racha?: number; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
+export type Miembro = { id: string; nombre: string; foto: string | null; racha?: number; servicio?: number; rol: 'admin' | 'miembro'; leyoHoy: boolean; soyYo: boolean };
 export type Grupo = {
   id: string;
   nombre: string;
@@ -315,6 +315,16 @@ export async function reportarRacha(dias: number, vence: string | null) {
   rachaEnviada = clave;
   await api('racha', { dias, vence }).catch(() => {
     rachaEnviada = '';
+  });
+}
+
+let servicioEnviado = -1;
+/** Pone al día en la cuenta cuántas veces se ha servido, para la corona de estrellas de la foto (src/lib/servicio.ts). */
+export async function reportarServicio(total: number) {
+  if (total === servicioEnviado || !(await sessionKey())) return;
+  servicioEnviado = total;
+  await api('servicio', { total }).catch(() => {
+    servicioEnviado = -1;
   });
 }
 

@@ -6,6 +6,7 @@ import { Platform, View } from 'react-native';
 import AudioBar from '@/components/AudioBar';
 import AvisosSync from '@/components/AvisosSync';
 import Celebracion from '@/components/Celebracion';
+import { LuceroNuevo } from '@/components/Servicio';
 import Confeti from '@/components/Confeti';
 import LlamaArranque from '@/components/LlamaArranque';
 import SincroniaCuenta from '@/components/Sincronia';
@@ -170,6 +171,7 @@ function AppStack() {
       {Platform.OS === 'web' && <AvisosSync />}
       <SincroniaCuenta />
       <Celebracion />
+      <LuceroNuevo />
       <Confeti />
       <GuardaNinos />
       {Platform.OS !== 'web' && <LlamaArranque />}

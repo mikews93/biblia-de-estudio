@@ -175,7 +175,7 @@ export default function GroupScreen() {
         <View style={styles.members}>
           {group.miembros.map((m) => (
             <View key={m.id} style={styles.member}>
-              <Avatar name={m.nombre} foto={m.foto} racha={m.racha} filled={m.leyoHoy} />
+              <Avatar name={m.nombre} foto={m.foto} racha={m.racha} servicio={m.servicio} filled={m.leyoHoy} />
               <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }} numberOfLines={1}>
                 {m.soyYo ? 'Tú' : m.nombre.split(' ')[0]}
               </Text>
@@ -268,7 +268,7 @@ export default function GroupScreen() {
             accessibilityLabel={`Ver el perfil de ${m.nombre}`}
             style={({ pressed }) => [styles.personLink, pressed && { opacity: 0.7 }]}
           >
-            <Avatar name={m.nombre} foto={m.foto} racha={m.racha} size={32} />
+            <Avatar name={m.nombre} foto={m.foto} racha={m.racha} servicio={m.servicio} size={32} />
             <Text style={{ color: colors.text, flex: 1 }}>
               {m.nombre}
               {m.soyYo ? ' (tú)' : ''}

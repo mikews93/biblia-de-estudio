@@ -46,6 +46,7 @@ import { palabraDeLaSemana, palabraHref, palabrasHref } from '@/lib/palabras';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { useRacha } from '@/lib/racha';
+import { useServicio } from '@/lib/servicioUso';
 import { RachaChip } from '@/components/Racha';
 import { seasonTint } from '@/lib/retos';
 import { ganadosRecientes, sellosPara, siguienteSello, useSellos } from '@/lib/sellos';
@@ -73,6 +74,7 @@ function Today() {
   const { settings } = useSettings();
   const progress = useProgress();
   const racha = useRacha();
+  const servicio = useServicio();
   const plans = usePlans();
   const words = useWords();
   const due = dueCards(useCards()).length;
@@ -156,7 +158,7 @@ function Today() {
             accessibilityRole="button"
             accessibilityLabel={nube ? `Tu perfil · ${nube}` : 'Tu perfil'}
           >
-            {usuario ? <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} size={38} /> : <PersonIcon color={colors.accent} />}
+            {usuario ? <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} servicio={servicio.total} size={38} /> : <PersonIcon color={colors.accent} />}
             <NubeEstado />
           </Pressable>
         </View>

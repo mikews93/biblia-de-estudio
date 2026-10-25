@@ -28,6 +28,7 @@ export type Publicacion = {
   autorFoto: string | null;
   /** Racha devocional viva del autor: su foto brilla (components/comunidad/ui.tsx). */
   autorRacha?: number;
+  autorServicio?: number;
   mia: boolean;
   meGusta: number;
   yoMeGusta: boolean;
@@ -43,9 +44,10 @@ export type Comentario = {
   autorFoto: string | null;
   /** Racha devocional viva del autor: su foto brilla (components/comunidad/ui.tsx). */
   autorRacha?: number;
+  autorServicio?: number;
   mio: boolean;
 };
-export type PersonaBreve = { id: string; nombre: string; foto: string | null; racha?: number };
+export type PersonaBreve = { id: string; nombre: string; foto: string | null; racha?: number; servicio?: number };
 export type Red = {
   codigo: string;
   compartirLecturas: boolean;

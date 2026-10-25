@@ -11,6 +11,7 @@ import { vivoText } from '@/components/vivo/piezas';
 import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks } from '@/lib/data';
 import { guionDe, rangoDe, soloRango } from '@/lib/guion';
+import { huella } from '@/lib/sellos';
 import { pasajeLabel, tipoInfo, tituloDe, useTaller } from '@/lib/taller';
 import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -74,6 +75,7 @@ export default function LecturaEnVivo() {
         rango,
         ...(guion && { guion }),
       });
+      if (!sala.existente || sala.sala.guia.id === usuario?.id) huella('guiar', `sala:${sala.sala.codigo}`).catch(() => {});
       // El grupo ya tenía una lectura abierta: se entra en ella y, si guías, se lleva el mensaje ahí.
       if (sala.existente && guion && sala.sala.guia.id === usuario?.id) {
         sala = await vivoApi<Sala>('moverSala', { sala: sala.sala.codigo, guion, libro: pasaje.book, capitulo: pasaje.chapter, rango, version: settings.version });

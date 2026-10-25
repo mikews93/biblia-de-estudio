@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Appear from '@/components/Appear';
 import { RachaInsignias, RachaTarjeta } from '@/components/Racha';
 import Sello from '@/components/Sello';
+import { ServicioInsignias, ServicioTarjeta } from '@/components/Servicio';
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -113,6 +114,15 @@ export default function MiActividad({ colors, onDevocional, onProfundo }: Props)
           onPress={() => abrir(lectura)}
           ultimo
         />
+      </Appear>
+
+      <Appear delay={85}>
+        <ServicioTarjeta colors={colors} />
+      </Appear>
+
+      <Appear delay={92}>
+        <Text style={[styles.seccion, { color: colors.muted }]}>INSIGNIAS DE SERVICIO</Text>
+        <ServicioInsignias colors={colors} />
       </Appear>
 
       <Appear delay={100} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>

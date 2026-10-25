@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
 import type { Book } from './data';
+import { huella } from './sellos';
 import { cambio, registrar } from './sincronia';
 import { alCerrarLaApp, borrarTallerIa } from './tallerIa';
 
@@ -411,6 +412,7 @@ export const esTerminado = (m: Mensaje) => !!m.terminado;
 
 export function terminarMensaje(id: string) {
   actualizarMensaje(id, { terminado: new Date().toISOString() });
+  huella('escrito', id).catch(() => {});
 }
 
 export function volverABorrador(id: string) {
@@ -423,6 +425,8 @@ export function anotarOcasion(id: string, o: Ocasion) {
   const lugar = o.lugar?.trim();
   const ocasiones = [{ fecha: o.fecha, ...(lugar && { lugar }) }, ...(m.ocasiones ?? [])].sort((a, b) => b.fecha.localeCompare(a.fecha));
   actualizarMensaje(id, { ocasiones });
+  // Predicarlo cuenta como servir a otros (src/lib/servicio.ts).
+  huella('guiar', `ocasion:${id}|${o.fecha}`).catch(() => {});
 }
 
 export function quitarOcasion(id: string, i: number) {

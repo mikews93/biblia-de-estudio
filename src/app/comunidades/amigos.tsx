@@ -66,7 +66,7 @@ export default function Amigos() {
   const person = (p: PersonaBreve, right: React.ReactNode, note?: string) => (
     <View key={p.id} style={[styles.row, { borderColor: colors.border }]}>
       <Pressable onPress={() => go(p.id)} style={styles.who} accessibilityRole="link">
-        <Avatar name={p.nombre} foto={p.foto} racha={p.racha} size={36} />
+        <Avatar name={p.nombre} foto={p.foto} racha={p.racha} servicio={p.servicio} size={36} />
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.text, fontWeight: '600' }}>{p.nombre}</Text>
           {note && <Text style={{ color: colors.muted, fontSize: 12 }}>{note}</Text>}

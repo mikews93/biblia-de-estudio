@@ -43,7 +43,11 @@ export type Tipo =
   | 'cuento' // una historia del Espacio Niños (src/lib/ninos.ts)
   | 'charla' // una historia conversada en familia
   | 'memoria' // un versículo guardado de memoria
-  | 'compartir'; // un versículo compartido como imagen o publicado en Comunidad (cada versículo cuenta una vez)
+  | 'compartir' // un versículo compartido como imagen o publicado en Comunidad (cada versículo cuenta una vez)
+  // El servicio (src/lib/servicio.ts): lo que se prepara y se da a otros
+  | 'profundo' // un estudio profundo de un pasaje («2026-10-25|jhn.3.16»), uno por pasaje y día
+  | 'escrito' // un mensaje del Taller dado por terminado (va a «Mis sermones»)
+  | 'guiar'; // una vez guiando a otros: un evento publicado, una lectura en vivo creada o una ocasión predicada
 
 const DE_ESTUDIO: Tipo[] = ['palabra', 'historia', 'original', 'lugar', 'persona', 'viaje', 'promesa', 'diferencia'];
 
@@ -61,6 +65,7 @@ const FAMILIAS_BASE: FamiliaDef[] = [
   { id: 'juntos', titulo: 'Juntos', subtitulo: 'Compañía, nunca competencia' },
   { id: 'devocional', titulo: 'Racha devocional', subtitulo: 'Días seguidos con tu devocional, con un día libre por semana' },
   { id: 'constancia', titulo: 'Constancia', subtitulo: 'Días con la Palabra, a tu ritmo' },
+  { id: 'servicio', titulo: 'Servicio', subtitulo: 'Lo que estudias, preparas y das a otros' },
 ];
 
 /** Dibujo dentro del sello (ver SelloIcono en components/Sello.tsx). */
@@ -104,7 +109,11 @@ export type Dibujo =
   | 'cordon'
   // Compartir versículos
   | 'semilla'
-  | 'pies';
+  | 'pies'
+  // El servicio
+  | 'toalla'
+  | 'cayado'
+  | 'estrella';
 
 export type Sello = {
   id: string;
@@ -479,6 +488,84 @@ const CATALOGO: Sello[] = [
     dibujo: 'pulpito',
     versiculo: v('Santiago 1:22', 'jas', 1, 22, 'Mas sed hacedores de la palabra, y no tan solamente oidores.'),
     ir: { label: 'Del sermón a tu semana', href: '/semana' },
+    publico: 'todos',
+  },
+  {
+    id: 'profundo-10',
+    familia: 'servicio',
+    titulo: 'Escudriñad',
+    como: 'Haz 10 estudios profundos de un pasaje.',
+    logro: 'Diez estudios profundos escudriñando las Escrituras.',
+    tipo: 'profundo',
+    meta: 10,
+    dibujo: 'lupa',
+    versiculo: v('Juan 5:39', 'jhn', 5, 39, 'Escudriñad las Escrituras, porque á vosotros os parece que en ellas tenéis la vida eterna; y ellas son las que dan testimonio de mí.'),
+    ir: { label: 'Estudiar un pasaje', href: '/juan/3' },
+    publico: 'todos',
+  },
+  {
+    id: 'profundo-100',
+    familia: 'servicio',
+    titulo: 'Obrero aprobado',
+    como: 'Haz 100 estudios profundos de un pasaje.',
+    logro: 'Cien estudios profundos trazando bien la palabra de verdad.',
+    tipo: 'profundo',
+    meta: 100,
+    dibujo: 'libro',
+    versiculo: v('2 Timoteo 2:15', '2ti', 2, 15, 'Procura con diligencia presentarte á Dios aprobado, como obrero que no tiene de qué avergonzarse, que traza bien la palabra de verdad.'),
+    ir: { label: 'Estudiar un pasaje', href: '/juan/3' },
+    publico: 'todos',
+  },
+  {
+    id: 'escrito-1',
+    familia: 'servicio',
+    titulo: 'Tu primer mensaje',
+    como: 'Termina un mensaje en el Taller.',
+    logro: 'Preparaste tu primer mensaje para darlo a otros.',
+    tipo: 'escrito',
+    meta: 1,
+    dibujo: 'pulpito',
+    versiculo: v('1 Pedro 4:10', '1pe', 4, 10, 'Cada uno según el don que ha recibido, adminístrelo á los otros, como buenos dispensadores de las diferentes gracias de Dios.'),
+    ir: { label: 'Ir al Taller', href: '/taller' },
+    publico: 'todos',
+  },
+  {
+    id: 'escrito-12',
+    familia: 'servicio',
+    titulo: 'Apacienta mis ovejas',
+    como: 'Termina 12 mensajes en el Taller.',
+    logro: 'Doce mensajes preparados para alimentar a otros.',
+    tipo: 'escrito',
+    meta: 12,
+    dibujo: 'cayado',
+    versiculo: v('Juan 21:17', 'jhn', 21, 17, 'Dícele Jesús: Apacienta mis ovejas.'),
+    ir: { label: 'Ir al Taller', href: '/taller' },
+    publico: 'todos',
+  },
+  {
+    id: 'guiar-1',
+    familia: 'servicio',
+    titulo: 'Toalla y lebrillo',
+    como: 'Guía a otros una vez: un evento, una lectura en vivo o un mensaje predicado.',
+    logro: 'Serviste a otros guiándolos en la Palabra.',
+    tipo: 'guiar',
+    meta: 1,
+    dibujo: 'toalla',
+    versiculo: v('Juan 13:14', 'jhn', 13, 14, 'Pues si yo, el Señor y el Maestro, he lavado vuestros pies, vosotros también debéis lavar los pies los unos á los otros.'),
+    ir: { label: 'Ir al Taller', href: '/taller' },
+    publico: 'todos',
+  },
+  {
+    id: 'guiar-25',
+    familia: 'servicio',
+    titulo: 'Como las estrellas',
+    como: 'Guía a otros 25 veces.',
+    logro: 'Veinticinco veces enseñando la Palabra a otros.',
+    tipo: 'guiar',
+    meta: 25,
+    dibujo: 'estrella',
+    versiculo: v('Daniel 12:3', 'dan', 12, 3, 'Y los entendidos resplandecerán como el resplandor del firmamento; y los que enseñan á justicia la multitud, como las estrellas á perpetua eternidad.'),
+    ir: { label: 'Ir al Taller', href: '/taller' },
     publico: 'todos',
   },
   {

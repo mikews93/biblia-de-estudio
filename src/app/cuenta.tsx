@@ -15,6 +15,7 @@ import { firstName, greeting } from '@/lib/daily';
 import { useRacha } from '@/lib/racha';
 import { MAX_APODO, MAX_BIO, MAX_PLACE, pickPhoto, removePhoto, saveProfile } from '@/lib/perfil';
 import { desconectar, entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, retomarViaje } from '@/lib/proveedores';
+import { useServicio } from '@/lib/servicioUso';
 import { HAY_SOSTENER } from '@/lib/sostener';
 import { ETAPAS, type Etapa } from '@/lib/circulo';
 import { cambiarEtapa } from '@/lib/circuloApi';
@@ -28,6 +29,7 @@ export default function AccountScreen() {
   const racha = useRacha();
   const { modo } = useSettings().settings;
   const etapaAction = useAction();
+  const servicio = useServicio();
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [church, setChurch] = useState('');
@@ -170,7 +172,7 @@ export default function AccountScreen() {
               accessibilityLabel={usuario.foto ? 'Cambiar la foto' : 'Poner una foto'}
               style={[styles.photo, { borderColor: colors.surface, backgroundColor: colors.surface }]}
             >
-              <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} size={104} filled />
+              <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} servicio={servicio.total} size={104} filled />
               {photoAction.busy && (
                 <View style={[styles.photoBusy, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
                   <ActivityIndicator color="#fff" />
