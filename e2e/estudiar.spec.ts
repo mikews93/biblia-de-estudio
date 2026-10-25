@@ -232,7 +232,10 @@ test('en el devocional también se puede preguntar, y al volver a abrir el estud
   await expect(devocional.getByText('Estoy listo · Leer')).toBeVisible();
 
   const pregunta = `¿Qué es el mundo aquí? ${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
-  await devocional.getByPlaceholder('¿Algo que no entiendas de Juan 3:16?').fill(pregunta);
+  const caja = devocional.getByPlaceholder('¿Qué no entiendes de Juan 3:16?');
+  // Vacía mide una línea aunque el texto de ejemplo no quepa (field-sizing medía también el ejemplo).
+  expect((await caja.boundingBox())!.height).toBeLessThan(60);
+  await caja.fill(pregunta);
   await devocional.getByLabel('Enviar pregunta').click();
   await expect(devocional.getByText('TUS PREGUNTAS')).toBeVisible();
   await expect(devocional.getByText(`Respuesta simulada a «${pregunta}».`)).toBeVisible();

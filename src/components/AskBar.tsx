@@ -7,6 +7,16 @@ import { Colors } from '@/lib/theme';
 const MIN = 48;
 const MAX = 148;
 
+// En la web, field-sizing también mide el texto de ejemplo: uno largo («¿Qué no entiendes de 1 Tesalonicenses 5:17?»)
+// se partía en dos líneas y la caja vacía quedaba alta. El ejemplo va en una sola línea, con puntos suspensivos.
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('askbar-estilo')) {
+  const estilo = document.createElement('style');
+  estilo.id = 'askbar-estilo';
+  estilo.textContent =
+    'textarea[data-askbar]::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}';
+  document.head.appendChild(estilo);
+}
+
 type Props = {
   value: string;
   onChange: (text: string) => void;
@@ -87,6 +97,7 @@ export default function AskBar({ value, onChange, onSend, placeholder, busy, onS
             Platform.OS === 'web' ? undefined : (e) => setHeight(Math.min(MAX, Math.max(MIN, Math.ceil(e.nativeEvent.contentSize.height))))
           }
           placeholder={placeholder}
+          {...({ dataSet: { askbar: '' } } as object)}
           placeholderTextColor={colors.muted}
           maxLength={600}
           multiline
@@ -96,7 +107,12 @@ export default function AskBar({ value, onChange, onSend, placeholder, busy, onS
             styles.input,
             { color: colors.text },
             Platform.OS === 'web'
-              ? ({ outlineStyle: 'none', fieldSizing: 'content', minHeight: MIN, maxHeight: MAX, resize: 'none' } as object)
+              ? ({
+                  outlineStyle: 'none',
+                  // Vacía mide una línea; con texto crece hasta MAX.
+                  ...(value ? { fieldSizing: 'content', minHeight: MIN, maxHeight: MAX } : { fieldSizing: 'fixed', height: MIN }),
+                  resize: 'none',
+                } as object)
               : { height },
           ]}
         />
@@ -112,7 +128,7 @@ export default function AskBar({ value, onChange, onSend, placeholder, busy, onS
             pressed && styles.pressed,
           ]}
         >
-          {stopping ? <StopIcon color={colors.surface} /> : <SendIcon color={colors.surface} />}
+          {stopping ? <StopIcon color={colors.surface} /> : <SendIcon color={canSend ? colors.surface : colors.muted} />}
         </Pressable>
       </View>
     </View>
