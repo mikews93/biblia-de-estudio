@@ -133,7 +133,8 @@ describe('líneas de ayuda', () => {
     expect(telefonoBonito('800102414')).toBe('800 10 2414');
     expect(telefonoBonito('155')).toBe('155');
     expect(emergencias('ES')).toBe('112');
-    expect(emergencias('CO')).toBe('911');
+    expect(emergencias('CO')).toBe('123');
+    expect(emergencias('MX')).toBe('911');
     expect(new Set(LINEAS_AYUDA.map((l) => l.pais)).size).toBe(LINEAS_AYUDA.length);
   });
 });

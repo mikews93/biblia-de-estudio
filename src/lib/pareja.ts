@@ -112,8 +112,11 @@ export const LINEAS_AYUDA: LineaAyuda[] = [
   { pais: 'VE', nombre: 'Venezuela', linea: 'Línea gratuita', tel: '08006853737' },
 ];
 
-/** El número de emergencias del país (112 en España, 911 en casi toda América). */
-export const emergencias = (pais: string) => (pais === 'ES' ? '112' : '911');
+/** Donde emergencias no es el 911: España 112, Colombia 123, Chile 133 (Carabineros), Perú 105, Bolivia 110. */
+const EMERGENCIAS: Record<string, string> = { ES: '112', CO: '123', CL: '133', PE: '105', BO: '110' };
+
+/** El número de emergencias del país (911 en casi toda América). */
+export const emergencias = (pais: string) => EMERGENCIAS[pais] ?? '911';
 
 /** El país de la persona a partir del idioma del teléfono («es-CO» → «CO»), o null si no se sabe. */
 export function paisDe(locale: string | undefined | null): string | null {
