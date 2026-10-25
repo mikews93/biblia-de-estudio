@@ -207,6 +207,30 @@ describe('guardado en el dispositivo', () => {
     await vi.advanceTimersByTimeAsync(400);
     expect((JSON.parse((await AsyncStorage.getItem('taller'))!) as Mensaje[]).map((x) => x.id)).toEqual([copia]);
   });
+
+  it('borrar desde la lista se puede deshacer: vuelve a su lugar', async () => {
+    vi.useFakeTimers();
+    vi.resetModules();
+    const m = await import('./taller');
+    const a = await m.crearMensaje('sermon', null, 'A');
+    const b = await m.crearMensaje('sermon', null, 'B');
+    const c = await m.crearMensaje('sermon', null, 'C');
+    const leer = async () => {
+      await vi.advanceTimersByTimeAsync(400);
+      return (JSON.parse((await AsyncStorage.getItem('taller'))!) as Mensaje[]).map((x) => x.id);
+    };
+    const orden = await leer();
+    const { deshacer } = m.borrarConDeshacer(b);
+    expect(await leer()).toEqual(orden.filter((x) => x !== b));
+    deshacer();
+    expect(await leer()).toEqual(orden);
+    // Pasado el aviso ya no se deshace.
+    const otro = m.borrarConDeshacer(a, 1000);
+    await vi.advanceTimersByTimeAsync(1000);
+    otro.deshacer();
+    expect(await leer()).toEqual(orden.filter((x) => x !== a));
+    expect(orden).toContain(c);
+  });
 });
 
 describe('sugerencias de la IA', () => {

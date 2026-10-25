@@ -15,7 +15,7 @@ import { requireConnection } from './conexion';
 import { type Book, getChapter } from './data';
 import { type PreguntaRepaso, parseRepaso } from './repaso';
 import { cambio, registrar } from './sincronia';
-import { type Mensaje, type Pasaje, actualizarMensaje, ideaCentral, tituloDe } from './taller';
+import { ANUNCIOS, type Mensaje, type Pasaje, actualizarMensaje, anunciosDe, ideaCentral, tituloDe } from './taller';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
@@ -355,18 +355,17 @@ export function citasEn(texto: string, books: Book[]): string[] {
  * aunque las notas no se muestren: los versículos del punto siempre llegan.
  */
 export function contenidoDe(m: Mensaje, books: Book[], conNotas: boolean) {
-  return {
-    titulo: tituloDe(m, books),
-    idea: ideaCentral(m),
-    pasaje: m.pasaje,
-    puntos: m.secciones.map((s) => ({
-      titulo: s.titulo.trim() || 'Sin título',
-      texto: juntar(s.paraGrupo, conNotas ? s.texto : undefined),
-      citas: citasEn(`${s.paraGrupo ?? ''}\n${s.texto}`, books),
-      ...(s.minutos > 0 && { minutos: s.minutos }),
-      ...(s.dinamica && { dinamica: s.dinamica }),
-    })),
-  };
+  const puntos: PuntoEvento[] = m.secciones.map((s) => ({
+    titulo: s.titulo.trim() || 'Sin título',
+    texto: juntar(s.paraGrupo, conNotas ? s.texto : undefined),
+    citas: citasEn(`${s.paraGrupo ?? ''}\n${s.texto}`, books),
+    ...(s.minutos > 0 && { minutos: s.minutos }),
+    ...(s.dinamica && { dinamica: s.dinamica }),
+  }));
+  // Los anuncios cierran el mensaje: la congregación los ve en su teléfono al llegar al final.
+  const anuncios = anunciosDe(m);
+  if (anuncios.length) puntos.push({ titulo: ANUNCIOS, texto: anuncios.map((a) => `• ${a}`).join('\n'), citas: [] });
+  return { titulo: tituloDe(m, books), idea: ideaCentral(m), pasaje: m.pasaje, puntos };
 }
 
 /** Si lo publicado ya no coincide con el mensaje (se editó después de publicar, o se lee en otra versión). */

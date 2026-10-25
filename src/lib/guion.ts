@@ -6,7 +6,7 @@
 import type { Book } from './data';
 import { dinamica } from './dinamicas';
 import { citasEn, leerCita } from './eventos';
-import type { Mensaje, Pasaje, Seccion } from './taller';
+import { ANUNCIOS, type Mensaje, type Pasaje, type Seccion, anunciosDe } from './taller';
 import type { Guion, Rango } from './vivo';
 
 /** Las citas de una parte: las que aparecen en lo que escribió y la del pasaje que la apoya. */
@@ -16,17 +16,19 @@ export function citasDeParte(s: Seccion, books: Book[]) {
   return apoyo && !citas.includes(apoyo) ? [...citas, apoyo] : citas;
 }
 
-/** Lo que se manda al empezar: el título y, de cada parte, su título, sus minutos y sus citas. */
+/**
+ * Lo que se manda al empezar: el título y, de cada parte, su título, sus minutos y sus citas. Si el mensaje tiene
+ * anuncios, cierran el guion como una última parte («Anuncios», sin minutos ni citas).
+ */
 export function guionDe(m: Mensaje, titulo: string, books: Book[]) {
-  return {
-    mensaje: m.id,
-    titulo: titulo.slice(0, 120),
-    partes: m.secciones.slice(0, 30).map((s) => ({
-      titulo: (s.titulo.trim() || 'Sin título').slice(0, 120),
-      minutos: s.minutos > 0 ? Math.min(s.minutos, 120) : 0,
-      citas: citasDeParte(s, books).slice(0, 12),
-    })),
-  };
+  const anuncios = anunciosDe(m).length > 0;
+  const partes = m.secciones.slice(0, anuncios ? 29 : 30).map((s) => ({
+    titulo: (s.titulo.trim() || 'Sin título').slice(0, 120),
+    minutos: s.minutos > 0 ? Math.min(s.minutos, 120) : 0,
+    citas: citasDeParte(s, books).slice(0, 12),
+  }));
+  if (anuncios) partes.push({ titulo: ANUNCIOS, minutos: 0, citas: [] });
+  return { mensaje: m.id, titulo: titulo.slice(0, 120), partes };
 }
 
 /** Los versículos de un pasaje elegido («Lucas 15:11-32» → del 11 al 32). Sin versículos, el capítulo entero. */
@@ -47,6 +49,11 @@ export const soloRango = (r: Rango) => `solo ${r.hasta > r.desde ? 'los' : 'el'}
  * grupo y su dinámica. Si la parte no tiene nada para el grupo, quita la tarjeta anterior.
  */
 export function moverAParte(m: Mensaje, parte: number, books: Book[]) {
+  const anuncios = anunciosDe(m);
+  // Después de la última parte, los anuncios: una tarjeta con la lista, en el pasaje en que se terminó.
+  if (anuncios.length && parte === Math.min(m.secciones.length, 29)) {
+    return { parte, tarjeta: { tipo: 'parte' as const, titulo: ANUNCIOS, texto: anuncios.map((a) => `• ${a}`).join('\n').slice(0, 1500), minutos: null } };
+  }
   const s = parte >= 0 ? m.secciones[parte] : undefined;
   const cita = s ? citasDeParte(s, books).map((c) => leerCita(c, books)).find(Boolean) : undefined;
   const pasaje = cita ? { book: cita.book, chapter: cita.chapter, from: cita.from, to: cita.to } : m.pasaje;

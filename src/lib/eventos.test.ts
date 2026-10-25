@@ -43,6 +43,18 @@ describe('eventos', () => {
     expect(sin.puntos[1].titulo).toBe('Sin título');
     expect(contenidoDe(m, books, true).puntos[0].texto).toBe('Todos nos alejamos\n\nMis notas privadas, ver Lucas 15:12');
   });
+
+  it('cierra con los anuncios como último punto', () => {
+    const m = {
+      titulo: 'T', tema: '', complemento: '', pasaje: null,
+      secciones: [{ id: 'a', titulo: 'Uno', ayuda: '', texto: '', minutos: 5 }],
+      anuncios: '- Cena el viernes\n\n2. Bautismos el domingo',
+    } as unknown as Mensaje;
+    const c = contenidoDe(m, books, false);
+    expect(c.puntos).toHaveLength(2);
+    expect(c.puntos[1]).toEqual({ titulo: 'Anuncios', texto: '• Cena el viernes\n• Bautismos el domingo', citas: [] });
+    expect(contenidoDe({ ...m, anuncios: '  ' }, books, false).puntos).toHaveLength(1);
+  });
 });
 
 describe('desactualizado', () => {
