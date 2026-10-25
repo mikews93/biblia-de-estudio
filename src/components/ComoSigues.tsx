@@ -3,8 +3,9 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
+import { PedirAlGrupo } from '@/components/Oraciones';
 import { NoEstasSolo } from '@/components/ParaTi';
-import { CommentIcon, CheckIcon } from '@/components/icons';
+import { CommentIcon, CheckIcon, PrayIcon } from '@/components/icons';
 import { Consejo, MENSAJE_CONFIANZA, Respuesta, consejo, tocaPreguntar } from '@/lib/acompanar';
 import type { Oracion } from '@/lib/oraciones';
 import { todayKey } from '@/lib/planes';
@@ -31,6 +32,7 @@ export default function ComoSigues({ oraciones, ocultos, colors }: { oraciones: 
   const [abierta, setAbierta] = useState<{ id: string; created: number; respuesta?: Respuesta; consejo?: Consejo; hablo?: boolean | 'no' } | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [cerrada, setCerrada] = useState(false);
+  const [pidiendo, setPidiendo] = useState(false);
 
   const actual = abierta ?? (toca ? { id: toca.oracion.id, created: toca.oracion.created } : null);
   if (!actual || cerrada) return null;
@@ -61,6 +63,9 @@ export default function ComoSigues({ oraciones, ocultos, colors }: { oraciones: 
   const c = actual.consejo;
   const fecha = new Date(actual.created).toLocaleDateString('es', { day: 'numeric', month: 'long' });
   const invitarAHablar = c && (c.hablar || actual.hablo === 'no') && actual.hablo !== true;
+  const oracion = oraciones.find((o) => o.id === actual.id);
+  // Además de una persona, su grupo puede orar con ella: nunca en lugar de hablarlo, y no cuando hay riesgo.
+  const pedirAlGrupo = c && actual.respuesta !== 'mejor' && !c.lineas && oracion && !oracion.compartida;
 
   return (
     <View style={{ gap: 16 }}>
@@ -135,6 +140,22 @@ export default function ComoSigues({ oraciones, ocultos, colors }: { oraciones: 
               </View>
             )}
 
+            {pedirAlGrupo && (
+              <Pressable
+                onPress={() => setPidiendo(true)}
+                style={({ pressed }) => [styles.grupo, { borderColor: colors.border }, pressed && styles.pressed]}
+                accessibilityRole="button"
+              >
+                <PrayIcon color={colors.accent} size={16} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14 }}>Pedir a mi grupo que ore</Text>
+                  <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 2 }}>
+                    Sin detalles y, si quieres, sin tu nombre. Te pueden enviar ánimo.
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+
             {actual.respuesta === 'mejor' && (
               <Pressable
                 onPress={() => navigate(() => router.push('/diario?vista=oraciones' as never), 'forward')}
@@ -153,6 +174,7 @@ export default function ComoSigues({ oraciones, ocultos, colors }: { oraciones: 
         )}
       </View>
       {c?.lineas && <NoEstasSolo colors={colors} />}
+      {pidiendo && oracion && <PedirAlGrupo oracion={oracion} onClose={() => setPidiendo(false)} />}
     </View>
   );
 }
@@ -170,5 +192,6 @@ const styles = StyleSheet.create({
   hablar: { borderRadius: 16, padding: 16, marginTop: 14 },
   mensaje: { fontSize: 15, lineHeight: 22, fontStyle: 'italic', borderLeftWidth: 2, paddingLeft: 12, marginTop: 10 },
   escribir: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 16, paddingVertical: 12, marginTop: 14 },
+  grupo: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginTop: 12 },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
 });

@@ -30,6 +30,7 @@ import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
 import { type Aviso, notifyUser, PUSH_SCHEMA } from './_push';
 import { esCuidador } from './_senales';
+import { DIAS_VISIBLE, MAX_ANIMO, PETICIONES_DIA } from '../src/lib/pedirOracion';
 import { planById } from '../src/lib/planesCatalogo';
 import { parseRetoId, seasonRun } from '../src/lib/temporadas';
 
@@ -180,6 +181,15 @@ insert into cuentas_externas (proveedor, cuenta_id, usuario_id, nombre)
   select 'facebook', facebook_id, id, facebook_nombre from usuarios where facebook_id is not null on conflict do nothing;
 update usuarios set facebook_id = null, facebook_nombre = null where facebook_id is not null;
 drop table if exists facebook_viajes;
+alter table peticiones add column if not exists anonima boolean not null default false;
+-- Ánimos a una petición del grupo: uno por persona, y solo los lee quien pidió (src/lib/pedirOracion.ts).
+create table if not exists animos (
+  peticion_id uuid not null references peticiones on delete cascade,
+  usuario_id uuid not null references usuarios on delete cascade,
+  texto text not null,
+  creado timestamptz not null default now(),
+  primary key (peticion_id, usuario_id)
+);
 create table if not exists viajes_cuenta (
   estado_hash text primary key,
   pase_hash text unique,
@@ -1136,15 +1146,25 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  // Las abiertas dejan de verse a los DIAS_VISIBLE días (quien pidió la sigue viendo y la puede renovar). Sin nombre,
+  // el autor no sale de aquí: ni a los demás ni a los administradores.
   async peticiones({ sql, body, request }) {
     const user = await auth(sql, request);
     const { id } = await membership(sql, user, body.grupo);
     const rows = await sql`
-      select p.id, p.texto, p.respondida, p.creado, u.nombre as autor, p.usuario_id = ${user.id} as mia,
+      select p.id, p.texto, p.respondida, p.creado, p.anonima, p.usuario_id = ${user.id} as mia,
+        case when p.anonima and p.usuario_id <> ${user.id} then null else u.nombre end as autor,
         (select count(*)::int from orando o where o.peticion_id = p.id) as orando,
-        exists (select 1 from orando o where o.peticion_id = p.id and o.usuario_id = ${user.id}) as "yoOrando"
+        exists (select 1 from orando o where o.peticion_id = p.id and o.usuario_id = ${user.id}) as "yoOrando",
+        case when p.usuario_id = ${user.id}
+          then (select count(*)::int from animos a where a.peticion_id = p.id and not ${blocked(sql, user.id, sql`a.usuario_id`)})
+        end as animos,
+        exists (select 1 from animos a where a.peticion_id = p.id and a.usuario_id = ${user.id}) as "yoAnime",
+        p.creado < now() - make_interval(days => ${DIAS_VISIBLE}) as vencida
       from peticiones p join usuarios u on u.id = p.usuario_id
       where p.grupo_id = ${id}
+        and (p.respondida or p.usuario_id = ${user.id} or p.creado >= now() - make_interval(days => ${DIAS_VISIBLE}))
+        and not ${blocked(sql, user.id, sql`p.usuario_id`)}
       order by p.respondida, p.creado desc limit 100`;
     return { peticiones: rows };
   },
@@ -1153,10 +1173,14 @@ const actions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const { id } = await membership(sql, user, body.grupo);
     const texto = text(body.texto, MAX_PRAYER, 'la petición');
+    const [{ n }] = await sql<{ n: number }[]>`
+      select count(*)::int as n from peticiones where usuario_id = ${user.id} and creado > now() - interval '1 day'`;
+    if (n >= PETICIONES_DIA) throw new Fail('Ya compartiste varias peticiones hoy. Tu grupo está orando; vuelve mañana.', 429);
     const [row] = await sql<{ id: string }[]>`
-      insert into peticiones (grupo_id, usuario_id, texto) values (${id}, ${user.id}, ${texto}) returning id`;
+      insert into peticiones (grupo_id, usuario_id, texto, anonima)
+      values (${id}, ${user.id}, ${texto}, ${Boolean(body.anonima)}) returning id`;
     await avisarGrupo(sql, id, user, (grupo) => ({
-      title: `${user.nombre} pidió oración en ${grupo}`,
+      title: body.anonima ? `Alguien pidió oración en ${grupo}` : `${user.nombre} pidió oración en ${grupo}`,
       body: texto.slice(0, 140),
       url: `/grupos/${id}?tab=oracion`,
       tag: `grupo-oracion-${id}`,
@@ -1178,6 +1202,46 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  // Un ánimo corto, uno por persona (enviar otro lo cambia). Llega a quien pidió con un aviso; nadie más lo ve.
+  async animar({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const petitionId = uuid(body.peticion);
+    const [p] = await sql<{ grupo_id: string; usuario_id: string; respondida: boolean }[]>`
+      select grupo_id, usuario_id, respondida from peticiones where id = ${petitionId}`;
+    if (!p) throw new Fail('La petición ya no existe', 404);
+    await membership(sql, user, p.grupo_id);
+    if (p.usuario_id === user.id) throw new Fail('Es tu petición', 400);
+    const texto = text(body.texto, MAX_ANIMO, 'tu ánimo');
+    const [nuevo] = await sql<{ nuevo: boolean }[]>`
+      insert into animos (peticion_id, usuario_id, texto) values (${petitionId}, ${user.id}, ${texto})
+      on conflict (peticion_id, usuario_id) do update set texto = excluded.texto, creado = now()
+      returning (xmax = 0) as nuevo`;
+    const [bloqueo] = await sql`select ${blocked(sql, user.id, p.usuario_id)} as si`;
+    if (nuevo?.nuevo && !(bloqueo as Json).si) {
+      await notifyUser(sql, p.usuario_id, {
+        title: `${user.nombre} te envió ánimo`,
+        body: texto.length > 140 ? `${texto.slice(0, 139)}…` : texto,
+        url: `/grupos/${p.grupo_id}?tab=oracion`,
+        tag: `animo-${petitionId}`,
+      });
+    }
+    return {};
+  },
+
+  // Los ánimos de una petición: solo para quien la pidió.
+  async animos({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const petitionId = uuid(body.peticion);
+    const [p] = await sql<{ usuario_id: string }[]>`select usuario_id from peticiones where id = ${petitionId}`;
+    if (!p || p.usuario_id !== user.id) throw new Fail('Solo quien pidió oración ve los ánimos', 403);
+    const rows = await sql`
+      select u.nombre as autor, a.texto, a.creado
+      from animos a join usuarios u on u.id = a.usuario_id
+      where a.peticion_id = ${petitionId} and not ${blocked(sql, user.id, sql`a.usuario_id`)}
+      order by a.creado desc`;
+    return { animos: rows };
+  },
+
   async editarPeticion({ sql, body, request }) {
     const user = await auth(sql, request);
     const petitionId = uuid(body.peticion);
@@ -1187,6 +1251,7 @@ const actions: Record<string, Handler> = {
     const { admin } = await membership(sql, user, p.grupo_id);
     if (p.usuario_id !== user.id && !admin) throw new Fail('Solo quien la compartió puede cambiarla', 403);
     if (body.borrar) await sql`delete from peticiones where id = ${petitionId}`;
+    else if (body.renovar && p.usuario_id === user.id) await sql`update peticiones set creado = now() where id = ${petitionId}`;
     else await sql`update peticiones set respondida = ${Boolean(body.respondida)} where id = ${petitionId}`;
     return {};
   },

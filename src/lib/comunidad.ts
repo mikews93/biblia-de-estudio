@@ -88,11 +88,19 @@ export type Peticion = {
   texto: string;
   respondida: boolean;
   creado: string;
-  autor: string;
+  /** null cuando se compartió sin nombre y no es mía. */
+  autor: string | null;
+  anonima: boolean;
   mia: boolean;
   orando: number;
   yoOrando: boolean;
+  /** Cuántos ánimos recibió: solo en las mías. */
+  animos: number | null;
+  yoAnime: boolean;
+  /** Abierta hace más de 30 días: ya no la ve el grupo (solo yo, para renovarla). */
+  vencida: boolean;
 };
+export type Animo = { autor: string; texto: string; creado: string };
 
 export type Guia = {
   id: string;
