@@ -135,7 +135,7 @@ export const CAMINO: EtapaCamino[] = [
     intro: [
       'La Biblia honra las dos cosas. Pablo ve en la soltería una puerta para servir sin distracción, y presenta el matrimonio como un pacto que muestra el amor de Cristo por su iglesia. Ninguno es premio ni castigo.',
       'Casarse no es encontrar a alguien que te haga feliz, sino unirte a alguien con quien puedas seguir a Cristo mejor que por separado. Por eso la pregunta no es solo «¿me gusta?», sino «¿vamos hacia el mismo lugar?».',
-      'Cuando el siervo de Abraham buscó esposa para Isaac, oró y esperó una señal de servicio: alguien que, sin que se lo pidieran, diera de beber también a diez camellos cansados. Rebeca era hermosa, pero lo que la mostró fue su corazón dispuesto. Conocerse es eso: descubrir si pueden aprender a servir juntos y ponerse de acuerdo.',
+      'Cuando el siervo de Abraham buscó esposa para Isaac, oró y esperó una señal de servicio: alguien que, sin que se lo pidieran, diera de beber también a diez camellos cansados. Rebeca era hermosa, pero lo que la mostró fue su corazón dispuesto. Conocerse es eso: descubrir si pueden aprender a servir juntos y ponerse de acuerdo. Y fue Rebeca quien decidió: «Sí, iré». No es un método para pedirle señales a Dios ni para que otros elijan por ti.',
     ],
     pasajes: [
       { referencia: 'Génesis 2:18-24', pasaje: p('gen', 2, 18, 24) },

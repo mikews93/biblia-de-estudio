@@ -104,7 +104,7 @@ export const CONOCERNOS: DiaConocer[] = [
   { titulo: 'Lo que te formó', referencia: 'Deuteronomio 6:4-9', pasaje: p('deu', 6, 4, 9), pregunta: '¿Cómo se vivía la fe en tu casa mientras crecías? ¿Qué quisieras repetir y qué cambiar?', ora: 'Ora por la familia de la otra persona.' },
   { titulo: 'Tu carácter', referencia: 'Colosenses 3:12-14', pasaje: p('col', 3, 12, 14), pregunta: '¿Cómo reaccionas cuando te enojas o te equivocas? ¿Cómo pides perdón?', ora: 'Ora para que los dos crezcan en carácter, juntos o no.' },
   { titulo: 'Servir juntos', referencia: 'Génesis 24:17-20', pasaje: p('gen', 24, 17, 20), pregunta: 'Rebeca se conoció sirviendo. Propongan algo para servir juntos esta semana con la iglesia, y cuenten: ¿podrían servir a Dios mejor juntos que por separado?', ora: 'Pide sabiduría para ver con claridad, no solo con emoción.' },
-  { titulo: 'Verse en persona', referencia: 'Filipenses 2:1-4', pasaje: p('php', 2, 1, 4), pregunta: 'Después de verse en la iglesia, con el grupo o con un líder: ¿qué te llevas de esta semana y qué te gustaría hacer ahora?', ora: 'Pide paz para decidir con libertad, sea cual sea la respuesta.' },
+  { titulo: 'Verse en persona', referencia: 'Filipenses 2:1-4', pasaje: p('php', 2, 1, 4), pregunta: 'Después de verse en la iglesia, con el grupo o con un líder: ¿cómo fue servir y decidir juntos? ¿Llegaron a acuerdos sin que nadie se impusiera? ¿Qué te gustaría hacer ahora?', ora: 'Pide paz para decidir con libertad, sea cual sea la respuesta.' },
 ];
 export const DIAS_CONOCER = CONOCERNOS.length;
 
