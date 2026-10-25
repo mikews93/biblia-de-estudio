@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 
 import { CommentIcon, HeartIcon } from '@/components/icons';
 import VerseArt from '@/components/VerseArt';
-import { IMAGE_STYLES } from '@/lib/compartir';
+import { lookDeDatos } from '@/lib/compartir';
 import { ago, chapterHref } from '@/lib/comunidad';
 import { HIGHLIGHT_COLORS } from '@/lib/highlights';
 import { Publicacion, chaptersLabel, deletePost, like, postReference, report } from '@/lib/social';
@@ -126,7 +126,7 @@ export default function Post({ post, detail, onRemoved }: Props) {
             text={post.cita}
             caption={caption}
             format={post.datos.formato ?? 'cuadrado'}
-            look={IMAGE_STYLES.find((s) => s.name === post.datos.estilo) ?? IMAGE_STYLES[0]}
+            look={lookDeDatos(post.datos)}
             width={post.datos.formato === 'historia' ? Math.min(inner * 0.62, 260) : Math.min(inner, 420)}
           />
         </Pressable>

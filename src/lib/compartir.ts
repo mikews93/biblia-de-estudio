@@ -3,6 +3,7 @@
 
 import { Share } from 'react-native';
 
+import { FONDOS, Fondo, LETRA_DEDICATORIA, Letra, fondoPorNombre, letraPorId, palabras } from './fondos';
 import { verseHref } from './routes';
 
 const SITE = 'https://biblia.migueblanco.com';
@@ -10,14 +11,54 @@ const SITE = 'https://biblia.migueblanco.com';
 export type VerseToShare = { book: string; chapter: number; verse: number; text: string; reference: string; version?: string };
 
 export type ImageFormat = 'cuadrado' | 'historia';
-export type ImageStyle = { name: string; background: string; text: string; accent: string; muted: string };
+export type ImageStyle = Fondo;
 
-export const IMAGE_STYLES: ImageStyle[] = [
-  { name: 'Pergamino', background: '#F4ECD8', text: '#3B2F22', accent: '#8A4B2A', muted: '#7A6A55' },
-  { name: 'Noche', background: '#151311', text: '#EDE7DE', accent: '#E0A07A', muted: '#A39A8E' },
-  { name: 'Terracota', background: '#8A4B2A', text: '#FBF5E6', accent: '#F3E6DC', muted: '#EADBC0' },
-  { name: 'Azul', background: '#2F4A6B', text: '#F4F1EA', accent: '#E8C99A', muted: '#C9D3DF' },
-];
+/** Los fondos para elegir (ilustraciones y colores, en src/lib/fondos.ts). */
+export const IMAGE_STYLES = FONDOS;
+
+/** Cómo se ve la imagen: fondo, letra, palabras destacadas y una dedicatoria opcional («Oré por ti hoy»). */
+export type ImageLook = { fondo: Fondo; letra: Letra; destacadas?: number[]; dedicatoria?: string; original?: PalabraOriginal };
+
+/** Una palabra hebrea o griega del versículo, al pie de la imagen: «ἀγάπη · agápē · amor». */
+export type PalabraOriginal = { palabra: string; translit: string; glosa: string };
+
+/** Alto de la palabra original al pie (en la imagen de 1080 px), con su separación. */
+export const ORIGINAL_SIZE = 58;
+const ORIGINAL_HEIGHT = 48 + ORIGINAL_SIZE * 1.25 + 34 * 1.3;
+
+/** Lo que guarda una publicación de imagen en Comunidad para dibujarse igual en el muro. */
+export type DatosImagen = {
+  estilo?: string;
+  formato?: ImageFormat;
+  letra?: string;
+  destacadas?: number[];
+  dedicatoria?: string;
+  original?: PalabraOriginal;
+};
+
+export function datosDeImagen(format: ImageFormat, look: ImageLook): DatosImagen {
+  const dedic = look.dedicatoria?.trim();
+  return {
+    estilo: look.fondo.name,
+    formato: format,
+    letra: look.letra.id,
+    ...(look.destacadas?.length ? { destacadas: look.destacadas } : {}),
+    ...(dedic ? { dedicatoria: dedic } : {}),
+    ...(look.original ? { original: look.original } : {}),
+  };
+}
+
+/** El aspecto de una imagen del muro a partir de lo que guardó. Las publicaciones de antes solo tienen el estilo. */
+export const lookDeDatos = (d: DatosImagen): ImageLook => ({
+  fondo: fondoPorNombre(d.estilo),
+  letra: letraPorId(d.letra),
+  destacadas: d.destacadas,
+  dedicatoria: d.dedicatoria,
+  original: d.original,
+});
+
+/** Distancia de la marca del sitio al borde de abajo: en las historias queda fuera de la barra de Instagram. */
+export const siteBottom = (format: ImageFormat) => (format === 'historia' ? 250 : 90);
 
 export const IMAGE_SIZE: Record<ImageFormat, { width: number; height: number }> = {
   cuadrado: { width: 1080, height: 1080 },
@@ -28,7 +69,7 @@ export const IMAGE_SIZE: Record<ImageFormat, { width: number; height: number }> 
 export function verseFontSize(text: string, format: ImageFormat) {
   const n = text.length;
   const base = n < 80 ? 70 : n < 160 ? 60 : n < 260 ? 50 : n < 400 ? 42 : n < 600 ? 36 : 30;
-  return format === 'historia' ? Math.round(base * 1.15) : base;
+  return format === 'historia' ? Math.round(base * 1.3) : base;
 }
 
 export const verseUrl = (v: VerseToShare) => `${SITE}${verseHref(v.book, v.chapter, v.verse)}`;
@@ -48,68 +89,130 @@ export function shareVerse(v: VerseToShare) {
   return shareMessage(`«${v.text}» ${caption(v)}\n\n${verseUrl(v)}`);
 }
 
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
-  const lines: string[] = [];
-  let line = '';
-  for (const word of text.split(/\s+/)) {
-    const next = line ? `${line} ${word}` : word;
-    if (ctx.measureText(next).width > maxWidth && line) {
+/** Parte las palabras en líneas que caben en `maxWidth`. Devuelve los índices de las palabras de cada línea. */
+export function wrapWords(measure: (t: string) => number, words: string[], maxWidth: number) {
+  const lines: number[][] = [];
+  let line: number[] = [];
+  let text = '';
+  words.forEach((word, i) => {
+    const next = text ? `${text} ${word}` : word;
+    if (measure(next) > maxWidth && line.length) {
       lines.push(line);
-      line = word;
-    } else line = next;
-  }
-  if (line) lines.push(line);
+      line = [i];
+      text = word;
+    } else {
+      line.push(i);
+      text = next;
+    }
+  });
+  if (line.length) lines.push(line);
   return lines;
 }
 
 const SERIF = 'Georgia, "Iowan Old Style", "Times New Roman", serif';
 const SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
+/** El tamaño de la dedicatoria en la imagen de 1080 px. */
+export const DEDICATORIA_SIZE = 64;
+
+function loadSvg(svg: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('No se pudo dibujar el fondo'));
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  });
+}
+
 /** Dibuja la imagen del versículo (solo web). */
-export async function drawVerseImage(v: VerseToShare, format: ImageFormat, style: ImageStyle): Promise<Blob> {
+export async function drawVerseImage(v: VerseToShare, format: ImageFormat, look: ImageLook): Promise<Blob> {
+  const { fondo, letra, destacadas = [], dedicatoria, original } = look;
   const { width, height } = IMAGE_SIZE[format];
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d')!;
+  const family = letra.family ? `"${letra.family}", ${SERIF}` : SERIF;
+  const dedic = dedicatoria?.trim();
+  await Promise.all([
+    document.fonts?.load(`60px "${letra.family ?? 'Georgia'}"`),
+    dedic ? document.fonts?.load(`60px "${LETRA_DEDICATORIA}"`) : null,
+  ]).catch(() => {});
   await document.fonts?.ready;
 
-  ctx.fillStyle = style.background;
+  ctx.fillStyle = fondo.background;
   ctx.fillRect(0, 0, width, height);
+  if (fondo.svg) ctx.drawImage(await loadSvg(fondo.svg(width, height)), 0, 0, width, height);
 
   const pad = 110;
-  let size = verseFontSize(v.text, format);
-  let lines: string[] = [];
+  const words = palabras(v.text).map((w) => (letra.mayusculas ? w.toLocaleUpperCase('es') : w));
+  const dedicHeight = dedic ? DEDICATORIA_SIZE * 1.2 + 36 : 0;
+  let size = Math.round(verseFontSize(v.text, format) * letra.escala);
+  let lines: number[][] = [];
   // Si aun así no cabe, se reduce hasta que quepa.
   for (; size >= 22; size -= 2) {
-    ctx.font = `${size}px ${SERIF}`;
-    lines = wrap(ctx, `«${v.text}»`, width - pad * 2);
-    if (lines.length * size * 1.4 < height - 420) break;
+    ctx.font = `${size}px ${family}`;
+    lines = wrapWords((t) => ctx.measureText(t).width, words, width - pad * 2);
+    if (lines.length * size * letra.interlinea < height - 420 - dedicHeight - (original ? ORIGINAL_HEIGHT : 0)) break;
   }
-  const lineHeight = size * 1.4;
-  const blockHeight = lines.length * lineHeight + 60 + 44;
+  const lineHeight = size * letra.interlinea;
+  const blockHeight = dedicHeight + 60 + lines.length * lineHeight + 60 + 44 + (original ? ORIGINAL_HEIGHT : 0);
   let y = (height - blockHeight) / 2;
 
-  ctx.fillStyle = style.accent;
-  ctx.fillRect(width / 2 - 36, y - 60, 72, 4);
-
-  ctx.fillStyle = style.text;
-  ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.font = `${size}px ${SERIF}`;
+  ctx.textAlign = 'center';
+  if (fondo.sombra) {
+    ctx.shadowColor = fondo.sombra;
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 2;
+  }
+  if (dedic) {
+    ctx.fillStyle = fondo.accent;
+    ctx.font = `${DEDICATORIA_SIZE}px "${LETRA_DEDICATORIA}", ${SERIF}`;
+    ctx.fillText(dedic, width / 2, y);
+    y += dedicHeight;
+  }
+
+  ctx.fillStyle = fondo.accent;
+  ctx.fillRect(width / 2 - 36, y, 72, 4);
+  y += 60;
+
+  ctx.font = `${size}px ${family}`;
+  ctx.textAlign = 'left';
+  const space = ctx.measureText(' ').width;
   for (const line of lines) {
-    ctx.fillText(line, width / 2, y);
+    const total = ctx.measureText(line.map((i) => words[i]).join(' ')).width;
+    let x = width / 2 - total / 2;
+    for (const i of line) {
+      ctx.fillStyle = destacadas.includes(i) ? fondo.accent : fondo.text;
+      ctx.fillText(words[i], x, y + (lineHeight - size) / 2);
+      x += ctx.measureText(words[i]).width + space;
+    }
     y += lineHeight;
   }
 
   y += 60;
-  ctx.fillStyle = style.accent;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = fondo.accent;
   ctx.font = `700 40px ${SANS}`;
   ctx.fillText(caption(v), width / 2, y);
 
-  ctx.fillStyle = style.muted;
+  if (original) {
+    y += 44 + 48;
+    ctx.fillStyle = fondo.text;
+    ctx.font = `${ORIGINAL_SIZE}px ${SERIF}`;
+    ctx.fillText(original.palabra, width / 2, y);
+    y += ORIGINAL_SIZE * 1.25;
+    ctx.fillStyle = fondo.muted;
+    ctx.font = `italic 34px ${SERIF}`;
+    ctx.fillText(`${original.translit} · ${original.glosa}`, width / 2, y);
+  }
+
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = fondo.muted;
   ctx.font = `28px ${SANS}`;
-  ctx.fillText('biblia.migueblanco.com', width / 2, height - 90);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('biblia.migueblanco.com', width / 2, height - siteBottom(format));
 
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('No se pudo crear la imagen'))), 'image/png'),

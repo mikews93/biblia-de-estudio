@@ -2,7 +2,7 @@
 // Usa la misma cuenta y la misma función que los grupos (src/lib/comunidad.ts).
 
 import { HighlightColor } from './highlights';
-import { ImageFormat } from './compartir';
+import type { DatosImagen } from './compartir';
 import { api } from './comunidad';
 
 export type TipoPublicacion = 'lectura' | 'resaltado' | 'imagen' | 'pregunta' | 'reflexion';
@@ -20,7 +20,7 @@ export type Publicacion = {
   version: string | null;
   cita: string | null;
   texto: string | null;
-  datos: { capitulos?: number[]; color?: HighlightColor; estilo?: string; formato?: ImageFormat };
+  datos: { capitulos?: number[]; color?: HighlightColor } & DatosImagen;
   creado: string;
   actualizado: string;
   autorId: string;

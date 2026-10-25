@@ -208,6 +208,26 @@ export function SelloIcono({ dibujo, color }: { dibujo: Dibujo; color: string })
           <Path d="M16.5 3c0 4.5-9 4.5-9 9s9 4.5 9 9" />
         </>
       );
+    case 'semilla': // un brote que sale de la tierra, con semillas esparcidas
+      return (
+        <>
+          <Path d="M4 19.5h16" />
+          <Path d="M12 19.5v-8" />
+          <Path d="M12 13c-.6-2.8-2.6-4.3-5.5-4.3.2 2.9 2.2 4.4 5.5 4.3z" />
+          <Path d="M12 11.5c.4-3 2.5-4.7 5.6-4.7-.1 3-2.3 4.7-5.6 4.7z" />
+          <Circle cx={6} cy={16.8} r={0.6} fill={color} />
+          <Circle cx={17.5} cy={16.5} r={0.6} fill={color} />
+          <Circle cx={15} cy={17.6} r={0.6} fill={color} />
+        </>
+      );
+    case 'pies': // pies sobre los montes: el que trae alegres nuevas
+      return (
+        <>
+          <Path d="M2.5 20l5-7 3.5 4 3-3.5 7.5 6.5" />
+          <Path d="M9 9.5c-1.1 0-1.8-1.4-1.8-3.2S7.9 3.5 9 3.5s1.8 1.1 1.8 2.8S10.1 9.5 9 9.5z" />
+          <Path d="M15 11c-1.1 0-1.8-1.4-1.8-3.2S13.9 5 15 5s1.8 1.1 1.8 2.8S16.1 11 15 11z" />
+        </>
+      );
     case 'dos': // dos personas lado a lado
       return (
         <>

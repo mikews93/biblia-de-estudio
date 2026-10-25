@@ -349,6 +349,23 @@ async function newSession(sql: Sql, userId: string) {
 const hash = (key: string) => createHash('sha256').update(key).digest('hex');
 const newCode = () => Array.from({ length: 8 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
 
+/** Lo que guarda una imagen de versículo (fondo, letra, palabras destacadas, dedicatoria y palabra original), acotado. */
+function datosDeImagen(raw: Json) {
+  const corto = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
+  const datos: Json = {
+    estilo: corto(raw.estilo, 20),
+    formato: raw.formato === 'historia' ? 'historia' : 'cuadrado',
+  };
+  if (raw.letra) datos.letra = corto(raw.letra, 20);
+  if (Array.isArray(raw.destacadas))
+    datos.destacadas = [...new Set(raw.destacadas.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 400))].slice(0, 60);
+  if (raw.dedicatoria && corto(raw.dedicatoria, 40)) datos.dedicatoria = corto(raw.dedicatoria, 40);
+  const o = raw.original as Json | undefined;
+  if (o && typeof o === 'object' && o.palabra && o.glosa)
+    datos.original = { palabra: corto(o.palabra, 40), translit: corto(o.translit, 40), glosa: corto(o.glosa, 40) };
+  return datos;
+}
+
 function text(value: unknown, max: number, what: string) {
   const t = typeof value === 'string' ? value.trim() : '';
   if (!t) throw new Fail(`Escribe ${what}`);
@@ -1163,7 +1180,7 @@ const actions: Record<string, Handler> = {
       tipo === 'resaltado'
         ? { color: HIGHLIGHTS.includes(raw.color as string) ? raw.color : 'amarillo' }
         : tipo === 'imagen'
-          ? { estilo: String(raw.estilo ?? '').slice(0, 20), formato: raw.formato === 'historia' ? 'historia' : 'cuadrado' }
+          ? datosDeImagen(raw)
           : {};
     await tooMany(sql, 'publicaciones', user.id, POSTS_PER_HOUR);
     const [row] = await sql<{ id: string }[]>`
