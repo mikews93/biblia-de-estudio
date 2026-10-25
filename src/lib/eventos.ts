@@ -14,6 +14,7 @@ import { sessionKey } from './comunidad';
 import { requireConnection } from './conexion';
 import { type Book, getChapter } from './data';
 import { type PreguntaRepaso, parseRepaso } from './repaso';
+import { huella } from './sellos';
 import { cambio, registrar } from './sincronia';
 import { type Mensaje, type Pasaje, actualizarMensaje, ideaCentral, tituloDe } from './taller';
 
@@ -186,8 +187,12 @@ export function useMisEventos(activo: boolean) {
   return { eventos: activo ? mios : [], error };
 }
 
-export const publicarEvento = async (datos: ReturnType<typeof contenidoDe> & { mensaje: string; gradual: boolean; version?: string }) =>
-  ponerMio((await accion<{ evento: Evento }>('publicar', datos)).evento);
+export async function publicarEvento(datos: ReturnType<typeof contenidoDe> & { mensaje: string; gradual: boolean; version?: string }) {
+  const evento = ponerMio((await accion<{ evento: Evento }>('publicar', datos)).evento);
+  // Guiar un evento cuenta como servir a otros (src/lib/servicio.ts).
+  huella('guiar', `evento:${evento.codigo}`).catch(() => {});
+  return evento;
+}
 
 /**
  * Publica (o pone al día) el evento de un mensaje con lo que ya se eligió en el Taller, o lo de siempre: los puntos

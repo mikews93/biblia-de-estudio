@@ -10,6 +10,7 @@ import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/
 import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, FlagIcon, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
 import { useRacha } from '@/lib/racha';
+import { useServicio } from '@/lib/servicioUso';
 import {
   disconnectFacebook,
   facebook,
@@ -30,6 +31,7 @@ export default function AccountScreen() {
   const colors = useColors();
   const { ready, usuario, iglesia: anfitriona, cuidador } = useAccount();
   const racha = useRacha();
+  const servicio = useServicio();
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [church, setChurch] = useState('');
@@ -150,7 +152,7 @@ export default function AccountScreen() {
               accessibilityLabel={usuario.foto ? 'Cambiar la foto' : 'Poner una foto'}
               style={[styles.photo, { borderColor: colors.surface, backgroundColor: colors.surface }]}
             >
-              <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} size={104} filled />
+              <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} servicio={servicio.total} size={104} filled />
               {photoAction.busy && (
                 <View style={[styles.photoBusy, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
                   <ActivityIndicator color="#fff" />

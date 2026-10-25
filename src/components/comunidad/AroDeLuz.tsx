@@ -45,6 +45,69 @@ const ALCANCE = [0, 0.1, 0.16, 0.27, 0.3, 0.36, 0.42, 0.48];
 
 type Props = { size: number; intensidad: number; racha: number; children: ReactNode };
 
+/** El aro de la racha (si hay) y, por fuera, la corona de estrellas del servicio (si hay). */
+export function LuzDeLaFoto({ size, racha, intensidad, servicio, children }: Props & { servicio: number }) {
+  const foto = intensidad ? (
+    <AroDeLuz size={size} intensidad={intensidad} racha={racha}>
+      {children}
+    </AroDeLuz>
+  ) : (
+    children
+  );
+  if (!servicio) return <>{foto}</>;
+  return (
+    <View style={{ width: size, height: size }}>
+      {foto}
+      <CoronaDeEstrellas size={size} nivel={servicio} lejos={ALCANCE[intensidad] ?? 0} />
+    </View>
+  );
+}
+
+const estrella = (cx: number, cy: number, r: number) => {
+  const p: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+    const rr = i % 2 ? r * 0.45 : r;
+    p.push(`${(cx + Math.cos(a) * rr).toFixed(2)} ${(cy + Math.sin(a) * rr).toFixed(2)}`);
+  }
+  return `M${p.join('L')}Z`;
+};
+
+/**
+ * La corona de estrellas del servicio (src/lib/servicio.ts): una estrella por nivel, en arco sobre la foto, por fuera
+ * del aro de la racha. Desde el cuarto nivel titilan; en el quinto, la del centro es más grande.
+ */
+function CoronaDeEstrellas({ size, nivel, lejos }: { size: number; nivel: number; lejos: number }) {
+  const colors = useColors();
+  const { pulso } = useReloj();
+  const r = size / 2 + size * Math.max(lejos * 0.7, 0.08);
+  const chica = Math.max(4.5, size * 0.1);
+  const paso = (Math.PI / 180) * Math.min(26, 120 / nivel);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      accessible
+      accessibilityLabel={`Servicio: nivel ${nivel} de 5`}
+      testID="corona-de-estrellas"
+      style={[StyleSheet.absoluteFill, nivel >= 4 && { opacity: pulso.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }]}
+    >
+      {Array.from({ length: nivel }, (_, i) => {
+        const a = -Math.PI / 2 + (i - (nivel - 1) / 2) * paso;
+        const centro = nivel >= 5 && i === 2;
+        const t = (centro ? chica * 1.5 : chica) * 2;
+        return (
+          <View key={i} style={{ position: 'absolute', left: size / 2 + Math.cos(a) * r - t / 2, top: size / 2 + Math.sin(a) * r - t / 2, width: t, height: t }}>
+            <Svg width={t} height={t} viewBox="0 0 24 24">
+              <Path d={estrella(12, 12.5, 11)} fill={colors.surface} />
+              <Path d={estrella(12, 12.5, 8.5)} fill={centro ? BLANCO : ORO} stroke={ORO_HONDO} strokeWidth={0.8} />
+            </Svg>
+          </View>
+        );
+      })}
+    </Animated.View>
+  );
+}
+
 export default function AroDeLuz({ size, intensidad: n, racha, children }: Props) {
   const colors = useColors();
   const { giro, pulso } = useReloj();

@@ -24,6 +24,8 @@ import StudyContext from '@/components/StudyContext';
 import StudySignals from '@/components/StudySignals';
 import VersionPicker from '@/components/VersionPicker';
 import { anotar } from '@/lib/actividad';
+import { fechaLocal } from '@/lib/rachaTexto';
+import { huella } from '@/lib/sellos';
 import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { Book, Version, getVersions, original, parseRef } from '@/lib/data';
 import { licensedById } from '@/lib/licenciadas';
@@ -111,6 +113,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
     if (!profundoLeido) return;
     const ref = `${book.id}.${chapter}${verse ? `.${verse}` : ''}${word ? `.w${word.index}` : ''}`;
     anotar('profundo', ref, title, verse ? verseHref(book.id, chapter, verse) : chapterHref(book.id, chapter));
+    huella('profundo', `${fechaLocal()}|${ref}`).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profundoLeido, passageKey]);
   const starting = useRef(new Set<string>());

@@ -2,10 +2,11 @@
 import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 
-import AroDeLuz from '@/components/comunidad/AroDeLuz';
+import { LuzDeLaFoto } from '@/components/comunidad/AroDeLuz';
 import type { IconProps } from '@/components/iconLine';
 import { initials } from '@/lib/comunidad';
 import { resplandorDe } from '@/lib/resplandor';
+import { nivelDe } from '@/lib/servicio';
 import { Colors, sans, serif, useColors } from '@/lib/theme';
 
 /** Un ícono de línea delante de un texto corto (títulos pequeños, enlaces): mismo color, centrados. */
@@ -131,6 +132,7 @@ export function Avatar({
   filled,
   size = 40,
   racha = 0,
+  servicio = 0,
 }: {
   name: string;
   foto?: string | null;
@@ -138,6 +140,8 @@ export function Avatar({
   size?: number;
   /** Racha devocional viva: desde 3 días, un aro de luz que crece con la racha (src/lib/resplandor.ts). */
   racha?: number;
+  /** Veces que ha servido: desde el primer nivel, una corona de estrellas sobre la foto (src/lib/servicio.ts). */
+  servicio?: number;
 }) {
   const colors = useColors();
   const [broken, setBroken] = useState<string | null>(null);
@@ -164,9 +168,14 @@ export function Avatar({
         </Text>
       </View>
     );
-  const luz = resplandorDe(racha);
-  if (!luz) return foto_;
-  return <AroDeLuz size={size} intensidad={luz.intensidad} racha={racha}>{foto_}</AroDeLuz>;
+  const luz = resplandorDe(racha)?.intensidad ?? 0;
+  const estrellas = nivelDe(servicio)?.nivel ?? 0;
+  if (!luz && !estrellas) return foto_;
+  return (
+    <LuzDeLaFoto size={size} racha={racha} intensidad={luz} servicio={estrellas}>
+      {foto_}
+    </LuzDeLaFoto>
+  );
 }
 
 export function Chips<T extends string | number>({

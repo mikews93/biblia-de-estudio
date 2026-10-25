@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, ErrorText, useAction } from '@/components/comunidad/ui';
 import { LiveIcon } from '@/components/icons';
 import type { Book } from '@/lib/data';
+import { huella } from '@/lib/sellos';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { type Sala, type SalaDelGrupo, vivoApi } from '@/lib/vivo';
@@ -41,6 +42,7 @@ export default function EnVivoGrupo({ group, books, passage }: { group: string; 
     run(async () => {
       const p = passage ?? { book: 'jhn', chapter: 1 };
       const r = await vivoApi<Sala>('crearSala', { grupo: group, libro: p.book, capitulo: p.chapter });
+      huella('guiar', `sala:${r.sala.codigo}`).catch(() => {});
       enter(r.sala.codigo);
     });
 

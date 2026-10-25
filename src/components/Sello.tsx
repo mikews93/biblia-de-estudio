@@ -349,6 +349,30 @@ export function SelloIcono({ dibujo, color }: { dibujo: Dibujo; color: string })
           <Circle cx={12} cy={13.5} r={1.3} fill={color} />
         </>
       );
+    case 'toalla': // lavar los pies los unos a los otros: la toalla sobre el lebrillo
+      return (
+        <>
+          <Path d="M4 14.5h16l-1.8 5H5.8z" />
+          <Path d="M7.5 14.5c0-3 1-5.5 2.2-7.5h4.6c1.2 2 2.2 4.5 2.2 7.5" />
+          <Path d="M10 7v4.5M14 7v4.5" />
+          <Path d="M8.5 17h7" />
+        </>
+      );
+    case 'cayado': // apacienta mis ovejas
+      return (
+        <>
+          <Path d="M10 21V8.5a4 4 0 1 1 8 0c0 1.6-1 2.6-2.3 2.6" />
+          <Path d="M6.5 21h7" />
+        </>
+      );
+    case 'estrella': // los que enseñan a justicia la multitud, como las estrellas
+      return (
+        <>
+          <Path d="M12 3.5l2.3 5 5.4.6-4 3.7 1.1 5.3L12 15.4l-4.8 2.7 1.1-5.3-4-3.7 5.4-.6z" />
+          <Circle cx={19} cy={19} r={1} fill={color} />
+          <Circle cx={5} cy={19.5} r={0.8} fill={color} />
+        </>
+      );
     default:
       return <Rect x={6} y={6} width={12} height={12} rx={3} />;
   }
