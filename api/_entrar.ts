@@ -13,12 +13,19 @@
 // - Facebook: FACEBOOK_APP_ID y FACEBOOK_APP_SECRET. Solo se piden public_profile y email (sin revisión de Meta).
 // La URI de vuelta de cada proveedor es https://<dominio>/api/auth/callback/<google|apple|facebook>.
 
-import { Auth, skipCSRFCheck } from '@auth/core';
+// @auth/core solo se publica como módulo ES y Vercel compila la API a CommonJS: se carga al usarse, no al
+// importar este archivo, para que si falla se caiga solo la entrada con cuentas y no todo /api/comunidades.
 import type { AuthConfig } from '@auth/core';
-import Apple from '@auth/core/providers/apple';
-import Facebook from '@auth/core/providers/facebook';
-import Google from '@auth/core/providers/google';
 import { createHmac, createPrivateKey, sign } from 'node:crypto';
+
+const cargarAuth = () =>
+  Promise.all([
+    import('@auth/core'),
+    import('@auth/core/providers/apple'),
+    import('@auth/core/providers/facebook'),
+    import('@auth/core/providers/google'),
+  ]).then(([core, apple, facebook, google]) => ({ core, Apple: apple.default, Facebook: facebook.default, Google: google.default }));
+type AuthJs = Awaited<ReturnType<typeof cargarAuth>>;
 
 export const PROVEEDORES = ['google', 'apple', 'facebook'] as const;
 export type Proveedor = (typeof PROVEEDORES)[number];
@@ -65,7 +72,7 @@ export type Externo = { proveedor: Proveedor; id: string; nombre: string; correo
 
 type FbPerfil = { id: string; name?: string; email?: string; picture?: { data?: { url?: string; is_silhouette?: boolean } } };
 
-function providers(listos: Record<Proveedor, boolean>) {
+function providers({ Apple, Facebook, Google }: AuthJs, listos: Record<Proveedor, boolean>) {
   const list: AuthConfig['providers'] = [];
   if (listos.google) list.push(Google({ clientId: GOOGLE_ID, clientSecret: GOOGLE_SECRET }));
   if (listos.apple) {
@@ -117,13 +124,14 @@ const cookie = (name: string) => ({
  * Pasa la petición a Auth.js. alVolver recibe a la persona cuando el proveedor la devuelve y responde a qué
  * dirección mandarla (siempre /api/auth/listo); si falla, Auth.js manda a /api/auth/listo?error=….
  */
-export function authJs(request: Request, alVolver: (externo: Externo) => Promise<string>) {
-  return Auth(request, {
-    providers: providers(proveedoresListos()),
+export async function authJs(request: Request, alVolver: (externo: Externo) => Promise<string>) {
+  const auth = await cargarAuth();
+  return auth.core.Auth(request, {
+    providers: providers(auth, proveedoresListos()),
     secret: SECRET,
     basePath: '/api/auth',
     trustHost: true,
-    skipCSRFCheck,
+    skipCSRFCheck: auth.core.skipCSRFCheck,
     pages: { error: '/api/auth/listo', signIn: '/api/auth/listo' },
     cookies: {
       state: cookie('state'),
