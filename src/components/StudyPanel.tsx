@@ -559,7 +559,7 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                   word
                     ? `Pregunta sobre ${word.greek}`
                     : mode === 'devocional'
-                      ? `¿Algo que no entiendas de ${title}?`
+                      ? `¿Qué no entiendes de ${title}?`
                       : `Pregunta sobre ${title}`
                 }
                 busy={busy}
