@@ -7,16 +7,18 @@ import { ProgresoCuenta } from '@/components/Sincronia';
 import MisGrupos from '@/components/comunidad/MisGrupos';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
-import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
+import { Avatar, Button, Chips, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { ProviderLogo } from '@/components/comunidad/ProviderButtons';
-import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FlagIcon, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
-import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FlagIcon, KeyIcon, LampIcon, LockIcon, PeopleIcon, PinIcon } from '@/components/icons';
+import { deleteAccount, protectAccount, signOut, updateUser, useAccount } from '@/lib/comunidad';
 import { firstName, greeting } from '@/lib/daily';
 import { useRacha } from '@/lib/racha';
 import { MAX_APODO, MAX_BIO, MAX_PLACE, pickPhoto, removePhoto, saveProfile } from '@/lib/perfil';
 import { desconectar, entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, retomarViaje } from '@/lib/proveedores';
 import { HAY_SOSTENER } from '@/lib/sostener';
-import { Colors, isDark, serif, useColors } from '@/lib/theme';
+import { ETAPAS, type Etapa } from '@/lib/circulo';
+import { cambiarEtapa } from '@/lib/circuloApi';
+import { Colors, isDark, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 /** Tu perfil: la foto, cómo te ven los demás, las cuentas conectadas, cómo entrar y la sesión. */
@@ -24,6 +26,8 @@ export default function AccountScreen() {
   const colors = useColors();
   const { ready, usuario, iglesia: anfitriona, cuidador } = useAccount();
   const racha = useRacha();
+  const { modo } = useSettings().settings;
+  const etapaAction = useAction();
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [church, setChurch] = useState('');
@@ -95,6 +99,14 @@ export default function AccountScreen() {
     profileAction
       .run(() => saveProfile({ nombre: name, bio, iglesia: church, ciudad: city, apodo: nick }))
       .then((ok) => ok && flash('Perfil guardado'));
+
+  const changeEtapa = (v: Etapa | 'nada') =>
+    etapaAction
+      .run(async () => {
+        const r = await cambiarEtapa(v === 'nada' ? null : v);
+        updateUser({ ...usuario, etapa: r.etapa });
+      })
+      .then((ok) => ok && flash('Etapa guardada'));
 
   const choosePhoto = () => photoAction.run(pickPhoto).then((ok) => ok && flash('Foto actualizada'));
 
@@ -245,6 +257,15 @@ export default function AccountScreen() {
         </Section>
       </Appear>
 
+      {modo !== 'jovenes' && (
+        <Appear delay={90}>
+          <Section colors={colors} title="Tu etapa" hint="Solo la ven las personas de tu círculo de solteros, si entras a uno.">
+            <Chips options={ETAPAS_PERFIL} value={usuario.etapa ?? 'nada'} onChange={changeEtapa} />
+            <ErrorText>{etapaAction.error}</ErrorText>
+          </Section>
+        </Appear>
+      )}
+
       {filas.length > 0 && (
         <Appear delay={100}>
           <Section colors={colors} title="Entrar con un toque" hint="Conecta tus cuentas para entrar en cualquier dispositivo sin escribir la contraseña.">
@@ -368,6 +389,25 @@ export default function AccountScreen() {
         </Pressable>
       </Appear>
 
+      {modo !== 'jovenes' && (
+        <Appear delay={197}>
+          <Pressable
+            onPress={() => go('/circulo')}
+            accessibilityRole="link"
+            style={[styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: colors.border }]}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: colors.accentSoft }]}>
+              <PeopleIcon color={colors.accent} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Círculo de solteros</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Conoce a solteros de tu iglesia, con la Palabra en el centro</Text>
+            </View>
+            <ChevronRightIcon color={colors.muted} size={20} />
+          </Pressable>
+        </Appear>
+      )}
+
       {cuidador && (
         <Appear delay={198}>
           <Pressable
@@ -473,6 +513,11 @@ function IconLabel({ colors, Icon, label }: { colors: Colors; Icon: (p: { color:
     </View>
   );
 }
+
+const ETAPAS_PERFIL: { value: Etapa | 'nada'; label: string }[] = [
+  ...ETAPAS.map((e) => ({ value: e.value, label: e.label })),
+  { value: 'nada', label: 'Prefiero no decir' },
+];
 
 const shadow = (colors: Colors) =>
   isDark(colors) ? null : { boxShadow: '0 1px 2px rgba(60, 40, 20, 0.06), 0 8px 24px rgba(60, 40, 20, 0.06)' };

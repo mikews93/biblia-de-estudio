@@ -24,6 +24,7 @@ import postgres from 'postgres';
 
 import { authJs, esProveedor, Externo, NOMBRE, paginaVuelta, Proveedor, proveedoresListos } from './_entrar';
 import { downloadPhoto, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
+import { CIRCULO_SCHEMA, circuloActions } from './_circulo';
 import { CUIDAR_SCHEMA, cuidarActions } from './_cuidar';
 import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
@@ -305,6 +306,8 @@ type User = {
   cuentas: { proveedor: Proveedor; nombre: string | null }[];
   /** Su racha devocional viva (0 si no hay): la foto de perfil brilla más mientras más larga. */
   racha: number;
+  /** Soltero, abierto a conocer a alguien, en una relación o casado (api/_circulo.ts); solo la ve su círculo. */
+  etapa: string | null;
 };
 
 // La racha devocional que la app cuenta (src/lib/rachaTexto.ts), viva hasta su último día; un día de margen por las
@@ -315,7 +318,7 @@ const RACHA = `case when u.racha_vence >= current_date - 1 then u.racha else 0 e
 const USER_COLUMNS = `u.id, u.nombre, u.correo, u.foto, u.bio, u.iglesia, u.ciudad, u.apodo, u.clave_hash is not null as "conClave",
   coalesce((select json_agg(json_build_object('proveedor', c.proveedor, 'nombre', c.nombre) order by c.creado)
     from cuentas_externas c where c.usuario_id = u.id), '[]'::json) as cuentas,
-  case when u.racha_vence >= current_date - 1 then u.racha else 0 end as racha`;
+  case when u.racha_vence >= current_date - 1 then u.racha else 0 end as racha, u.etapa`;
 /** El plan del grupo: un libro a un ritmo fijo, o un reto de temporada («adviento-2026») con sus fechas. */
 type Plan = { libro: string | null; inicio: string | null; porDia: number; reto: string | null };
 
@@ -335,7 +338,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -1547,6 +1550,8 @@ Object.assign(actions, parejaActions({ auth, fail: (message, status) => new Fail
 // «Zarza para Iglesias» (api/_iglesias.ts) y «Cuidar Zarza» (api/_cuidar.ts), con la misma cuenta.
 Object.assign(actions, iglesiaActions({ auth, fail: (message, status) => new Fail(message, status) }));
 Object.assign(actions, cuidarActions({ auth, fail: (message, status) => new Fail(message, status), books }));
+// «Círculo de solteros» (api/_circulo.ts): sus acciones empiezan por «circulo» (y las de /cuidar, por «cuidar»).
+Object.assign(actions, circuloActions({ auth, fail: (message, status) => new Fail(message, status) }));
 
 // --- Avisos push de la comunidad (api/_push.ts). Solo llegan a quien los activó en la pantalla de notificaciones. ---
 

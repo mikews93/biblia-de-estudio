@@ -5,6 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import type { Etapa } from './circulo';
 import { requireConnection } from './conexion';
 import { pedirPermisoIa } from './permisoIa';
 import { chapterHref as routeToChapter, verseHref } from './routes';
@@ -27,6 +28,8 @@ export type Usuario = {
   conClave?: boolean;
   /** Las cuentas de Google, Apple o Facebook con las que entra, con su nombre en cada una. */
   cuentas?: { proveedor: 'google' | 'apple' | 'facebook'; nombre: string | null }[];
+  /** La etapa del perfil (src/lib/circulo.ts): solo la ve el círculo de solteros de la persona. */
+  etapa?: Etapa | null;
 };
 export type TipoGrupo = 'iglesia' | 'celula' | 'familia' | 'amigos';
 export type Lectura = {

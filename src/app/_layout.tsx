@@ -26,13 +26,15 @@ const fixedHeader = {
 };
 
 // En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
-const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|iglesia|cuidar)(\/|$)/;
+const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|circulo|iglesia|cuidar)(\/|$)/;
 
 function GuardaNinos() {
   const path = usePathname();
   const { modo } = useSettings().settings;
   useEffect(() => {
     if (modo === 'ninos' && SIN_NINOS.test(path)) router.replace('/');
+    // El Círculo de solteros es solo para adultos: en el Modo Jóvenes su portada lo explica y no se entra más allá.
+    else if (modo === 'jovenes' && /^\/circulo\/./.test(path)) router.replace('/circulo');
     // En el teléfono no hay Espacio Niños (ver ESPACIO_NINOS en src/lib/theme.ts).
     else if (!ESPACIO_NINOS && /^\/ninos(\/|$)/.test(path)) router.replace('/');
   }, [modo, path]);
@@ -149,6 +151,12 @@ function AppStack() {
           <Stack.Screen name="pareja/[plan]/[dia]" options={{ title: '' }} />
           <Stack.Screen name="pareja/unirse/[codigo]" options={{ title: 'Invitación' }} />
           <Stack.Screen name="pareja/ayuda" options={{ title: 'Ayuda' }} />
+          <Stack.Screen name="circulo/index" options={{ title: 'Círculo de solteros' }} />
+          <Stack.Screen name="circulo/conocer/[id]" options={{ title: 'Conocernos' }} />
+          <Stack.Screen name="circulo/lider/[id]" options={{ title: 'Liderar el círculo' }} />
+          <Stack.Screen name="circulo/camino/index" options={{ title: 'Camino de preparación' }} />
+          <Stack.Screen name="circulo/camino/[n]" options={{ title: 'Etapa' }} />
+          <Stack.Screen name="circulo/importa" options={{ title: 'Lo que sí importa' }} />
           <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
           <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
         </Stack>
