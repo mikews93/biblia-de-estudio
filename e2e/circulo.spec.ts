@@ -28,6 +28,13 @@ async function cuidadora(request: APIRequestContext) {
   return (await post(request, { accion: 'registrarse', nombre: 'Cuidadora', ...datos })).llave as string;
 }
 
+const IMPORTA = { respuestas: { hijos: 'si', misiones: 'si', ministerio: 'abierto', estable: 'si', finanzas: 'abierto' }, innegociables: ['hijos'] };
+
+/** Las siete etapas del camino de preparación, una por día. */
+async function camino(request: APIRequestContext, llave: string) {
+  for (let n = 1; n <= 7; n++) await post(request, { accion: 'caminoTerminar', etapa: n }, llave, dia(30 - n));
+}
+
 /** Una iglesia con un círculo y una líder; las personas entran con el código de la iglesia. */
 async function iglesiaConCirculo(request: APIRequestContext) {
   const cuida = await cuidadora(request);
@@ -47,6 +54,25 @@ test('pedir entrar al círculo, ser aprobada y responder la pregunta de la seman
 
   await page.goto('/circulo');
   await expect(page.getByText('Conocerse creciendo en la Palabra').filter({ visible: true })).toBeVisible();
+  // Antes de pedir entrar: «Lo que sí importa»
+  await page.getByRole('button', { name: 'Responder', exact: true }).filter({ visible: true }).click();
+  await expect(page.getByText('Ser claro desde el principio', { exact: false }).filter({ visible: true })).toBeVisible();
+  const guardar = page.getByRole('button', { name: 'Guardar', exact: true }).filter({ visible: true });
+  await expect(guardar).toBeDisabled();
+  for (const [clave, opcion] of [
+    ['hijos', 'Sí'],
+    ['misiones', 'Abierto/a'],
+    ['ministerio', 'No'],
+    ['estable', 'Sí'],
+    ['finanzas', 'En camino'],
+  ] as const) {
+    await page.getByTestId(`importa-${clave}`).filter({ visible: true }).getByRole('radio', { name: opcion, exact: true }).click();
+  }
+  await page.getByRole('checkbox', { name: 'No lo negocio' }).filter({ visible: true }).first().click();
+  await page.getByLabel('Tu propósito en una o dos frases').filter({ visible: true }).fill('Servir a los niños con la Palabra.');
+  await guardar.click();
+  await expect(page.getByText('Pide entrar al círculo de Iglesia Vida Nueva').filter({ visible: true })).toBeVisible();
+  await expect(page.getByText(/CAMINO DE PREPARACIÓN · 0 DE 7/).filter({ visible: true })).toBeVisible();
   await page.getByRole('radio', { name: 'Abierto/a a conocer a alguien' }).filter({ visible: true }).click();
   await page.getByLabel('Día').filter({ visible: true }).fill('10');
   await page.getByLabel('Mes').filter({ visible: true }).fill('5');
@@ -79,6 +105,8 @@ test('marcarse en secreto, que sea mutuo y empezar «Conocernos»', async ({ pag
   const { codigo, circulo, lider } = await iglesiaConCirculo(request);
   const entra = async (nombre: string) => {
     const c = await cuentaNueva(request, nombre);
+    await camino(request, c.llave);
+    await post(request, { accion: 'circuloImporta', importa: IMPORTA }, c.llave);
     await post(request, { accion: 'iglesiaUnirme', codigo }, c.llave);
     await post(request, { accion: 'circuloPedir', circulo, nacimiento: '1998-03-02', etapa: 'abierto', acepto: true }, c.llave);
     await post(request, { accion: 'circuloAprobar', usuario: c.usuario.id, si: true }, lider.llave);
@@ -92,6 +120,7 @@ test('marcarse en secreto, que sea mutuo y empezar «Conocernos»', async ({ pag
 
   await page.goto('/circulo');
   await page.getByRole('button', { name: /Beto Salas/ }).filter({ visible: true }).click();
+  await expect(page.getByText('Coinciden: hijos').filter({ visible: true })).toBeVisible();
   await page.getByRole('button', { name: 'Me gustaría conocerte' }).filter({ visible: true }).click();
   await expect(page.getByText('Beto no lo sabe. Si también te marca, se avisará a los dos.').filter({ visible: true })).toBeVisible();
 
@@ -121,4 +150,34 @@ test('marcarse en secreto, que sea mutuo y empezar «Conocernos»', async ({ pag
   await page.getByRole('radio', { name: 'Los siete días' }).filter({ visible: true }).click();
   await expect(page.getByText('Mi abuela me llevaba a la iglesia.').filter({ visible: true })).toBeVisible();
   await expect(page.getByText(/MAÑANA · DÍA 2 DE 7/).filter({ visible: true })).toBeVisible();
+});
+
+test('el camino de preparación: escribir a solas, terminar la etapa y ver dónde pedir ayuda', async ({ page, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Ruiz');
+  await conSesion(page, ana);
+  await page.goto('/circulo/camino');
+  await expect(page.getByText('Primero el para qué, después el con quién').filter({ visible: true })).toBeVisible();
+  await expect(page.getByText('0 DE 7 ETAPAS').filter({ visible: true })).toBeVisible();
+  await page.getByRole('link', { name: /Quién eres en Cristo/ }).filter({ visible: true }).click();
+
+  await expect(page.getByText('ETAPA 1 DE 7').filter({ visible: true })).toBeVisible();
+  await expect(page.getByText('EFESIOS 1:3-7').filter({ visible: true })).toBeVisible();
+  const terminar = page.getByRole('button', { name: 'Terminé esta etapa' }).filter({ visible: true });
+  await expect(terminar).toBeDisabled();
+  await page.getByLabel('Pregunta 1').filter({ visible: true }).fill('En que me aprueben. Dios dice que me escogió.');
+  await page.getByLabel('Pregunta 2').filter({ visible: true }).fill('A veces no quiero vivir si nadie me quiere.');
+  // Si lo escrito habla de hacerse daño, aparece dónde pedir ayuda
+  await expect(page.getByText('No estás solo ni sola').filter({ visible: true })).toBeVisible();
+  await page.getByLabel('Pregunta 2').filter({ visible: true }).fill('Servir a Dios y a mi iglesia.');
+  await expect(page.getByText('No estás solo ni sola').filter({ visible: true })).toHaveCount(0);
+  await page.getByLabel('Pregunta 3').filter({ visible: true }).fill('«Nos escogió en él antes de la fundación del mundo».');
+  await terminar.click();
+  await expect(page.getByText(/Terminaste esta etapa el/).filter({ visible: true })).toBeVisible();
+  await expect(page.getByText(/La etapa 2 se abre el/).filter({ visible: true })).toBeVisible();
+
+  // Lo escrito sigue en el teléfono al volver
+  await page.reload();
+  await expect(page.getByLabel('Pregunta 1').filter({ visible: true })).toHaveValue('En que me aprueben. Dios dice que me escogió.');
+  await page.goto('/circulo/camino');
+  await expect(page.getByText('1 DE 7 ETAPAS').filter({ visible: true })).toBeVisible();
 });

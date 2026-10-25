@@ -81,6 +81,8 @@ const PARTES: Parte[] = [
       'Es solo para mayores de 18 años de una iglesia que usa Zarza. Tu fecha de nacimiento la ven solo los líderes de tu círculo, que aprueban cada entrada.',
       'Tu etapa («abierto a conocer a alguien», por ejemplo) y tus respuestas de la semana las ven solo las personas de tu círculo.',
       '«Me gustaría conocerte» es secreto y vence a los 30 días. Los mensajes de «Conocernos» son solo de los dos: los líderes no los leen, solo reciben lo que alguien reporta.',
+      'Lo que escribes en el camino de preparación se guarda solo en tu teléfono. Zarza solo sabe qué etapas terminaste y cuándo, y los líderes de tu círculo ven si lo terminaste.',
+      'Tus respuestas de «Lo que sí importa» no las ve nadie: tu círculo solo ve en qué coinciden, tu propósito y dónde sirves.',
       'Al salir del círculo se borran tus marcas y se cierra tu «Conocernos».',
     ],
   },

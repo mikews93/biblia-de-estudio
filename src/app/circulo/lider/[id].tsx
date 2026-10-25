@@ -6,7 +6,8 @@ import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, SectionTitle, text, useAction } from '@/components/comunidad/ui';
-import { FlagIcon, HeartIcon, LockIcon } from '@/components/icons';
+import { CheckIcon, FlagIcon, HeartIcon, LockIcon, RouteIcon } from '@/components/icons';
+import { ETAPAS_CAMINO, fechaCorta } from '@/lib/camino';
 import { etapaCorta } from '@/lib/circulo';
 import { type PanelLider, type PersonaLider, aprobar, panelLider, rangoEdad, revisar } from '@/lib/circuloApi';
 import { ago, useAccount } from '@/lib/comunidad';
@@ -64,9 +65,12 @@ export default function LiderScreen() {
         <View style={[styles.nota, { backgroundColor: colors.accentSoft }]}>
           <LockIcon color={colors.accent} size={16} strokeWidth={2} />
           <Text style={[text.small, { color: colors.text, flex: 1, lineHeight: 19 }]}>
-            No ves las marcas ni los mensajes de nadie: son privados. Solo ves los pedidos, los reportes y a quienes piden que los acompañes.
+            No ves las marcas, los mensajes ni lo que cada uno escribe en el camino de preparación: son privados. Solo ves los
+            pedidos, los reportes, quién terminó el camino y a quienes piden que los acompañes.
           </Text>
         </View>
+
+        <CaminoIglesia camino={panel.camino} colors={colors} />
 
         {panel.reportes.length > 0 && (
           <>
@@ -118,6 +122,33 @@ export default function LiderScreen() {
   );
 }
 
+/** Cuántas personas de la iglesia van en cada etapa del camino. Solo números: nunca quiénes ni qué escribieron. */
+function CaminoIglesia({ camino, colors }: { camino: number[]; colors: Colors }) {
+  const total = camino.reduce((a, b) => a + b, 0);
+  if (!total) return null;
+  const max = Math.max(...camino, 1);
+  return (
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 14 }]}>
+      <Text style={[styles.kicker, { color: colors.muted }]}>TU IGLESIA EN EL CAMINO DE PREPARACIÓN</Text>
+      <Text style={[text.small, { color: colors.muted, marginTop: 4 }]}>
+        {total} {total === 1 ? 'persona lo empezó' : 'personas lo empezaron'} · {camino[ETAPAS_CAMINO - 1]} {camino[ETAPAS_CAMINO - 1] === 1 ? 'lo terminó' : 'lo terminaron'}
+      </Text>
+      <View style={styles.barras}>
+        {camino.map((n, i) => (
+          <View key={i} style={styles.barraCol} accessibilityLabel={`Etapa ${i + 1}: ${n}`}>
+            <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>{n}</Text>
+            <View style={[styles.barra, { height: 6 + (n / max) * 54, backgroundColor: n ? colors.accent : colors.border }]} />
+            <Text style={{ color: colors.muted, fontSize: 11 }} numberOfLines={1}>
+              {i + 1}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Text style={[text.small, { color: colors.muted, marginTop: 6 }]}>Personas según la última etapa que terminaron.</Text>
+    </View>
+  );
+}
+
 function Stat({ valor, etiqueta, colors }: { valor: number | string; etiqueta: string; colors: Colors }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
@@ -134,6 +165,13 @@ function Quien({ p, colors }: { p: PersonaLider; colors: Colors }) {
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }}>{p.nombre}</Text>
         <Text style={[text.small, { color: colors.muted, marginTop: 2 }]}>{[`${p.edad} años`, etapaCorta(p.etapa)].filter(Boolean).join(' · ')}</Text>
+        <View style={[styles.row, { gap: 5, marginTop: 3 }]}>
+          {p.caminoTerminado ? <CheckIcon color={colors.accent} size={13} strokeWidth={2.6} /> : <RouteIcon color={colors.muted} size={13} />}
+          <Text style={[text.small, { color: p.caminoTerminado ? colors.accent : colors.muted }]}>
+            {p.caminoTerminado ? `Terminó el camino el ${fechaCorta(p.caminoTerminado)}` : 'Camino de preparación sin terminar'}
+            {p.solteria ? ' · Llamado/a a la soltería por ahora' : ''}
+          </Text>
+        </View>
         {!!p.correo && (
           <Text style={[text.small, { color: colors.muted }]} numberOfLines={1} selectable>
             {p.correo}
@@ -155,8 +193,11 @@ function Pedido({ p, colors, onDone }: { p: PersonaLider; colors: Colors; onDone
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Quien p={p} colors={colors} />
       {!!p.bio && <Text style={[text.body, { color: colors.text, marginTop: 10 }]}>{p.bio}</Text>}
+      {!!p.proposito && <Text style={[styles.detalle, { color: colors.text, borderColor: colors.border }]}>«{p.proposito}»</Text>}
+      {!!p.sirvo && <Text style={[text.small, { color: colors.muted, marginTop: 6 }]}>Sirve en: {p.sirvo}</Text>}
       <Text style={[text.small, { color: colors.muted, marginTop: 10, lineHeight: 19 }]}>
-        Aprueba solo a quien conoces de la iglesia, o después de hablar en persona.
+        Aprueba solo a quien conoces de la iglesia, o después de hablar en persona. Esa conversación es un buen momento para
+        acompañarle en el camino de preparación.
       </Text>
       <View style={[styles.buttons, { marginTop: 12 }]}>
         <Button label="Aprobar" onPress={() => decidir(true)} busy={act.busy} style={{ flex: 1 }} />
@@ -210,4 +251,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   detalle: { borderLeftWidth: 3, paddingLeft: 10, marginTop: 8, fontFamily: serif, fontSize: 15, lineHeight: 22 },
   buttons: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  barras: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 14 },
+  barraCol: { flex: 1, alignItems: 'center', gap: 4 },
+  barra: { width: '100%', maxWidth: 34, borderRadius: 6 },
 });

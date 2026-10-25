@@ -93,15 +93,18 @@ export function semanaDe(dia: string): Semana & { clave: string } {
 
 export type DiaConocer = Semana & { ora: string };
 
-/** «Conocernos»: seis días cortos, cada uno responde a solas, y un séptimo para verse en persona. */
+/**
+ * «Conocernos»: seis días cortos, cada uno responde a solas, y un séptimo para verse en persona. Empieza por el
+ * propósito y lo que no se negocia, no por los gustos: la pregunta es si pueden buscar el Reino mejor juntos.
+ */
 export const CONOCERNOS: DiaConocer[] = [
   { titulo: 'Tu historia con Dios', referencia: 'Salmo 40:1-3', pasaje: p('psa', 40, 1, 3), pregunta: '¿Cómo conociste a Jesús y qué ha cambiado en ti desde entonces?', ora: 'Da gracias por la historia de fe de la otra persona.' },
+  { titulo: 'Tu llamado', referencia: 'Efesios 2:10', pasaje: p('eph', 2, 10), pregunta: '¿A qué sientes que Dios te llama, y cómo lo estás viviendo hoy?', ora: 'Pide que Dios confirme el llamado de los dos, juntos o no.' },
+  { titulo: 'Lo que no negocias', referencia: 'Amós 3:3', pasaje: p('amo', 3, 3), pregunta: 'Miren juntos «Lo que sí importa»: hijos, misiones, ministerio. ¿Por qué es importante para ti lo que respondiste?', ora: 'Pide honestidad para hablar claro desde el principio.' },
   { titulo: 'Lo que te formó', referencia: 'Deuteronomio 6:4-9', pasaje: p('deu', 6, 4, 9), pregunta: '¿Cómo se vivía la fe en tu casa mientras crecías? ¿Qué quisieras repetir y qué cambiar?', ora: 'Ora por la familia de la otra persona.' },
-  { titulo: 'Servir', referencia: '1 Pedro 4:8-11', pasaje: p('1pe', 4, 8, 11), pregunta: '¿Dónde sirves hoy, o dónde te gustaría servir, y por qué?', ora: 'Pide que Dios use sus dones esta semana.' },
-  { titulo: 'Tus amigos', referencia: 'Proverbios 27:5-10', pasaje: p('pro', 27, 5, 10), pregunta: '¿Quiénes son tus amigos más cercanos y qué dirían ellos de ti?', ora: 'Ora por las amistades de la otra persona.' },
-  { titulo: 'Lo que sueñas', referencia: 'Jeremías 29:11-13', pasaje: p('jer', 29, 11, 13), pregunta: '¿Qué sueños sientes que Dios puso en tu corazón para los próximos años?', ora: 'Pide sabiduría para los planes de los dos.' },
-  { titulo: 'El fruto que crece', referencia: 'Gálatas 5:22-23', pasaje: p('gal', 5, 22, 23), pregunta: '¿Qué fruto del Espíritu ves crecer en ti, y cuál te gustaría que creciera más?', ora: 'Ora para que los dos crezcan en carácter, juntos o no.' },
-  { titulo: 'Verse en persona', referencia: 'Filipenses 2:1-4', pasaje: p('php', 2, 1, 4), pregunta: 'Después de verse en la iglesia o con el grupo: ¿qué te llevas de esta semana y qué te gustaría hacer ahora?', ora: 'Pide paz para decidir con libertad, sea cual sea la respuesta.' },
+  { titulo: 'Tu carácter', referencia: 'Colosenses 3:12-14', pasaje: p('col', 3, 12, 14), pregunta: '¿Cómo reaccionas cuando te enojas o te equivocas? ¿Cómo pides perdón?', ora: 'Ora para que los dos crezcan en carácter, juntos o no.' },
+  { titulo: 'Mejor juntos', referencia: '1 Pedro 4:8-11', pasaje: p('1pe', 4, 8, 11), pregunta: '¿Podrían servir a Dios mejor juntos que por separado? ¿Cómo se lo imaginan?', ora: 'Pide sabiduría para ver con claridad, no solo con emoción.' },
+  { titulo: 'Verse en persona', referencia: 'Filipenses 2:1-4', pasaje: p('php', 2, 1, 4), pregunta: 'Después de verse en la iglesia, con el grupo o con un líder: ¿qué te llevas de esta semana y qué te gustaría hacer ahora?', ora: 'Pide paz para decidir con libertad, sea cual sea la respuesta.' },
 ];
 export const DIAS_CONOCER = CONOCERNOS.length;
 

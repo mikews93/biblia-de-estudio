@@ -46,8 +46,24 @@ const SEMANAS = [
   [14, 'Que Rut decidió quedarse con Noemí sin saber si alguna vez se casaría. Eso me reta: ser fiel hoy.'],
   [7, 'Que la soledad no es castigo. Dios hizo la compañía y la iglesia es parte de ella.'],
 ];
+const R = (hijos, misiones, ministerio, estable = 'si', finanzas = 'abierto') => ({ hijos, misiones, ministerio, estable, finanzas });
+const IMPORTAS = {
+  Felipe: { respuestas: R('si', 'si', 'abierto'), innegociables: ['hijos'], sirvo: 'Alabanza', proposito: 'Llevar a otros a adorar a Dios con la música, aquí y en las misiones.' },
+  Sara: { respuestas: R('si', 'si', 'no'), innegociables: ['hijos'], sirvo: 'Escuela dominical', proposito: 'Enseñar la Palabra a los niños y servir en misiones de verano.' },
+  Daniela: { respuestas: R('si', 'abierto', 'no'), innegociables: [], sirvo: 'Bienvenida', proposito: 'Cuidar a los enfermos como lo haría Jesús.' },
+  Andrés: { respuestas: R('si', 'abierto', 'abierto'), innegociables: [], sirvo: 'Sonido', proposito: 'Usar la ingeniería para servir a mi ciudad.' },
+  Camila: { respuestas: R('abierto', 'abierto', 'abierto', 'abierto'), innegociables: [], sirvo: 'Diseño de la iglesia', proposito: '', solteria: true },
+  Jonatán: { respuestas: R('no', 'no', 'no', 'abierto', 'no'), innegociables: ['hijos'], sirvo: '', proposito: '' },
+  Mateo: { respuestas: R('si', 'si', 'si'), innegociables: ['ministerio'], sirvo: 'Jóvenes', proposito: 'Prepararme para predicar el Evangelio donde Dios me envíe.' },
+};
+/** Las siete etapas del camino, terminadas hace unas semanas (o solo las primeras `hasta`). */
+async function camino(llave, hasta = 7) {
+  for (let n = 1; n <= hasta; n++) await post({ accion: 'caminoTerminar', etapa: n }, llave, dia(40 - n));
+}
 async function entra(nombre, bio, etapa, nacimiento, respuestas = SEMANAS) {
   const c = await cuenta(nombre, bio);
+  await camino(c.llave);
+  await post({ accion: 'circuloImporta', importa: IMPORTAS[nombre.split(' ')[0]] }, c.llave);
   await post({ accion: 'iglesiaUnirme', codigo: iglesia.codigo }, c.llave);
   await post({ accion: 'circuloPedir', circulo, nacimiento, etapa, acepto: true }, c.llave);
   await post({ accion: 'circuloAprobar', usuario: c.usuario.id, si: true }, lidia.llave);
@@ -77,6 +93,8 @@ await post({ accion: 'circuloMensaje', id: mutuo, texto: 'Sí, ahí estaré. Si 
 
 // Un pedido nuevo y un reporte para la líder
 const mateo = await cuenta('Mateo Pineda', 'Recién llegado a Vida Nueva. Me bauticé en agosto.');
+await camino(mateo.llave);
+await post({ accion: 'circuloImporta', importa: IMPORTAS.Mateo }, mateo.llave);
 await post({ accion: 'iglesiaUnirme', codigo: iglesia.codigo }, mateo.llave);
 await post({ accion: 'circuloPedir', circulo, nacimiento: '2000-09-09', etapa: 'abierto', acepto: true }, mateo.llave);
 await post({ accion: 'circuloReportar', usuario: jonatan.usuario.id, motivo: 'Me presionó o me incomodó', detalle: 'Me escribió varias veces por Facebook después del culto.' }, camila.llave);
@@ -84,16 +102,28 @@ await post({ accion: 'circuloReportar', usuario: jonatan.usuario.id, motivo: 'Me
 // Alguien de la iglesia que todavía no pidió entrar, y alguien sin iglesia
 const valeria = await cuenta('Valeria Cano');
 await post({ accion: 'iglesiaUnirme', codigo: iglesia.codigo }, valeria.llave);
+await post({ accion: 'circuloImporta', importa: { ...IMPORTAS.Sara, proposito: 'Acompañar a los jóvenes de mi barrio.' } }, valeria.llave);
+// Alguien a mitad del camino, para las capturas del camino
+const lucia = await cuenta('Lucía Herrera');
+await post({ accion: 'iglesiaUnirme', codigo: iglesia.codigo }, lucia.llave);
+for (let n = 1; n <= 2; n++) await post({ accion: 'caminoTerminar', etapa: n }, lucia.llave, dia(3 - n));
+// Otros dos en camino, para los números de la iglesia
+for (const [nombre, hasta] of [['Pablo Ríos', 4], ['Marta Gil', 1]]) {
+  const x = await cuenta(nombre);
+  await post({ accion: 'iglesiaUnirme', codigo: iglesia.codigo }, x.llave);
+  await camino(x.llave, hasta);
+}
 const tomas = await cuenta('Tomás León');
 
 const browser = await chromium.launch();
-async function page(c, { device = 'Pixel 7', theme } = {}) {
+async function page(c, { device = 'Pixel 7', theme, diario } = {}) {
   const scheme = { colorScheme: theme === 'oscuro' ? 'dark' : 'light', locale: 'es-CO' };
   const ctx = await browser.newContext(
     device === 'desktop' ? { viewport: { width: 1280, height: 1500 }, ...scheme } : { ...devices[device], viewport: { width: 412, height: 1900 }, ...scheme },
   );
   const p = await ctx.newPage();
   await p.addInitScript((cu) => localStorage.setItem('cuenta', cu), JSON.stringify({ llave: c.llave, usuario: c.usuario }));
+  if (diario) await p.addInitScript(([k, v]) => localStorage.setItem(k, v), [`camino-diario:${c.usuario.id}`, JSON.stringify(diario)]);
   return p;
 }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -123,6 +153,27 @@ for (const [pref, opts] of [
   await vis(p.getByText('Pide entrar al círculo de Iglesia Vida Nueva')).scrollIntoViewIfNeeded();
   await shot(p, `${pref}-2-pedir`);
 
+  // El camino de Lucía: dos etapas hechas y la tercera esperándola, con lo que ya escribió
+  const diario = {
+    1: ['En que mi familia esté orgullosa de mí. Dios dice que me escogió antes de todo.', 'Servir, mis amigos, la iglesia. Mi vida es de Dios.', '«Nos escogió en él antes de la fundación del mundo».'],
+    2: ['En la escuela dominical. Dicen que explico con paciencia.', 'Los niños que no tienen a nadie que les hable de Jesús.', 'Me veo en misiones de verano, no sé si a tiempo completo.', 'Enseñar la Palabra a los niños y acompañar a sus familias.'],
+    3: ['Quiero repetir las comidas en familia y orar juntos. No quiero repetir los gritos.'],
+  };
+  p = await page(lucia, { ...opts, diario });
+  await p.goto(`${BASE}/circulo/camino`);
+  await vis(p.getByText('2 DE 7 ETAPAS')).waitFor();
+  await shot(p, `${pref}-a-camino`);
+  await p.goto(`${BASE}/circulo/camino/3`);
+  await vis(p.getByText('ETAPA 3 DE 7')).waitFor();
+  await vis(p.getByText('Quiero hablar con alguien')).click();
+  await vis(p.getByText('Quiero hablar con alguien')).scrollIntoViewIfNeeded();
+  await shot(p, `${pref}-b-etapa`, 1400);
+
+  p = await page(valeria, opts);
+  await p.goto(`${BASE}/circulo/importa`);
+  await vis(p.getByText('¿Quieres tener hijos?')).waitFor();
+  await shot(p, `${pref}-c-importa`);
+
   p = await page(felipe, opts);
   await p.goto(`${BASE}/circulo`);
   await vis(p.getByText(/^ESTA SEMANA · /)).waitFor();
@@ -135,7 +186,7 @@ for (const [pref, opts] of [
   await p.goto(`${BASE}/circulo/conocer/${mutuo}`);
   await vis(p.getByText('Tú y Andrés')).waitFor();
   await vis(p.getByRole('radio', { name: 'Los siete días' })).click();
-  await vis(p.getByText('Lo que te formó')).waitFor();
+  await vis(p.getByText('Tu llamado')).waitFor();
   await shot(p, `${pref}-5-conocernos`, 1500);
   await vis(p.getByRole('radio', { name: /Conversación/ })).click();
   await vis(p.getByText(/Comparte un número de teléfono/)).waitFor();

@@ -2,6 +2,7 @@
 // están en src/lib/circulo.ts.
 
 import { api } from './comunidad';
+import type { Coincidencias, Importa, ProgresoCamino } from './camino';
 import type { Etapa, Pasaje } from './circulo';
 
 export type Persona = { id: string; nombre: string; foto: string | null };
@@ -9,8 +10,13 @@ export type Persona = { id: string; nombre: string; foto: string | null };
 export type PersonaCirculo = Persona & {
   bio: string | null;
   etapa: Etapa | null;
+  /** Lo que comparte de «Lo que sí importa». */
+  proposito: string | null;
+  sirvo: string | null;
   /** Semanas en que los dos respondieron la pregunta del círculo. */
   enComun: number;
+  /** Solo entre dos personas abiertas a conocer a alguien. */
+  coincidencias: Coincidencias | null;
   /** Si yo la marqué con «Me gustaría conocerte» (solo lo sé yo). */
   marcada: boolean;
   puedoMarcar: boolean;
@@ -28,6 +34,8 @@ export type EstadoCirculo = {
   iglesia: { nombre: string } | null;
   lidero: Liderado[];
   acuerdo: string[];
+  camino: ProgresoCamino;
+  importa: Importa | null;
   miembro: { circulo: { id: string; nombre: string }; estado: 'pendiente' | 'aprobado' | 'pausado'; edad: number } | null;
   circulos?: CirculoOpcion[];
   lideres?: Persona[];
@@ -49,7 +57,17 @@ export type Mensaje = { id: number; texto: string; alerta: string | null; mio: b
 export type DiaRespondido = { dia: number; mia: string | null; suya: string | null; suyaEspera: boolean };
 export type Conocer = ConocerResumen & { acompanado: boolean; dias: DiaRespondido[]; mensajes: Mensaje[] };
 
-export type PersonaLider = Persona & { bio: string | null; correo: string | null; etapa: Etapa | null; edad: number };
+export type PersonaLider = Persona & {
+  bio: string | null;
+  correo: string | null;
+  etapa: Etapa | null;
+  edad: number;
+  proposito: string | null;
+  sirvo: string | null;
+  solteria: boolean;
+  /** El día en que terminó el camino de preparación. */
+  caminoTerminado: string | null;
+};
 export type Reporte = { id: number; motivo: string; detalle: string | null; creado: string; de: string; a: string; aId: string };
 export type PanelLider = {
   circulo: { id: string; nombre: string; iglesia: string; edadMin: number | null; edadMax: number | null; max: number };
@@ -57,7 +75,14 @@ export type PanelLider = {
   miembros: (PersonaLider & { pausado: boolean })[];
   reportes: Reporte[];
   conociendose: number;
+  /** Cuántas personas de la iglesia terminaron 1, 2… etapas del camino. */
+  camino: number[];
 };
+
+export const estadoCamino = () =>
+  api<{ hechas: { etapa: number; fecha: string }[]; progreso: ProgresoCamino; importa: Importa | null }>('caminoEstado');
+export const terminarEtapa = (etapa: number) => api<{ progreso: ProgresoCamino }>('caminoTerminar', { etapa });
+export const guardarImporta = (importa: Importa) => api<{ importa: Importa }>('circuloImporta', { importa });
 
 export const estadoCirculo = () => api<EstadoCirculo>('circuloEstado');
 export const cambiarEtapa = (etapa: Etapa | null) => api<{ etapa: Etapa | null }>('circuloEtapa', { etapa });

@@ -9,6 +9,13 @@
 // son secretas, tienen tope y vencen solas; los mensajes que suenan a estafa muestran un aviso a quien los recibe.
 // Las reglas compartidas con la app están en src/lib/circulo.ts.
 //
+// El «Camino de preparación» (src/lib/camino.ts) son siete etapas cuyas respuestas se quedan en el teléfono; aquí solo
+// se guarda qué etapa terminó cada persona y cuándo. Para no poner trabas a la amistad, entrar al círculo pide solo
+// ser adulto, que un líder apruebe y responder «Lo que sí importa»; el camino completo se pide para usar «Me
+// gustaría conocerte». «Lo que sí importa» son preguntas directas (hijos, misiones, ministerio, estudio y trabajo,
+// finanzas), y en el círculo cada uno ve en qué coincide con los demás, sin porcentajes. Si dos dicen sí y no en algo
+// que uno no negocia, no pueden marcarse.
+//
 // Los círculos y sus líderes los crea quien cuida Zarza (/cuidar). El guion bajo hace que Vercel no la publique como
 // función: sus acciones van por /api/comunidades, con la misma cuenta y la misma base de Neon.
 
@@ -35,6 +42,7 @@ import {
   puedeEntrar,
   semanaDe,
 } from '../src/lib/circulo';
+import { CAMINO, ETAPAS_CAMINO, type Importa, coincidencias, importaValido, progresoCamino } from '../src/lib/camino';
 import { notifyUser } from './_push';
 import { esCuidador } from './_senales';
 
@@ -125,7 +133,18 @@ create table if not exists circulo_reportes (
   revisado boolean not null default false,
   creado timestamptz not null default now()
 );
-create index if not exists circulo_reportes_a on circulo_reportes (a) where not revisado;`;
+create index if not exists circulo_reportes_a on circulo_reportes (a) where not revisado;
+create table if not exists camino_etapas (
+  usuario_id uuid not null references usuarios on delete cascade,
+  etapa int not null,
+  fecha date not null,
+  primary key (usuario_id, etapa)
+);
+create table if not exists circulo_importa (
+  usuario_id uuid primary key references usuarios on delete cascade,
+  datos jsonb not null,
+  actualizado timestamptz not null default now()
+);`;
 
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
@@ -224,6 +243,20 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
     await sql`update circulo_conocer set terminado = now() where terminado is null and (a = ${usuarioId} or b = ${usuarioId})`;
   }
 
+  async function etapasHechas(sql: Sql, usuarioId: string) {
+    return sql<{ etapa: number; fecha: string }[]>`
+      select etapa, to_char(fecha, 'YYYY-MM-DD') as fecha from camino_etapas where usuario_id = ${usuarioId} order by etapa`;
+  }
+
+  async function importaDe(sql: Sql, ids: string[]) {
+    if (!ids.length) return new Map<string, Importa>();
+    const rows = await sql<{ usuario_id: string; datos: Importa }[]>`select usuario_id, datos from circulo_importa where usuario_id in ${sql(ids)}`;
+    return new Map(rows.map((r) => [r.usuario_id, r.datos]));
+  }
+
+  /** Lo que el círculo ve de «Lo que sí importa» de alguien: su propósito y dónde sirve; las respuestas, solo como coincidencias. */
+  const publico = (i: Importa | undefined) => (i ? { proposito: i.proposito || null, sirvo: i.sirvo || null } : { proposito: null, sirvo: null });
+
   async function conocerDe(sql: Sql, yo: Yo, id: unknown) {
     const [c] = await sql<Conocer[]>`select * from circulo_conocer where id = ${idDe(id)} and (a = ${yo.id} or b = ${yo.id})`;
     if (!c) throw fail('Esa conversación no existe.', 404);
@@ -262,7 +295,15 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
         from circulo_lideres l join circulos c on c.id = l.circulo_id join iglesias_anfitrionas i on i.id = c.iglesia_id
         where l.usuario_id = ${yo.id} order by c.nombre`;
       const m = await miembroDe(sql, yo.id);
-      const base = { etapa, iglesia: iglesia ? { nombre: iglesia.nombre } : null, lidero, acuerdo: ACUERDO };
+      const importa = (await importaDe(sql, [yo.id])).get(yo.id) ?? null;
+      const base = {
+        etapa,
+        iglesia: iglesia ? { nombre: iglesia.nombre } : null,
+        lidero,
+        acuerdo: ACUERDO,
+        camino: progresoCamino(await etapasHechas(sql, yo.id), hoy),
+        importa,
+      };
 
       if (!m) {
         const circulos = iglesia
@@ -306,17 +347,31 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
           where (a = ${yo.id} or b = ${yo.id}) and terminado > now() - make_interval(days => ${DIAS_TRAS_CERRAR})`).map((r) => r.u),
       );
       const cuenta = await marcasMias(sql, yo.id);
-      const puedoMarcarAlguien = etapa === 'abierto' && !activo && cuenta.abiertas < MAX_MARCAS_ABIERTAS && cuenta.mes < MAX_MARCAS_MES;
+      const puedoMarcarAlguien =
+        etapa === 'abierto' && base.camino.completo && !importa?.solteria && !activo && cuenta.abiertas < MAX_MARCAS_ABIERTAS && cuenta.mes < MAX_MARCAS_MES;
+      const suyos = await importaDe(sql, gente.map((g) => g.id));
       const personas = await Promise.all(
         gente.map(async (g) => {
           const comun = await enComun(sql, m.circulo_id, yo.id, g.id);
           const marcada = marcadas.has(g.id);
+          const suyo = suyos.get(g.id);
+          // Las coincidencias solo entre dos personas abiertas a conocer a alguien.
+          const co = importa && suyo && etapa === 'abierto' && g.etapa === 'abierto' && !importa.solteria && !suyo.solteria ? coincidencias(importa, suyo) : null;
           return {
             ...g,
+            ...publico(suyo),
             enComun: comun,
+            coincidencias: co,
             marcada,
             puedoMarcar:
-              !marcada && puedoMarcarAlguien && g.etapa === 'abierto' && comun >= SEMANAS_EN_COMUN && !ocupados.has(g.id) && !cerradosHace.has(g.id),
+              !marcada &&
+              puedoMarcarAlguien &&
+              g.etapa === 'abierto' &&
+              !!co &&
+              !co.choca &&
+              comun >= SEMANAS_EN_COMUN &&
+              !ocupados.has(g.id) &&
+              !cerradosHace.has(g.id),
           };
         }),
       );
@@ -335,11 +390,61 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
       };
     },
 
+    /** Dónde va la persona en el camino de preparación. Lo que escribió no está aquí: vive en su teléfono. */
+    async caminoEstado({ sql, body, request }) {
+      const yo = await auth(sql, request);
+      const hechas = await etapasHechas(sql, yo.id);
+      return { hechas, progreso: progresoCamino(hechas, hoyDe(body)), importa: (await importaDe(sql, [yo.id])).get(yo.id) ?? null };
+    },
+
+    /** Terminar la etapa que sigue. Las etapas van en orden y con unos días entre una y otra. */
+    async caminoTerminar({ sql, body, request }) {
+      const yo = await auth(sql, request);
+      const hoy = hoyDe(body);
+      const etapa = Number(body.etapa);
+      if (!CAMINO.some((e) => e.n === etapa)) throw fail('Etapa no válida');
+      const hechas = await etapasHechas(sql, yo.id);
+      if (hechas.some((h) => h.etapa === etapa)) return { progreso: progresoCamino(hechas, hoy) };
+      const prog = progresoCamino(hechas, hoy);
+      if (prog.siguiente !== etapa) throw fail('Primero termina las etapas anteriores.');
+      if (!prog.abierta) throw fail('Esta etapa todavía no se abre. Tómate estos días para meditar en la anterior.');
+      await sql`insert into camino_etapas (usuario_id, etapa, fecha) values (${yo.id}, ${etapa}, ${hoy}) on conflict do nothing`;
+      return { progreso: progresoCamino([...hechas, { etapa, fecha: hoy }], hoy) };
+    },
+
+    /**
+     * «Lo que sí importa». Si la persona dice que se siente llamada a la soltería, queda solo para amistades; si una
+     * respuesta nueva choca con alguien que había marcado, esa marca se retira sin que nadie lo sepa.
+     */
+    async circuloImporta({ sql, body, request }) {
+      const yo = await auth(sql, request);
+      const importa = importaValido(body.importa);
+      if (!importa) throw fail('Responde todas las preguntas.');
+      await sql`
+        insert into circulo_importa (usuario_id, datos) values (${yo.id}, ${sql.json(importa)})
+        on conflict (usuario_id) do update set datos = excluded.datos, actualizado = now()`;
+      if (importa.solteria) {
+        await sql`update usuarios set etapa = 'soltero' where id = ${yo.id} and etapa = 'abierto'`;
+        await sql`delete from circulo_marcas where de = ${yo.id} or a = ${yo.id}`;
+      } else {
+        const marcas = await sql<{ de: string; a: string }[]>`select de, a from circulo_marcas where de = ${yo.id} or a = ${yo.id}`;
+        const otros = await importaDe(sql, marcas.map((x) => (x.de === yo.id ? x.a : x.de)));
+        for (const x of marcas) {
+          const suyo = otros.get(x.de === yo.id ? x.a : x.de);
+          if (!suyo || coincidencias(importa, suyo).choca) await sql`delete from circulo_marcas where de = ${x.de} and a = ${x.a}`;
+        }
+      }
+      return { importa };
+    },
+
     /** La etapa del perfil. Solo la ven los miembros del círculo de la persona. */
     async circuloEtapa({ sql, body, request }) {
       const yo = await auth(sql, request);
       const etapa = body.etapa === null ? null : etapaDe(body.etapa);
       if (body.etapa !== null && !etapa) throw fail('Etapa no válida');
+      if (etapa === 'abierto' && (await importaDe(sql, [yo.id])).get(yo.id)?.solteria) {
+        throw fail('En «Lo que sí importa» dice que te sientes llamado a la soltería en esta etapa. Cámbialo ahí primero.');
+      }
       await sql`update usuarios set etapa = ${etapa} where id = ${yo.id}`;
       // Quien deja de estar abierto o abierta retira sus marcas: nadie llega a saber que existieron.
       if (etapa !== 'abierto') await sql`delete from circulo_marcas where de = ${yo.id}`;
@@ -365,6 +470,9 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
       if (!c) throw fail('Ese círculo no es de tu iglesia.', 404);
       if ((c.edad_min && anios < c.edad_min) || (c.edad_max && anios > c.edad_max)) throw fail('Ese círculo es para otra edad. Elige el tuyo.');
       if (await miembroDe(sql, yo.id)) throw fail('Ya estás en un círculo. Sal de él para pedir otro.', 409);
+      const mio = (await importaDe(sql, [yo.id])).get(yo.id);
+      if (!mio) throw fail('Antes de entrar, responde «Lo que sí importa».', 403);
+      if (mio.solteria && etapa === 'abierto') throw fail('Dijiste que te sientes llamado a la soltería en esta etapa: entra solo para hacer amistades.');
       await sql`update usuarios set etapa = ${etapa} where id = ${yo.id}`;
       await sql`insert into circulo_miembros (usuario_id, circulo_id, nacimiento) values (${yo.id}, ${c.id}, ${body.nacimiento})`;
       await avisarLideres(sql, c.id, {
@@ -422,6 +530,14 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
         select 1 from circulo_conocer where ((a = ${yo.id} and b = ${otro}) or (a = ${otro} and b = ${yo.id}))
           and terminado > now() - make_interval(days => ${DIAS_TRAS_CERRAR})`;
       if (cerrado) throw fail('Hace poco cerraron «Conocernos». Denle tiempo.');
+      const ambos = await importaDe(sql, [yo.id, otro]);
+      const mio = ambos.get(yo.id);
+      const suyo = ambos.get(otro);
+      if (!progresoCamino(await etapasHechas(sql, yo.id), hoyDe(body)).completo) {
+        throw fail(`Para usar «Me gustaría conocerte», termina primero las ${ETAPAS_CAMINO} etapas del camino de preparación.`, 403);
+      }
+      if (!mio || !suyo || mio.solteria || suyo.solteria) throw fail('Esa persona no está abierta a conocer a alguien ahora.');
+      if (coincidencias(mio, suyo).choca) throw fail('Van hacia lugares distintos en algo que uno de los dos no negocia.');
       if ((await enComun(sql, m.circulo_id, yo.id, otro)) < SEMANAS_EN_COMUN) {
         throw fail(`Primero conózcanse en el círculo: respondan los dos al menos ${SEMANAS_EN_COMUN} preguntas de la semana.`);
       }
@@ -531,7 +647,7 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
       await cerrarEntre(sql, yo.id, otro);
       await notifyUser(sql, otro, {
         title: '«Conocernos» terminó',
-        body: 'La otra persona decidió cerrarlo. Gracias por tu honestidad y tu respeto.',
+        body: 'La otra persona decidió cerrarlo. Un no es normal: pueden seguir siendo hermanos y amigos en el círculo.',
         url: '/circulo',
         tag: `conocer-${c.id}`,
       });
@@ -602,8 +718,29 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
         where r.circulo_id = ${id} and not r.revisado order by r.creado desc`;
       const [{ conociendose }] = await sql<{ conociendose: number }[]>`
         select count(*)::int as conociendose from circulo_conocer where circulo_id = ${id} and terminado is null`;
+      const importas = await importaDe(sql, gente.map((g) => g.id));
+      const terminaron = new Map(
+        (gente.length
+          ? await sql<{ usuario_id: string; fecha: string }[]>`
+              select usuario_id, to_char(max(fecha), 'YYYY-MM-DD') as fecha from camino_etapas
+              where usuario_id in ${sql(gente.map((g) => g.id))} group by usuario_id having count(*) >= ${ETAPAS_CAMINO}`
+          : []
+        ).map((r) => [r.usuario_id, r.fecha]),
+      );
+      // Para la iglesia, solo números: cuántas personas van en cada etapa del camino. Nunca quiénes ni qué escribieron.
+      const porEtapa = await sql<{ hechas: number; n: number }[]>`
+        select e.hechas, count(*)::int as n from (
+          select ce.usuario_id, count(*)::int as hechas from camino_etapas ce
+            join iglesia_miembros im on im.usuario_id = ce.usuario_id
+            join circulos c on c.iglesia_id = im.iglesia_id and c.id = ${id}
+          group by ce.usuario_id
+        ) e group by e.hechas`;
+      const camino = Array.from({ length: ETAPAS_CAMINO }, (_, i) => porEtapa.find((r) => r.hechas === i + 1)?.n ?? 0);
       const persona = (g: (typeof gente)[number]) => ({
         id: g.id, nombre: g.nombre, foto: g.foto, bio: g.bio, correo: g.correo, etapa: g.etapa, edad: edad(g.nacimiento, hoy),
+        ...publico(importas.get(g.id)),
+        solteria: !!importas.get(g.id)?.solteria,
+        caminoTerminado: terminaron.get(g.id) ?? null,
       });
       return {
         circulo: { ...c, max: MAX_CIRCULO },
@@ -611,6 +748,7 @@ export function circuloActions({ auth, fail }: Helpers): Record<string, (ctx: Ct
         miembros: gente.filter((g) => g.estado !== 'pendiente').map((g) => ({ ...persona(g), pausado: g.estado === 'pausado' })),
         reportes,
         conociendose,
+        camino,
       };
     },
 

@@ -1,24 +1,28 @@
 import { Stack, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
-import { Avatar, Button, Card, Chips, ErrorText, Field, SectionTitle, text, useAction } from '@/components/comunidad/ui';
+import { Avatar, Button, Card, Chips, ErrorText, Field, Meter, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import {
   BooksIcon,
   CheckIcon,
   ChevronRightIcon,
   ChurchIcon,
+  CompassIcon,
   FlagIcon,
   HeartIcon,
   LockIcon,
   PeopleIcon,
+  RouteIcon,
   ShieldIcon,
 } from '@/components/icons';
 import Reportar from '@/components/circulo/Reportar';
-import { type Etapa, EDAD_MINIMA, type Pasaje, etapaCorta } from '@/lib/circulo';
+import TextoPasaje from '@/components/circulo/TextoPasaje';
+import { ETAPAS_CAMINO } from '@/lib/camino';
+import { type Etapa, EDAD_MINIMA, etapaCorta } from '@/lib/circulo';
 import {
   type CirculoOpcion,
   type EstadoCirculo,
@@ -34,7 +38,6 @@ import {
   salirCirculo,
 } from '@/lib/circuloApi';
 import { useAccount } from '@/lib/comunidad';
-import { type Verse, getChapter } from '@/lib/data';
 import { Colors, isDark, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -123,6 +126,7 @@ export default function CirculoScreen() {
 function Portada({ colors }: { colors: Colors }) {
   const puntos = [
     { icon: ChurchIcon, texto: 'Solo personas de tu iglesia, mayores de 18 años, que un líder aprueba.' },
+    { icon: RouteIcon, texto: 'Antes de buscar pareja, un camino de preparación: tu identidad, tu llamado, lo que duele y lo que importa.' },
     { icon: BooksIcon, texto: 'Cada semana leen un pasaje y responden juntos una pregunta.' },
     { icon: LockIcon, texto: '«Me gustaría conocerte» es secreto. Solo si los dos se eligen, se avisa a los dos.' },
   ];
@@ -278,8 +282,35 @@ function Entrar({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
     );
   }
 
+  if (!estado.importa) {
+    return (
+      <>
+        <Portada colors={colors} />
+        <Appear delay={80}>
+          <CaminoTarjeta estado={estado} colors={colors} />
+          <Card style={{ marginTop: 12 }}>
+            <View style={styles.punto}>
+              <View style={[styles.puntoIcon, { backgroundColor: colors.warmSoft }]}>
+                <CompassIcon color={colors.warm} size={16} strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Antes de entrar: lo que sí importa</Text>
+                <Text style={[text.body, { color: colors.muted, marginTop: 6 }]}>
+                  Cinco preguntas directas sobre hijos, misiones, ministerio, estudio y trabajo, y finanzas. Tu círculo no ve tus
+                  respuestas, solo en qué coinciden.
+                </Text>
+              </View>
+            </View>
+            <Button label="Responder" onPress={() => go('/circulo/importa')} style={{ marginTop: 14 }} />
+          </Card>
+        </Appear>
+      </>
+    );
+  }
+
+  const opciones = estado.importa.solteria ? ETAPAS_CIRCULO.filter((e) => e.value === 'soltero') : ETAPAS_CIRCULO;
   const enviar = async () => {
-    if (await act.run(() => pedirEntrar(circulo!, nacimiento, etapa))) onDone();
+    if (await act.run(() => pedirEntrar(circulo!, nacimiento, estado.importa!.solteria ? 'soltero' : etapa))) onDone();
   };
   const numero = (v: string, max: number) => v.replace(/\D/g, '').slice(0, max);
 
@@ -287,15 +318,16 @@ function Entrar({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
     <>
       <Portada colors={colors} />
       <Appear delay={80}>
-        <Card style={{ marginTop: 16, gap: 4 }}>
+        <CaminoTarjeta estado={estado} colors={colors} />
+        <Card style={{ marginTop: 12, gap: 4 }}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>Pide entrar al círculo de {estado.iglesia.nombre}</Text>
           <Text style={[text.small, { color: colors.muted, marginTop: 4 }]}>Un líder del círculo revisa cada pedido.</Text>
 
           <Text style={[styles.label, { color: colors.muted }]}>¿Qué buscas?</Text>
-          <Chips options={ETAPAS_CIRCULO} value={etapa} onChange={setEtapa} />
+          <Chips options={opciones} value={estado.importa.solteria ? 'soltero' : etapa} onChange={setEtapa} />
           <Text style={[text.small, { color: colors.muted, marginTop: 6, lineHeight: 19 }]}>
-            {etapa === 'abierto'
-              ? 'Las personas de tu círculo verán que estás abierto o abierta a conocer a alguien, y podrás usar «Me gustaría conocerte».'
+            {etapa === 'abierto' && !estado.importa.solteria
+              ? `Las personas de tu círculo verán que estás abierto o abierta a conocer a alguien. Con el camino terminado podrás usar «Me gustaría conocerte».`
               : 'Participas en las lecturas y conversaciones. Nadie podrá marcarte con «Me gustaría conocerte».'}
           </Text>
 
@@ -340,6 +372,36 @@ function Entrar({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
         </Card>
       </Appear>
     </>
+  );
+}
+
+/** Dónde va la persona en el camino de preparación, con el acceso para seguir. */
+function CaminoTarjeta({ estado, colors }: { estado: EstadoCirculo; colors: Colors }) {
+  const c = estado.camino;
+  return (
+    <Pressable
+      onPress={() => go('/circulo/camino')}
+      accessibilityRole="link"
+      style={({ pressed }) => [styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: c.completo ? colors.border : colors.warm, marginTop: 16 }, pressed && { opacity: 0.85 }]}
+    >
+      <View style={[styles.rowIcon, { backgroundColor: c.completo ? colors.accentSoft : colors.warmSoft }]}>
+        {c.completo ? <CheckIcon color={colors.accent} size={20} strokeWidth={2.4} /> : <RouteIcon color={colors.warm} size={20} />}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.kicker, { color: c.completo ? colors.muted : colors.warm }]}>
+          CAMINO DE PREPARACIÓN · {c.completo ? 'TERMINADO' : `${c.hechas} DE ${ETAPAS_CAMINO}`}
+        </Text>
+        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15, marginTop: 3 }}>
+          {c.completo ? 'Vuelve a tus respuestas cuando quieras' : c.hechas ? 'Sigue tu camino' : 'Prepárate primero con Dios'}
+        </Text>
+        {!c.completo && (
+          <View style={{ marginTop: 8 }}>
+            <Meter value={c.hechas} max={ETAPAS_CAMINO} colors={colors} />
+          </View>
+        )}
+      </View>
+      <ChevronRightIcon color={colors.muted} size={20} />
+    </Pressable>
   );
 }
 
@@ -462,6 +524,7 @@ function Dentro({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
       </Appear>
 
       <Appear delay={110}>
+        {!estado.camino.completo && <CaminoTarjeta estado={estado} colors={colors} />}
         <TuEtapa estado={estado} colors={colors} onDone={onDone} />
       </Appear>
 
@@ -548,27 +611,6 @@ function Semana({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
   );
 }
 
-function TextoPasaje({ pasaje, colors }: { pasaje: Pasaje; colors: Colors }) {
-  const [verses, setVerses] = useState<Verse[] | null>(null);
-  useEffect(() => {
-    getChapter(pasaje.book, pasaje.chapter).then(
-      (all) => setVerses(all.filter(([v]) => v >= pasaje.from && v <= pasaje.to)),
-      () => setVerses([]),
-    );
-  }, [pasaje.book, pasaje.chapter, pasaje.from, pasaje.to]);
-  if (verses === null) return <ActivityIndicator color={colors.accent} style={{ marginVertical: 12 }} />;
-  return (
-    <Text style={[styles.verseText, { color: colors.text }]}>
-      {verses.map(([v, t]) => (
-        <Text key={v}>
-          <Text style={{ color: colors.muted, fontSize: 12 }}>{v} </Text>
-          {t}{' '}
-        </Text>
-      ))}
-    </Text>
-  );
-}
-
 function TuEtapa({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Colors; onDone: () => void }) {
   const act = useAction();
   const valor: Etapa = estado.etapa === 'abierto' ? 'abierto' : 'soltero';
@@ -580,11 +622,16 @@ function TuEtapa({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Co
     <Card style={{ marginTop: 14 }}>
       <Text style={[styles.kicker, { color: colors.muted }]}>LO QUE VE TU CÍRCULO</Text>
       <View style={{ marginTop: 10 }}>
-        <Chips options={ETAPAS_CIRCULO} value={valor} onChange={cambiar} />
+        <Chips options={estado.importa?.solteria ? ETAPAS_CIRCULO.filter((e) => e.value === 'soltero') : ETAPAS_CIRCULO} value={valor} onChange={cambiar} />
       </View>
       <Text style={[text.small, { color: colors.muted, marginTop: 8, lineHeight: 19 }]}>
         Solo lo ven las personas de tu círculo. Si dejas de estar abierto o abierta, tus marcas se retiran sin que nadie lo sepa.
       </Text>
+      {!!estado.importa?.proposito && <Text style={[styles.proposito, { color: colors.text, borderColor: colors.border }]}>«{estado.importa.proposito}»</Text>}
+      <Pressable onPress={() => go('/circulo/importa')} accessibilityRole="link" hitSlop={6} style={styles.cambiarImporta}>
+        <CompassIcon color={colors.accent} size={15} />
+        <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 14 }}>Cambiar «Lo que sí importa»</Text>
+      </Pressable>
       <ErrorText>{act.error}</ErrorText>
     </Card>
   );
@@ -598,9 +645,11 @@ function Marcas({ estado, colors }: { estado: EstadoCirculo; colors: Colors }) {
       <Text style={[text.small, { color: colors.text, flex: 1, lineHeight: 19 }]}>
         {estado.etapa !== 'abierto'
           ? 'Para usar «Me gustaría conocerte», elige arriba que estás abierto o abierta a conocer a alguien.'
-          : estado.conocer
+          : !estado.camino.completo
+            ? `Para usar «Me gustaría conocerte», termina el camino de preparación (llevas ${estado.camino.hechas} de ${ETAPAS_CAMINO}). Mientras tanto, conózcanse leyendo juntos.`
+            : estado.conocer
             ? 'Mientras estés en «Conocernos» no puedes marcar a nadie más.'
-            : `«Me gustaría conocerte» es secreto. Tienes ${m.maxAbiertas - m.abiertas} de ${m.maxAbiertas} marcas libres y ${Math.max(0, m.maxMes - m.mes)} de ${m.maxMes} este mes. Se puede marcar a alguien después de responder los dos ${m.semanasEnComun} preguntas de la semana, y cada marca vence en ${m.dias} días.`}
+              : `«Me gustaría conocerte» es secreto. Tienes ${m.maxAbiertas - m.abiertas} de ${m.maxAbiertas} marcas libres y ${Math.max(0, m.maxMes - m.mes)} de ${m.maxMes} este mes. Se puede marcar a alguien después de responder los dos ${m.semanasEnComun} preguntas de la semana, y cada marca vence en ${m.dias} días.`}
       </Text>
     </View>
   );
@@ -627,7 +676,9 @@ function FilaPersona({ p, estado, colors, onDone }: { p: PersonaCirculo; estado:
 
   let motivo: string | null = null;
   if (!p.marcada && !p.puedoMarcar && estado.etapa === 'abierto') {
-    if (p.etapa !== 'abierto') motivo = `${nombre} participa solo para hacer amistades.`;
+    if (p.etapa !== 'abierto' || !p.coincidencias) motivo = `${nombre} participa solo para hacer amistades.`;
+    else if (!estado.camino.completo) motivo = 'Podrás marcar a alguien cuando termines el camino de preparación.';
+    else if (p.coincidencias.choca) motivo = `Por lo que respondieron, van hacia lugares distintos en algo que no se negocia. Pueden ser buenos amigos en el círculo.`;
     else if (faltan > 0) motivo = `Para poder marcarse, respondan los dos ${faltan === 1 ? 'una pregunta más' : `${faltan} preguntas más`} de la semana.`;
     else if (estado.conocer) motivo = null;
     else motivo = 'Ahora no puedes marcar a esta persona.';
@@ -660,6 +711,28 @@ function FilaPersona({ p, estado, colors, onDone }: { p: PersonaCirculo; estado:
       {abierta && (
         <View style={[styles.personaBody, { borderTopColor: colors.border }]}>
           {!!p.bio && <Text style={[text.body, { color: colors.text }]}>{p.bio}</Text>}
+          {!!p.proposito && (
+            <View style={{ marginTop: p.bio ? 12 : 0 }}>
+              <Text style={[styles.kicker, { color: colors.muted }]}>SU PROPÓSITO</Text>
+              <Text style={[styles.proposito, { color: colors.text, borderColor: colors.warm, marginTop: 4 }]}>«{p.proposito}»</Text>
+            </View>
+          )}
+          {!!p.sirvo && <Text style={[text.small, { color: colors.muted, marginTop: 8 }]}>Sirve en: {p.sirvo}</Text>}
+          {p.coincidencias && !p.coincidencias.choca && (p.coincidencias.coinciden.length > 0 || p.coincidencias.conversar.length > 0) && (
+            <View style={[styles.tags, { marginTop: 12, marginBottom: 12 }]}>
+              {p.coincidencias.coinciden.map((t) => (
+                <View key={t} style={[styles.chip, { borderColor: colors.accent, backgroundColor: colors.accentSoft }]}>
+                  <CheckIcon color={colors.accent} size={12} strokeWidth={2.6} />
+                  <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '700' }}>Coinciden: {t}</Text>
+                </View>
+              ))}
+              {p.coincidencias.conversar.map((t) => (
+                <View key={t} style={[styles.chip, { borderColor: colors.border }]}>
+                  <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '600' }}>Para conversar: {t}</Text>
+                </View>
+              ))}
+            </View>
+          )}
           {mutuo ? (
             <View style={[styles.mutuo, { backgroundColor: colors.warmSoft }]}>
               <Text style={[styles.kicker, { color: colors.warm }]}>ES MUTUO</Text>
@@ -755,7 +828,6 @@ const styles = StyleSheet.create({
   face: { borderWidth: 3, borderRadius: 24 },
   pairTitle: { fontFamily: serif, fontSize: 28, marginTop: 2, textAlign: 'center' },
   conocerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  verseText: { fontFamily: serif, fontSize: 17, lineHeight: 27, marginTop: 12 },
   pregunta: { fontFamily: serif, fontSize: 19, lineHeight: 26, marginTop: 14, fontStyle: 'italic' },
   respuesta: { borderLeftWidth: 3, paddingLeft: 12, marginTop: 12 },
   respuestaTexto: { fontFamily: serif, fontSize: 17, lineHeight: 25, marginTop: 4 },
@@ -767,6 +839,9 @@ const styles = StyleSheet.create({
   personaBody: { borderTopWidth: StyleSheet.hairlineWidth, padding: 14 },
   tags: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 },
   tag: { borderWidth: 1, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 1 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
+  proposito: { fontFamily: serif, fontStyle: 'italic', fontSize: 16, lineHeight: 23, borderLeftWidth: 3, paddingLeft: 10, marginTop: 10 },
+  cambiarImporta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, alignSelf: 'flex-start' },
   mutuo: { borderRadius: 14, padding: 14, marginTop: 4 },
   reportLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, alignSelf: 'flex-start' },
   reportar: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 14, paddingTop: 14 },
