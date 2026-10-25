@@ -571,3 +571,12 @@ export const RepeatIcon = (p: Props) => (
     <Path d="M5 19.5V15h4.5" />
   </Line>
 );
+
+/** Martillo: «Hombres de pie», construir con otros (Nehemías 4). */
+export const HammerIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="m13.6 5.2 5.2 5.2-2.3 2.3-5.2-5.2 2.3-2.3Z" />
+    <Path d="m12.4 9.5-7.3 7.3a1.6 1.6 0 0 0 2.3 2.3l7.3-7.3" />
+    <Path d="m13.6 5.2 1.2-1.2a2.4 2.4 0 0 1 3 .3" />
+  </Line>
+);

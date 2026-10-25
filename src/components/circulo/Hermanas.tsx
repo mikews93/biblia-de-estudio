@@ -21,7 +21,7 @@ export function Balance({ hombres, mujeres, colors }: { hombres: number; mujeres
     total < 4
       ? null
       : h < PAREJO
-        ? 'Hay pocos hombres. Invítalos en persona, sobre todo a los que vienen con su familia, o suma una iglesia hermana.'
+        ? 'Hay pocos hombres. Invítalos en persona, sobre todo a los que vienen con su familia, o suma una iglesia hermana. «Hombres de pie» es un buen primer paso para ellos.'
         : h > 1 - PAREJO
           ? 'Hay pocas mujeres. Suma una iglesia hermana para que el grupo sea más parejo.'
           : null;
