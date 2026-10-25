@@ -11,6 +11,7 @@ const cuidadora = unique('Cuidadora');
 
 beforeAll(async () => {
   process.env.LAMPARA_DIA = '1';
+  process.env.IGLESIA_TOPE_DIA = '2';
   process.env.CUIDADORES = `otra@prueba.test, ${cuidadora.correo.toUpperCase()}`;
   ({ requests } = await prepareEnv({ ai: true }));
   ({ POST: estudiar } = await import('../../api/estudiar'));
@@ -151,5 +152,71 @@ describe.skipIf(!DB_URL || !HAS_DATA)('Señales y Cuidar Zarza', () => {
     expect((await call()('iglesiaVer', { codigo })).status).toBe(404);
     expect((await call()('yo', {}, miembro)).json.iglesia).toBeNull();
     expect((await call()('cuidarIglesia', { id: nueva.iglesia.id, activa: true }, miembro)).status).toBe(403);
+  });
+
+  it('un pastor postula su iglesia; se rechaza con motivo, se corrige y al aprobarla queda de encargado', async () => {
+    const llave = (await call()('entrar', { correo: cuidadora.correo, clave: 'una clave larga' })).json.llave as string;
+    const pastor = await cuenta('Pastor Pablo');
+    const datos = {
+      nombre: 'Iglesia Bautista La Roca',
+      ciudad: 'Cali, Colombia',
+      responsable: 'Pablo Gómez',
+      cargo: 'Pastor',
+      contacto: '+57 300 000 0000',
+      enlace: 'facebook.com/larocacali',
+      fe: true,
+    };
+    expect((await call()('iglesiaPostular', { ...datos, fe: false }, pastor)).status).toBe(400);
+    expect((await call()('iglesiaPostular', { ...datos, contacto: ' ' }, pastor)).status).toBe(400);
+    expect((await call()('iglesiaPostular', { ...datos, enlace: 'mi iglesia' }, pastor)).status).toBe(400);
+    expect((await call()('iglesiaPostular', datos)).status).toBe(401);
+    let r = await call()('iglesiaPostular', datos, pastor);
+    expect(r.json.postulacion).toMatchObject({ nombre: datos.nombre, estado: 'pendiente' });
+    expect((await call()('iglesiaPostular', datos, pastor)).status).toBe(409);
+
+    // Quien cuida la ve con todos sus datos, y el enlace con https
+    const pendiente = (await call()('cuidarResumen', {}, llave)).json.postulaciones.find((p: any) => p.nombre === datos.nombre);
+    expect(pendiente).toMatchObject({ responsable: 'Pablo Gómez', contacto: '+57 300 000 0000', enlace: 'https://facebook.com/larocacali', cuenta: 'Pastor Pablo' });
+    expect((await call()('cuidarPostulacion', { id: pendiente.id, aprobar: true }, pastor)).status).toBe(403);
+    expect((await call()('cuidarPostulacion', { id: pendiente.id, aprobar: false }, llave)).status).toBe(400);
+    r = await call()('cuidarPostulacion', { id: pendiente.id, aprobar: false, motivo: 'No encontramos la iglesia en Maps: agrega la dirección.' }, llave);
+    expect(r.json).toEqual({ estado: 'rechazada' });
+    expect((await call()('iglesiaEncargo', {}, pastor)).json).toMatchObject({
+      postulacion: { estado: 'rechazada', motivo: 'No encontramos la iglesia en Maps: agrega la dirección.' },
+      iglesia: null,
+    });
+
+    r = await call()('iglesiaPostular', { ...datos, direccion: 'Calle 5 # 10-20' }, pastor);
+    const otra = (await call()('cuidarResumen', {}, llave)).json.postulaciones.find((p: any) => p.id === r.json.postulacion.id);
+    expect(otra.direccion).toBe('Calle 5 # 10-20');
+    r = await call()('cuidarPostulacion', { id: otra.id, aprobar: true, lampara: 5 }, llave);
+    expect(r.json).toMatchObject({ estado: 'aprobada', iglesia: { nombre: datos.nombre, ciudad: 'Cali, Colombia', lampara: 5 } });
+    expect((await call()('cuidarPostulacion', { id: otra.id, aprobar: true }, llave)).status).toBe(404);
+
+    // El encargado ya es miembro, ve su iglesia y puede cambiar el código; el viejo deja de servir
+    const encargo = (await call()('iglesiaEncargo', {}, pastor)).json;
+    expect(encargo.iglesia).toMatchObject({ nombre: datos.nombre, miembros: 1, semana: 1, pausa: null, lampara: 5 });
+    expect((await call()('yo', {}, pastor)).json.iglesia).toMatchObject({ nombre: datos.nombre, lampara: 5 });
+    const viejo = encargo.iglesia.codigo as string;
+    const { codigo } = (await call()('iglesiaNuevoCodigo', {}, pastor)).json;
+    expect(codigo).not.toBe(viejo);
+    expect((await call()('iglesiaVer', { codigo: viejo })).status).toBe(404);
+    expect((await call()('iglesiaNuevoCodigo', {}, await cuenta('Intruso'))).status).toBe(403);
+    expect((await call()('iglesiaPostular', { ...datos, nombre: 'Otra' }, pastor)).status).toBe(409);
+
+    // Con el tope de 2 miembros nuevos al día (IGLESIA_TOPE_DIA), el tercero pausa el código; los de adentro siguen
+    expect((await call()('iglesiaUnirme', { codigo }, await cuenta('Uno'))).status).toBe(200);
+    expect((await call()('iglesiaUnirme', { codigo }, await cuenta('Dos'))).status).toBe(200);
+    const tarde = await cuenta('Tres');
+    expect((await call()('iglesiaUnirme', { codigo }, tarde)).status).toBe(423);
+    expect((await call()('yo', {}, pastor)).json.iglesia).toMatchObject({ nombre: datos.nombre });
+    expect((await call()('iglesiaEncargo', {}, pastor)).json.iglesia.pausa).toContain('miembros nuevos');
+    const pausada = (await call()('cuidarResumen', {}, llave)).json.iglesias.find((i: any) => i.nombre === datos.nombre);
+    expect(pausada).toMatchObject({ encargado: 'Pastor Pablo', miembros: 3 });
+    expect(pausada.pausa).toBeTruthy();
+
+    // Al reanudarla se cuenta desde ese momento
+    expect((await call()('cuidarIglesia', { id: pausada.id, reanudar: true }, llave)).status).toBe(200);
+    expect((await call()('iglesiaUnirme', { codigo }, tarde)).json.iglesia).toMatchObject({ miembros: 4 });
   });
 });

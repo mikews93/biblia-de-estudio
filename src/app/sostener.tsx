@@ -14,6 +14,8 @@ type Forma = {
   puntos: string[];
   boton: string;
   enlace: string | null;
+  /** El botón abre una pantalla de la app en vez de un enlace externo. */
+  ruta?: string;
   /** Un enlace dentro de la app debajo del botón. */
   extra?: { texto: string; accion: string; ruta: string };
 };
@@ -36,8 +38,10 @@ const FORMAS: Forma[] = [
       'Un código QR para que los miembros entren sin pasos técnicos.',
       'Su nombre como iglesia anfitriona, con discreción.',
     ],
-    boton: 'Quiero que mi iglesia sea anfitriona',
+    boton: 'Postular mi iglesia',
     enlace: ENLACE_IGLESIAS,
+    // La iglesia se postula en la app; el aporte se arregla después de aprobarla.
+    ruta: '/iglesia/postular',
     extra: { texto: '¿Tu iglesia ya es anfitriona?', accion: 'Entra con su código', ruta: '/iglesia' },
   },
   {
@@ -104,17 +108,17 @@ export default function Sostener() {
               ))}
             </View>
             <Pressable
-              onPress={() => f.enlace && Linking.openURL(f.enlace)}
-              disabled={!f.enlace}
+              onPress={() => (f.ruta ? router.push(f.ruta as never) : f.enlace && Linking.openURL(f.enlace))}
+              disabled={!f.enlace && !f.ruta}
               accessibilityRole="link"
               style={({ pressed }) => [
                 styles.button,
-                f.enlace ? { backgroundColor: colors.accent } : { borderColor: colors.border, borderWidth: 1 },
+                f.enlace || f.ruta ? { backgroundColor: colors.accent } : { borderColor: colors.border, borderWidth: 1 },
                 pressed && { opacity: 0.8 },
               ]}
             >
-              <Text style={{ color: f.enlace ? colors.background : colors.muted, fontWeight: '700', fontSize: 15 }}>
-                {f.enlace ? f.boton : 'Muy pronto'}
+              <Text style={{ color: f.enlace || f.ruta ? colors.background : colors.muted, fontWeight: '700', fontSize: 15 }}>
+                {f.enlace || f.ruta ? f.boton : 'Muy pronto'}
               </Text>
             </Pressable>
             {f.extra && (

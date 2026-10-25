@@ -1,21 +1,34 @@
 import { Stack, router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { confirm } from '@/components/comunidad/confirm';
 import { Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { ChevronDownIcon, ChurchIcon, FlagIcon, HeartIcon, type IconProps, PeopleIcon, QrIcon, SparkIcon } from '@/components/icons';
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChurchIcon,
+  ExternalIcon,
+  FlagIcon,
+  HeartIcon,
+  type IconProps,
+  PeopleIcon,
+  QrIcon,
+  SparkIcon,
+} from '@/components/icons';
 import { useAccount } from '@/lib/comunidad';
 import {
   FrecuenteCuidada,
   IglesiaCuidada,
   PasajePendiente,
+  PostulacionCuidada,
   PreguntaAnonima,
   Propuesta,
   Raro,
   Resumen,
   aprobar,
+  aprobarPostulacion,
   cambiarIglesia,
   descartar,
   detallePasaje,
@@ -23,6 +36,7 @@ import {
   nuevaIglesia,
   proponer,
   quitarFrecuente,
+  rechazarPostulacion,
   rehacer,
   resumen,
 } from '@/lib/cuidar';
@@ -80,7 +94,8 @@ export default function Cuidar() {
   const tabs: { value: Tab; label: string; icon: (p: IconProps) => ReactNode; n: number }[] = [
     { value: 'avisos', label: 'Avisos', icon: FlagIcon, n: data.raros.length },
     { value: 'preguntas', label: 'Preguntas', icon: PeopleIcon, n: data.pasajes.length },
-    { value: 'iglesias', label: 'Iglesias', icon: ChurchIcon, n: data.iglesias.filter((i) => i.activa).length },
+    // Lo que espera a alguien: postulaciones nuevas e iglesias que se pausaron solas.
+    { value: 'iglesias', label: 'Iglesias', icon: ChurchIcon, n: data.postulaciones.length + data.iglesias.filter((i) => i.pausa).length },
   ];
 
   return (
@@ -150,7 +165,7 @@ export default function Cuidar() {
         </>
       )}
 
-      {tab === 'iglesias' && <Iglesias iglesias={data.iglesias} colors={colors} onDone={refresh} />}
+      {tab === 'iglesias' && <Iglesias iglesias={data.iglesias} postulaciones={data.postulaciones} colors={colors} onDone={refresh} />}
     </ScrollView>
   );
 }
@@ -321,7 +336,17 @@ function PasajeCard({ pasaje, name, colors, onDone }: { pasaje: PasajePendiente;
   );
 }
 
-function Iglesias({ iglesias, colors, onDone }: { iglesias: IglesiaCuidada[]; colors: Colors; onDone: () => void }) {
+function Iglesias({
+  iglesias,
+  postulaciones,
+  colors,
+  onDone,
+}: {
+  iglesias: IglesiaCuidada[];
+  postulaciones: PostulacionCuidada[];
+  colors: Colors;
+  onDone: () => void;
+}) {
   const [nombre, setNombre] = useState('');
   const [ciudad, setCiudad] = useState('');
   const [lampara, setLampara] = useState('40');
@@ -335,10 +360,20 @@ function Iglesias({ iglesias, colors, onDone }: { iglesias: IglesiaCuidada[]; co
     });
   return (
     <>
+      {postulaciones.length > 0 && (
+        <Text style={[styles.kicker, { color: colors.accent, marginTop: 4 }]}>
+          {postulaciones.length === 1 ? '1 IGLESIA QUIERE SER ANFITRIONA' : `${postulaciones.length} IGLESIAS QUIEREN SER ANFITRIONAS`}
+        </Text>
+      )}
+      {postulaciones.map((p, n) => (
+        <Appear key={p.id} delay={n * 30}>
+          <PostulacionFila postulacion={p} colors={colors} onDone={onDone} />
+        </Appear>
+      ))}
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, gap: 12 }, shadow(colors)]}>
         <Text style={[styles.cardTitle, { color: colors.text }]}>Nueva iglesia anfitriona</Text>
         <Text style={{ color: colors.muted, fontSize: 13 }}>
-          Cuando una iglesia empiece a aportar, dala de alta aquí. Recibe un código y un QR para sus miembros.
+          Las iglesias se postulan desde la app. Si una te escribió por otro lado, también puedes darla de alta aquí.
         </Text>
         <Field label="Nombre" value={nombre} onChangeText={setNombre} placeholder="Iglesia Bautista Central" />
         <Field label="Ciudad (opcional)" value={ciudad} onChangeText={setCiudad} placeholder="Medellín" />
@@ -355,8 +390,83 @@ function Iglesias({ iglesias, colors, onDone }: { iglesias: IglesiaCuidada[]; co
   );
 }
 
+/** Una postulación con lo necesario para comprobar que la iglesia existe, y aprobarla o rechazarla con un motivo. */
+function PostulacionFila({ postulacion: p, colors, onDone }: { postulacion: PostulacionCuidada; colors: Colors; onDone: () => void }) {
+  const act = useAction();
+  const [rechazando, setRechazando] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [lampara, setLampara] = useState('40');
+  const aprobarla = async () => {
+    if (!(await confirm('Aprobar iglesia', `${p.nombre} recibe su código y ${p.responsable} queda como encargado.`, 'Aprobar'))) return;
+    if (await act.run(() => aprobarPostulacion(p.id, Number(lampara) || 40))) onDone();
+  };
+  const rechazarla = async () => {
+    if (await act.run(() => rechazarPostulacion(p.id, motivo))) onDone();
+  };
+  const fila = (label: string, value: string | null) =>
+    value ? (
+      <View style={styles.dato}>
+        <Text style={[styles.datoLabel, { color: colors.muted }]}>{label}</Text>
+        <Text style={{ color: colors.text, fontSize: 14, flex: 1 }} selectable>
+          {value}
+        </Text>
+      </View>
+    ) : null;
+  const mapa = `https://www.google.com/maps/search/${encodeURIComponent([p.nombre, p.direccion, p.ciudad].filter(Boolean).join(', '))}`;
+  return (
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.accent, gap: 10 }, shadow(colors)]} testID="postulacion">
+      <View>
+        <Text style={[styles.kicker, { color: colors.accent }]}>POSTULACIÓN · {p.creado.slice(0, 10)}</Text>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{p.nombre}</Text>
+        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>{[p.ciudad, p.denominacion].filter(Boolean).join(' · ')}</Text>
+      </View>
+      <View style={{ gap: 6 }}>
+        {fila('Dirección', p.direccion)}
+        {fila('Postula', [p.responsable, p.cargo].filter(Boolean).join(', '))}
+        {fila('Contacto', p.contacto)}
+        {fila('Cuenta', [p.cuenta, p.correo].filter(Boolean).join(' · '))}
+      </View>
+      {!!p.mensaje && <Text style={[styles.quote, { color: colors.text, borderColor: colors.border, marginTop: 0 }]}>{p.mensaje}</Text>}
+      <View style={styles.verificar}>
+        {p.enlace && <Button label="Sitio o redes" icon={ExternalIcon} kind="outline" onPress={() => Linking.openURL(p.enlace!)} />}
+        <Button label="Buscar en el mapa" icon={ExternalIcon} kind="outline" onPress={() => Linking.openURL(mapa)} />
+      </View>
+      {rechazando ? (
+        <View style={{ gap: 10 }}>
+          <Field
+            label="Motivo (lo verá quien la postuló)"
+            value={motivo}
+            onChangeText={setMotivo}
+            placeholder="No encontramos la iglesia en el mapa: agrega la dirección."
+            multiline
+            maxLength={300}
+          />
+          <View style={styles.actions}>
+            <Button label="Cancelar" kind="quiet" onPress={() => setRechazando(false)} />
+            <Button label="Rechazar" kind="outline" onPress={rechazarla} busy={act.busy} disabled={!motivo.trim()} />
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.decidir, { borderColor: colors.border }]}>
+          <View style={{ width: 140 }}>
+            <Field label="Preguntas al día" value={lampara} onChangeText={setLampara} keyboardType="number-pad" />
+          </View>
+          <View style={[styles.actions, { marginTop: 0, flexGrow: 1 }]}>
+            <Button label="Rechazar" kind="quiet" onPress={() => setRechazando(true)} />
+            <Button label="Aprobar" icon={CheckIcon} onPress={aprobarla} busy={act.busy} />
+          </View>
+        </View>
+      )}
+      <ErrorText>{act.error}</ErrorText>
+    </View>
+  );
+}
+
 function IglesiaFila({ iglesia, colors, onDone }: { iglesia: IglesiaCuidada; colors: Colors; onDone: () => void }) {
   const act = useAction();
+  const reanudar = async () => {
+    if (await act.run(() => cambiarIglesia(iglesia.id, { reanudar: true }))) onDone();
+  };
   const toggle = async () => {
     if (iglesia.activa && !(await confirm('Pausar iglesia', `Sus ${iglesia.miembros} miembros vuelven a la lámpara de siempre y el código deja de servir.`, 'Pausar'))) return;
     if (await act.run(() => cambiarIglesia(iglesia.id, { activa: !iglesia.activa }))) onDone();
@@ -371,9 +481,19 @@ function IglesiaFila({ iglesia, colors, onDone }: { iglesia: IglesiaCuidada; col
               .filter(Boolean)
               .join(' · ')}
           </Text>
+          {!!iglesia.encargado && <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Encargado: {iglesia.encargado}</Text>}
         </View>
         <Text style={[styles.code, { color: iglesia.activa ? colors.text : colors.muted }]}>{iglesia.codigo}</Text>
       </View>
+      {!!iglesia.pausa && (
+        <View style={[styles.published, { backgroundColor: colors.accentSoft, marginTop: 12 }]}>
+          <PeopleIcon color={colors.accent} size={18} />
+          <Text style={{ color: colors.text, fontSize: 13, flex: 1 }}>
+            Código en pausa: {iglesia.pausa.charAt(0).toLowerCase() + iglesia.pausa.slice(1)}. Quienes ya entraron siguen igual.
+          </Text>
+          <Button label="Reanudar" kind="outline" onPress={reanudar} busy={act.busy} />
+        </View>
+      )}
       <View style={styles.actions}>
         <Button label={iglesia.activa ? 'Pausar' : 'Activar'} kind="quiet" onPress={toggle} busy={act.busy} />
         {iglesia.activa && (
@@ -426,6 +546,10 @@ const styles = StyleSheet.create({
   who: { width: 30, fontSize: 12, fontWeight: '800', marginTop: 2 },
   proposal: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 10 },
   code: { fontSize: 17, fontWeight: '800', letterSpacing: 2.5 },
+  dato: { flexDirection: 'row', gap: 10 },
+  datoLabel: { width: 72, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  verificar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  decidir: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
   empty: { alignItems: 'center', gap: 10, borderWidth: StyleSheet.hairlineWidth, borderStyle: 'dashed', borderRadius: 20, padding: 28, marginTop: 8 },
   emptyIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
 });
