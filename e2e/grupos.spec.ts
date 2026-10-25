@@ -183,6 +183,53 @@ test('peticiones de oración: compartir, «estoy orando» y marcarla respondida'
   await pb.context().close();
 });
 
+test('pedir oración sin mi nombre y recibir ánimos que solo yo leo', async ({ browser, request }) => {
+  const ana = await cuentaNueva(request, 'Ana Callada');
+  const beto = await cuentaNueva(request, 'Beto Anima');
+  const caro = await cuentaNueva(request, 'Caro Mira');
+  const { id } = await grupoCon(request, nombreUnico('Célula'), ana, [beto, caro]);
+  const pa = await navegador(browser, ana);
+  const pb = await navegador(browser, beto);
+  const pc = await navegador(browser, caro);
+  const peticion = `Oren por mí, es un tiempo difícil ${Date.now()}`;
+
+  await pa.goto(`/grupos/${id}?tab=oracion`);
+  await pa.getByPlaceholder('¿Por qué podemos orar contigo?').fill(peticion);
+  await pa.getByRole('checkbox', { name: /Sin mi nombre/ }).click();
+  await pa.getByRole('button', { name: 'Compartir petición' }).click();
+  await expect(pa.getByText('Tú, sin tu nombre', { exact: false })).toBeVisible();
+
+  // Beto no sabe quién la pidió, ni por la API; le envía ánimo.
+  const { peticiones } = await api(request, beto, 'peticiones', { grupo: id });
+  const suya = peticiones.find((p: { texto: string }) => p.texto === peticion);
+  expect(suya.autor).toBeNull();
+  expect(suya.animos).toBeNull();
+  await pb.goto(`/grupos/${id}?tab=oracion`);
+  await expect(pb.getByTestId('peticion-grupo').getByText('Alguien del grupo', { exact: false })).toBeVisible();
+  await pb.getByRole('button', { name: 'Enviar ánimo' }).click();
+  await pb.getByRole('button', { name: 'Estoy orando por ti hoy.' }).click();
+  await pb.getByTestId('enviar-animo').getByRole('button', { name: 'Enviar ánimo' }).click();
+  await expect(pb.getByRole('button', { name: 'Le enviaste ánimo' })).toBeVisible();
+
+  // Caro no puede leer los ánimos de otra persona.
+  const res = await request.post('/api/comunidades', {
+    headers: { Authorization: `Bearer ${caro.llave}` },
+    data: { accion: 'animos', peticion: suya.id },
+  });
+  expect(res.status()).toBe(403);
+  await pc.goto(`/grupos/${id}?tab=oracion`);
+  await expect(pc.getByText(peticion)).toBeVisible();
+  await expect(pc.getByText('Estoy orando por ti hoy.')).toHaveCount(0);
+
+  // Ana lo lee.
+  await pa.reload();
+  await pa.getByText('Te enviaron un ánimo', { exact: false }).click();
+  await expect(pa.getByTestId('mis-animos').getByText('Estoy orando por ti hoy.')).toBeVisible();
+  await expect(pa.getByTestId('mis-animos').getByText('Beto Anima', { exact: false })).toBeVisible();
+
+  for (const p of [pa, pb, pc]) await p.context().close();
+});
+
 test('la IA sugiere preguntas para la reunión y el grupo las comparte sin volver a pedirlas', async ({ browser, request }, info) => {
   const ana = await cuentaNueva(request, 'Ana Líder');
   const beto = await cuentaNueva(request, 'Beto Anfitrión');

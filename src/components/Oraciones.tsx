@@ -3,10 +3,13 @@ import { ReactNode, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import { ComponerPeticion, SinGrupo } from '@/components/comunidad/PedirOracion';
 import { Button, Field, IconText } from '@/components/comunidad/ui';
-import { CheckIcon, CloseIcon, LinkIcon, LockIcon, PencilIcon, PlusIcon, PrayIcon } from '@/components/icons';
+import { CheckIcon, CloseIcon, HeartIcon, LinkIcon, LockIcon, PencilIcon, PlusIcon, PrayIcon } from '@/components/icons';
 import { parseCita } from '@/lib/cita';
+import { useAccount } from '@/lib/comunidad';
 import { Book, getBooks, getChapter } from '@/lib/data';
+import { textoSugerido } from '@/lib/pedirOracion';
 import {
   Acompana,
   Oracion,
@@ -14,6 +17,7 @@ import {
   borrarOracion,
   cuantoTiempo,
   editarOracion,
+  marcarCompartida,
   nuevaOracion,
   quitarVersiculo,
   responder,
@@ -39,6 +43,7 @@ export function OracionesVista() {
   const [editando, setEditando] = useState<Oracion | 'nueva' | null>(null);
   const [respondiendo, setRespondiendo] = useState<Oracion | null>(null);
   const [agregando, setAgregando] = useState<Oracion | null>(null);
+  const [pidiendo, setPidiendo] = useState<Oracion | null>(null);
 
   const orando = oraciones.filter((o) => !o.respondida);
   const respondidas = oraciones.filter((o) => o.respondida).sort((a, b) => b.respondida!.fecha - a.respondida!.fecha);
@@ -119,18 +124,22 @@ export function OracionesVista() {
               onEditar={() => setEditando(o)}
               onResponder={() => setRespondiendo(o)}
               onAgregar={() => setAgregando(o)}
+              onPedir={() => setPidiendo(o)}
             />
           </Appear>
         ))
       )}
 
       <IconText icon={LockIcon} color={colors.muted} size={13} style={{ marginTop: 10, justifyContent: 'center' }}>
-        <Text style={{ color: colors.muted, fontSize: 12, flexShrink: 1 }}>Tus oraciones son privadas: solo tú las ves.</Text>
+        <Text style={{ color: colors.muted, fontSize: 12, flexShrink: 1 }}>
+          Tus oraciones son privadas: solo tú las ves, salvo lo que pidas a tu grupo.
+        </Text>
       </IconText>
 
       {editando && <OracionEditor oracion={editando === 'nueva' ? undefined : editando} onClose={() => setEditando(null)} />}
       {respondiendo && <RespuestaEditor oracion={respondiendo} onClose={() => setRespondiendo(null)} />}
       {agregando && <AgregarVersiculo oracion={agregando} onClose={() => setAgregando(null)} />}
+      {pidiendo && <PedirAlGrupo oracion={pidiendo} onClose={() => setPidiendo(null)} />}
     </View>
   );
 }
@@ -141,12 +150,14 @@ function OracionCard({
   onEditar,
   onResponder,
   onAgregar,
+  onPedir,
 }: {
   oracion: Oracion;
   colors: Colors;
   onEditar: () => void;
   onResponder: () => void;
   onAgregar: () => void;
+  onPedir: () => void;
 }) {
   const r = o.respondida;
   return (
@@ -190,6 +201,20 @@ function OracionCard({
         </View>
       )}
 
+      {o.compartida && (
+        <Pressable
+          onPress={() => navigate(() => router.push(`/grupos/${o.compartida!.grupo}?tab=oracion` as never), 'forward')}
+          style={({ pressed }) => [styles.compartida, { backgroundColor: colors.warmSoft }, pressed && styles.pressed]}
+          accessibilityRole="link"
+          testID="oracion-compartida"
+        >
+          <HeartIcon color={colors.warm} size={16} />
+          <Text style={{ color: colors.text, fontSize: 13, flex: 1 }}>
+            Pediste a «{o.compartida.nombre}» que ore contigo · <Text style={{ color: colors.warm, fontWeight: '700' }}>Ver ánimos ›</Text>
+          </Text>
+        </Pressable>
+      )}
+
       {!r && (
         <View style={styles.actions}>
           <Pressable
@@ -210,6 +235,17 @@ function OracionCard({
               <Text style={{ color: colors.warm, fontWeight: '700', fontSize: 13 }}>Dios respondió</Text>
             </IconText>
           </Pressable>
+          {!o.compartida && (
+            <Pressable
+              onPress={onPedir}
+              style={({ pressed }) => [styles.chip, { borderColor: colors.border }, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <IconText icon={PrayIcon} color={colors.accent} size={15}>
+                <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 13 }}>Pedir a mi grupo</Text>
+              </IconText>
+            </Pressable>
+          )}
         </View>
       )}
     </View>
@@ -344,6 +380,46 @@ export function OracionEditor({
             />
           ))}
         </View>
+      )}
+    </Hoja>
+  );
+}
+
+/**
+ * Pedir a un grupo que ore por una petición del diario. Se propone solo el título, sin el detalle: lo que se comparte
+ * lo decide la persona, y el diario sigue siendo privado.
+ */
+export function PedirAlGrupo({ oracion, onClose }: { oracion: Oracion; onClose: () => void }) {
+  const colors = useColors();
+  const { llave, grupos } = useAccount();
+  const [enviada, setEnviada] = useState<string | null>(null);
+  return (
+    <Hoja titulo="Pedir a mi grupo que ore" onClose={onClose}>
+      {enviada ? (
+        <View style={{ gap: 12 }} testID="peticion-enviada">
+          <Text style={[styles.titulo, { color: colors.text, marginTop: 0 }]}>Tu grupo ya puede orar contigo.</Text>
+          <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+            Cuando alguien te envíe ánimo te llegará un aviso, y lo verás en tu petición. Pedir oración no reemplaza hablar
+            con alguien: si puedes, cuéntaselo también en persona a tu pastor o a un amigo maduro en la fe.
+          </Text>
+          <Button label="Listo" onPress={onClose} />
+        </View>
+      ) : !llave || !grupos?.length ? (
+        grupos === null && llave ? (
+          <Text style={{ color: colors.muted }}>Cargando tus grupos…</Text>
+        ) : (
+          <SinGrupo cuenta={!!llave} />
+        )
+      ) : (
+        <ComponerPeticion
+          inicial={textoSugerido(oracion.titulo)}
+          grupos={grupos}
+          onEnviada={({ id, grupo }) => {
+            const nombre = grupos.find((g) => g.id === grupo)?.nombre ?? 'tu grupo';
+            marcarCompartida(oracion.id, { grupo, nombre, peticion: id, fecha: Date.now() });
+            setEnviada(grupo);
+          }}
+        />
       )}
     </Hoja>
   );
@@ -538,6 +614,7 @@ const styles = StyleSheet.create({
   versoText: { fontFamily: serif, fontSize: 15, lineHeight: 22, marginTop: 2 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' },
   chip: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
+  compartida: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, marginTop: 14 },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)' },
   wrap: { flex: 1, justifyContent: 'flex-end' },

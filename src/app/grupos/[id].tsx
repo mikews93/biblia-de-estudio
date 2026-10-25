@@ -25,13 +25,13 @@ type Tab = 'notas' | 'oracion' | 'reunion';
 const longDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'long' });
 
 export default function GroupScreen() {
-  const { id, nuevo } = useLocalSearchParams<{ id: string; nuevo?: string }>();
+  const { id, nuevo, tab: tabInicial } = useLocalSearchParams<{ id: string; nuevo?: string; tab?: Tab }>();
   const colors = useColors();
   const { ready, usuario } = useAccount();
   const [group, setGroup] = useState<Grupo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
-  const [tab, setTab] = useState<Tab>('notas');
+  const [tab, setTab] = useState<Tab>(tabInicial === 'oracion' || tabInicial === 'reunion' ? tabInicial : 'notas');
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});

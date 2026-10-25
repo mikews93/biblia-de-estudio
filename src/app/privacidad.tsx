@@ -71,6 +71,7 @@ const PARTES: Parte[] = [
       'Lo que publicas lo ven tus amigos, tu grupo o toda la comunidad, según elijas al publicar.',
       'Puedes reportar una publicación y bloquear a una persona desde su perfil. Si varias personas reportan algo, se oculta para todos.',
       'En el Modo Jóvenes no hay publicaciones públicas.',
+      'Una petición de oración solo la ve el grupo al que la envías, nunca el muro, y deja de verse a los 30 días. Si la envías sin tu nombre, nadie del grupo ve quién la pidió, ni siquiera quien lo administra. Los ánimos que te envían solo los lees tú.',
     ],
   },
   {
