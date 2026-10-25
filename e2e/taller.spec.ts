@@ -22,7 +22,7 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   await expect(page.getByText('Elige un pasaje para que la IA te acompañe.')).toBeVisible();
 
   // Elige el pasaje escribiéndolo de forma abreviada
-  const pasaje = page.getByPlaceholder('Por ejemplo, Lucas 15:11-32');
+  const pasaje = page.getByLabel('Pasaje: escribe una cita, unas palabras o una idea');
   await pasaje.fill('jn 3:16');
   await pasaje.press('Enter');
   await expect(pasaje).toHaveValue('Juan 3:16');
@@ -105,7 +105,7 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   await paso(page, '2 Idea central').click();
   await expect(page.getByPlaceholder('…sale a buscarnos antes de que lleguemos')).toHaveValue(`da a su Hijo ${m}`);
   await paso(page, '1 Pasaje').click();
-  await expect(page.getByPlaceholder('Por ejemplo, Lucas 15:11-32')).toHaveValue('Juan 3:16');
+  await expect(page.getByLabel('Pasaje: escribe una cita, unas palabras o una idea')).toHaveValue('Juan 3:16');
 
   // Y la conversación con el Acompañante también: no se vuelve a pedir ni se repite la pregunta
   const pedidosAntes = (await peticionesIA(request, `Observo ${m}`)).length;
@@ -121,7 +121,7 @@ test('prepara una reflexión desde cero con preguntas y sugerencias de la IA y s
   await expect(page.getByText('Borradores', { exact: true })).toBeVisible();
   await page.getByText(`Amor que da ${m}`).click();
   await expect(page).toHaveURL(/\/taller\/[a-z0-9]+$/);
-  await expect(page.getByPlaceholder('Por ejemplo, Lucas 15:11-32')).toHaveValue('Juan 3:16');
+  await expect(page.getByLabel('Pasaje: escribe una cita, unas palabras o una idea')).toHaveValue('Juan 3:16');
 });
 
 test('prepara un sermón desde el lector, lo revisa con la IA, lo presenta y lo borra', async ({ page, request }) => {
@@ -200,7 +200,7 @@ test('el borrador se vuelve documento con puntos para hablar y anuncios, se term
   const m = marca();
   await page.goto('/taller');
   await page.getByRole('button', { name: /Sermón ·/ }).click();
-  const pasaje = page.getByPlaceholder('Por ejemplo, Lucas 15:11-32');
+  const pasaje = page.getByLabel('Pasaje: escribe una cita, unas palabras o una idea');
   await pasaje.fill('Lucas 15:11-32');
   await pasaje.press('Enter');
   await page.getByPlaceholder('Cómo lo llamarás').fill(`El Padre que corre ${m}`);
@@ -271,7 +271,7 @@ test('Revisa propone correcciones a lo escrito, se aplican con vista de cambios 
   await conSesion(page, await cuentaNueva(request, 'Correctora'));
   await page.goto('/taller');
   await page.getByRole('button', { name: /Reflexión ·/ }).click();
-  const pasaje = page.getByPlaceholder('Por ejemplo, Lucas 15:11-32');
+  const pasaje = page.getByLabel('Pasaje: escribe una cita, unas palabras o una idea');
   await pasaje.fill('Nehemías 4:14');
   await pasaje.press('Enter');
   await expect(pasaje).toHaveValue('Nehemías 4:14');
@@ -350,7 +350,7 @@ test('prepara un encuentro con una dinámica y envía la hoja al grupo sin las n
   await conSesion(page, cuenta);
   await page.goto('/taller');
   await page.getByRole('button', { name: /Encuentro de grupo ·/ }).click();
-  const pasaje = page.getByPlaceholder('Por ejemplo, Lucas 15:11-32');
+  const pasaje = page.getByLabel('Pasaje: escribe una cita, unas palabras o una idea');
   await pasaje.fill('Juan 3:1-16');
   await pasaje.press('Enter');
   await expect(pasaje).toHaveValue('Juan 3:1-16');
