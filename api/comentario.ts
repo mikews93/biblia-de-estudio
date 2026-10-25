@@ -14,6 +14,8 @@
 // Fichas de personas y lugares (pipeline/fichas.py): el artículo de STEPBible TIPNR viene en inglés y se traduce igual,
 // una vez para todos. Van aquí y no en una función aparte porque el plan Hobby de Vercel admite 12 funciones.
 // GET  ?ficha=h1732  -> { texto, estado } o { texto: null }
+// POST { contexto: { libro, capitulo, versiculo } }  -> { texto, fuente } o { texto: null }: una línea de contexto para
+//      la imagen de un versículo («Pablo lo escribe desde la cárcel»), sacada de los comentarios y guardada para todos.
 // POST { ficha: 'h1732' }  traduce el artículo y lo envía por partes como NDJSON, igual que un comentario.
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -67,6 +69,19 @@ create table if not exists fichas_uso (
   dia date primary key,
   n int not null default 0
 );
+create table if not exists contexto_es (
+  libro text not null,
+  capitulo int not null,
+  versiculo int not null,
+  texto text not null,
+  fuente text not null,
+  creado timestamptz not null default now(),
+  primary key (libro, capitulo, versiculo)
+);
+create table if not exists contexto_uso (
+  dia date primary key,
+  n int not null default 0
+);
 create table if not exists comentarios_reportes (
   id bigserial primary key,
   fuente text not null,
@@ -111,6 +126,21 @@ Reglas:
 - Usa los términos de la tradición cristiana histórica en español: gracia, cruz, expiación, justificación, arrepentimiento, Espíritu Santo, el Señor.
 - Mantén los mismos párrafos, separados por una línea en blanco.
 - Responde solo con la traducción, sin comentarios antes ni después.`;
+
+const CONTEXTO = `Escribes una línea de contexto para la imagen de un versículo que alguien va a compartir en sus redes, en una app bíblica gratuita.
+
+Reglas:
+- Una sola frase en español, de 90 caracteres como mucho, sin comillas y sin punto final.
+- Solo el contexto histórico o literario del versículo: quién habla o escribe, a quién, dónde o en qué situación. Por ejemplo: «Pablo lo escribe desde la cárcel a la iglesia de Filipos».
+- Sácalo de las notas del comentario que se te dan. No inventes datos ni fechas que no estén ahí.
+- No apliques el versículo, no prediques, no expliques su significado teológico, no opines.
+- Escribe los nombres como la Reina-Valera 1909.
+- Responde solo con la frase.`;
+
+// Fuentes para la línea de contexto, en orden: notas modernas primero, después los clásicos.
+const FUENTES_CONTEXTO = ['tosn', 'jfb', 'mhc'];
+const CONTEXTO_DIA = Number(process.env.CONTEXTO_DIA ?? 300);
+const MAX_CONTEXTO = 110;
 
 type Book = { id: string; name: string; chapters: number };
 type Verse = [number, string];
@@ -447,6 +477,64 @@ async function translateFicha(request: Request, id: unknown) {
   return new Response(stream, { headers: ndjson });
 }
 
+/**
+ * Una línea de contexto para la imagen de un versículo, sacada de los comentarios. Se escribe una vez con IA y queda
+ * guardada para todos.
+ */
+async function contexto(request: Request, body: Record<string, unknown>) {
+  const libro = (await books()).find((b) => b.id === body.libro);
+  const capitulo = Number(body.capitulo);
+  const versiculo = Number(body.versiculo);
+  if (!libro || !Number.isInteger(capitulo) || capitulo < 1 || capitulo > libro.chapters || !Number.isInteger(versiculo) || versiculo < 1) {
+    throw new Fail('Versículo no válido');
+  }
+  const sql = await db();
+  const [hecho] = await sql<{ texto: string; fuente: string }[]>`
+    select texto, fuente from contexto_es where libro = ${libro.id} and capitulo = ${capitulo} and versiculo = ${versiculo}`;
+  if (hecho) return Response.json(hecho);
+
+  let notas = '';
+  let fuente: Fuente | undefined;
+  for (const id of FUENTES_CONTEXTO) {
+    const f = ACTIVAS.find((x) => x.id === id);
+    if (!f) continue;
+    const seccion = (await sections(request, f, libro.id, capitulo)).find((x) => x.desde > 0 && x.desde <= versiculo && versiculo <= x.hasta);
+    if (!seccion) continue;
+    notas = `${seccion.titulo ? `## ${seccion.titulo}\n\n` : ''}${seccion.partes.join('\n\n')}`.slice(0, 6000);
+    fuente = f;
+    break;
+  }
+  if (!fuente) return Response.json({ texto: null });
+
+  const [uso] = await sql`select n from contexto_uso where dia = current_date`;
+  if (uso && uso.n >= CONTEXTO_DIA) throw new Fail('Hoy ya se escribieron muchas líneas de contexto. Vuelve mañana o escribe la tuya.', 429);
+  await sql`insert into contexto_uso (dia, n) values (current_date, 1) on conflict (dia) do update set n = contexto_uso.n + 1`;
+
+  const verses = JSON.parse(await readFile(path.join(DATA_DIR, 'text', 'rv1909', libro.id, `${capitulo}.json`), 'utf8')) as Verse[];
+  const texto = verses.find(([n]) => n === versiculo)?.[1] ?? '';
+  const res = await client.messages.create({
+    model: MODEL,
+    max_tokens: 200,
+    system: CONTEXTO,
+    messages: [
+      {
+        role: 'user',
+        content: `Versículo: ${libro.name} ${capitulo}:${versiculo} (Reina-Valera 1909): ${texto}\n\nNotas de ${fuente.obra}, de ${fuente.autor}:\n${notas}`,
+      },
+    ],
+  });
+  const linea = res.content
+    .flatMap((b) => (b.type === 'text' ? [b.text] : []))
+    .join(' ')
+    .replace(/^[«"“\s]+|[»"”.\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .slice(0, MAX_CONTEXTO);
+  if (!linea) return Response.json({ texto: null });
+  await sql`insert into contexto_es (libro, capitulo, versiculo, texto, fuente)
+    values (${libro.id}, ${capitulo}, ${versiculo}, ${linea}, ${fuente.id}) on conflict do nothing`;
+  return Response.json({ texto: linea, fuente: fuente.id });
+}
+
 async function report(request: Request, body: Record<string, unknown>) {
   const k = await key(request, body);
   const nota = typeof body.nota === 'string' ? body.nota.trim().slice(0, MAX_NOTE) : '';
@@ -481,6 +569,7 @@ export async function POST(request: Request) {
     }
     if (body.reporte && typeof body.reporte === 'object') return await report(request, body.reporte as Record<string, unknown>);
     if (body.ficha !== undefined) return await translateFicha(request, body.ficha);
+    if (body.contexto && typeof body.contexto === 'object') return await contexto(request, body.contexto as Record<string, unknown>);
     return await translate(request, body);
   } catch (err) {
     return failure(err);

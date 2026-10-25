@@ -8,6 +8,7 @@ import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
 import { Avatar, Button, Card, Chips, ErrorText, text } from '@/components/comunidad/ui';
 import { useRacha } from '@/lib/racha';
+import { ChevronRightIcon, HeartIcon } from '@/components/icons';
 import { useAccount } from '@/lib/comunidad';
 import { useOnline } from '@/lib/conexion';
 import { Audiencia, Publicacion, network, wall } from '@/lib/social';
@@ -27,6 +28,7 @@ export default function Comunidad() {
   const [posts, setPosts] = useState<Publicacion[] | null>(null);
   const [more, setMore] = useState(true);
   const [requests, setRequests] = useState(0);
+  const [versos, setVersos] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Solo cuenta la última carga: si se cambia de filtro a mitad, la respuesta anterior se descarta.
@@ -53,7 +55,7 @@ export default function Comunidad() {
       if (!usuario || !online) return;
       load(filter);
       network()
-        .then((r) => setRequests(r.recibidas.length))
+        .then((r) => (setRequests(r.recibidas.length), setVersos(r.versiculosNuevos ?? 0)))
         .catch(() => {});
     }, [usuario?.id, filter, load, online]),
   );
@@ -114,6 +116,29 @@ export default function Comunidad() {
           </Pressable>
 
           <EntradaEventos style={{ marginTop: 10 }} />
+          <Pressable
+            onPress={() => go('/recibidos')}
+            accessibilityRole="link"
+            accessibilityLabel={versos ? `Versículos para ti, ${versos} nuevos` : 'Versículos para ti'}
+            style={({ pressed }) => [styles.entry, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.75 }]}
+          >
+            <View style={[styles.entryIcon, { backgroundColor: colors.warmSoft }]}>
+              <HeartIcon color={colors.warm} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Versículos para ti</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 1 }}>
+                {versos ? `${versos === 1 ? 'Un amigo te envió uno' : `Te enviaron ${versos}`}: responde «Amén» o «Gracias»` : 'Los que te envían tus amigos y los que tú envías'}
+              </Text>
+            </View>
+            {versos > 0 ? (
+              <View style={[styles.badge, { backgroundColor: colors.warm }]}>
+                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>{versos}</Text>
+              </View>
+            ) : (
+              <ChevronRightIcon color={colors.muted} size={18} />
+            )}
+          </Pressable>
 
           <View style={styles.bar}>
             {jovenes ? (
@@ -179,5 +204,7 @@ const styles = StyleSheet.create({
   composer: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, marginBottom: 14 },
   friends: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  entry: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 12, marginTop: 10 },
+  entryIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   badge: { minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
 });

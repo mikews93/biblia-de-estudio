@@ -42,7 +42,8 @@ export type Tipo =
   | `ruta-${string}` // una misión de esa ruta
   | 'cuento' // una historia del Espacio Niños (src/lib/ninos.ts)
   | 'charla' // una historia conversada en familia
-  | 'memoria'; // un versículo guardado de memoria
+  | 'memoria' // un versículo guardado de memoria
+  | 'compartir'; // un versículo compartido como imagen o publicado en Comunidad (cada versículo cuenta una vez)
 
 const DE_ESTUDIO: Tipo[] = ['palabra', 'historia', 'original', 'lugar', 'persona', 'viaje', 'promesa', 'diferencia'];
 
@@ -100,7 +101,10 @@ export type Dibujo =
   | 'oveja'
   | 'corazon'
   // En pareja
-  | 'cordon';
+  | 'cordon'
+  // Compartir versículos
+  | 'semilla'
+  | 'pies';
 
 export type Sello = {
   id: string;
@@ -410,6 +414,32 @@ const CATALOGO: Sello[] = [
     dibujo: 'lampara',
     versiculo: v('Lucas 24:32', 'luk', 24, 32, 'Y decían el uno al otro: ¿No ardía nuestro corazón en nosotros, mientras nos hablaba en el camino, y cuando nos abría las Escrituras?'),
     ir: { label: 'Estudiar en vivo', href: '/vivo' },
+    publico: 'todos',
+  },
+  {
+    id: 'sembrador',
+    familia: 'juntos',
+    titulo: 'Sembrador',
+    como: 'Comparte 3 versículos distintos con alguien.',
+    logro: 'Sembraste la Palabra en 3 versículos compartidos.',
+    tipo: 'compartir',
+    meta: 3,
+    dibujo: 'semilla',
+    versiculo: v('Eclesiastés 11:6', 'ecc', 11, 6, 'Por la mañana siembra tu simiente, y á la tarde no dejes reposar tu mano: porque tú no sabes cuál es lo mejor, si esto ó lo otro, ó si ambas á dos cosas son buenas.'),
+    ir: { label: 'Toca un versículo y elige Compartir', href: '/juan/3' },
+    publico: 'todos',
+  },
+  {
+    id: 'alegres-nuevas',
+    familia: 'juntos',
+    titulo: 'Alegres nuevas',
+    como: 'Comparte 15 versículos distintos.',
+    logro: 'Llevaste 15 versículos a otros.',
+    tipo: 'compartir',
+    meta: 15,
+    dibujo: 'pies',
+    versiculo: v('Isaías 52:7', 'isa', 52, 7, '¡Cuán hermosos son sobre los montes los pies del que trae alegres nuevas, del que publica la paz, del que trae nuevas del bien, del que publica salud, del que dice á Sión: Tu Dios reina!'),
+    ir: { label: 'Toca un versículo y elige Compartir', href: '/salmos/23' },
     publico: 'todos',
   },
   {

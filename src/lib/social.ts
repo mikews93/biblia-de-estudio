@@ -2,7 +2,7 @@
 // Usa la misma cuenta y la misma función que los grupos (src/lib/comunidad.ts).
 
 import { HighlightColor } from './highlights';
-import { ImageFormat } from './compartir';
+import type { DatosImagen } from './compartir';
 import { api, type TipoGrupo } from './comunidad';
 
 export type TipoPublicacion = 'lectura' | 'resaltado' | 'imagen' | 'pregunta' | 'reflexion';
@@ -20,7 +20,7 @@ export type Publicacion = {
   version: string | null;
   cita: string | null;
   texto: string | null;
-  datos: { capitulos?: number[]; color?: HighlightColor; estilo?: string; formato?: ImageFormat };
+  datos: { capitulos?: number[]; color?: HighlightColor } & DatosImagen;
   creado: string;
   actualizado: string;
   autorId: string;
@@ -55,6 +55,8 @@ export type Red = {
   sugerencias: (PersonaBreve & { grupo: string })[];
   /** Las personas que bloqueaste (servidores viejos no la envían). */
   bloqueadas?: PersonaBreve[];
+  /** Versículos que te enviaron y aún no abriste. */
+  versiculosNuevos?: number;
 };
 export type Persona = PersonaBreve & {
   bio: string | null;
@@ -118,3 +120,26 @@ export function chaptersLabel(p: Publicacion) {
   const list = caps.length > 1 ? `${caps.slice(0, -1).join(', ')} y ${caps[caps.length - 1]}` : String(caps[0] ?? '');
   return `${p.libroNombre ?? ''} ${list}`.trim();
 }
+
+// «Te envié un versículo»: la imagen de un versículo directo a un amigo, que responde «Amén» o «Gracias».
+
+export type RespuestaVersiculo = 'amen' | 'gracias';
+type VersiculoBase = {
+  id: string;
+  libro: string;
+  capitulo: number;
+  versiculo: number;
+  version: string;
+  cita: string;
+  datos: DatosImagen;
+  respuesta: RespuestaVersiculo | null;
+  creado: string;
+};
+export type VersiculoRecibido = VersiculoBase & { visto: boolean; deId: string; deNombre: string; deFoto: string | null };
+export type VersiculoEnviado = VersiculoBase & { paraId: string; paraNombre: string; paraFoto: string | null };
+
+export type EnvioVersiculo = { para: string; libro: string; capitulo: number; versiculo: number; version?: string; datos: DatosImagen };
+
+export const sendVerse = (e: EnvioVersiculo) => api<{ id: string; para: string }>('enviarVersiculo', e);
+export const receivedVerses = () => api<{ recibidos: VersiculoRecibido[]; enviados: VersiculoEnviado[] }>('versiculosRecibidos');
+export const answerVerse = (id: string, respuesta: RespuestaVersiculo) => api<{ respuesta: RespuestaVersiculo }>('responderVersiculo', { id, respuesta });
