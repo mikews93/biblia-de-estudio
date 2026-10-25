@@ -399,7 +399,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('avisos de la comunidad', () => {
     const subEva = nuevaSuscripcion(base);
     await call('guardar', { suscripcion: subEva }, otra.llave);
     await vivo('gruposEvento', { codigo: evento.codigo, grupos: [id, otroDeAna] }, ana.llave);
-    expect(deliveredTo(subEva.id).map((e) => e.aviso.body)).toEqual(['Familia · Toca para seguir el mensaje en tu teléfono.']);
+    expect(deliveredTo(subEva.id).map((e) => e.aviso?.body)).toEqual(['Familia · Toca para seguir el mensaje en tu teléfono.']);
     expect(deliveredTo(subBeto.id)).toHaveLength(1);
   });
 
