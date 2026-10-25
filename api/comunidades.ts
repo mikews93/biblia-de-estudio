@@ -26,7 +26,7 @@ import { downloadPhoto, facebookDialog, facebookPage, facebookProfile, facebookR
 import { CUIDAR_SCHEMA, cuidarActions } from './_cuidar';
 import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
-import { notifyUser, PUSH_SCHEMA } from './_push';
+import { type Aviso, notifyUser, PUSH_SCHEMA } from './_push';
 import { esCuidador } from './_senales';
 import { planById } from '../src/lib/planesCatalogo';
 import { parseRetoId, seasonRun } from '../src/lib/temporadas';
@@ -157,6 +157,8 @@ alter table usuarios add column if not exists facebook_id text unique;
 alter table usuarios add column if not exists facebook_nombre text;
 alter table usuarios add column if not exists fotos_dia date;
 alter table usuarios add column if not exists fotos_n int not null default 0;
+-- Cada quien puede silenciar los avisos de un grupo sin salir de él.
+alter table miembros add column if not exists avisos boolean not null default true;
 create table if not exists facebook_viajes (
   estado_hash text primary key,
   modo text not null,
@@ -751,15 +753,17 @@ const actions: Record<string, Handler> = {
   async yo({ sql, body, request }) {
     const user = await auth(sql, request);
     const today = day(body.hoy);
-    const groups = await sql.unsafe<GroupRow[]>(
-      `select ${GROUP_COLUMNS} from grupos g join miembros m on m.grupo_id = g.id
+    const groups = await sql.unsafe<(GroupRow & { rol: string; avisos: boolean })[]>(
+      `select ${GROUP_COLUMNS}, m.rol, m.avisos from grupos g join miembros m on m.grupo_id = g.id
        where m.usuario_id = $1 order by m.unido`,
       [user.id],
     );
     const anfitriona = await iglesiaDe(sql, user.id);
     return {
       usuario: user,
-      grupos: await Promise.all(groups.map((g) => summary(sql, g, today))),
+      grupos: await Promise.all(
+        groups.map(async (g) => ({ ...(await summary(sql, g, today)), soyAdmin: g.rol === 'admin', avisos: g.avisos })),
+      ),
       // La iglesia anfitriona (api/_iglesias.ts) y si la persona cuida Zarza (/cuidar).
       iglesia: anfitriona?.activa ? { nombre: anfitriona.nombre, codigo: anfitriona.codigo, lampara: anfitriona.lampara } : null,
       cuidador: esCuidador(user.correo),
@@ -930,6 +934,7 @@ const actions: Record<string, Handler> = {
         plan: planOf(g),
         lectura: reading,
         soyAdmin: admin,
+        avisos: await groupAlerts(sql, id, user.id),
         semana: await weekMeter(sql, id, members.length, today),
         miembros: members.map((m) => ({ ...m, leyoHoy: read.has(m.id), soyYo: m.id === user.id })),
       },
@@ -973,6 +978,14 @@ const actions: Record<string, Handler> = {
     return {};
   },
 
+  /** Silencia o vuelve a encender los avisos de un grupo para esta persona (sigue dentro del grupo). */
+  async avisosGrupo({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const { id } = await membership(sql, user, body.grupo);
+    await sql`update miembros set avisos = ${body.si !== false} where grupo_id = ${id} and usuario_id = ${user.id}`;
+    return { avisos: body.si !== false };
+  },
+
   async hacerAdmin({ sql, body, request }) {
     const user = await auth(sql, request);
     const { id, admin } = await membership(sql, user, body.grupo);
@@ -1012,6 +1025,12 @@ const actions: Record<string, Handler> = {
     const [row] = await sql<{ id: string }[]>`
       insert into notas (grupo_id, usuario_id, libro, capitulo, versiculo, texto)
       values (${id}, ${user.id}, ${book.id}, ${chapter}, ${verse}, ${texto}) returning id`;
+    await avisarGrupo(sql, id, user, (grupo) => ({
+      title: `${user.nombre} dejó una nota en ${book.name} ${chapter}:${verse}`,
+      body: `${grupo} · ${texto.slice(0, 120)}`,
+      url: `/grupos/${id}?tab=notas`,
+      tag: `grupo-notas-${id}`,
+    }));
     return { id: row.id };
   },
 
@@ -1045,6 +1064,12 @@ const actions: Record<string, Handler> = {
     const texto = text(body.texto, MAX_PRAYER, 'la petición');
     const [row] = await sql<{ id: string }[]>`
       insert into peticiones (grupo_id, usuario_id, texto) values (${id}, ${user.id}, ${texto}) returning id`;
+    await avisarGrupo(sql, id, user, (grupo) => ({
+      title: `${user.nombre} pidió oración en ${grupo}`,
+      body: texto.slice(0, 140),
+      url: `/grupos/${id}?tab=oracion`,
+      tag: `grupo-oracion-${id}`,
+    }));
     return { id: row.id };
   },
 
@@ -1085,6 +1110,12 @@ const actions: Record<string, Handler> = {
     const [row] = await sql<{ id: string }[]>`
       insert into guias (grupo_id, usuario_id, titulo, pasaje, texto)
       values (${id}, ${user.id}, ${titulo}, ${pasaje}, ${texto}) returning id`;
+    await avisarGrupo(sql, id, user, (grupo) => ({
+      title: `${user.nombre} compartió «${titulo}» con ${grupo}`,
+      body: pasaje ? `${pasaje} · Ábrelo para prepararte para la reunión.` : 'Ábrelo para prepararte para la reunión.',
+      url: `/grupos/${id}?tab=reunion`,
+      tag: `grupo-guia-${id}`,
+    }));
     return { id: row.id };
   },
 
@@ -1346,8 +1377,14 @@ const actions: Record<string, Handler> = {
     // Quien te bloqueó desaparece para ti, como si no estuviera.
     const [theyBlocked] = await sql`select 1 from bloqueos where de = ${id} and a = ${user.id}`;
     if (theyBlocked) throw new Fail('Esa persona ya no está en la comunidad', 404);
+    // Los grupos en común (o todos los tuyos, si es tu perfil): los demás grupos de alguien son privados.
+    const grupos = await sql<{ id: string; nombre: string; tipo: string; miembros: number }[]>`
+      select g.id, g.nombre, g.tipo, (select count(*)::int from miembros x where x.grupo_id = g.id) as miembros
+      from grupos g join miembros a on a.grupo_id = g.id and a.usuario_id = ${id}
+      join miembros b on b.grupo_id = g.id and b.usuario_id = ${user.id}
+      order by g.nombre`;
     return {
-      persona: { ...p, relacion: await relation(sql, user.id, id) },
+      persona: { ...p, relacion: await relation(sql, user.id, id), grupos },
       publicaciones: await posts(sql, user.id, sql`p.usuario_id = ${id}`),
     };
   },
@@ -1388,7 +1425,7 @@ async function avisarAmistadAceptada(sql: Sql, to: string, user: User) {
 async function avisarUnion(sql: Sql, groupId: string, user: User) {
   const admins = await sql<{ usuario_id: string; nombre: string }[]>`
     select m.usuario_id, g.nombre from miembros m join grupos g on g.id = m.grupo_id
-    where m.grupo_id = ${groupId} and m.rol = 'admin' and m.usuario_id <> ${user.id}`;
+    where m.grupo_id = ${groupId} and m.rol = 'admin' and m.usuario_id <> ${user.id} and m.avisos`;
   await Promise.all(
     admins.map((a) =>
       notifyUser(sql, a.usuario_id, {
@@ -1399,6 +1436,20 @@ async function avisarUnion(sql: Sql, groupId: string, user: User) {
       }),
     ),
   );
+}
+
+/** Avisa a quienes están en el grupo (menos a quien lo hizo y a quien silenció el grupo). */
+async function avisarGrupo(sql: Sql, groupId: string, user: User, aviso: (grupo: string) => Aviso) {
+  const rows = await sql<{ usuario_id: string; nombre: string }[]>`
+    select m.usuario_id, g.nombre from miembros m join grupos g on g.id = m.grupo_id
+    where m.grupo_id = ${groupId} and m.usuario_id <> ${user.id} and m.avisos
+      and not exists (select 1 from bloqueos b where (b.de = m.usuario_id and b.a = ${user.id}) or (b.de = ${user.id} and b.a = m.usuario_id))`;
+  await Promise.all(rows.map((r) => notifyUser(sql, r.usuario_id, aviso(r.nombre))));
+}
+
+async function groupAlerts(sql: Sql, groupId: string, userId: string) {
+  const [row] = await sql<{ avisos: boolean }[]>`select avisos from miembros where grupo_id = ${groupId} and usuario_id = ${userId}`;
+  return row?.avisos ?? true;
 }
 
 /** Sale del grupo; si se va el último administrador, pasa a serlo quien lleva más tiempo, y sin nadie el grupo se borra. */

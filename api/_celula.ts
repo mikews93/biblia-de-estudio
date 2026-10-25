@@ -112,7 +112,8 @@ create table if not exists vivo_respuestas (
   texto text not null,
   creado timestamptz not null default now(),
   primary key (sala_id, ronda, usuario_id)
-);`;
+);
+alter table miembros add column if not exists avisos boolean not null default true;`;
 
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
@@ -659,7 +660,7 @@ export const celulaActions: Record<string, Handler> = {
     if (grupo) {
       const book = (await books()).find((b) => b.id === libro)!;
       const others = await sql<{ usuario_id: string }[]>`
-        select usuario_id from miembros where grupo_id = ${grupo.id} and usuario_id <> ${user.id}`;
+        select usuario_id from miembros where grupo_id = ${grupo.id} and usuario_id <> ${user.id} and avisos`;
       await Promise.all(
         others.map((m) =>
           notifyUser(sql, m.usuario_id, {

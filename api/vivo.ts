@@ -24,6 +24,7 @@ import postgres from 'postgres';
 import { dinamica } from '../src/lib/dinamicas';
 import { CATEGORIAS, GIROS, LETRAS, MAX_CITA, MAX_OPCION, MAX_PREGUNTAS, MAX_TEXTO_PREGUNTA, type PreguntaRepaso, equipoDe, girarRuleta, puntajeRuleta } from '../src/lib/repaso';
 import { celulaGET, celulaPOST, isCelulaAction } from './_celula';
+import { notifyUser } from './_push';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -63,6 +64,9 @@ alter table eventos add column if not exists interaccion jsonb;
 alter table eventos add column if not exists version text;
 alter table eventos add column if not exists inicio timestamptz;
 alter table eventos add column if not exists punto_desde timestamptz;
+-- Los grupos de quien predica a los que se avisa cuando el evento empieza en vivo.
+alter table eventos add column if not exists grupos uuid[] not null default '{}';
+alter table miembros add column if not exists avisos boolean not null default true;
 create table if not exists evento_respuestas (
   id bigint generated always as identity,
   codigo text not null references eventos on delete cascade,
@@ -124,6 +128,7 @@ type Row = {
   version: string | null;
   inicio: Date | null;
   punto_desde: Date | null;
+  grupos: string[];
   creado: Date;
   actualizado: Date;
 };
@@ -158,6 +163,29 @@ async function usuario(sql: Sql, request: Request) {
   const [row] = await sql<{ id: string }[]>`select usuario_id as id from sesiones where llave_hash = ${hash}`;
   if (!row) throw new Fail('Tu sesión terminó. Vuelve a entrar.', 401);
   return row.id;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** «Empezó en vivo» para quienes están en esos grupos (una vez por persona, aunque comparta varios grupos). */
+async function avisarGrupos(sql: Sql, e: Row, yo: string, grupos: string[]) {
+  if (!grupos.length) return;
+  const rows = await sql<{ usuario_id: string; grupo: string }[]>`
+    select distinct on (m.usuario_id) m.usuario_id, g.nombre as grupo
+    from miembros m join grupos g on g.id = m.grupo_id
+    where m.grupo_id = any(${grupos}::uuid[]) and m.usuario_id <> ${yo} and m.avisos
+      and not exists (select 1 from bloqueos b where (b.de = m.usuario_id and b.a = ${yo}) or (b.de = ${yo} and b.a = m.usuario_id))
+    order by m.usuario_id`;
+  await Promise.all(
+    rows.map((r) =>
+      notifyUser(sql, r.usuario_id, {
+        title: `${e.autor} empezó en vivo: «${e.titulo}»`,
+        body: `${r.grupo} · Toca para seguir el mensaje en tu teléfono.`,
+        url: `/evento/${e.codigo}`,
+        tag: `evento-${e.codigo}`,
+      }),
+    ),
+  );
 }
 
 const newCode = () => Array.from({ length: CODE_LENGTH }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
@@ -219,7 +247,7 @@ function versionDe(value: unknown) {
 }
 
 const ROW_COLUMNS = `e.codigo, e.interaccion, e.mensaje, e.titulo, e.pasaje, e.idea, e.puntos, e.gradual, e.estado, e.punto, e.creado, e.actualizado,
-  e.version, e.inicio, e.punto_desde, u.nombre as autor, u.iglesia`;
+  e.version, e.inicio, e.punto_desde, e.grupos, u.nombre as autor, u.iglesia`;
 
 async function find(sql: Sql, codigo: string) {
   const [row] = await sql.unsafe<Row[]>(`select ${ROW_COLUMNS} from eventos e join usuarios u on u.id = e.usuario_id where e.codigo = $1`, [codigo]);
@@ -339,7 +367,7 @@ export function publico(e: Row, propio = false) {
     interaccion: interaccionPublica(e.interaccion),
     creado: new Date(e.creado).toISOString(),
     actualizado: new Date(e.actualizado).toISOString(),
-    ...(propio ? { mensaje: e.mensaje } : {}),
+    ...(propio ? { mensaje: e.mensaje, grupos: e.grupos ?? [] } : {}),
   };
 }
 
@@ -391,6 +419,8 @@ const actions: Record<string, Handler> = {
         inicio = case when ${estado} = 'en-vivo' then coalesce(inicio, now()) else inicio end,
         punto_desde = case when punto_desde is null or punto <> ${punto} then now() else punto_desde end
       where codigo = ${e.codigo} returning actualizado, inicio, punto_desde`;
+    // La primera vez que va en vivo se avisa a los grupos elegidos.
+    if (estado === 'en-vivo' && !e.inicio) await avisarGrupos(sql, e, yo, e.grupos ?? []);
     return { evento: await conResultados(sql, { ...e, estado, punto, actualizado, inicio, punto_desde }, true) };
   },
 
@@ -484,6 +514,19 @@ const actions: Record<string, Handler> = {
     if (!Number.isInteger(id)) throw new Fail('Respuesta no válida');
     await sql`update evento_respuestas set oculta = ${body.oculta !== false} where codigo = ${e.codigo} and id = ${id}`;
     return { evento: await conResultados(sql, e, true) };
+  },
+
+  /** Los grupos a los que se avisa cuando empieza. Si ya está en vivo, a los que se añaden se les avisa al momento. */
+  async gruposEvento({ sql, body, request }) {
+    const yo = await usuario(sql, request);
+    const e = await owned(sql, body.codigo, yo);
+    const pedidos = Array.isArray(body.grupos) ? body.grupos.filter((g): g is string => typeof g === 'string' && UUID.test(g)).slice(0, 20) : [];
+    const rows = await sql<{ grupo_id: string }[]>`
+      select grupo_id from miembros where usuario_id = ${yo} and grupo_id = any(${pedidos}::uuid[])`;
+    const grupos = rows.map((r) => r.grupo_id);
+    await sql`update eventos set grupos = ${grupos}::uuid[] where codigo = ${e.codigo}`;
+    if (e.estado === 'en-vivo') await avisarGrupos(sql, e, yo, grupos.filter((g) => !(e.grupos ?? []).includes(g)));
+    return { grupos };
   },
 
   async mios({ sql, request }) {

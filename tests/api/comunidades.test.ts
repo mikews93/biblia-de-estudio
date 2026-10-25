@@ -384,7 +384,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
         [beto.id, 'miembro', true, false],
       ]);
       const resumen = (await call('yo', {}, beto.llave)).json.grupos;
-      expect(resumen).toEqual([{ id: g.id, nombre: g.nombre, tipo: 'celula', miembros: 2, leyeronHoy: 1, lectura: visto.lectura }]);
+      expect(resumen).toEqual([{ id: g.id, nombre: g.nombre, tipo: 'celula', miembros: 2, leyeronHoy: 1, lectura: visto.lectura, soyAdmin: false, avisos: true }]);
     });
 
     it('el plan dice «pronto» antes de empezar y «terminado» después del último día', async () => {

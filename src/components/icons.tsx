@@ -574,3 +574,22 @@ export const RepeatIcon = (p: Props) => (
     <Path d="M5 19.5V15h4.5" />
   </Line>
 );
+
+/** Campana tachada: avisos silenciados. */
+export const BellOffIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M8.2 4.6A6 6 0 0 1 18 9c0 2.6.5 4.4 1.1 5.6" />
+    <Path d="M6.2 7.6A6 6 0 0 0 6 9c0 4.5-1.5 6.5-2.5 7.5H16.5" />
+    <Path d="M10 20a2.2 2.2 0 0 0 4 0" />
+    <Path d="M4 3.5 20 20.5" />
+  </Line>
+);
+
+/** Puerta con flecha hacia fuera: salir de un grupo, darse de baja. */
+export const ExitIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M13.5 4.5H7a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 7 19.5h6.5" />
+    <Path d="M10.5 12h9" />
+    <Path d="M16.5 8.5 20 12l-3.5 3.5" />
+  </Line>
+);
