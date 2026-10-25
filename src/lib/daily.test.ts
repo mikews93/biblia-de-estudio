@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { BOOKS } from '../../tests/fixtures/books';
-import { greeting, questionOfTheDay, verseOfTheDay } from './daily';
+import { greeting, greetingName, questionOfTheDay, verseOfTheDay } from './daily';
 
 const DATA = path.resolve(__dirname, '../../public/data');
 // Dos meses seguidos recorren toda la lista de versículos (60) y de preguntas (7)
@@ -46,5 +46,12 @@ describe('contenido del día', () => {
     expect(greeting(new Date(2026, 0, 1, 12))).toBe('Buenas tardes');
     expect(greeting(new Date(2026, 0, 1, 18, 59))).toBe('Buenas tardes');
     expect(greeting(new Date(2026, 0, 1, 19))).toBe('Buenas noches');
+  });
+
+  it('saluda por el apodo o el primer nombre', () => {
+    expect(greetingName(null)).toBeNull();
+    expect(greetingName({ nombre: '  Miguel Ángel Blanco ' })).toBe('Miguel');
+    expect(greetingName({ nombre: 'Miguel Blanco', apodo: 'Migue' })).toBe('Migue');
+    expect(greetingName({ nombre: 'Miguel Blanco', apodo: '  ' })).toBe('Miguel');
   });
 });

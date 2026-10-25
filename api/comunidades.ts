@@ -37,6 +37,7 @@ const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const MAX_NAME = 40;
 const MAX_BIO = 160;
 const MAX_PLACE = 60;
+const MAX_APODO = 24;
 const PHOTOS_PER_DAY = 10;
 // Lo que dura el viaje de ida y vuelta a Facebook.
 const FACEBOOK_MINUTES = 15;
@@ -151,6 +152,7 @@ alter table usuarios add column if not exists foto text;
 alter table usuarios add column if not exists bio text;
 alter table usuarios add column if not exists iglesia text;
 alter table usuarios add column if not exists ciudad text;
+alter table usuarios add column if not exists apodo text;
 alter table usuarios add column if not exists facebook_id text unique;
 alter table usuarios add column if not exists facebook_nombre text;
 alter table usuarios add column if not exists fotos_dia date;
@@ -253,6 +255,8 @@ type User = {
   bio: string | null;
   iglesia: string | null;
   ciudad: string | null;
+  /** Cómo quiere que la app la salude («Buenos días, Migue»), o null para usar su primer nombre. */
+  apodo: string | null;
   /** Si tiene contraseña (una cuenta creada con Facebook puede tener correo y no contraseña). */
   conClave: boolean;
   /** El nombre de su cuenta de Facebook conectada, o null. */
@@ -260,7 +264,7 @@ type User = {
 };
 
 // Las columnas de User, para cada consulta que devuelve la cuenta a la app.
-const USER_COLUMNS = `u.id, u.nombre, u.correo, u.foto, u.bio, u.iglesia, u.ciudad, u.clave_hash is not null as "conClave",
+const USER_COLUMNS = `u.id, u.nombre, u.correo, u.foto, u.bio, u.iglesia, u.ciudad, u.apodo, u.clave_hash is not null as "conClave",
   u.facebook_nombre as facebook`;
 /** El plan del grupo: un libro a un ritmo fijo, o un reto de temporada («adviento-2026») con sus fechas. */
 type Plan = { libro: string | null; inicio: string | null; porDia: number; reto: string | null };
@@ -775,8 +779,10 @@ const actions: Record<string, Handler> = {
     const bio = optional(body.bio, MAX_BIO);
     const iglesia = optional(body.iglesia, MAX_PLACE);
     const ciudad = optional(body.ciudad, MAX_PLACE);
-    await sql`update usuarios set nombre = ${nombre}, bio = ${bio}, iglesia = ${iglesia}, ciudad = ${ciudad} where id = ${user.id}`;
-    return { usuario: { ...user, nombre, bio, iglesia, ciudad } };
+    // Una app vieja no manda el apodo: entonces se queda el que había.
+    const apodo = body.apodo === undefined ? user.apodo : optional(body.apodo, MAX_APODO);
+    await sql`update usuarios set nombre = ${nombre}, bio = ${bio}, iglesia = ${iglesia}, ciudad = ${ciudad}, apodo = ${apodo} where id = ${user.id}`;
+    return { usuario: { ...user, nombre, bio, iglesia, ciudad, apodo } };
   },
 
   async subirFoto({ sql, body, request }) {

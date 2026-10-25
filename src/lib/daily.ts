@@ -41,3 +41,14 @@ export function greeting(date = new Date()) {
   const h = date.getHours();
   return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
 }
+
+/** El primer nombre de «Miguel Ángel Blanco» → «Miguel». */
+export function firstName(nombre: string) {
+  return nombre.trim().split(/\s+/)[0] ?? '';
+}
+
+/** Cómo saludar a la persona en Hoy: su apodo si lo eligió, si no su primer nombre; null sin cuenta. */
+export function greetingName(usuario?: { nombre: string; apodo?: string | null } | null) {
+  if (!usuario) return null;
+  return usuario.apodo?.trim() || firstName(usuario.nombre) || null;
+}

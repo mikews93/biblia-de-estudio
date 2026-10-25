@@ -9,10 +9,12 @@ import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FacebookLogo, FlagIcon, KeyIcon, LampIcon, LockIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, useAccount } from '@/lib/comunidad';
+import { firstName, greeting } from '@/lib/daily';
 import {
   disconnectFacebook,
   facebook,
   facebookAvailable,
+  MAX_APODO,
   MAX_BIO,
   MAX_PLACE,
   pickPhoto,
@@ -32,6 +34,7 @@ export default function AccountScreen() {
   const [bio, setBio] = useState('');
   const [church, setChurch] = useState('');
   const [city, setCity] = useState('');
+  const [nick, setNick] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
@@ -53,10 +56,11 @@ export default function AccountScreen() {
       setBio(usuario.bio ?? '');
       setChurch(usuario.iglesia ?? '');
       setCity(usuario.ciudad ?? '');
+      setNick(usuario.apodo ?? '');
       setEmail(usuario.correo ?? '');
     }
     // También cuando llegan del servidor datos más nuevos que los guardados en el dispositivo.
-  }, [usuario?.id, usuario?.nombre, usuario?.bio, usuario?.iglesia, usuario?.ciudad, usuario?.correo]);
+  }, [usuario?.id, usuario?.nombre, usuario?.bio, usuario?.iglesia, usuario?.ciudad, usuario?.apodo, usuario?.correo]);
 
   useEffect(() => {
     facebookAvailable().then(setFbReady);
@@ -87,13 +91,14 @@ export default function AccountScreen() {
     name.trim() !== usuario.nombre ||
     bio.trim() !== (usuario.bio ?? '') ||
     church.trim() !== (usuario.iglesia ?? '') ||
-    city.trim() !== (usuario.ciudad ?? '');
+    city.trim() !== (usuario.ciudad ?? '') ||
+    nick.trim() !== (usuario.apodo ?? '');
   const hasPassword = usuario.conClave ?? Boolean(usuario.correo);
   const place = [usuario.iglesia, usuario.ciudad].filter(Boolean).join(' · ');
 
   const save = () =>
     profileAction
-      .run(() => saveProfile({ nombre: name, bio, iglesia: church, ciudad: city }))
+      .run(() => saveProfile({ nombre: name, bio, iglesia: church, ciudad: city, apodo: nick }))
       .then((ok) => ok && flash('Perfil guardado'));
 
   const choosePhoto = () => photoAction.run(pickPhoto).then((ok) => ok && flash('Foto actualizada'));
@@ -190,6 +195,19 @@ export default function AccountScreen() {
       <Appear delay={60}>
         <Section colors={colors} title="Sobre ti" hint="Lo ven tus amigos, tus grupos y la comunidad.">
           <Field label="Tu nombre" value={name} onChangeText={setName} maxLength={40} autoComplete="name" />
+          <View>
+            <Field
+              label="Cómo te saludamos"
+              value={nick}
+              onChangeText={setNick}
+              maxLength={MAX_APODO}
+              autoComplete="nickname"
+              placeholder={firstName(name) || 'Tu apodo'}
+            />
+            <Text style={[styles.counter, styles.preview, { color: colors.muted }]}>
+              En Hoy: «{greeting()}, {nick.trim() || firstName(name) || 'amigo'}»
+            </Text>
+          </View>
           <View>
             <Field
               label="Unas líneas sobre ti"
@@ -473,6 +491,7 @@ const styles = StyleSheet.create({
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardTitle: { fontFamily: serif, fontSize: 19, fontWeight: '700' },
   counter: { fontSize: 12, textAlign: 'right', marginTop: 4 },
+  preview: { textAlign: 'left' },
   pair: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   pairItem: { flexGrow: 1, flexBasis: 200 },
   iconLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },

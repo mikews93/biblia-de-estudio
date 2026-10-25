@@ -9,10 +9,11 @@ import { api, startSession, updateUser, Usuario } from './comunidad';
 
 export const MAX_BIO = 160;
 export const MAX_PLACE = 60;
+export const MAX_APODO = 24;
 // La foto se guarda cuadrada y pequeña: se ve nítida en el perfil y pesa unos 50 KB.
 const PHOTO_SIZE = 480;
 
-export type Perfil = { nombre: string; bio: string; iglesia: string; ciudad: string };
+export type Perfil = { nombre: string; bio: string; iglesia: string; ciudad: string; apodo: string };
 
 export async function saveProfile(p: Perfil) {
   updateUser((await api<{ usuario: Usuario }>('guardarPerfil', p)).usuario);

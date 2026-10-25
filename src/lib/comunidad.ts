@@ -21,6 +21,8 @@ export type Usuario = {
   bio?: string | null;
   iglesia?: string | null;
   ciudad?: string | null;
+  /** Cómo quiere que la app la salude en Hoy; si falta, su primer nombre. */
+  apodo?: string | null;
   /** Si tiene contraseña: una cuenta creada con Facebook puede tener correo y no contraseña. */
   conClave?: boolean;
   /** El nombre de la cuenta de Facebook conectada, o null. */
