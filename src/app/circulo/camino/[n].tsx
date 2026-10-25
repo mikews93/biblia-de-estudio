@@ -162,6 +162,22 @@ export default function EtapaScreen() {
             );
           })}
         </View>
+        {etapa.frases && (
+          <View style={{ marginTop: 26 }}>
+            <Text style={[styles.kicker, { color: colors.muted }]}>PARA DECIRLO CON GRACIA</Text>
+            <Text style={[text.small, { color: colors.muted, marginTop: 4 }]}>
+              Que tu sí sea sí y tu no sea no (Mateo 5:37). Un no claro, amable y pronto respeta más que dar largas.
+            </Text>
+            <View style={{ gap: 10, marginTop: 12 }}>
+              {etapa.frases.map((f) => (
+                <View key={f.para} style={[styles.frase, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.kicker, { color: colors.warm }]}>{f.para.toUpperCase()}</Text>
+                  <Text style={[styles.fraseTexto, { color: colors.text }]}>«{f.texto}»</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
         {etapa.ayuda && <HablarConAlguien colors={colors} />}
       </Appear>
 
@@ -184,6 +200,8 @@ const styles = StyleSheet.create({
   pregunta: { fontFamily: serif, fontSize: 18, lineHeight: 25 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   hecha: { borderRadius: 16, padding: 16, marginTop: 24 },
+  frase: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, padding: 14 },
+  fraseTexto: { fontFamily: serif, fontStyle: 'italic', fontSize: 17, lineHeight: 25, marginTop: 6 },
   check: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   hechaTitulo: { fontFamily: serif, fontSize: 18, flex: 1 },
 });
