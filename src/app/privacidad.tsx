@@ -19,7 +19,7 @@ import { Colors, isDark, serif, useColors } from '@/lib/theme';
 // La política de privacidad que piden las tiendas (App Store y Google Play), también en
 // https://biblia.migueblanco.com/privacidad. Si cambia lo que la app guarda o a quién lo envía, hay que cambiarla aquí
 // y en las fichas de las tiendas (etiquetas de privacidad y «Seguridad de los datos»).
-const ACTUALIZADA = '22 de octubre de 2026';
+const ACTUALIZADA = '25 de octubre de 2026';
 
 type Parte = {
   icon: (p: IconProps) => React.ReactNode;
@@ -71,6 +71,14 @@ const PARTES: Parte[] = [
       'Lo que publicas lo ven tus amigos, tu grupo o toda la comunidad, según elijas al publicar.',
       'Puedes reportar una publicación y bloquear a una persona desde su perfil. Si varias personas reportan algo, se oculta para todos.',
       'En el Modo Jóvenes no hay publicaciones públicas.',
+    ],
+  },
+  {
+    icon: HeartIcon,
+    titulo: '«Para ti» en Hoy',
+    puntos: [
+      'Hoy puede mostrarte un versículo y un plan para lo que estás orando. Lo elige tu dispositivo con tu diario de oración, tus temas y los capítulos que leíste.',
+      'Tus oraciones no se envían a ningún servidor ni a la IA para esto, no guardamos tus temas y no medimos qué te muestra Hoy. Lo apagas en «Mis temas».',
     ],
   },
   {

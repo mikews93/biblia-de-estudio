@@ -24,7 +24,8 @@ const QUESTIONS = [
   '¿Cómo se ve este versículo en la vida de Jesús?',
 ];
 
-function dayNumber(date = new Date()) {
+/** Un número que cambia cada día a medianoche (hora local). */
+export function dayNumber(date = new Date()) {
   const start = Date.UTC(date.getFullYear(), 0, 0);
   const now = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   return Math.floor((now - start) / 86_400_000) + date.getFullYear() * 366;

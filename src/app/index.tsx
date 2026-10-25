@@ -28,6 +28,7 @@ import {
   SunIcon,
   type IconProps,
 } from '@/components/icons';
+import ParaTiHoy from '@/components/ParaTi';
 import PlanCard from '@/components/PlanCard';
 import HoyJovenes from '@/components/jovenes/HoyJovenes';
 import HoyNinos from '@/components/ninos/HoyNinos';
@@ -245,6 +246,12 @@ function Today() {
           </View>
         </View>
       </Appear>
+
+      {books.length > 0 && (
+        <Appear delay={85}>
+          <ParaTiHoy books={books} comun={daily} colors={colors} />
+        </Appear>
+      )}
 
       {semana && <SemanaCard semana={semana} colors={colors} />}
 

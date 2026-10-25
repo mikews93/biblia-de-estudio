@@ -75,6 +75,8 @@ export default function PlanScreen() {
 
       {mine ? (
         <Active plan={mine} books={books} colors={colors} />
+      ) : def.tema ? (
+        <SetupTema def={def} books={books} colors={colors} />
       ) : (
         <Setup
           def={def}
@@ -137,6 +139,34 @@ function Setup({
   );
 }
 
+/** Un plan para un momento de la vida: siete días con su título, sin elegir ritmo. */
+function SetupTema({ def, books, colors }: { def: NonNullable<ReturnType<typeof planDef>>; books: Book[]; colors: Colors }) {
+  const readings = expand(def, books);
+  const name = (id: string) => books.find((b) => b.id === id)?.name ?? id;
+  return (
+    <>
+      <SectionTitle>Un capítulo al día</SectionTitle>
+      <Card>
+        {readings.map(([b, c], i) => (
+          <View key={i} style={[styles.temaDia, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
+            <Text style={[styles.temaN, { color: colors.accent, fontFamily: serif }]}>{i + 1}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontFamily: serif, fontSize: 16 }}>{def.days?.[i]}</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 1 }}>
+                {name(b)} {c}
+              </Text>
+            </View>
+          </View>
+        ))}
+        <Text style={[text.small, { color: colors.muted, marginTop: 12 }]}>
+          Cada día trae una pregunta para llevar a la oración. Si un día no puedes, el plan te espera.
+        </Text>
+        <Button label="Empezar el plan" onPress={() => startPlan(def, books, { minutes: 10, daysPerWeek: 7 })} style={{ marginTop: 16 }} />
+      </Card>
+    </>
+  );
+}
+
 function Active({ plan, books, colors }: { plan: MyPlan; books: Book[]; colors: Colors }) {
   const words = useWords();
   const notes = useNotes();
@@ -190,7 +220,7 @@ function Active({ plan, books, colors }: { plan: MyPlan; books: Book[]; colors: 
         </Pressable>
       )}
 
-      {!plan.finished && !def?.season && (
+      {!plan.finished && !def?.season && !def?.tema && (
         <>
           <SectionTitle>Tu ritmo</SectionTitle>
           <Chips
@@ -277,5 +307,7 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: 10, marginTop: 14 },
   stat: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 12, paddingHorizontal: 6, alignItems: 'center' },
   day: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  temaDia: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10 },
+  temaN: { fontSize: 22, width: 22, textAlign: 'center' },
   check: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 });

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, createElement, ReactNode, useContext, useEffect, useState } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
+import { PARA_TI_INICIAL, type AjustesParaTi } from './paraTi';
 import { cambio, registrar } from './sincronia';
 
 const light = {
@@ -66,11 +67,13 @@ export type Settings = {
   modo: Modo;
   /** Dejar que las preguntas al estudio se guarden limpias y sin nombre para las preguntas frecuentes (api/_preguntas.ts). */
   compartirPreguntas: boolean;
+  /** «Para ti» en Hoy: encendido, temas elegidos y ocultos (src/lib/paraTi.ts). Se decide en el dispositivo. */
+  paraTi: AjustesParaTi;
 };
 
 export type Modo = 'general' | 'jovenes' | 'ninos';
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general', compartirPreguntas: true };
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general', compartirPreguntas: true, paraTi: PARA_TI_INICIAL };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };
