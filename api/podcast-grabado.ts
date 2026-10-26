@@ -6,15 +6,21 @@
 // «palabra:jesed» y el capítulo 0, y cuenta en los mismos límites diarios.
 // El MP3 se guarda en Vercel Blob y su ficha en Neon (tabla podcast_grabado). Hay un límite diario por cuenta y
 // otro para toda la app, para que nadie gaste los créditos de ElevenLabs abriendo capítulos.
+// ElevenLabs entrega a Ana bastante más baja que a Tomás: cada intervención se lleva al mismo volumen antes de
+// codificar el MP3 (src/lib/nivelarVoces.ts). Las grabaciones de antes se nivelan solas la primera vez que alguien
+// las abre (por silencios, porque no traen dónde empieza cada voz) y desde ahí se sirve la versión nivelada.
 
 import { put } from '@vercel/blob';
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import postgres from 'postgres';
 
+import { muestrasA16, nivelar, pcmAMuestras, type Tramo, tramosPorSilencio } from '../src/lib/nivelarVoces';
 import { palabraAudioId, palabraPorId } from '../src/lib/palabras';
 import { lineStarts } from '../src/lib/podcastTiempos';
+import { codificarMp3, decodificarMp3 } from './_mp3';
+import { waitUntil } from './_seguir';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 const ELEVEN_URL = process.env.ELEVENLABS_BASE_URL ?? 'https://api.elevenlabs.io';
@@ -25,7 +31,8 @@ const VOICES = {
   tomas: process.env.PODCAST_VOZ_TOMAS ?? '94zOad0g7T7K4oa7zhDq',
 };
 const CREDIT = 'Voces de ElevenLabs (Cristina Campos y Mauricio). Guion de Claude con las fuentes de la app.';
-const FORMAT = 'mp3_44100_64';
+// Se pide el audio sin comprimir para poder nivelarlo; 24 kHz no exige plan Pro (44100 sí) y basta para la voz.
+const PCM_HZ = Number(process.env.PODCAST_PCM_HZ ?? 24000);
 const KBPS = 64;
 const TURNS_PER_CHUNK = 8;
 const PARALLEL = 3;
@@ -33,6 +40,8 @@ const PER_ACCOUNT = Number(process.env.PODCAST_LIMITE_CUENTA ?? 3);
 const PER_DAY = Number(process.env.PODCAST_LIMITE_DIA ?? 15);
 // Si una grabación lleva más que esto «grabando», la función se cortó: se puede volver a intentar.
 const STALE_MINUTES = 6;
+// Si una nivelación de una grabación vieja no terminó en este tiempo, otra visita la vuelve a intentar.
+const NIVELAR_MINUTES = 10;
 // Para las pruebas: guarda los MP3 en una carpeta en vez de Vercel Blob.
 const STORE_DIR = process.env.PODCAST_STORE_DIR;
 // Vercel nombra el token del almacén Blob según el prefijo que se elija al conectarlo: se acepta cualquiera.
@@ -71,6 +80,9 @@ async function db() {
     )`
     // Las grabaciones anteriores no guardaban dónde empieza cada intervención.
     .then(() => sql!`alter table podcast_grabado add column if not exists tiempos jsonb`)
+    // Las de antes tampoco tenían las voces al mismo volumen: «nivelado» dice si ya se corrigió.
+    .then(() => sql!`alter table podcast_grabado add column if not exists nivelado boolean not null default false,
+      add column if not exists nivelando timestamptz`)
     .catch((err) => {
     ready = null;
     throw err;
@@ -110,9 +122,35 @@ export async function GET(request: Request) {
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const s = await db().catch(() => null);
   if (!s) return json({ estado: 'ninguno' });
-  const [row] = await s<Row[]>`select estado, url, duracion, credito, tiempos from podcast_grabado
-    where libro = ${where.book} and capitulo = ${where.chapter}`;
+  const [row] = await s<(Row & { nivelado: boolean })[]>`select estado, url, duracion, credito, tiempos, nivelado
+    from podcast_grabado where libro = ${where.book} and capitulo = ${where.chapter}`;
+  if (row?.estado === 'listo' && !row.nivelado && row.url) waitUntil(renivelar(s, where, row.url));
   return json(answer(row));
+}
+
+/**
+ * Nivela una grabación hecha antes de igualar las voces: la baja, la nivela por trozos de voz y la sube con otro
+ * nombre (el MP3 viejo se guarda en caché un año). Mientras tanto se sigue sirviendo la de antes. Solo una a la vez.
+ */
+export async function renivelar(s: NonNullable<typeof sql>, where: Target, url: string): Promise<void> {
+  const [mine] = await s`update podcast_grabado set nivelando = now()
+    where libro = ${where.book} and capitulo = ${where.chapter} and estado = 'listo' and not nivelado and url = ${url}
+      and (nivelando is null or nivelando < now() - make_interval(mins => ${NIVELAR_MINUTES}))
+    returning 1`;
+  if (!mine) return;
+  try {
+    const mp3 = url.startsWith('file://')
+      ? new Uint8Array(await readFile(new URL(url)))
+      : new Uint8Array(await (await fetch(url)).arrayBuffer());
+    const { muestras, rate } = await decodificarMp3(mp3);
+    const audio = await codificarMp3(muestrasA16(nivelar(muestras, rate, tramosPorSilencio(muestras, rate))), rate, KBPS);
+    const nombre = path.basename(new URL(url).pathname).replace(/(-n)?\.mp3$/, '-n.mp3');
+    const nueva = await store(nombre, audio);
+    await s`update podcast_grabado set url = ${nueva}, nivelado = true, nivelando = null, actualizado = now()
+      where libro = ${where.book} and capitulo = ${where.chapter} and url = ${url}`;
+  } catch (err) {
+    console.error('podcast-grabado: nivelar', err);
+  }
 }
 
 async function account(s: NonNullable<typeof sql>, request: Request): Promise<string | null> {
@@ -136,8 +174,11 @@ export function scriptLines(texto: string): Line[] {
   return lines.filter((l) => l.text);
 }
 
-async function dialogue(lines: Line[]): Promise<Uint8Array> {
-  const res = await fetch(`${ELEVEN_URL}/v1/text-to-dialogue?output_format=${FORMAT}`, {
+type Segmento = { start_time_seconds: number; end_time_seconds: number; dialogue_input_index: number };
+
+/** Un tramo grabado: el audio sin comprimir y dónde suena cada intervención. */
+async function dialogue(lines: Line[]): Promise<{ muestras: Float32Array; segmentos: Segmento[] }> {
+  const res = await fetch(`${ELEVEN_URL}/v1/text-to-dialogue/with-timestamps?output_format=pcm_${PCM_HZ}`, {
     method: 'POST',
     headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY ?? '', 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -148,19 +189,19 @@ async function dialogue(lines: Line[]): Promise<Uint8Array> {
     }),
   });
   if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  return new Uint8Array(await res.arrayBuffer());
+  const body = (await res.json()) as { audio_base64: string; voice_segments?: Segmento[] };
+  return { muestras: pcmAMuestras(Buffer.from(body.audio_base64, 'base64')), segmentos: body.voice_segments ?? [] };
 }
 
-const seconds = (bytes: number) => (bytes * 8) / (KBPS * 1000);
-
 /**
- * Graba el guion por tramos (varios a la vez) y los une: los MP3 del mismo formato se pueden concatenar. Como se sabe
- * cuánto dura cada tramo, dentro de él se reparte el tiempo de cada intervención: así la app sigue el texto.
+ * Graba el guion por tramos (varios a la vez) y los une. ElevenLabs dice dónde suena cada intervención: con eso se
+ * lleva cada una al mismo volumen y la app sigue el texto. Si no lo dijera, se reparte por la longitud del texto y
+ * se nivela por silencios.
  */
-async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: number[] }> {
+async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: number[]; duracion: number }> {
   const groups: Line[][] = [];
   for (let i = 0; i < lines.length; i += TURNS_PER_CHUNK) groups.push(lines.slice(i, i + TURNS_PER_CHUNK));
-  const parts: Uint8Array[] = new Array(groups.length);
+  const parts: Awaited<ReturnType<typeof dialogue>>[] = new Array(groups.length);
   let next = 0;
   const worker = async () => {
     while (next < groups.length) {
@@ -169,15 +210,27 @@ async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: numb
     }
   };
   await Promise.all(Array.from({ length: Math.min(PARALLEL, groups.length) }, worker));
-  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  const todo = new Float32Array(parts.reduce((n, p) => n + p.muestras.length, 0));
   const tiempos: number[] = [];
+  const tramos: Tramo[] = [];
   let at = 0;
-  parts.forEach((p, i) => {
-    tiempos.push(...lineStarts(groups[i].map((l) => l.text), seconds(p.length), seconds(at)));
-    out.set(p, at);
-    at += p.length;
+  parts.forEach(({ muestras, segmentos }, i) => {
+    todo.set(muestras, at);
+    const desde = at / PCM_HZ;
+    const inicios = groups[i].map((_, k) => segmentos.find((sg) => sg.dialogue_input_index === k)?.start_time_seconds);
+    if (inicios.every((t) => t !== undefined)) {
+      tiempos.push(...inicios.map((t) => Math.round((desde + t!) * 10) / 10));
+      for (const sg of segmentos) {
+        tramos.push({ desde: at + Math.round(sg.start_time_seconds * PCM_HZ), hasta: at + Math.round(sg.end_time_seconds * PCM_HZ) });
+      }
+    } else {
+      tiempos.push(...lineStarts(groups[i].map((l) => l.text), muestras.length / PCM_HZ, desde));
+      tramos.push(...tramosPorSilencio(muestras, PCM_HZ).map((t) => ({ desde: at + t.desde, hasta: at + t.hasta })));
+    }
+    at += muestras.length;
   });
-  return { audio: out, tiempos };
+  const audio = await codificarMp3(muestrasA16(nivelar(todo, PCM_HZ, tramos)), PCM_HZ, KBPS);
+  return { audio, tiempos, duracion: todo.length / PCM_HZ };
 }
 
 async function store(name: string, audio: Uint8Array): Promise<string> {
@@ -253,12 +306,12 @@ export async function POST(request: Request) {
   if (!mine) return json({ estado: 'grabando' });
 
   try {
-    const { audio, tiempos } = await record(lines);
+    const { audio, tiempos, duracion: largo } = await record(lines);
     const tag = createHash('sha256').update(guion.texto).digest('hex').slice(0, 10);
     const url = await store(`${chapter ? `${book}-${chapter}` : book.replace(':', '-')}-${tag}.mp3`, audio);
-    const duracion = Math.round(seconds(audio.length));
+    const duracion = Math.round(largo);
     await s`update podcast_grabado set estado = 'listo', url = ${url}, duracion = ${duracion}, credito = ${CREDIT},
-      tiempos = ${s.json(tiempos)}, actualizado = now() where libro = ${book} and capitulo = ${chapter}`;
+      tiempos = ${s.json(tiempos)}, nivelado = true, nivelando = null, actualizado = now() where libro = ${book} and capitulo = ${chapter}`;
     return json({ estado: 'listo', url, duracion, credito: CREDIT, tiempos });
   } catch (err) {
     console.error('podcast-grabado: grabar', err);

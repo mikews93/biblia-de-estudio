@@ -8,6 +8,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
     "@auth/core": "^0.41.3",
+    "@breezystack/lamejs": "^1.2.7",
     "@expo-google-fonts/bebas-neue": "^0.4.1",
     "@expo-google-fonts/caveat": "^0.4.2",
     "@expo-google-fonts/cinzel": "^0.4.2",
@@ -37,6 +38,7 @@
     "expo-splash-screen": "~58.0.10",
     "expo-status-bar": "~58.0.3",
     "expo-web-browser": "~58.0.6",
+    "mpg123-decoder": "^1.0.3",
     "postgres": "^3.4.9",
     "qrcode-generator": "^2.0.4",
     "react": "19.3.0",
