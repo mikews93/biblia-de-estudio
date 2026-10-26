@@ -12,9 +12,10 @@ import VerseImage from '@/components/VerseImage';
 import { searchByIdea } from '@/lib/buscar';
 import type { VerseToShare } from '@/lib/compartir';
 import { fondoPorNombre, idsUnicos } from '@/lib/fondos';
+import { enVersion } from '@/lib/enVersion';
 import { OCASIONES, Ocasion, ocasionPorId, versiculosDe } from '@/lib/ocasiones';
 import { parseRef } from '@/lib/refs';
-import { serif, useColors } from '@/lib/theme';
+import { serif, useColors, useSettings } from '@/lib/theme';
 
 type Sugerido = VerseToShare & { razon?: string };
 
@@ -23,6 +24,7 @@ export default function Ocasiones() {
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{ ocasion?: string }>();
   const columns = width >= 900 ? 4 : 2;
+  const { settings } = useSettings();
   const [ocasion, setOcasion] = useState<Ocasion | undefined>(ocasionPorId(params.ocasion));
   const [versos, setVersos] = useState<VerseToShare[] | null>(null);
   const [historia, setHistoria] = useState('');
@@ -34,11 +36,14 @@ export default function Ocasiones() {
   useEffect(() => {
     if (!ocasion) return;
     let vivo = true;
-    versiculosDe(ocasion).then((v) => vivo && setVersos(v));
+    // La lista viene en la RV1909 y se muestra en la versión que se lee (si carga).
+    versiculosDe(ocasion)
+      .then((v) => enVersion(v, settings.version))
+      .then((v) => vivo && setVersos(v));
     return () => {
       vivo = false;
     };
-  }, [ocasion]);
+  }, [ocasion, settings.version]);
 
   const elegir = (o: Ocasion) => {
     setVersos(null);
@@ -56,7 +61,7 @@ export default function Ocasiones() {
         const { start } = parseRef(r.ref);
         return { book: start.book, chapter: start.chapter, verse: start.verse, text: r.text, reference: r.label, version: r.version.toUpperCase(), razon: r.reason };
       });
-      setIa({ estado: 'listo', items });
+      setIa({ estado: 'listo', items: await enVersion(items, settings.version) });
     } catch (e) {
       setIa({ estado: 'error', items: [], error: e instanceof Error ? e.message : 'No se pudo buscar' });
     }

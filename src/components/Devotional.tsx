@@ -9,7 +9,8 @@ import { CheckIcon, HeartIcon, type IconProps, ListenIcon, LockIcon, PencilIcon,
 import { Markdown, Sources } from '@/components/StudyText';
 import VerseImage from '@/components/VerseImage';
 import { playChapter } from '@/lib/audio';
-import { Book, Verse, getChapter } from '@/lib/data';
+import { Book, Verse } from '@/lib/data';
+import { useCapitulo } from '@/lib/enVersion';
 import { parseDevocional, saveEntrada } from '@/lib/diario';
 import { useRacha } from '@/lib/racha';
 import { diasLabel, fechaLocal, siguienteHito } from '@/lib/rachaTexto';
@@ -45,7 +46,7 @@ type Props = {
   onSaved?: (entrada: string) => void;
   /** Lo que se muestra al final, debajo del resumen (por ejemplo, el día siguiente). */
   after?: ReactNode;
-  /** La versión libre con la que se lee el pasaje (la misma que cita la IA). Sin ella, la RV1909. */
+  /** La versión libre con que trabajó la IA: el pasaje se lee en la de la persona y, si no carga, en esta (o la RV1909). */
   version?: { id: string; abbr: string };
 };
 
@@ -78,7 +79,9 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
   // El paso y lo escrito sobreviven a seguir un enlace y volver atrás (src/lib/recordado.ts).
   const keep = keepKey ?? `${studyKeep(book.id, chapter, verse)}devocional.`;
   const [step, setStepState] = useKept(`${keep}paso`, 0);
-  const [verses, setVerses] = useState<Verse[]>([]);
+  // El pasaje se lee en la versión de la persona, aunque la IA haya trabajado con una libre (`version`).
+  const capitulo = useCapitulo(book.id, chapter, version?.id);
+  const verses: Verse[] = capitulo?.verses ?? [];
   const [palabra, setPalabra] = useKept(`${keep}palabra`, '');
   const [oracion, setOracion] = useKept(`${keep}oracion`, '');
   const [paso, setPaso] = useKept(`${keep}hoy`, '');
@@ -94,10 +97,6 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
     setStepState(i);
     onStep?.();
   };
-
-  useEffect(() => {
-    getChapter(book.id, chapter, version?.id).then(setVerses, () => {});
-  }, [book.id, chapter, version?.id]);
 
   const reading = range
     ? verses.filter(([n]) => n >= verse && n <= hasta)
@@ -180,7 +179,10 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
         <Appear key="lee" style={styles.step}>
           <View style={[styles.paper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             <View style={styles.paperHead}>
-              <Text style={[styles.paperRef, { color: colors.accent }]}>{readingRef.toUpperCase()}</Text>
+              <Text style={[styles.paperRef, { color: colors.accent }]}>
+                {readingRef.toUpperCase()}
+                {capitulo ? ` · ${capitulo.sigla}` : ''}
+              </Text>
               <Pressable
                 onPress={() => playChapter(book.id, chapter, `${book.name} ${chapter}`)}
                 style={({ pressed }) => [styles.listen, { backgroundColor: colors.accentSoft }, pressed && { opacity: 0.7 }]}
@@ -438,7 +440,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
             verse: llevarVerse[0],
             text: llevarVerse[1],
             reference: `${book.name} ${chapter}:${llevarVerse[0]}`,
-            version: version?.abbr ?? 'RV1909',
+            version: capitulo?.sigla ?? version?.abbr ?? 'RV1909',
           }}
           onClose={() => setSharing(false)}
         />

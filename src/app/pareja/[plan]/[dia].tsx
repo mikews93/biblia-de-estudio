@@ -9,7 +9,8 @@ import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, Field, text } from '@/components/comunidad/ui';
 import { CheckIcon, HeartIcon, LockIcon, PrayIcon, SparkIcon } from '@/components/icons';
 import { useAccount } from '@/lib/comunidad';
-import { Book, Verse, getBooks, getChapter } from '@/lib/data';
+import { Book, getBooks } from '@/lib/data';
+import { useCapitulo } from '@/lib/enVersion';
 import { type Acierto, type DiaRespuestas, borrarRespuesta, leerDia, marcarAcierto, ore, responder, usePareja } from '@/lib/parejaApi';
 import { DIAS_PLAN, type PasajePareja, planPareja } from '@/lib/parejaPlanes';
 import { verseHref } from '@/lib/routes';
@@ -197,18 +198,13 @@ function Paso({ numero, titulo, colors, ultimo, children }: { numero: number; ti
   );
 }
 
-/** El pasaje del día en la RV1909, para leerlo sin salir. */
+/** El pasaje del día en la versión de la persona (o la RV1909 si no carga), para leerlo sin salir. */
 function Pasaje({ pasaje, referencia, colors }: { pasaje: PasajePareja; referencia: string; colors: Colors }) {
-  const [verses, setVerses] = useState<Verse[] | null>(null);
-  useEffect(() => {
-    getChapter(pasaje.book, pasaje.chapter).then(
-      (all) => setVerses(all.filter(([v]) => v >= pasaje.from && v <= pasaje.to)),
-      () => setVerses([]),
-    );
-  }, [pasaje.book, pasaje.chapter, pasaje.from, pasaje.to]);
+  const capitulo = useCapitulo(pasaje.book, pasaje.chapter);
+  const verses = capitulo?.verses.filter(([v]) => v >= pasaje.from && v <= pasaje.to) ?? null;
   return (
     <View style={[styles.pasaje, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.kicker, { color: colors.muted, marginBottom: 8 }]}>{referencia.toUpperCase()} · RV1909</Text>
+      <Text style={[styles.kicker, { color: colors.muted, marginBottom: 8 }]}>{referencia.toUpperCase()} · {capitulo?.sigla ?? 'RV1909'}</Text>
       {verses === null ? (
         <ActivityIndicator color={colors.accent} />
       ) : (

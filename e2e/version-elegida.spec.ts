@@ -106,3 +106,22 @@ test('el estudio con la NBLA muestra los versículos en la NBLA en vez de citar 
   await estudio.getByRole('link', { name: 'Juan 3:16: leer en su capítulo' }).click();
   await expect(page).toHaveURL(/\/juan\/3\/16$/);
 });
+
+test('los versículos de una ocasión y la imagen para compartir salen en la NBLA que se lee', async ({ page }) => {
+  await simularApiBible(page);
+  await leyendoEn(page, 'nbla');
+  await page.goto('/ocasiones?ocasion=cumpleanos');
+  // La lista fija viene en la RV1909 y se muestra en la versión elegida
+  await expect(texto(page, nbla('psa', 118, 24))).toBeVisible();
+  await texto(page, nbla('psa', 118, 24)).click();
+  await expect(texto(page, /^Compartir Salmos 118:24/)).toBeVisible();
+  await expect(texto(page, /Salmos 118:24 \(NBLA\)/)).toBeVisible();
+  await captura(page, '4-ocasion-nbla');
+});
+
+test('el pasaje del día en pareja se lee en la versión elegida', async ({ page, request }) => {
+  await leyendoEn(page, 'bes');
+  await conSesion(page, await cuentaNueva(request, 'Lectora BES'));
+  await page.goto('/pareja/cordon/1');
+  await expect(texto(page, /· BES$/)).toBeVisible();
+});

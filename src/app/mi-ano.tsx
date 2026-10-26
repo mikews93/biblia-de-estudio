@@ -19,11 +19,12 @@ import { useNotes } from '@/lib/notas';
 import { useOraciones } from '@/lib/oraciones';
 import { useProgress } from '@/lib/progress';
 import { useSellos } from '@/lib/sellos';
-import { serif, useColors } from '@/lib/theme';
+import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
 export default function MiAno() {
   const colors = useColors();
+  const { settings } = useSettings();
   const { width, height } = useWindowDimensions();
   const progreso = useProgress();
   const sellos = useSellos();
@@ -40,11 +41,11 @@ export default function MiAno() {
 
   useEffect(() => {
     let vivo = true;
-    tarjetaDe(resumen).then((t) => vivo && setTarjeta(t));
+    tarjetaDe(resumen, settings.version).then((t) => vivo && setTarjeta(t));
     return () => {
       vivo = false;
     };
-  }, [clave]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clave, settings.version]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ancho = Math.min(340, width - 40, ((height - 260) * 9) / 16);
   const ir = (href: string) => navigate(() => router.push(href as never), 'forward');
