@@ -359,7 +359,8 @@ Contenido:
 - Relacionen el capítulo con 2 o 3 pasajes de las referencias cruzadas.
 - Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
 - No es un sermón: expliquen el texto, no prediquen ni den consejos largos.
-- Cierren con una conclusión, no con preguntas sueltas: cada uno dice en una o dos frases lo que se lleva, y terminen con una invitación breve a reflexionar, dicha como afirmación. Si en el cierre alguien plantea una pregunta, el otro la responde ahí mismo desde el texto. La última línea no es una pregunta.
+- Cierren con una conclusión, no con preguntas sueltas: cada uno dice en una o dos frases lo que se lleva. Si en el cierre alguien plantea una pregunta de estudio, el otro la responde ahí mismo desde el texto.
+- La última intervención le habla directo a quien escucha, de tú, con una invitación a participar: que piense qué le dice a su vida esto, que lo anote o lo converse con alguien (por ejemplo «¿Y tú qué piensas? ¿Qué te dice a ti?», «anótalo y conversémoslo en tu grupo»). Breve, cálida y concreta, sin sermonear.
 - Al leer números de versículo, dilos como «el versículo dieciséis», y las citas bíblicas con palabras («Juan tres, dieciséis»).
 
 Extensión: 800 a 1000 palabras. Empieza directamente por la primera línea del diálogo.`,
@@ -975,7 +976,8 @@ Contenido:
   }
 - Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
 - No es un sermón: expliquen el texto, no prediquen ni den consejos largos.
-- Cierren con una conclusión, no con preguntas sueltas: cada uno dice en una o dos frases lo que se lleva, y terminen con una invitación breve a reflexionar, dicha como afirmación. Si en el cierre alguien plantea una pregunta, el otro la responde ahí mismo desde el texto. La última línea no es una pregunta.
+- Cierren con una conclusión, no con preguntas sueltas: cada uno dice en una o dos frases lo que se lleva. Si en el cierre alguien plantea una pregunta de estudio, el otro la responde ahí mismo desde el texto.
+- La última intervención le habla directo a quien escucha, de tú, con una invitación a participar: que piense qué le dice a su vida esto, que lo anote o lo converse con alguien (por ejemplo «¿Y tú qué piensas? ¿Qué te dice a ti?», «anótalo y conversémoslo en tu grupo»). Breve, cálida y concreta, sin sermonear.
 - Las citas bíblicas, con palabras («Rut tres, diez»).
 
 Extensión: 800 a 1000 palabras. Empieza directamente por la primera línea del diálogo.`;
