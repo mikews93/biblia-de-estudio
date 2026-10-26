@@ -1,6 +1,6 @@
 // /api/podcast-grabado: graba el pódcast con una ElevenLabs simulada y lo deja listo para todos.
 // Necesita DATABASE_URL (ver tests/api/helpers.ts); los MP3 se guardan en una carpeta temporal.
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -8,11 +8,31 @@ import path from 'node:path';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { codificarMp3, decodificarMp3 } from '../../api/_mp3';
+import { muestrasA16, volumenHabla } from '../../src/lib/nivelarVoces';
 import { client, DB_URL, ensureSchema, Post, prepareEnv, request } from './helpers';
 
-type Handler = { GET: (r: Request) => Promise<Response>; POST: Post; scriptLines: (t: string) => { voice: string; text: string }[] };
+type Handler = {
+  GET: (r: Request) => Promise<Response>;
+  POST: Post;
+  scriptLines: (t: string) => { voice: string; text: string }[];
+  renivelar: (s: ReturnType<typeof postgres>, where: { book: string; chapter: number }, url: string) => Promise<void>;
+};
+
+const RATE = 24000;
+const ANA = 'CaJslL1xziwefCeTNzHv';
+/** Un tono que suena `seg` segundos a cierto volumen y al final calla `pausa`, como una intervención. */
+function voz(amplitud: number, seg: number, pausa = seg / 5, hz = 220): Float32Array {
+  const m = new Float32Array(Math.round(seg * RATE));
+  const habla = m.length - Math.round(pausa * RATE);
+  for (let i = 0; i < habla; i++) m[i] = amplitud * Math.sin((2 * Math.PI * hz * i) / RATE);
+  return m;
+}
+/** Ana muy baja y Tomás fuerte, como las entrega ElevenLabs. */
+const amplitud = (voice: string) => (voice === ANA ? 0.08 : 0.4);
 
 const calls: { inputs: { text: string; voice_id: string }[]; model_id: string }[] = [];
+const paths: string[] = [];
 let failNext = false;
 const eleven = createServer((req, res) => {
   let raw = '';
@@ -25,8 +45,19 @@ const eleven = createServer((req, res) => {
     }
     const body = JSON.parse(raw);
     calls.push(body);
-    // Un «MP3» de 8000 bytes por tramo: un segundo a 64 kbps.
-    res.writeHead(200, { 'Content-Type': 'audio/mpeg' }).end(Buffer.alloc(8000, calls.length));
+    paths.push(req.url ?? '');
+    // Un segundo por tramo, repartido entre las intervenciones, en PCM de 16 bits con dónde suena cada una.
+    const n = body.inputs.length;
+    const partes = body.inputs.map((x: { voice_id: string }) => voz(amplitud(x.voice_id), 1 / n));
+    const pcm = muestrasA16(Float32Array.from(partes.flatMap((p: Float32Array) => [...p])));
+    let at = 0;
+    const voice_segments = partes.map((p: Float32Array, i: number) => {
+      const seg = { voice_id: body.inputs[i].voice_id, start_time_seconds: at / RATE, end_time_seconds: (at + p.length) / RATE, dialogue_input_index: i };
+      at += p.length;
+      return seg;
+    });
+    const audio_base64 = Buffer.from(pcm.buffer, pcm.byteOffset, pcm.byteLength).toString('base64');
+    res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ audio_base64, voice_segments }));
   });
 });
 
@@ -115,17 +146,47 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     expect(nuevas[0].model_id).toBe('eleven_v4');
     expect(nuevas[0].inputs[1].text).toBe('Respuesta 1.');
     expect(nuevas[0].inputs[0].voice_id).not.toBe(nuevas[0].inputs[1].voice_id);
-    // Dónde empieza cada intervención: el segundo tramo empieza justo en el segundo 1.
-    expect(listo.tiempos).toHaveLength(10);
-    expect(listo.tiempos[0]).toBe(0);
-    expect(listo.tiempos[8]).toBe(1);
-    expect(listo.tiempos[7]).toBeLessThan(1);
-    const mp3 = await readFile(new URL(listo.url));
-    expect(mp3.length).toBe(16000);
+    expect(paths.at(-1)).toBe('/v1/text-to-dialogue/with-timestamps?output_format=pcm_24000');
+    // Dónde empieza cada intervención, como lo dice ElevenLabs: 8 en el primer segundo y 2 en el segundo.
+    expect(listo.tiempos).toEqual([0, 0.1, 0.3, 0.4, 0.5, 0.6, 0.8, 0.9, 1, 1.5]);
+    // Ana llega 14 dB más baja; en el MP3 las dos voces suenan igual.
+    const { muestras, rate } = await decodificarMp3(new Uint8Array(await readFile(new URL(listo.url))));
+    expect(rate).toBe(RATE);
+    // El MP3 añade unos milisegundos de relleno.
+    expect(muestras.length / rate).toBeGreaterThanOrEqual(2);
+    expect(muestras.length / rate).toBeLessThan(2.1);
+    const ana = volumenHabla(muestras, rate, { desde: Math.round(1.05 * rate), hasta: Math.round(1.4 * rate) })!;
+    const tomas = volumenHabla(muestras, rate, { desde: Math.round(1.55 * rate), hasta: Math.round(1.9 * rate) })!;
+    expect(Math.abs(ana - tomas)).toBeLessThan(1.5);
 
     expect(await get('oba', 1)).toEqual(listo);
     expect(await (await post({ book: 'oba', chapter: 1 }, llaves[1])).json()).toEqual(listo);
     expect(calls.length).toBe(antes + 2);
+  });
+
+  it('una grabación de antes se nivela una vez y desde ahí se sirve la nivelada', async () => {
+    // Un MP3 viejo con Ana baja y Tomás fuerte, que ya estaba listo.
+    const viejo = Float32Array.from([...voz(0.08, 1, 0.4), ...voz(0.4, 1, 0.4), ...voz(0.08, 1, 0.4)]);
+    const archivo = path.join(process.env.PODCAST_STORE_DIR!, '3jn-1-viejo.mp3');
+    await writeFile(archivo, await codificarMp3(muestrasA16(viejo), RATE, 64));
+    const url = `file://${archivo}`;
+    await sql`insert into podcast_grabado (libro, capitulo, estado, url, duracion, credito)
+      values ('3jn', 1, 'listo', ${url}, 3, 'Voces')`;
+    // La primera visita todavía recibe la de antes y deja la nivelación andando.
+    expect((await get('3jn', 1)).url).toBe(url);
+    let listo = await get('3jn', 1);
+    for (let i = 0; i < 100 && listo.url === url; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      listo = await get('3jn', 1);
+    }
+    expect(listo.url).toBe(`file://${path.join(process.env.PODCAST_STORE_DIR!, '3jn-1-viejo-n.mp3')}`);
+    const { muestras, rate } = await decodificarMp3(new Uint8Array(await readFile(new URL(listo.url))));
+    const tramo = (s: number) => volumenHabla(muestras, rate, { desde: Math.round((s + 0.1) * rate), hasta: Math.round((s + 0.5) * rate) })!;
+    expect(Math.abs(tramo(0) - tramo(1))).toBeLessThan(1.5);
+    expect(Math.abs(tramo(2) - tramo(1))).toBeLessThan(1.5);
+    // Ya nivelada no se vuelve a tocar.
+    await api.renivelar(sql, { book: '3jn', chapter: 1 }, listo.url);
+    expect((await get('3jn', 1)).url).toBe(listo.url);
   });
 
   it('si ElevenLabs falla se puede volver a intentar', async () => {
