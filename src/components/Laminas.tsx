@@ -1,13 +1,16 @@
-// El carrusel para Historias (solo web): las láminas dibujadas con el mismo canvas con que se comparten. Al tocar una
-// se editan sus textos debajo; también se mueven, se quitan y se agregan otras (hasta 10, lo que deja Instagram).
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+// El carrusel para Historias (solo web). Arriba, la tira de láminas (dibujadas con el mismo canvas con que se
+// comparten) para elegir, ordenar y agregar. Debajo, la lámina elegida en grande: sus textos se escriben ahí mismo,
+// sobre el dibujo, con la letra y los colores que va a tener la imagen.
+import { useEffect, useId, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, TextStyle, View, useWindowDimensions } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 
 import { IconText } from '@/components/comunidad/ui';
-import { ChevronLeftIcon, ChevronRightIcon, LockIcon, PlusIcon, RefreshIcon, TrashIcon } from '@/components/icons';
-import type { ImageLook, VerseToShare } from '@/lib/compartir';
+import { ChevronLeftIcon, ChevronRightIcon, LockIcon, PencilIcon, PlusIcon, RefreshIcon, TrashIcon } from '@/components/icons';
+import { IMAGE_SIZE, ImageLook, VerseToShare, caption } from '@/lib/compartir';
+import { LETRA_DEDICATORIA, idsUnicos, useLetras } from '@/lib/fondos';
 import { GANCHOS, Lamina, MAX_LAMINAS, Tipo, drawLamina, hayFondo, nombreLamina, nuevaLamina, textoDe } from '@/lib/laminas';
-import { useColors } from '@/lib/theme';
+import { sans, serif, useColors } from '@/lib/theme';
 
 type Props = { verse: VerseToShare; look: ImageLook; laminas: Lamina[]; onChange: (l: Lamina[]) => void; alto: number };
 type Campo = 'titulo' | 'texto' | 'nota';
@@ -20,39 +23,42 @@ const NUEVAS: { tipo: Tipo; label: string; textos?: Partial<Lamina> }[] = [
   { tipo: 'fondo', label: 'A fondo' },
 ];
 
-/** Qué campos tiene cada lámina y cómo se llaman. */
-const CAMPOS: Record<Tipo, { campo: Campo; label: string; placeholder: string; largo?: boolean; max: number }[]> = {
-  gancho: [
-    { campo: 'titulo', label: 'Línea de arriba', placeholder: 'Opcional, en mayúsculas pequeñas', max: 40 },
-    { campo: 'texto', label: 'Pregunta', placeholder: 'Lo que hace que alguien quiera deslizar', max: 90 },
-    { campo: 'nota', label: 'Línea de abajo', placeholder: 'Desliza  →', max: 40 },
-  ],
-  versiculo: [],
-  fondo: [
-    { campo: 'titulo', label: 'Título', placeholder: 'CONTEXTO', max: 40 },
-    { campo: 'texto', label: 'Texto', placeholder: 'Una línea que ayude a entender el versículo', largo: true, max: 320 },
-  ],
-  cierre: [
-    { campo: 'titulo', label: 'Línea de arriba', placeholder: 'Opcional', max: 40 },
-    { campo: 'texto', label: 'Pregunta final', placeholder: '¿Qué te dice a ti?', largo: true, max: 120 },
-    { campo: 'nota', label: 'Línea de abajo', placeholder: 'Respóndeme por mensaje', max: 80 },
-  ],
-  texto: [
-    { campo: 'titulo', label: 'Título', placeholder: 'PARA PENSAR', max: 40 },
-    { campo: 'texto', label: 'Texto', placeholder: 'Lo que quieras decir en esta lámina', largo: true, max: 320 },
-    { campo: 'nota', label: 'Línea de abajo', placeholder: 'Opcional', max: 80 },
-  ],
+/** Cómo se llama cada texto de cada lámina (para leerlo en voz alta) y qué se ve mientras está vacío. */
+const CAMPOS: Record<Tipo, Partial<Record<Campo, { label: string; vacio: string; max: number }>>> = {
+  gancho: {
+    titulo: { label: 'Línea de arriba', vacio: '+ línea de arriba', max: 40 },
+    texto: { label: 'Pregunta', vacio: 'Escribe la pregunta', max: 90 },
+    nota: { label: 'Línea de abajo', vacio: '+ línea de abajo', max: 40 },
+  },
+  versiculo: {},
+  fondo: {
+    titulo: { label: 'Título', vacio: 'CONTEXTO', max: 40 },
+    texto: { label: 'Texto', vacio: 'Escribe una línea que ayude a entender el versículo', max: 320 },
+  },
+  cierre: {
+    titulo: { label: 'Línea de arriba', vacio: '+ línea de arriba', max: 40 },
+    texto: { label: 'Pregunta final', vacio: 'Escribe la pregunta final', max: 120 },
+    nota: { label: 'Línea de abajo', vacio: '+ línea de abajo', max: 80 },
+  },
+  texto: {
+    titulo: { label: 'Título', vacio: '+ título', max: 40 },
+    texto: { label: 'Texto', vacio: 'Escribe aquí lo que quieras decir', max: 320 },
+    nota: { label: 'Línea de abajo', vacio: '+ línea de abajo', max: 80 },
+  },
 };
 
 export default function Laminas({ verse, look, laminas, onChange, alto }: Props) {
   const colors = useColors();
+  const { width: pantalla } = useWindowDimensions();
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [elegida, setElegida] = useState(laminas[0]?.id);
   const [agregando, setAgregando] = useState(false);
-  const ancho = Math.round((Math.min(300, Math.max(200, alto * 0.3)) * 9) / 16);
   const i = Math.max(0, laminas.findIndex((l) => l.id === elegida));
   const actual = laminas[i];
   const lleno = laminas.length >= MAX_LAMINAS;
+  // La lámina grande ocupa lo que deja la pantalla; las de la tira son pequeñas, solo para elegir y ordenar.
+  const grande = Math.round(Math.min(330, pantalla - 72, (alto * 0.56 * 9) / 16));
+  const mini = 58;
   const clave = JSON.stringify([look.fondo.name, look.letra.id, look.destacadas, look.dedicatoria, look.original, look.contexto, verse.text, verse.version, laminas]);
 
   useEffect(() => {
@@ -60,15 +66,14 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
     let hechas: string[] = [];
     // Se espera un poco: escribir no redibuja en cada letra. Mientras tanto se ven las de antes.
     const t = setTimeout(() => {
-      Promise.all(laminas.map((l) => drawLamina(l, verse, look, laminas).catch(() => null)))
-        .then((blobs) => {
-          const nuevas: Record<string, string> = {};
-          blobs.forEach((b, j) => {
-            if (b) nuevas[laminas[j].id] = URL.createObjectURL(b);
-          });
-          hechas = Object.values(nuevas);
-          if (vivo) setUrls(nuevas);
+      Promise.all(laminas.map((l) => drawLamina(l, verse, look, laminas).catch(() => null))).then((blobs) => {
+        const nuevas: Record<string, string> = {};
+        blobs.forEach((b, j) => {
+          if (b) nuevas[laminas[j].id] = URL.createObjectURL(b);
         });
+        hechas = Object.values(nuevas);
+        if (vivo) setUrls(nuevas);
+      });
     }, 280);
     return () => {
       vivo = false;
@@ -100,6 +105,18 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
   const opciones = NUEVAS.filter((n) => n.tipo !== 'fondo' || (hayFondo(look) && !laminas.some((l) => l.tipo === 'fondo')));
   const editada = actual && (['titulo', 'texto', 'nota'] as const).some((c) => actual[c] !== undefined);
   const esVersiculo = actual?.tipo === 'versiculo';
+  const boton = (label: string, Icono: typeof TrashIcon, onPress: () => void, off = false) => (
+    <Pressable
+      onPress={onPress}
+      disabled={off}
+      hitSlop={6}
+      style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.surface }, off && styles.off]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Icono color={colors.text} size={18} />
+    </Pressable>
+  );
 
   return (
     <View style={styles.wrap}>
@@ -113,44 +130,41 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
                 setElegida(l.id);
                 setAgregando(false);
               }}
-              style={{ gap: 6, alignItems: 'center' }}
+              style={{ gap: 4, alignItems: 'center' }}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`Lámina ${j + 1}: ${nombreLamina[l.tipo]}${on ? ', elegida' : ''}`}
             >
               <View style={[styles.ring, { borderColor: on ? colors.warm : 'transparent' }]}>
-                <View style={[styles.frame, { width: ancho, height: (ancho * 16) / 9, borderColor: colors.border, backgroundColor: look.fondo.background }]}>
-                  {urls[l.id] ? <Image source={{ uri: urls[l.id] }} style={{ width: '100%', height: '100%' }} /> : <ActivityIndicator color={look.fondo.muted} />}
+                <View style={[styles.frame, { width: mini, height: (mini * 16) / 9, borderColor: colors.border, backgroundColor: look.fondo.background }]}>
+                  {urls[l.id] ? <Image source={{ uri: urls[l.id] }} style={{ width: '100%', height: '100%' }} /> : <ActivityIndicator size="small" color={look.fondo.muted} />}
                 </View>
               </View>
-              <Text style={{ color: on ? colors.warm : colors.muted, fontSize: 12.5, fontWeight: on ? '800' : '600' }}>
-                {j + 1}. {nombreLamina[l.tipo]}
-              </Text>
+              <Text style={{ color: on ? colors.warm : colors.muted, fontSize: 11.5, fontWeight: on ? '800' : '600' }}>{j + 1}</Text>
             </Pressable>
           );
         })}
         {!lleno && (
-          <Pressable
-            onPress={() => setAgregando((a) => !a)}
-            style={{ gap: 6, alignItems: 'center' }}
-            accessibilityRole="button"
-            accessibilityLabel="Agregar lámina"
-          >
+          <Pressable onPress={() => setAgregando((a) => !a)} style={{ gap: 4, alignItems: 'center' }} accessibilityRole="button" accessibilityLabel="Agregar lámina">
             <View style={[styles.ring, { borderColor: 'transparent' }]}>
-              <View style={[styles.frame, styles.add, { width: ancho, height: (ancho * 16) / 9, borderColor: agregando ? colors.warm : colors.border }]}>
-                <View style={[styles.addIcon, { backgroundColor: agregando ? colors.warmSoft : colors.background }]}>
-                  <PlusIcon color={agregando ? colors.warm : colors.muted} size={22} />
-                </View>
+              <View
+                style={[
+                  styles.frame,
+                  styles.add,
+                  { width: mini, height: (mini * 16) / 9, borderColor: agregando ? colors.warm : colors.border, backgroundColor: agregando ? colors.warmSoft : 'transparent' },
+                ]}
+              >
+                <PlusIcon color={agregando ? colors.warm : colors.muted} size={20} />
               </View>
             </View>
-            <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: '600' }}>Agregar</Text>
+            <Text style={{ color: colors.muted, fontSize: 11.5, fontWeight: '600' }}>Agregar</Text>
           </Pressable>
         )}
       </ScrollView>
 
       {agregando && (
-        <View style={[styles.box, { borderColor: colors.warm, backgroundColor: colors.background }]}>
-          <Text style={[styles.boxTitle, { color: colors.text }]}>Agregar después de la lámina {i + 1}</Text>
+        <View style={[styles.menu, { borderColor: colors.warm, backgroundColor: colors.background }]}>
+          <Text style={[styles.menuTitle, { color: colors.text }]}>Agregar después de la lámina {i + 1}</Text>
           <View style={styles.chips}>
             {opciones.map((n) => (
               <Pressable key={n.tipo} onPress={() => agregar(n)} style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]} accessibilityRole="button">
@@ -162,100 +176,66 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
       )}
 
       {actual && (
-        <View style={[styles.box, { borderColor: colors.border }]}>
-          <View style={styles.head}>
-            <Text style={[styles.boxTitle, { color: colors.text, flex: 1 }]}>
+        <View style={styles.stage}>
+          <View style={styles.stageHead}>
+            <Text style={[styles.stageTitle, { color: colors.text }]}>
               Lámina {i + 1} · {nombreLamina[actual.tipo]}
             </Text>
-            <Pressable
-              onPress={() => mover(-1)}
-              disabled={i === 0}
-              hitSlop={6}
-              style={[styles.iconBtn, { borderColor: colors.border }, i === 0 && styles.off]}
-              accessibilityRole="button"
-              accessibilityLabel="Mover a la izquierda"
-            >
-              <ChevronLeftIcon color={colors.text} size={18} />
-            </Pressable>
-            <Pressable
-              onPress={() => mover(1)}
-              disabled={i === laminas.length - 1}
-              hitSlop={6}
-              style={[styles.iconBtn, { borderColor: colors.border }, i === laminas.length - 1 && styles.off]}
-              accessibilityRole="button"
-              accessibilityLabel="Mover a la derecha"
-            >
-              <ChevronRightIcon color={colors.text} size={18} />
-            </Pressable>
-            {!esVersiculo && (
-              <Pressable
-                onPress={quitar}
-                hitSlop={6}
-                style={[styles.iconBtn, { borderColor: colors.border }]}
-                accessibilityRole="button"
-                accessibilityLabel="Quitar lámina"
-              >
-                <TrashIcon color={colors.text} size={17} />
-              </Pressable>
-            )}
+            {boton('Mover a la izquierda', ChevronLeftIcon, () => mover(-1), i === 0)}
+            {boton('Mover a la derecha', ChevronRightIcon, () => mover(1), i === laminas.length - 1)}
+            {!esVersiculo && boton('Quitar lámina', TrashIcon, quitar)}
           </View>
 
-          {actual.tipo === 'versiculo' ? (
+          {esVersiculo ? (
+            <View style={[styles.frame, styles.big, { width: grande, height: (grande * 16) / 9, borderColor: colors.border, backgroundColor: look.fondo.background }]}>
+              {urls[actual.id] ? <Image source={{ uri: urls[actual.id] }} style={{ width: '100%', height: '100%' }} /> : <ActivityIndicator color={look.fondo.muted} />}
+            </View>
+          ) : (
+            <LaminaEditable key={actual.id} lamina={actual} n={i + 1} verse={verse} look={look} width={grande} borde={colors.border} onEdit={editar} />
+          )}
+
+          {esVersiculo ? (
             <View style={styles.lock}>
-              <LockIcon color={colors.muted} size={17} />
-              <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, flex: 1 }}>
+              <LockIcon color={colors.muted} size={16} />
+              <Text style={{ color: colors.muted, fontSize: 13.5, lineHeight: 19, flex: 1 }}>
                 El versículo no se edita: cámbiale el fondo, la letra o la dedicatoria abajo, o toca una palabra en «Publicación» para destacarla.
               </Text>
             </View>
           ) : (
-            <>
-              {CAMPOS[actual.tipo].map((c) => (
-                <View key={c.campo} style={{ gap: 6 }}>
-                  <Text style={[styles.label, { color: colors.muted }]}>{c.label}</Text>
-                  <TextInput
-                    value={textoDe(actual, c.campo, look)}
-                    onChangeText={(t) => editar(c.campo, t)}
-                    placeholder={c.placeholder}
-                    placeholderTextColor={colors.muted}
-                    maxLength={c.max}
-                    multiline={c.largo}
-                    style={[styles.input, c.largo && styles.largo, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
-                    accessibilityLabel={`${c.label} de la lámina ${i + 1}`}
-                  />
-                </View>
-              ))}
-              {actual.tipo === 'gancho' && (
-                <View style={styles.chips}>
-                  {GANCHOS.map((g) => {
-                    const on = g === textoDe(actual, 'texto');
-                    return (
-                      <Pressable
-                        key={g}
-                        onPress={() => editar('texto', g)}
-                        accessibilityRole="radio"
-                        accessibilityState={{ checked: on }}
-                        aria-checked={on}
-                        style={[styles.chip, { borderColor: on ? colors.warm : colors.border }, on && { backgroundColor: colors.warmSoft }]}
-                      >
-                        <Text style={{ color: on ? colors.warm : colors.text, fontWeight: on ? '700' : '500', fontSize: 13.5 }}>{g}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-              {actual.tipo === 'fondo' && look.original && (
-                <Text style={[styles.hint, { color: colors.muted }]}>
-                  La palabra {look.original.palabra} se cambia en la pestaña «Estudio».
-                </Text>
-              )}
-              {editada && (
-                <Pressable onPress={restablecer} hitSlop={6} style={{ alignSelf: 'flex-start' }} accessibilityRole="button">
-                  <IconText icon={RefreshIcon} color={colors.accent} size={15}>
-                    <Text style={{ color: colors.accent, fontWeight: '600' }}>Volver al texto de siempre</Text>
-                  </IconText>
-                </Pressable>
-              )}
-            </>
+            <View style={styles.tip}>
+              <PencilIcon color={colors.muted} size={14} />
+              <Text style={{ color: colors.muted, fontSize: 13 }}>Toca el texto de la lámina para cambiarlo</Text>
+            </View>
+          )}
+
+          {actual.tipo === 'gancho' && (
+            <View style={[styles.chips, { justifyContent: 'center' }]}>
+              {GANCHOS.map((g) => {
+                const on = g === textoDe(actual, 'texto');
+                return (
+                  <Pressable
+                    key={g}
+                    onPress={() => editar('texto', g)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    aria-checked={on}
+                    style={[styles.chip, { borderColor: on ? colors.warm : colors.border }, on && { backgroundColor: colors.warmSoft }]}
+                  >
+                    <Text style={{ color: on ? colors.warm : colors.text, fontWeight: on ? '700' : '500', fontSize: 13.5 }}>{g}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+          {actual.tipo === 'fondo' && look.original && (
+            <Text style={[styles.hint, { color: colors.muted }]}>La palabra {look.original.palabra} se cambia en la pestaña «Estudio».</Text>
+          )}
+          {editada && (
+            <Pressable onPress={restablecer} hitSlop={6} style={{ alignSelf: 'center' }} accessibilityRole="button">
+              <IconText icon={RefreshIcon} color={colors.accent} size={15}>
+                <Text style={{ color: colors.accent, fontWeight: '600' }}>Volver al texto de siempre</Text>
+              </IconText>
+            </Pressable>
           )}
         </View>
       )}
@@ -266,24 +246,139 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
   );
 }
 
+/** El tamaño de la letra grande para que quepa, como lo calcula el canvas (src/lib/laminas.ts), a ojo. */
+function tamaño(texto: string, base: number, ancho: number, alto: number, interlinea: number) {
+  let size = base;
+  for (; size > 40; size -= 4) {
+    const porLinea = Math.max(1, Math.floor(ancho / (size * 0.5)));
+    const lineas = texto.split('\n').reduce((n, p) => n + Math.max(1, Math.ceil(p.length / porLinea)), 0);
+    if (lineas * size * interlinea <= alto) break;
+  }
+  return size;
+}
+
+type EditableProps = { lamina: Lamina; n: number; verse: VerseToShare; look: ImageLook; width: number; borde: string; onEdit: (c: Campo, v: string) => void };
+
+/** Una lámina dibujada con vistas a escala, con sus textos escribibles en su sitio. */
+function LaminaEditable({ lamina: l, n, verse, look, width, borde, onEdit }: EditableProps) {
+  const { fondo, letra } = look;
+  const { width: W, height: H } = IMAGE_SIZE.historia;
+  const s = width / W;
+  const id = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const xml = useMemo(() => (fondo.svg ? idsUnicos(fondo.svg(W, H), `e${id}`) : null), [fondo, W, H, id]);
+  const letras = useLetras();
+  const [altos, setAltos] = useState<Partial<Record<Campo, number>>>({});
+  const family = letra.family ?? serif;
+  const sombra: TextStyle = fondo.sombra ? { textShadowColor: fondo.sombra, textShadowRadius: 18 * s, textShadowOffset: { width: 0, height: 2 * s } } : {};
+  const campos = CAMPOS[l.tipo];
+  const dedic = l.tipo === 'gancho' ? look.dedicatoria?.trim() : '';
+
+  const texto = textoDe(l, 'texto', look);
+  const base = l.tipo === 'gancho' ? 110 : l.tipo === 'cierre' ? 120 : texto.length > 120 ? 70 : 92;
+  const grande = l.tipo === 'fondo' ? (look.original ? 46 : 64) : tamaño(texto || 'x', Math.round(base * letra.escala), 840, l.tipo === 'gancho' ? 700 : 900, letra.interlinea);
+
+  /** Un texto de la lámina que se escribe en su sitio: el campo no se nota hasta que se toca. */
+  const campo = (c: Campo, estilo: TextStyle, multiline = false) => {
+    const def = campos[c];
+    if (!def) return null;
+    const valor = textoDe(l, c, look);
+    return (
+      <TextInput
+        value={valor}
+        onChangeText={(t) => onEdit(c, t)}
+        placeholder={def.vacio}
+        placeholderTextColor={fondo.muted}
+        maxLength={def.max}
+        multiline={multiline}
+        onContentSizeChange={multiline ? (e) => setAltos((a) => ({ ...a, [c]: e.nativeEvent.contentSize.height })) : undefined}
+        accessibilityLabel={`${def.label} de la lámina ${n}`}
+        style={[
+          styles.editable,
+          { outlineWidth: 0 },
+          sombra,
+          estilo,
+          multiline && altos[c] ? { height: altos[c] } : null,
+          !valor && { opacity: 0.8 },
+        ]}
+      />
+    );
+  };
+  const kicker = (c: Campo) =>
+    campo(c, { color: fondo.accent, fontFamily: sans, fontWeight: '800', fontSize: 34 * s, letterSpacing: 3 * s, textTransform: 'uppercase', paddingVertical: 4 * s });
+  const notaEstilo: TextStyle = { color: fondo.muted, fontFamily: sans, fontWeight: l.tipo === 'gancho' ? '600' : '400', fontSize: 40 * s, marginTop: 50 * s };
+
+  return (
+    <View key={letras ? 'letras' : 'sistema'} style={[styles.frame, styles.big, { width, height: H * s, backgroundColor: fondo.background, borderColor: borde }]}>
+      {xml && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <SvgXml xml={xml} width="100%" height="100%" />
+        </View>
+      )}
+      <View style={[styles.slideBody, { paddingHorizontal: 110 * s, paddingBottom: 200 * s }]}>
+        {dedic ? (
+          <Text style={[{ color: fondo.accent, fontFamily: LETRA_DEDICATORIA, fontSize: 64 * s, textAlign: 'center', marginBottom: 20 * s }, sombra]}>{dedic}</Text>
+        ) : null}
+        {l.tipo === 'fondo' ? (
+          <>
+            {look.original && (
+              <View style={{ alignItems: 'center', marginBottom: 60 * s }}>
+                <Text style={[{ color: fondo.accent, fontFamily: sans, fontWeight: '800', fontSize: 34 * s, letterSpacing: 3 * s }, sombra]}>EN EL ORIGINAL</Text>
+                <Text style={[{ color: fondo.text, fontFamily: serif, fontSize: 150 * s, marginTop: 30 * s }, sombra]}>{look.original.palabra}</Text>
+                <Text style={[{ color: fondo.muted, fontFamily: serif, fontStyle: 'italic', fontSize: 52 * s }, sombra]}>{look.original.translit}</Text>
+                <Text style={[{ color: fondo.accent, fontFamily: family, fontSize: 68 * letra.escala * s, marginTop: 10 * s }, sombra]}>«{look.original.glosa}»</Text>
+              </View>
+            )}
+            {kicker('titulo')}
+            {campo('texto', { color: fondo.text, fontFamily: serif, fontStyle: 'italic', fontSize: grande * s, lineHeight: grande * 1.4 * s, marginTop: 30 * s }, true)}
+          </>
+        ) : (
+          <>
+            {kicker('titulo')}
+            <View style={{ width: 72 * s, height: Math.max(1.5, 4 * s), backgroundColor: fondo.accent, marginVertical: 22 * s, alignSelf: 'center' }} />
+            {campo(
+              'texto',
+              {
+                color: fondo.text,
+                fontFamily: family,
+                fontSize: grande * s,
+                lineHeight: grande * letra.interlinea * s,
+                textTransform: letra.mayusculas ? 'uppercase' : 'none',
+              },
+              true,
+            )}
+            {campo('nota', notaEstilo, l.tipo !== 'gancho')}
+            {l.tipo === 'cierre' && (
+              <Text style={[{ color: fondo.accent, fontFamily: sans, fontWeight: '700', fontSize: 40 * s, marginTop: 70 * s, textAlign: 'center' }, sombra]}>{caption(verse)}</Text>
+            )}
+          </>
+        )}
+      </View>
+      <Text style={[styles.site, { color: fondo.muted, fontSize: 28 * s, bottom: (250 - 28) * s }]}>biblia.migueblanco.com</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: { alignSelf: 'stretch', gap: 12 },
   strip: { alignSelf: 'stretch', flexGrow: 0 },
-  row: { gap: 8, paddingHorizontal: 4, flexGrow: 1, justifyContent: 'center' },
-  ring: { borderWidth: 2.5, borderRadius: 13, padding: 2 },
-  frame: { borderRadius: 9, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  row: { gap: 6, paddingHorizontal: 4, flexGrow: 1, justifyContent: 'center' },
+  ring: { borderWidth: 2, borderRadius: 10, padding: 2 },
+  frame: { borderRadius: 7, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  big: { borderRadius: 16, alignSelf: 'center' },
   add: { borderStyle: 'dashed', borderWidth: 1.5 },
-  addIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  hint: { fontSize: 13, textAlign: 'center' },
-  box: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 12 },
-  boxTitle: { fontWeight: '700', fontSize: 15 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  menu: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 10 },
+  menuTitle: { fontWeight: '700', fontSize: 15 },
+  stage: { gap: 12 },
+  stageHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stageTitle: { fontWeight: '700', fontSize: 15, flex: 1 },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   off: { opacity: 0.35 },
-  lock: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  label: { fontSize: 12, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
-  largo: { minHeight: 76, textAlignVertical: 'top' },
+  lock: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', paddingHorizontal: 4 },
+  tip: { flexDirection: 'row', gap: 6, alignItems: 'center', alignSelf: 'center' },
+  hint: { fontSize: 13, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  slideBody: { flex: 1, alignSelf: 'stretch', justifyContent: 'center' },
+  editable: { padding: 0, margin: 0, borderWidth: 0, backgroundColor: 'transparent', textAlign: 'center', alignSelf: 'stretch' },
+  site: { position: 'absolute', left: 0, right: 0, textAlign: 'center', fontFamily: sans },
 });
