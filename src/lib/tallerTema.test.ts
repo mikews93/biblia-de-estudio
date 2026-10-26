@@ -14,7 +14,7 @@ Quieres hablar a jóvenes ansiosos por el futuro.⟦1⟧
 - Libro Inventado 3:1 | no existe
 
 ## Lo que dicen las fuentes
-- Matthew Henry señala que la oración es el remedio contra el afán.⟦3⟧
+- Un comentario señala que la oración es el remedio contra el afán.⟦3⟧
 - Hodge explica la providencia de Dios sobre lo pequeño.⟦4⟧
 
 ## Para afinar

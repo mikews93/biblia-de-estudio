@@ -205,7 +205,12 @@ export async function commentaryBlocks(
             }
           }),
         );
-        const meta = { label: `${f.nombre}, ${where}`, ref: `${book.id}.${chapter}.${Math.max(1, s.desde)}` };
+        // La IA no nombra al comentarista en el texto: su nombre y su obra quedan en la cita, que se puede tocar.
+        const meta = {
+          label: `${f.nombre}, ${where}`,
+          ref: `${book.id}.${chapter}.${Math.max(1, s.desde)}`,
+          nota: `${f.obra} · ${f.autor} · ${f.año}`,
+        };
         return text.map((t, i) => ({ text: i === 0 && s.titulo ? `${s.titulo}\n${t}` : t, meta }));
       });
       const title = `${f.obra}, ${f.autor}${f.año ? ` (${f.año})` : ''} · comentario sobre ${verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`}`;

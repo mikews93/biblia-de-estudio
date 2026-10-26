@@ -66,7 +66,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('Señales y Cuidar Zarza', () => {
     const pasaje = { book: 'rut', chapter: 3 };
     for (const nombre of ['R1', 'R2']) await ask({ ...pasaje, senal: { tipo: 'raro', motivo: 'doctrina' } }, await cuenta(nombre));
     let resumen = (await call()('cuidarResumen', {}, llave)).json;
-    const fila = resumen.raros.find((r: any) => r.clave === 'c1:profundo:rut:3::');
+    const fila = resumen.raros.find((r: any) => r.clave === 'c2:profundo:rut:3::');
     expect(fila).toMatchObject({ raros: 2, libro: 'rut', capitulo: 3, versiculo: null, motivos: ['doctrina', 'doctrina'] });
 
     expect((await call()('cuidarDescartar', { clave: fila.clave }, llave)).status).toBe(200);
