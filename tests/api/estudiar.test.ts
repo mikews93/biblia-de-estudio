@@ -149,6 +149,9 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
       'The love of God\nHere is the great gospel truth.',
     ]);
     expect(sent.system).toContain('Los comentarios ayudan a entender el texto');
+    // Los comentaristas no se nombran en el texto: su nombre va en la cita
+    expect(sent.system).toContain('no nombres al autor ni la obra en el texto');
+    expect(sent.system).not.toContain('Matthew Henry señala');
     const rv = JSON.parse(readFileSync(path.join(DATA_DIR, 'text/rv1909/jhn/3.json'), 'utf8')) as [number, string][];
     expect(docs[0].source.content).toHaveLength(rv.length);
     expect(docs[0].source.content[15].text).toBe(`3:16 ${rv[15][1]}`);
@@ -500,7 +503,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     let guardado = false;
     for (let i = 0; i < 50 && !guardado; i++) {
       await new Promise((r) => setTimeout(r, 100));
-      guardado = (await sql`select 1 from estudios_ia where clave = 'c1:profundo:jhn:6:35:'`).length > 0;
+      guardado = (await sql`select 1 from estudios_ia where clave = 'c2:profundo:jhn:6:35:'`).length > 0;
     }
     await sql.end();
     expect(guardado).toBe(true);

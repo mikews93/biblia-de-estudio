@@ -66,7 +66,8 @@ test('de las notas a cinco días: hacer el primero lo deja en el diario y en Hoy
   await expect(v(page.getByText('EL DOMINGO ANOTASTE'))).toBeVisible();
   await expect(v(page.getByText('«Nicodemo vino de noche»'))).toBeVisible();
   await v(page.getByText('Estoy listo · Leer')).click();
-  await expect(v(page.getByText('JUAN 3:1-3', { exact: true }))).toBeVisible();
+  // El pasaje se lee en la versión elegida (aquí la RV1909, la de siempre) y lo dice junto a la cita
+  await expect(v(page.getByText('JUAN 3:1-3 · RV1909', { exact: true }))).toBeVisible();
   await expect(v(page.getByText(/Respondió Jesús, y díjole/))).toBeVisible();
   await v(page.getByText('Ya lo leí')).click();
   await expect(v(page.getByText('Observación simulada del día 1'))).toBeVisible();

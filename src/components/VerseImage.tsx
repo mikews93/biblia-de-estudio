@@ -29,11 +29,12 @@ import { useAccount } from '@/lib/comunidad';
 import { getContexto } from '@/lib/comentarios';
 import { getInterlinear, Word } from '@/lib/data';
 import { DEDICATORIAS, FONDOS, Fondo, LETRAS, Letra, fondoPorNombre, idsUnicos, letraPorId, useLetras } from '@/lib/fondos';
-import { GANCHOS, compartirLaminas, drawLaminas, laminasDe } from '@/lib/laminas';
+import { Lamina, compartirLaminas, drawLaminas, hayFondo, laminasIniciales, nuevaLamina } from '@/lib/laminas';
 import { huella } from '@/lib/sellos';
 import { highlightOf } from '@/lib/highlights';
 import { Audiencia, publish } from '@/lib/social';
-import { serif, useColors } from '@/lib/theme';
+import { serif, useColors, useSettings } from '@/lib/theme';
+import { enVersion } from '@/lib/enVersion';
 import { navigate } from '@/lib/transition';
 
 type Props = {
@@ -76,13 +77,25 @@ const PREF = 'compartir-estilo';
  * o como texto. La vista previa es la misma imagen que se comparte: fondo ilustrado o de color, letra, palabras
  * destacadas, una dedicatoria para alguien y, si se quiere, una palabra hebrea o griega al pie.
  */
-export default function VerseImage({ verse, onClose, inicial }: Props) {
+export default function VerseImage({ verse: dado, onClose, inicial }: Props) {
   const colors = useColors();
   const { width: screen, height: alto } = useWindowDimensions();
+  // Las listas fijas y el devocional traen la RV1909: la imagen sale en la versión que la persona lee.
+  const { settings } = useSettings();
+  const [verse, setVerse] = useState(dado);
+  useEffect(() => {
+    let vivo = true;
+    enVersion([dado], settings.version).then(([v]) => vivo && setVerse(v));
+    return () => {
+      vivo = false;
+    };
+  }, [dado.book, dado.chapter, dado.verse, dado.text, settings.version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [format, setFormat] = useState<ImageFormat>('cuadrado');
   // Carrusel de láminas para Historias (solo en la web, donde se dibujan con canvas).
   const [carrusel, setCarrusel] = useState(false);
-  const [gancho, setGancho] = useState(GANCHOS[0]);
+  const [laminas, setLaminas] = useState<Lamina[] | null>(null);
+  // Si se quita a mano la lámina «A fondo», no vuelve a aparecer sola al elegir otra palabra.
+  const quitoFondo = useRef(false);
   const [fondo, setFondo] = useState<Fondo>(inicial?.fondo ? fondoPorNombre(inicial.fondo) : FONDOS[0]);
   // Una ocasión trae su fondo: entonces no se cambia por el último que se usó.
   const fondoFijo = !!inicial?.fondo;
@@ -153,6 +166,28 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
   };
 
   const look: ImageLook = { fondo, letra, destacadas, dedicatoria, original: original ?? undefined, contexto };
+  const conFondo = hayFondo(look);
+  useEffect(() => {
+    // La lámina «A fondo» aparece sola (antes de la última) cuando se elige una palabra original o un contexto.
+    setLaminas((ls) => {
+      if (!ls) return ls;
+      const tiene = ls.some((l) => l.tipo === 'fondo');
+      if (conFondo && !tiene && !quitoFondo.current && ls.length < 10) {
+        const i = Math.max(1, ls.length - 1);
+        return [...ls.slice(0, i), nuevaLamina('fondo'), ...ls.slice(i)];
+      }
+      if (!conFondo && tiene) return ls.filter((l) => l.tipo !== 'fondo' || !!l.texto?.trim());
+      return ls;
+    });
+  }, [conFondo]);
+  const abrirCarrusel = () => {
+    setLaminas((ls) => ls ?? laminasIniciales(look));
+    setCarrusel(true);
+  };
+  const cambiarLaminas = (ls: Lamina[]) => {
+    if (laminas?.some((l) => l.tipo === 'fondo') && !ls.some((l) => l.tipo === 'fondo')) quitoFondo.current = true;
+    setLaminas(ls);
+  };
   const size = IMAGE_SIZE[format];
   // La historia es alta: se limita para que debajo se vean las opciones.
   const previewWidth = Math.min(format === 'cuadrado' ? 320 : Math.min(240, (alto * 0.42 * 9) / 16), screen - 64);
@@ -168,7 +203,7 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
     setNote(null);
     try {
       if (carrusel) {
-        const r = await compartirLaminas(await drawLaminas(verse, look, gancho), verse, download);
+        const r = await compartirLaminas(await drawLaminas(verse, look, laminas ?? laminasIniciales(look)), verse, download);
         if (r === 'descargadas') setNote(download ? 'Láminas descargadas' : 'Este navegador no comparte varias imágenes: las descargamos para que las subas.');
       } else if (Platform.OS === 'web') {
         const blob = await drawVerseImage(verse, format, look);
@@ -240,8 +275,8 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
           <ScrollView style={styles.scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <Text style={[styles.title, { color: colors.text }]}>Compartir {verse.reference}</Text>
 
-            {carrusel ? (
-              <Laminas verse={verse} look={look} gancho={gancho} onGancho={setGancho} alto={alto} />
+            {carrusel && laminas ? (
+              <Laminas verse={verse} look={look} laminas={laminas} onChange={cambiarLaminas} alto={alto} />
             ) : (
               <>
                 <VerseArt
@@ -262,7 +297,7 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
             <View style={styles.row}>
               {chip('Publicación', !carrusel && format === 'cuadrado', () => (setCarrusel(false), setFormat('cuadrado')))}
               {chip('Historia', !carrusel && format === 'historia', () => (setCarrusel(false), setFormat('historia')))}
-              {Platform.OS === 'web' && chip('Carrusel', carrusel, () => setCarrusel(true))}
+              {Platform.OS === 'web' && chip('Carrusel', carrusel, abrirCarrusel)}
               <Pressable onPress={sorprender} style={[styles.chip, styles.surprise, { borderColor: colors.border }]} accessibilityRole="button">
                 <IconText icon={SparkIcon} color={colors.text} size={16}>
                   <Text style={{ color: colors.text, fontWeight: '600' }}>Sorpréndeme</Text>
@@ -420,7 +455,7 @@ export default function VerseImage({ verse, onClose, inicial }: Props) {
                 {busy
                   ? 'Preparando…'
                   : carrusel
-                    ? `Compartir ${laminasDe(look).length} láminas`
+                    ? `Compartir ${laminas?.length ?? 0} láminas`
                     : dedicatoria.trim()
                       ? 'Enviar imagen'
                       : 'Compartir imagen'}

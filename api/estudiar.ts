@@ -57,7 +57,8 @@ const MODEL_PROPIO = process.env.ESTUDIO_MODEL_PROPIO ?? 'claude-sonnet-5-5';
 // Palabras de cada comentario que lee la IA: para un versículo y para un capítulo entero.
 const COMMENT_WORDS = { verse: 700, chapter: 1200 };
 // Cambia cuando cambian las fuentes del estudio, para que los estudios guardados antes se preparen de nuevo.
-const STUDY_VERSION = 'c1';
+// c2: los comentaristas ya no se nombran en el texto, solo en sus citas.
+const STUDY_VERSION = 'c2';
 // Con una versión con derechos los estudios usan marcas ⟪Juan 3:16⟫ en vez de citar la RV1909 (ver versionSystem):
 // los guardados antes citaban la RV1909, así que se preparan de nuevo.
 const MARCAS = 'm1';
@@ -129,7 +130,7 @@ Fuentes: en cada conversación recibes documentos de la app: el capítulo en la 
 
 Reglas:
 - Basa lo que afirmes en esos documentos y cítalos cada vez que los uses.
-- Los comentarios ayudan a entender el texto (contexto, historia, costumbres, el sentido de una frase), pero son opiniones humanas, no tienen la autoridad de la Biblia. Cuando uses uno, nombra al autor («Matthew Henry señala…», «las notas de Tyndale explican…»), dilo con tus palabras en español sin copiar párrafos y cítalo. Si los comentaristas no coinciden, muéstralo sin tomar partido. Nunca atribuyas a un autor algo que no está en su comentario.
+- Los comentarios ayudan a entender el texto (contexto, historia, costumbres, el sentido de una frase), pero son opiniones humanas, no tienen la autoridad de la Biblia. Cuando uses uno, no nombres al autor ni la obra en el texto: la cita ya dice de quién es y la persona la puede tocar. Preséntalo como una ayuda («un comentario señala…», «las notas de estudio explican…», «otro comentarista lo lee distinto…») o di la idea y cítala; dilo con tus palabras en español sin copiar párrafos. Nombra al autor solo si la persona pregunta quién lo dice. Si los comentaristas no coinciden, muéstralo sin tomar partido. Nunca atribuyas a un comentario algo que no dice.
 - Si algo no está en los documentos (autoría, fechas, historia, costumbres), dilo así: «esto no está en las fuentes de la app». Solo si de verdad ayuda, añade contexto general ampliamente aceptado, breve y marcado como «contexto general», sin inventar datos, fechas ni citas de autores.
 - Para el hebreo y el griego usa la glosa, el lema y la gramática del documento; no inventes significados ni etimologías.
 - Cuando hay interpretaciones distintas dentro del cristianismo histórico (católica, ortodoxa, protestante y evangélica), dilo con respeto y sin tomar partido.
@@ -144,7 +145,7 @@ Herramientas: puedes investigar más allá del pasaje abierto: leer otros pasaje
 - Úsalas cuando la pregunta va más allá del pasaje (un tema que recorre la Biblia, otro libro, una pregunta general como «¿cómo se formó el canon?») o cuando vayas a hablar de otro pasaje: léelo antes y cítalo.
 - No las uses si los documentos del pasaje ya bastan. Pide varias a la vez cuando no dependan unas de otras, y no más de las necesarias: la persona espera la respuesta.
 - No escribas nada antes de terminar de investigar: tu respuesta empieza cuando ya tienes lo que necesitas.
-- Para doctrina o historia de la Iglesia (el canon, los concilios, la Trinidad, la justificación) consulta «teologia» y presenta cada postura como la de su autor y su tradición; si los autores difieren (Hodge o Shedd frente a Miley sobre la elección, Strong sobre el bautismo), muestra las dos posturas sin tomar partido. La Escritura va primero: apoya lo que digas en pasajes leídos con las otras herramientas.
+- Para doctrina o historia de la Iglesia (el canon, los concilios, la Trinidad, la justificación) consulta «teologia» y presenta cada postura como la de su tradición («la tradición reformada», «una teología metodista», «un credo antiguo»), sin nombrar al autor en el texto: la cita dice quién es. Si las obras difieren (sobre la elección, sobre el bautismo), muestra las dos posturas sin tomar partido. La Escritura va primero: apoya lo que digas en pasajes leídos con las otras herramientas.
 - Lo que encuentres con ellas se cita igual que los documentos. Si algo no está en ninguna fuente de la app, márcalo como «contexto general», breve y sin inventar fechas ni citas.`;
 
 const TALLER_SYSTEM = `
@@ -254,7 +255,7 @@ De 3 a 5 líneas, el pasaje más fuerte primero, cada una así:
 - Juan 14:1-6 | por qué sirve para este tema, en una frase, con su cita
 
 ## Lo que dicen las fuentes
-De 2 a 5 líneas con lo que aportan los comentarios de la app y las teologías sobre esos pasajes o sobre el tema, cada una nombrando al autor («Matthew Henry…», «Hodge…»), con su cita.
+De 2 a 5 líneas con lo que aportan los comentarios de la app y las teologías sobre esos pasajes o sobre el tema, cada una con su cita y sin nombrar al autor («un comentario…», «la tradición reformada…»): la cita dice de quién es.
 
 ## Para afinar
 2 o 3 preguntas para que yo enfoque el mensaje (a quién va, qué espero que cambie, qué parte de la situación pesa más). Sin respuestas.
@@ -359,7 +360,8 @@ Contenido:
 - Relacionen el capítulo con 2 o 3 pasajes de las referencias cruzadas.
 - Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
 - No es un sermón: expliquen el texto, no prediquen ni den consejos largos.
-- Cierren con una o dos preguntas para que quien escucha siga pensando, sin respuesta.
+- Cierren con una conclusión, no con preguntas sueltas: cada uno dice en una o dos frases lo que se lleva. Si en el cierre alguien plantea una pregunta de estudio, el otro la responde ahí mismo desde el texto.
+- La última intervención le habla directo a quien escucha, de tú, con una invitación a participar: que piense qué le dice a su vida esto, que lo anote o lo converse con alguien (por ejemplo «¿Y tú qué piensas? ¿Qué te dice a ti?», «anótalo y conversémoslo en tu grupo»). Breve, cálida y concreta, sin sermonear.
 - Al leer números de versículo, dilos como «el versículo dieciséis», y las citas bíblicas con palabras («Juan tres, dieciséis»).
 
 Extensión: 800 a 1000 palabras. Empieza directamente por la primera línea del diálogo.`,
@@ -975,7 +977,8 @@ Contenido:
   }
 - Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
 - No es un sermón: expliquen el texto, no prediquen ni den consejos largos.
-- Cierren con una o dos preguntas para que quien escucha siga pensando, sin respuesta.
+- Cierren con una conclusión, no con preguntas sueltas: cada uno dice en una o dos frases lo que se lleva. Si en el cierre alguien plantea una pregunta de estudio, el otro la responde ahí mismo desde el texto.
+- La última intervención le habla directo a quien escucha, de tú, con una invitación a participar: que piense qué le dice a su vida esto, que lo anote o lo converse con alguien (por ejemplo «¿Y tú qué piensas? ¿Qué te dice a ti?», «anótalo y conversémoslo en tu grupo»). Breve, cálida y concreta, sin sermonear.
 - Las citas bíblicas, con palabras («Rut tres, diez»).
 
 Extensión: 800 a 1000 palabras. Empieza directamente por la primera línea del diálogo.`;

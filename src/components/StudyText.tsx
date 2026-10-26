@@ -355,6 +355,18 @@ export function SourcePeek({
       </View>
       {ref ? (
         <>
+          {/* Un comentario: la IA no nombra a su autor en el texto, así que aquí se ve de quién es y qué pasaje comenta. */}
+          {!!source.nota && (
+            <>
+              <View style={styles.peekObra}>
+                <BooksIcon color={colors.accent} size={14} strokeWidth={2} />
+                <Text style={[styles.peekObraText, { color: colors.muted }]}>{source.nota}</Text>
+              </View>
+              <Text style={[styles.peekHint, { color: colors.muted }]}>
+                Un comentario humano, no la Escritura. La IA lo leyó en su inglés original y lo explica con sus palabras. Comenta este pasaje:
+              </Text>
+            </>
+          )}
           {shown ? (
             !!shown.verses.length && (
               <Text style={[styles.peekText, { color: colors.text }]} numberOfLines={5}>

@@ -214,8 +214,9 @@ test('el carrusel para Historias arma 3 láminas, suma una con la palabra origin
   await expect(page.getByLabel(/^Lámina \d/)).toHaveCount(3);
   await expect(page.getByLabel('Lámina 3: ¿Qué te dice?')).toBeVisible();
 
+  // La primera lámina viene elegida: sus textos se editan debajo.
   await page.getByRole('radio', { name: '¿Lo sabías?' }).click();
-  await expect(page.getByLabel('Pregunta para empezar')).toHaveValue('¿Lo sabías?');
+  await expect(page.getByLabel('Pregunta de la lámina 1')).toHaveValue('¿Lo sabías?');
   await page.getByRole('tab', { name: 'Estudio' }).click();
   await page.getByRole('radio', { name: /amó/ }).click();
   await expect(page.getByLabel('Lámina 3: A fondo')).toBeVisible();
@@ -226,6 +227,63 @@ test('el carrusel para Historias arma 3 láminas, suma una con la palabra origin
   await page.getByText('Descargar', { exact: true }).click();
   await expect(page.getByText('Láminas descargadas')).toBeVisible();
   await expect.poll(() => nombres.sort()).toEqual(['juan-3-16-1.png', 'juan-3-16-2.png', 'juan-3-16-3.png', 'juan-3-16-4.png']);
+});
+
+test('en el carrusel se tocan las láminas para editar sus textos, se agregan, se mueven y se quitan', async ({ page }) => {
+  await page.goto('/juan/3');
+  await page.getByText('Porque de tal manera amó Dios al mundo').click();
+  await page.getByRole('button', { name: 'Compartir', exact: true }).click();
+  await page.getByRole('radio', { name: 'Carrusel' }).click();
+
+  // Tocar una lámina la elige y muestra sus textos
+  await page.getByLabel('Lámina 3: ¿Qué te dice?').click();
+  await expect(page.getByLabel('Lámina 3: ¿Qué te dice?, elegida')).toBeVisible();
+  await expect(page.getByLabel('Pregunta final de la lámina 3')).toHaveValue('¿Qué te dice a ti?');
+  await page.getByLabel('Pregunta final de la lámina 3').fill('¿A quién amas así?');
+  await page.getByLabel('Línea de abajo de la lámina 3').fill('Cuéntamelo');
+  await expect(page.getByRole('button', { name: 'Volver al texto de siempre' })).toBeVisible();
+
+  // El versículo no se edita ni se quita
+  await page.getByLabel('Lámina 2: Versículo').click();
+  await expect(page.getByText('El versículo no se edita')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Quitar lámina' })).toHaveCount(0);
+
+  // Agregar una de texto libre después de la elegida, escribirla y moverla al final
+  await page.getByRole('button', { name: 'Agregar lámina' }).click();
+  await page.getByRole('button', { name: 'Texto libre' }).click();
+  await expect(page.getByLabel('Lámina 3: Texto, elegida')).toBeVisible();
+  await expect(page.getByLabel('Título de la lámina 3')).toHaveValue('PARA PENSAR');
+  await page.getByLabel('Texto de la lámina 3').fill('Dios no amó a medias: dio a su Hijo.');
+  await expect(page.getByRole('button', { name: 'Compartir 4 láminas' })).toBeVisible();
+  await page.getByRole('button', { name: 'Mover a la derecha' }).click();
+  await expect(page.getByLabel('Lámina 4: Texto, elegida')).toBeVisible();
+  await expect(page.getByLabel('Lámina 3: ¿Qué te dice?')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mover a la derecha' })).toBeDisabled();
+
+  // Arrastrar la pregunta del principio dos lugares a la derecha
+  const caja = (await page.getByLabel('Lámina 1: Pregunta').boundingBox())!;
+  await page.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 3);
+  await page.mouse.down();
+  for (let x = 1; x <= 10; x++) await page.mouse.move(caja.x + caja.width / 2 + x * 14.4, caja.y + caja.height / 3);
+  await page.mouse.up();
+  await expect(page.getByLabel('Lámina 3: Pregunta, elegida')).toBeVisible();
+  await expect(page.getByLabel('Lámina 1: Versículo')).toBeVisible();
+
+  // Quitar la pregunta
+  await page.getByLabel('Lámina 3: Pregunta').click();
+  await page.getByRole('button', { name: 'Quitar lámina' }).click();
+  await expect(page.getByLabel(/^Lámina \d/)).toHaveCount(3);
+  await expect(page.getByLabel('Lámina 3: Texto, elegida')).toBeVisible();
+
+  // Lo escrito sigue ahí al volver a la lámina
+  await page.getByLabel('Lámina 2: ¿Qué te dice?').click();
+  await expect(page.getByLabel('Pregunta final de la lámina 2')).toHaveValue('¿A quién amas así?');
+
+  const nombres: string[] = [];
+  page.on('download', (d) => nombres.push(d.suggestedFilename()));
+  await page.getByText('Descargar', { exact: true }).click();
+  await expect(page.getByText('Láminas descargadas')).toBeVisible();
+  await expect.poll(() => nombres.length).toBe(3);
 });
 
 test('Mi año con la Palabra resume lo guardado y se descarga como imagen para Historias', async ({ page }) => {

@@ -6,29 +6,74 @@
 import { ImageLook, IMAGE_SIZE, SANS, SERIF, VerseToShare, caption, drawVerseImage, loadSvg, wrapWords } from './compartir';
 import { LETRA_DEDICATORIA } from './fondos';
 
-export type Lamina = 'gancho' | 'versiculo' | 'fondo' | 'cierre';
+export type Tipo = 'gancho' | 'versiculo' | 'fondo' | 'cierre' | 'texto';
+
+/**
+ * Una lámina del carrusel. Los textos son opcionales: sin tocar, cada lámina usa lo de siempre (la pregunta elegida,
+ * el contexto del Estudio, «¿Qué te dice a ti?»); al editarla, lo escrito manda.
+ */
+export type Lamina = {
+  id: string;
+  tipo: Tipo;
+  /** La línea pequeña de arriba, en mayúsculas («PARA PENSAR»). */
+  titulo?: string;
+  /** El texto grande. */
+  texto?: string;
+  /** La línea pequeña de abajo («Desliza →», «Respóndeme por mensaje»). */
+  nota?: string;
+};
 
 /** Preguntas para empezar que se pueden tocar en vez de escribir. */
 export const GANCHOS = ['Esto me habló hoy', '¿Te ha pasado?', 'Para ti, que lo necesitas', '¿Lo sabías?'];
 
-/** Las láminas del carrusel: la de la palabra original o el contexto solo si se eligió alguno. */
-export const laminasDe = (look: ImageLook): Lamina[] =>
-  look.original || look.contexto?.trim() ? ['gancho', 'versiculo', 'fondo', 'cierre'] : ['gancho', 'versiculo', 'cierre'];
+/** Lo que dice cada lámina mientras no se edite. */
+export const PREDETERMINADO: Record<Tipo, { titulo: string; texto: string; nota: string }> = {
+  gancho: { titulo: '', texto: GANCHOS[0], nota: 'Desliza  →' },
+  versiculo: { titulo: '', texto: '', nota: '' },
+  fondo: { titulo: '', texto: '', nota: '' },
+  cierre: { titulo: '', texto: '¿Qué te dice a ti?', nota: 'Respóndeme por mensaje' },
+  texto: { titulo: 'PARA PENSAR', texto: '', nota: '' },
+};
 
-export const nombreLamina: Record<Lamina, string> = {
+/** Cuántas láminas como máximo (Instagram deja hasta 10 por carrusel). */
+export const MAX_LAMINAS = 10;
+
+export const nombreLamina: Record<Tipo, string> = {
   gancho: 'Pregunta',
   versiculo: 'Versículo',
   fondo: 'A fondo',
   cierre: '¿Qué te dice?',
+  texto: 'Texto',
 };
 
+let siguiente = 0;
+export const nuevaLamina = (tipo: Tipo, textos: Partial<Omit<Lamina, 'id' | 'tipo'>> = {}): Lamina => ({ id: `l${Date.now().toString(36)}${siguiente++}`, tipo, ...textos });
+
+/** Hay algo para la lámina «A fondo»: una palabra original o una línea de contexto. */
+export const hayFondo = (look: ImageLook) => !!look.original || !!look.contexto?.trim();
+
+/** Las láminas con que empieza el carrusel: la de «A fondo» solo si se eligió algo en el Estudio. */
+export const laminasIniciales = (look: ImageLook): Lamina[] =>
+  [nuevaLamina('gancho'), nuevaLamina('versiculo'), ...(hayFondo(look) ? [nuevaLamina('fondo')] : []), nuevaLamina('cierre')];
+
+/** El texto que se ve en una lámina: lo escrito, o lo de siempre si no se ha editado. */
+export function textoDe(l: Lamina, campo: 'titulo' | 'texto' | 'nota', look?: ImageLook) {
+  const escrito = l[campo];
+  if (escrito !== undefined) return escrito;
+  if (l.tipo === 'fondo' && campo === 'texto') return look?.contexto?.trim() ?? '';
+  return PREDETERMINADO[l.tipo][campo];
+}
+
 /** Dibuja una lámina vertical de 1080 × 1920. */
-export async function drawLamina(kind: Lamina, v: VerseToShare, look: ImageLook, gancho: string): Promise<Blob> {
-  // El versículo es la imagen de siempre en formato historia; lo de estudio se va a la lámina siguiente.
-  if (kind === 'versiculo') {
-    const separado = laminasDe(look).includes('fondo');
+export async function drawLamina(l: Lamina, v: VerseToShare, look: ImageLook, todas: Lamina[] = [l]): Promise<Blob> {
+  // El versículo es la imagen de siempre en formato historia; si hay lámina «A fondo», lo de estudio se va allí.
+  if (l.tipo === 'versiculo') {
+    const separado = todas.some((x) => x.tipo === 'fondo');
     return drawVerseImage(v, 'historia', separado ? { ...look, original: undefined, contexto: undefined } : look);
   }
+  const kind = l.tipo;
+  const titulo = textoDe(l, 'titulo', look).trim();
+  const nota = textoDe(l, 'nota', look).trim();
   const { fondo, letra } = look;
   const { width, height } = IMAGE_SIZE.historia;
   const canvas = document.createElement('canvas');
@@ -80,29 +125,36 @@ export async function drawLamina(kind: Lamina, v: VerseToShare, look: ImageLook,
     ctx.fillText(t.split('').join(String.fromCharCode(8202)), width / 2, y);
   };
 
+  const mayus = (t: string) => (letra.mayusculas ? t.toLocaleUpperCase('es') : t);
+
   if (kind === 'gancho') {
-    const texto = gancho.trim() || GANCHOS[0];
+    const texto = textoDe(l, 'texto').trim();
     const texto2 = letra.mayusculas ? texto.toLocaleUpperCase('es') : texto;
     const size = tamañoQueCabe(texto2, Math.round(110 * letra.escala), 840, 700);
-    const alto = parrafo(texto2, `${size}px ${family}`, size, letra.interlinea, 840, 0, '', true);
+    const alto = texto2 ? parrafo(texto2, `${size}px ${family}`, size, letra.interlinea, 840, 0, '', true) : 0;
     const dedicH = dedic ? 64 * 1.2 + 40 : 0;
-    let y = (height - (dedicH + 50 + alto + 90 + 40)) / 2 - 40;
+    const tituloH = titulo ? 34 + 40 : 0;
+    let y = (height - (dedicH + tituloH + 50 + alto + 90 + 40)) / 2 - 40;
     if (dedic) {
       ctx.fillStyle = fondo.accent;
       ctx.font = `64px "${LETRA_DEDICATORIA}", ${SERIF}`;
       ctx.fillText(dedic, width / 2, y);
       y += dedicH;
     }
+    if (titulo) {
+      kicker(titulo.toLocaleUpperCase('es'), y);
+      y += tituloH;
+    }
     barra(y);
     y += 50;
-    parrafo(texto2, `${size}px ${family}`, size, letra.interlinea, 840, y, fondo.text);
+    if (texto2) parrafo(texto2, `${size}px ${family}`, size, letra.interlinea, 840, y, fondo.text);
     y += alto + 90;
     ctx.fillStyle = fondo.muted;
     ctx.font = `600 38px ${SANS}`;
-    ctx.fillText('Desliza  →', width / 2, y);
+    if (nota) ctx.fillText(nota, width / 2, y);
   } else if (kind === 'fondo') {
     const { original } = look;
-    const contexto = look.contexto?.trim();
+    const contexto = textoDe(l, 'texto', look).trim();
     const altoOriginal = original ? 34 + 50 + 170 + 70 + 90 : 0;
     const sizeCtx = original ? 46 : 64;
     const altoContexto = contexto ? 34 + 50 + parrafo(contexto, `italic ${sizeCtx}px ${SERIF}`, sizeCtx, 1.4, 820, 0, '', true) : 0;
@@ -130,27 +182,40 @@ export async function drawLamina(kind: Lamina, v: VerseToShare, look: ImageLook,
       y += sep / 2;
     }
     if (contexto) {
-      kicker(original ? 'CONTEXTO' : 'PARA ENTENDERLO', y);
+      kicker((titulo || (original ? 'CONTEXTO' : 'PARA ENTENDERLO')).toLocaleUpperCase('es'), y);
       y += 34 + 50;
       parrafo(contexto, `italic ${sizeCtx}px ${SERIF}`, sizeCtx, 1.4, 820, y, fondo.text);
     }
   } else {
-    const pregunta = '¿Qué te dice a ti?';
-    const texto = letra.mayusculas ? pregunta.toLocaleUpperCase('es') : pregunta;
-    const size = tamañoQueCabe(texto, Math.round(120 * letra.escala), 860, 600);
-    const alto = parrafo(texto, `${size}px ${family}`, size, letra.interlinea, 860, 0, '', true);
-    let y = (height - (50 + alto + 60 + 44 + 70 + 44)) / 2 - 40;
+    // «¿Qué te dice a ti?» y las láminas de texto libre: una línea arriba, el texto grande y una nota abajo.
+    const texto = mayus(textoDe(l, 'texto').trim());
+    const cierre = kind === 'cierre';
+    const base = Math.round((cierre ? 120 : texto.length > 120 ? 70 : 92) * letra.escala);
+    const size = texto ? tamañoQueCabe(texto, base, 860, 900) : base;
+    const alto = texto ? parrafo(texto, `${size}px ${family}`, size, letra.interlinea, 860, 0, '', true) : 0;
+    const tituloH = titulo ? 34 + 40 : 0;
+    const notaH = nota ? 60 + 44 : 0;
+    const refH = cierre ? 70 + 44 : 0;
+    let y = (height - (tituloH + 50 + alto + notaH + refH)) / 2 - 40;
+    if (titulo) {
+      kicker(titulo.toLocaleUpperCase('es'), y);
+      y += tituloH;
+    }
     barra(y);
     y += 50;
-    parrafo(texto, `${size}px ${family}`, size, letra.interlinea, 860, y, fondo.text);
-    y += alto + 60;
-    ctx.fillStyle = fondo.muted;
-    ctx.font = `40px ${SANS}`;
-    ctx.fillText('Respóndeme por mensaje', width / 2, y);
-    y += 44 + 70;
-    ctx.fillStyle = fondo.accent;
-    ctx.font = `700 40px ${SANS}`;
-    ctx.fillText(caption(v), width / 2, y);
+    if (texto) parrafo(texto, `${size}px ${family}`, size, letra.interlinea, 860, y, fondo.text);
+    y += alto;
+    if (nota) {
+      y += 60;
+      parrafo(nota, `40px ${SANS}`, 40, 1.3, 860, y, fondo.muted);
+      y += 44;
+    }
+    if (cierre) {
+      y += 70;
+      ctx.fillStyle = fondo.accent;
+      ctx.font = `700 40px ${SANS}`;
+      ctx.fillText(caption(v), width / 2, y);
+    }
   }
 
   // La marca, por encima de la barra de Instagram (que ya muestra en qué lámina se va).
@@ -164,8 +229,8 @@ export async function drawLamina(kind: Lamina, v: VerseToShare, look: ImageLook,
 }
 
 /** Todas las láminas del carrusel, en orden. */
-export function drawLaminas(v: VerseToShare, look: ImageLook, gancho: string) {
-  return Promise.all(laminasDe(look).map((k) => drawLamina(k, v, look, gancho)));
+export function drawLaminas(v: VerseToShare, look: ImageLook, laminas: Lamina[]) {
+  return Promise.all(laminas.map((l) => drawLamina(l, v, look, laminas)));
 }
 
 const archivo = (v: VerseToShare, i: number) =>

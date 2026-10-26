@@ -16,6 +16,7 @@ import { Line, SPEAKERS, chunks, pickVoices } from './podcast';
 import { lineStarts } from './podcastTiempos';
 import { chapterHref } from './routes';
 import { huella } from './sellos';
+import { paraHablar } from './voces';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const VERSION_KEY = 'audio-version';
@@ -407,7 +408,7 @@ async function speakFrom(index: number) {
   set({ speech: { ...speech, index, playing: true } });
   const voices = await pickVoices();
   const line = speech.lines[index];
-  const parts = chunks(line.text);
+  const parts = chunks(paraHablar(line.text));
   const voice = voices[line.speaker];
   const speakPart = (i: number) => {
     if (my !== speechToken) return;

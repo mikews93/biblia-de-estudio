@@ -63,8 +63,9 @@ function install() {
 
   document.addEventListener('pointerdown', (e) => {
     if (!focused || gesture || e.pointerType === 'mouse') return;
-    // Ni al escribir ni dentro de un panel abierto encima del lector (Estudio, versículo, notas...).
-    if ((e.target as Element | null)?.closest?.(IGNORE)) return;
+    // Ni al escribir ni dentro de un panel abierto encima del lector (Estudio, versículo, notas...), ni con una hoja
+    // abierta: el toque puede llegar con el documento como destino (al mantener el dedo para arrastrar una lámina).
+    if ((e.target as Element | null)?.closest?.(IGNORE) || document.querySelector('[aria-modal="true"]')) return;
     start = { x: e.clientX, y: e.clientY, id: e.pointerId };
     last = { x: e.clientX, t: e.timeStamp };
   });
