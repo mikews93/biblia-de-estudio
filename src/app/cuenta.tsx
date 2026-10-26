@@ -9,7 +9,7 @@ import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, Chips, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { ProviderLogo } from '@/components/comunidad/ProviderButtons';
-import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, FlagIcon, KeyIcon, LampIcon, LockIcon, PeopleIcon, PinIcon } from '@/components/icons';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, DocumentIcon, FlagIcon, KeyIcon, LampIcon, LockIcon, PeopleIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, updateUser, useAccount } from '@/lib/comunidad';
 import { firstName, greeting } from '@/lib/daily';
 import { useRacha } from '@/lib/racha';
@@ -460,6 +460,23 @@ export default function AccountScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Privacidad</Text>
             <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Qué guardamos, a quién lo enviamos y cómo borrarlo</Text>
+          </View>
+          <ChevronRightIcon color={colors.muted} size={20} />
+        </Pressable>
+      </Appear>
+
+      <Appear delay={230}>
+        <Pressable
+          onPress={() => go('/terminos')}
+          accessibilityRole="link"
+          style={[styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <View style={[styles.rowIcon, { backgroundColor: colors.accentSoft }]}>
+            <DocumentIcon color={colors.accent} size={20} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Términos</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Las reglas para usar Zarza, en palabras sencillas</Text>
           </View>
           <ChevronRightIcon color={colors.muted} size={20} />
         </Pressable>
