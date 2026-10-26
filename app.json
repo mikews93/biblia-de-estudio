@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Zarza",
-    "slug": "zarza",
+    "slug": "zarza-biblia-de-estudio",
+    "owner": "mb-technology-solucions",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
