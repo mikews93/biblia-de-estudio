@@ -1,20 +1,14 @@
-// El texto de un pasaje corto (RV1909), con los números de versículo pequeños: para la pregunta de la semana del
+// El texto de un pasaje corto (en la versión de la persona, o la RV1909 si no carga), con los números de versículo pequeños: para la pregunta de la semana del
 // círculo, «Conocernos» y las etapas del camino de preparación.
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 
 import type { Pasaje } from '@/lib/circulo';
-import { type Verse, getChapter } from '@/lib/data';
+import { useCapitulo } from '@/lib/enVersion';
 import { Colors, serif } from '@/lib/theme';
 
 export default function TextoPasaje({ pasaje, colors }: { pasaje: Pasaje; colors: Colors }) {
-  const [verses, setVerses] = useState<Verse[] | null>(null);
-  useEffect(() => {
-    getChapter(pasaje.book, pasaje.chapter).then(
-      (all) => setVerses(all.filter(([v]) => v >= pasaje.from && v <= pasaje.to)),
-      () => setVerses([]),
-    );
-  }, [pasaje.book, pasaje.chapter, pasaje.from, pasaje.to]);
+  const capitulo = useCapitulo(pasaje.book, pasaje.chapter);
+  const verses = capitulo?.verses.filter(([v]) => v >= pasaje.from && v <= pasaje.to) ?? null;
   if (verses === null) return <ActivityIndicator color={colors.accent} style={{ marginVertical: 12 }} />;
   return (
     <Text style={[styles.verseText, { color: colors.text }]}>

@@ -29,14 +29,18 @@ export function cifras(r: Resumen) {
   ];
 }
 
-/** El texto del versículo del año (RV1909), el nombre del libro y la última palabra original que se descubrió. */
-export async function tarjetaDe(r: Resumen): Promise<Tarjeta> {
+/**
+ * El texto del versículo del año (en la versión que se lee, o la RV1909 si no carga), el nombre del libro y la última
+ * palabra original que se descubrió.
+ */
+export async function tarjetaDe(r: Resumen, version = 'rv1909'): Promise<Tarjeta> {
   const books = await getBooks().catch(() => []);
   const nombre = (id: string) => books.find((b) => b.id === id)?.name ?? id;
   let versiculo: Tarjeta['versiculo'] = null;
   if (r.versiculo) {
     const { book, chapter, verse } = r.versiculo;
-    const texto = (await getChapter(book, chapter).catch(() => [])).find(([n]) => n === verse)?.[1];
+    const leer = (v: string) => getChapter(book, chapter, v).then((vs) => vs.find(([n]) => n === verse)?.[1]);
+    const texto = (await leer(version).catch(() => undefined)) ?? (await leer('rv1909').catch(() => undefined));
     if (texto) versiculo = { texto, referencia: `${nombre(book)} ${chapter}:${verse}` };
   }
   let palabra: Tarjeta['palabra'] = null;

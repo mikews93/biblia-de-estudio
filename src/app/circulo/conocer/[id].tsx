@@ -1,5 +1,5 @@
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
@@ -11,7 +11,7 @@ import { CheckIcon, CommentIcon, FlagIcon, HeartIcon, LockIcon, PeopleIcon, Pray
 import { CONOCERNOS, DIAS_CONOCER, type Pasaje } from '@/lib/circulo';
 import { type Conocer, cambiarEtapa, cerrarConocer, enviarMensaje, leerConocer, pedirAcompanamiento, responderConocer } from '@/lib/circuloApi';
 import { useAccount } from '@/lib/comunidad';
-import { type Verse, getChapter } from '@/lib/data';
+import { useCapitulo } from '@/lib/enVersion';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -239,16 +239,11 @@ function Hoy({ c, nombre, colors, onDone }: { c: Conocer; nombre: string; colors
 }
 
 function TextoPasaje({ pasaje, referencia, colors }: { pasaje: Pasaje; referencia: string; colors: Colors }) {
-  const [verses, setVerses] = useState<Verse[] | null>(null);
-  useEffect(() => {
-    getChapter(pasaje.book, pasaje.chapter).then(
-      (all) => setVerses(all.filter(([v]) => v >= pasaje.from && v <= pasaje.to)),
-      () => setVerses([]),
-    );
-  }, [pasaje.book, pasaje.chapter, pasaje.from, pasaje.to]);
+  const capitulo = useCapitulo(pasaje.book, pasaje.chapter);
+  const verses = capitulo?.verses.filter(([v]) => v >= pasaje.from && v <= pasaje.to) ?? null;
   return (
     <View style={[styles.pasaje, { backgroundColor: colors.background, borderColor: colors.border }]}>
-      <Text style={[styles.kicker, { color: colors.muted, marginBottom: 8 }]}>{referencia.toUpperCase()} · RV1909</Text>
+      <Text style={[styles.kicker, { color: colors.muted, marginBottom: 8 }]}>{referencia.toUpperCase()} · {capitulo?.sigla ?? 'RV1909'}</Text>
       {verses === null ? (
         <ActivityIndicator color={colors.accent} />
       ) : (

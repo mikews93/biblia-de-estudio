@@ -10,9 +10,10 @@ import VerseImage from '@/components/VerseImage';
 import type { VerseToShare } from '@/lib/compartir';
 import type { Book } from '@/lib/data';
 import { fondoPorNombre, letraPorId, useLetras } from '@/lib/fondos';
+import { enVersion } from '@/lib/enVersion';
 import { ESTILOS_TARJETA, dedicatoriaDe, versiculosParaLlevar } from '@/lib/paraLlevar';
 import type { Pasaje } from '@/lib/taller';
-import { Colors, serif } from '@/lib/theme';
+import { Colors, serif, useSettings } from '@/lib/theme';
 
 type Props = {
   titulo: string;
@@ -26,6 +27,7 @@ type Props = {
 
 export default function ParaLlevar({ titulo, pasaje, citas, books, colors, para }: Props) {
   const { width } = useWindowDimensions();
+  const { settings } = useSettings();
   const [versos, setVersos] = useState<VerseToShare[]>([]);
   const [abierto, setAbierto] = useState<number | null>(null);
   const clave = `${pasaje?.book}.${pasaje?.chapter}.${pasaje?.from}|${citas.join('|')}`;
@@ -34,11 +36,13 @@ export default function ParaLlevar({ titulo, pasaje, citas, books, colors, para 
   useEffect(() => {
     if (!books.length) return;
     let vivo = true;
-    versiculosParaLlevar(pasaje, citas, books).then((v) => vivo && setVersos(v));
+    versiculosParaLlevar(pasaje, citas, books)
+      .then((v) => enVersion(v, settings.version))
+      .then((v) => vivo && setVersos(v));
     return () => {
       vivo = false;
     };
-  }, [clave, books.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clave, books.length, settings.version]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!versos.length) return null;
   const ancho = Math.min(220, Math.max(150, (Math.min(width, 820) - 80) / 3));
