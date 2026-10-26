@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { pauseAudio } from './audio';
 import { chunks, pickVoices } from './podcast';
+import { paraHablar } from './voces';
 
 // El narrador del Espacio Niños: lee en voz alta, con la voz del dispositivo, una lista de partes (la entrada de
 // la historia, cada versículo, una pregunta) y avisa cuál suena para iluminarla. Un poco más lento que el pódcast,
@@ -17,17 +18,23 @@ export function callar() {
   Speech.stop();
 }
 
-/** Lee desde la parte «desde» hasta el final, o solo esa parte con «una». */
-export async function narrar(partes: string[], alCambiar: (i: number | null) => void, desde = 0, una = false) {
+/** Lee desde la parte «desde» hasta el final, o solo esa parte con «una». Sin «voz», la de Ana del pódcast. */
+export async function narrar(
+  partes: string[],
+  alCambiar: (i: number | null) => void,
+  desde = 0,
+  una = false,
+  opciones: { voz?: string; ritmo?: number } = {},
+) {
   callar();
   pauseAudio();
   const mio = turno;
-  const voz = (await pickVoices()).ana;
+  const voz = opciones.voz ? { voice: opciones.voz, pitch: 1 } : (await pickVoices()).ana;
   const parte = (i: number) => {
     if (mio !== turno) return;
     if (i >= partes.length || (una && i > desde)) return alCambiar(null);
     alCambiar(i);
-    const trozos = chunks(partes[i]);
+    const trozos = chunks(paraHablar(partes[i]));
     const decir = (j: number) => {
       if (mio !== turno) return;
       if (j >= trozos.length) return parte(i + 1);
@@ -35,7 +42,7 @@ export async function narrar(partes: string[], alCambiar: (i: number | null) => 
         language: 'es',
         voice: voz.voice,
         pitch: voz.pitch,
-        rate: RITMO,
+        rate: opciones.ritmo ?? RITMO,
         onDone: () => decir(j + 1),
         onStopped: () => {
           if (mio === turno) alCambiar(null);

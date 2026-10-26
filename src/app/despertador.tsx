@@ -6,7 +6,7 @@ import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-nativ
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, SectionTitle, useAction } from '@/components/comunidad/ui';
-import { BellIcon, LinkIcon, OpenBookIcon, SunIcon, type IconProps } from '@/components/icons';
+import { BellIcon, ChevronDownIcon, LinkIcon, OpenBookIcon, SunIcon, WavesIcon, type IconProps } from '@/components/icons';
 import { ALARMA_NATIVA, pedirAlarmaExacta, useAlarmaExacta } from '@/lib/alarma';
 import { Soporte, lecturaPendiente, soporte } from '@/lib/avisos';
 import { horaLabel } from '@/lib/avisosTexto';
@@ -15,7 +15,9 @@ import { guardarDespertador, useDespertador } from '@/lib/despertar';
 import { DIAS, Despertador, ENTRE_SEMANA, ModoDespertar, TODOS_LOS_DIAS, diasLabel } from '@/lib/despertarTexto';
 import { todayKey, usePlans } from '@/lib/planes';
 import { Colors, getLastRead, isDark, serif, useColors } from '@/lib/theme';
+import { callar, narrar } from '@/lib/narrador';
 import { navigate } from '@/lib/transition';
+import { RITMO_DESPERTAR, Voz, elegirVozDespertar, useVoces, useVozDespertar } from '@/lib/voces';
 
 const PRESETS = [5 * 60, 5 * 60 + 30, 6 * 60, 6 * 60 + 30, 7 * 60];
 const SITIO = 'https://biblia.migueblanco.com';
@@ -245,6 +247,7 @@ export default function DespertadorScreen() {
             );
           })}
         </View>
+        {d.modo === 'versiculo' && <VozCard colors={colors} />}
         <Button
           label="Probar ahora"
           icon={SunIcon}
@@ -300,6 +303,135 @@ export default function DespertadorScreen() {
       </Text>
     </ScrollView>
   );
+}
+
+const MUESTRA = ['Buenos días.', 'Este es el día que hizo Jehová: nos gozaremos y alegraremos en él.'];
+/** Cuántas voces se ven antes de «Ver todas». */
+const PRIMERAS = 4;
+
+/**
+ * La voz que da los buenos días y lee el versículo. Es la del propio dispositivo (no gasta nada): por defecto la más
+ * natural que tenga, o la que se elija aquí después de escucharla.
+ */
+function VozCard({ colors }: { colors: Colors }) {
+  const voces = useVoces();
+  const elegida = useVozDespertar();
+  const [sonando, setSonando] = useState<string | null>(null);
+  const [todas, setTodas] = useState(false);
+
+  useEffect(() => () => callar(), []);
+
+  const actual = voces?.find((v) => v.id === elegida) ?? voces?.[0];
+  const escuchar = (v: Voz | undefined, clave: string) => {
+    if (sonando === clave) {
+      callar();
+      setSonando(null);
+      return;
+    }
+    setSonando(clave);
+    narrar(MUESTRA, (i) => i === null && setSonando((s) => (s === clave ? null : s)), 0, false, { voz: v?.id, ritmo: RITMO_DESPERTAR });
+  };
+
+  if (voces && !voces.length) {
+    return (
+      <View style={[styles.card, styles.vozCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Este dispositivo no tiene voces en español</Text>
+        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4 }}>{consejoVoz()}</Text>
+      </View>
+    );
+  }
+
+  const mostradas = (voces ?? []).slice(0, todas ? undefined : PRIMERAS);
+  const fila = (v: Voz | null, i: number) => {
+    const sel = v ? elegida === v.id : !elegida;
+    const clave = v?.id ?? 'auto';
+    return (
+      <View
+        key={clave}
+        style={[styles.vozRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}
+      >
+        <Pressable
+          onPress={() => elegirVozDespertar(v?.id ?? null)}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: sel }}
+          style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }, pressed && { opacity: 0.8 }]}
+          testID={v ? undefined : 'voz-automatica'}
+        >
+          <View style={[styles.radio, { borderColor: sel ? colors.warm : colors.border }]}>
+            {sel && <View style={[styles.radioDot, { backgroundColor: colors.warm }]} />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{v ? v.nombre : 'Automática'}</Text>
+              {v?.calidad === 'natural' && (
+                <View style={[styles.badge, { backgroundColor: colors.warmSoft }]}>
+                  <Text style={{ color: colors.warm, fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>NATURAL</Text>
+                </View>
+              )}
+            </View>
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
+              {v ? v.acento : actual ? `La más natural de aquí: ${actual.nombre}, ${actual.acento}` : 'Buscando voces…'}
+            </Text>
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={() => escuchar(v ?? voces?.[0], clave)}
+          accessibilityRole="button"
+          accessibilityLabel={sonando === clave ? 'Parar' : `Escuchar ${v ? v.nombre : 'la voz automática'}`}
+          hitSlop={6}
+          style={({ pressed }) => [
+            styles.escuchar,
+            { borderColor: sonando === clave ? colors.warm : colors.border, backgroundColor: sonando === clave ? colors.warmSoft : 'transparent' },
+            pressed && { transform: [{ scale: 0.94 }] },
+          ]}
+        >
+          <WavesIcon color={sonando === clave ? colors.warm : colors.accent} size={16} />
+          <Text style={{ color: sonando === clave ? colors.warm : colors.text, fontWeight: '700', fontSize: 13 }}>
+            {sonando === clave ? 'Parar' : 'Escuchar'}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  };
+
+  return (
+    <View style={{ marginTop: 22 }}>
+      <SectionTitle>La voz que te saluda</SectionTitle>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 6 }]} testID="voz-despertar">
+        {fila(null, 0)}
+        {mostradas.map((v, i) => fila(v, i + 1))}
+        {voces && voces.length > PRIMERAS && (
+          <Pressable
+            onPress={() => setTodas((t) => !t)}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.verTodas, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={{ color: colors.warm, fontWeight: '700', fontSize: 13 }}>
+              {todas ? 'Ver menos' : `Ver todas (${voces.length})`}
+            </Text>
+            <View style={todas && { transform: [{ rotate: '180deg' }] }}>
+              <ChevronDownIcon color={colors.warm} size={16} />
+            </View>
+          </Pressable>
+        )}
+      </View>
+      <Text style={[styles.vozNota, { color: colors.muted }]}>
+        {actual?.calidad === 'natural'
+          ? 'Habla tu propio dispositivo: no tiene costo ni gasta nada del servidor.'
+          : `Habla tu propio dispositivo, sin costo. ${consejoVoz()}`}
+      </Text>
+    </View>
+  );
+}
+
+/** Dónde conseguir una voz más natural en este dispositivo. */
+function consejoVoz() {
+  const ua = Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  if (Platform.OS === 'android' || /android/i.test(ua))
+    return 'Para una voz más natural: Ajustes › Accesibilidad › Texto a voz, elige «Servicios de voz de Google» y descarga el español en alta calidad.';
+  if (Platform.OS === 'ios' || /iphone|ipad|macintosh/i.test(ua))
+    return 'Para una voz más natural: Ajustes › Accesibilidad › Contenido leído › Voces › Español, y descarga una voz «Mejorada».';
+  return 'En el computador, Microsoft Edge trae voces muy naturales en español.';
 }
 
 function Paso({ colors, n, title, children }: { colors: Colors; n: number; title: string; children: ReactNode }) {
@@ -391,5 +523,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
   },
+  vozCard: { marginTop: 22 },
+  vozRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  badge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  escuchar: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  verTodas: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  vozNota: { fontSize: 12, lineHeight: 18, marginTop: 10, paddingHorizontal: 4 },
   foot: { fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 28 },
 });

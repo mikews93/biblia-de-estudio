@@ -17,6 +17,7 @@ import { callar, narrar } from '@/lib/narrador';
 import { todayKey, usePlans } from '@/lib/planes';
 import { getLastRead, isDark, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { RITMO_DESPERTAR, citaHablada, vozDespertar } from '@/lib/voces';
 
 /** Cuánto suena la música sola antes de que empiece la voz. */
 const PRELUDIO_MS = 7000;
@@ -80,15 +81,25 @@ export default function DespertarScreen() {
   const lecturaTitulo = lectura ? `${name(lectura[0])} ${lectura[1]}` : null;
   const saludo = `${greeting(ahora)}${usuario?.nombre ? `, ${usuario.nombre.split(' ')[0]}` : ''}`;
 
-  const leerVersiculo = () => {
+  // Con la voz más natural del dispositivo (o la elegida en el despertador), en partes cortas: entre una y otra
+  // queda una pausa, como cuando alguien te habla.
+  const leerVersiculo = async () => {
     if (!verseText) return;
     setLeyendo(true);
     volumenMusica(VOLUMEN_BAJO);
-    narrar([`${saludo}. El versículo de hoy está en ${ref}.`, verseText], (i) => {
-      if (i !== null) return;
-      setLeyendo(false);
-      volumenMusica(VOLUMEN, 4);
-    });
+    const voz = await vozDespertar();
+    const cita = citaHablada(name(daily.book), daily.chapter, daily.verse);
+    narrar(
+      [`${saludo}.`, `El versículo de hoy está en ${cita}.`, verseText],
+      (i) => {
+        if (i !== null) return;
+        setLeyendo(false);
+        volumenMusica(VOLUMEN, 4);
+      },
+      0,
+      false,
+      { voz: voz?.id, ritmo: RITMO_DESPERTAR },
+    );
   };
 
   const escucharCapitulo = () => {

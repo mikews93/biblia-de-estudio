@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { minutes, parseScript } from './podcast';
 import { lineStarts } from './podcastTiempos';
@@ -39,5 +39,22 @@ describe('lineStarts', () => {
   it('reparte la duración por la longitud de cada intervención', () => {
     const starts = lineStarts(['a'.repeat(82), 'b'.repeat(182), 'c'.repeat(82)], 40, 10);
     expect(starts).toEqual([10, 20, 40]);
+  });
+});
+
+describe('pickVoices', () => {
+  it('elige para Ana y Tomás las voces más naturales de mujer y de hombre', async () => {
+    const Speech = await import('expo-speech');
+    const voz = (name: string, language: string, localService = false) => ({ identifier: name, name, language, quality: 'Default', localService });
+    vi.spyOn(Speech, 'getAvailableVoicesAsync').mockResolvedValue([
+      voz('Microsoft Sabina Desktop - Spanish (Mexico)', 'es-MX', true),
+      voz('Microsoft Jorge Desktop - Spanish (Mexico)', 'es-MX', true),
+      voz('Microsoft Salome Online (Natural) - Spanish (Colombia)', 'es-CO'),
+      voz('Microsoft Gonzalo Online (Natural) - Spanish (Colombia)', 'es-CO'),
+    ] as never);
+    const { pickVoices } = await import('./podcast');
+    const v = await pickVoices();
+    expect(v.ana.voice).toContain('Salome');
+    expect(v.tomas.voice).toContain('Gonzalo');
   });
 });
