@@ -69,6 +69,11 @@
         }
       ]
     ],
-    "scheme": "bibliadeestudio"
+    "scheme": "bibliadeestudio",
+    "extra": {
+      "eas": {
+        "projectId": "5609d0ef-509f-4651-9151-3e4dfbf8835e"
+      }
+    }
   }
 }
