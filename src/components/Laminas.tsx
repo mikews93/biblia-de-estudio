@@ -1,8 +1,8 @@
 // El carrusel para Historias (solo web). Arriba, la tira de láminas (dibujadas con el mismo canvas con que se
 // comparten) para elegir, ordenar y agregar. Debajo, la lámina elegida en grande: sus textos se escriben ahí mismo,
 // sobre el dibujo, con la letra y los colores que va a tener la imagen.
-import { useEffect, useId, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, TextStyle, View, useWindowDimensions } from 'react-native';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TextStyle, View, useWindowDimensions } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
 import { IconText } from '@/components/comunidad/ui';
@@ -59,6 +59,15 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
   // La lámina grande ocupa lo que deja la pantalla; las de la tira son pequeñas, solo para elegir y ordenar.
   const grande = Math.round(Math.min(330, pantalla - 72, (alto * 0.56 * 9) / 16));
   const mini = 58;
+  // Lo que ocupa cada lámina en la tira: la lámina, su anillo (2 + 2 a cada lado) y el espacio entre ellas.
+  const paso = mini + 8 + 6;
+  const { setTira, arrastrada, corrimiento, recienSoltada } = useArrastre(laminas, paso, (de, a) => {
+    const ls = [...laminas];
+    const [l] = ls.splice(de, 1);
+    ls.splice(a, 0, l);
+    setElegida(l.id);
+    onChange(ls);
+  });
   const clave = JSON.stringify([look.fondo.name, look.letra.id, look.destacadas, look.dedicatoria, look.original, look.contexto, verse.text, verse.version, laminas]);
 
   useEffect(() => {
@@ -120,17 +129,25 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
 
   return (
     <View style={styles.wrap}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip} contentContainerStyle={styles.row}>
+      <View ref={(n) => setTira(n as unknown as HTMLElement | null)}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.strip} contentContainerStyle={styles.row}>
         {laminas.map((l, j) => {
           const on = l.id === actual?.id;
+          const movida = arrastrada?.id === l.id;
           return (
             <Pressable
               key={l.id}
+              nativeID={`lamina-${l.id}`}
               onPress={() => {
+                if (recienSoltada()) return;
                 setElegida(l.id);
                 setAgregando(false);
               }}
-              style={{ gap: 4, alignItems: 'center' }}
+              style={[
+                { gap: 4, alignItems: 'center' },
+                arrastrada && { transform: [{ translateX: movida ? arrastrada.dx : corrimiento(j) }, { scale: movida ? 1.08 : 1 }] },
+                movida && styles.levantada,
+              ]}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               accessibilityLabel={`Lámina ${j + 1}: ${nombreLamina[l.tipo]}${on ? ', elegida' : ''}`}
@@ -160,7 +177,11 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
             <Text style={{ color: colors.muted, fontSize: 11.5, fontWeight: '600' }}>Agregar</Text>
           </Pressable>
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
+      {Platform.OS === 'web' && laminas.length > 1 && !arrastrada && (
+        <Text style={[styles.hint, { color: colors.muted, marginTop: -6 }]}>Arrastra una lámina para cambiarla de lugar</Text>
+      )}
 
       {agregando && (
         <View style={[styles.menu, { borderColor: colors.warm, backgroundColor: colors.background }]}>
@@ -244,6 +265,120 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
       )}
     </View>
   );
+}
+
+/**
+ * Cambiar de lugar las láminas arrastrándolas en la tira (solo web). Con el mouse basta moverla; con el dedo se deja
+ * un momento encima (si no, el gesto es para desplazar la tira).
+ */
+function useArrastre(laminas: Lamina[], paso: number, mover: (de: number, a: number) => void) {
+  const [tira, setTira] = useState<HTMLElement | null>(null);
+  const [arrastrada, setArrastrada] = useState<{ id: string; dx: number } | null>(null);
+  const gesto = useRef<{ id: string; x: number; activo: boolean; timer?: ReturnType<typeof setTimeout> } | null>(null);
+  const soltadaEn = useRef(0);
+  const ultimo = useRef({ laminas, paso, mover });
+  useEffect(() => {
+    ultimo.current = { laminas, paso, mover };
+  });
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !tira) return;
+    const activar = (e: PointerEvent) => {
+      const g = gesto.current;
+      if (!g) return;
+      g.activo = true;
+      (e.target as Element).setPointerCapture?.(e.pointerId);
+      navigator.vibrate?.(12);
+      setArrastrada({ id: g.id, dx: e.clientX - g.x });
+    };
+    const abajo = (e: PointerEvent) => {
+      const nodo = (e.target as Element).closest?.('[id^="lamina-"]');
+      if (!nodo || e.button > 0) return;
+      gesto.current = { id: nodo.id.slice('lamina-'.length), x: e.clientX, activo: false };
+      if (e.pointerType !== 'mouse') gesto.current.timer = setTimeout(() => activar(e), 300);
+    };
+    const mueve = (e: PointerEvent) => {
+      const g = gesto.current;
+      if (!g) return;
+      const dx = e.clientX - g.x;
+      if (!g.activo) {
+        if (e.pointerType === 'mouse' && Math.abs(dx) > 6) activar(e);
+        else if (e.pointerType !== 'mouse' && Math.abs(dx) > 10) {
+          clearTimeout(g.timer);
+          gesto.current = null;
+        }
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      setArrastrada({ id: g.id, dx });
+    };
+    const soltar = (x: number) => {
+      const g = gesto.current;
+      gesto.current = null;
+      if (!g) return;
+      clearTimeout(g.timer);
+      if (!g.activo) return;
+      soltadaEn.current = Date.now();
+      setArrastrada(null);
+      const { laminas: ls, paso: p, mover: m } = ultimo.current;
+      const de = ls.findIndex((l) => l.id === g.id);
+      const a = Math.max(0, Math.min(ls.length - 1, de + Math.round((x - g.x) / p)));
+      if (de >= 0 && a !== de) m(de, a);
+    };
+    const arriba = (e: PointerEvent) => soltar(e.clientX);
+    const cancela = (e: PointerEvent) => {
+      // Con el dedo, el navegador cancela el puntero al ver que se mueve; el arrastre sigue con los toques.
+      if (gesto.current?.activo && e.pointerType !== 'mouse') return;
+      clearTimeout(gesto.current?.timer);
+      gesto.current = null;
+      setArrastrada(null);
+    };
+    // Se escucha en la captura: los Pressable de dentro no dejan subir los toques.
+    // Mientras se arrastra con el dedo, la tira no se desplaza ni sale el menú de la imagen.
+    const quieto = (e: Event) => {
+      if (gesto.current?.activo) e.preventDefault();
+    };
+    const toque = (e: TouchEvent) => {
+      const g = gesto.current;
+      if (!g?.activo) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setArrastrada({ id: g.id, dx: e.touches[0].clientX - g.x });
+    };
+    const finToque = (e: TouchEvent) => {
+      if (gesto.current?.activo) soltar(e.changedTouches[0].clientX);
+    };
+    tira.addEventListener('pointerdown', abajo, true);
+    tira.addEventListener('pointermove', mueve, true);
+    tira.addEventListener('pointerup', arriba, true);
+    tira.addEventListener('pointercancel', cancela, true);
+    tira.addEventListener('touchmove', toque, { passive: false, capture: true });
+    tira.addEventListener('touchend', finToque, true);
+    tira.addEventListener('contextmenu', quieto, true);
+    return () => {
+      tira.removeEventListener('pointerdown', abajo, true);
+      tira.removeEventListener('pointermove', mueve, true);
+      tira.removeEventListener('pointerup', arriba, true);
+      tira.removeEventListener('pointercancel', cancela, true);
+      tira.removeEventListener('touchmove', toque, true);
+      tira.removeEventListener('touchend', finToque, true);
+      tira.removeEventListener('contextmenu', quieto, true);
+    };
+  }, [tira]);
+
+  /** Cuánto se corre una lámina para dejarle sitio a la que se arrastra. */
+  const corrimiento = (j: number) => {
+    if (!arrastrada) return 0;
+    const de = laminas.findIndex((l) => l.id === arrastrada.id);
+    const a = Math.max(0, Math.min(laminas.length - 1, de + Math.round(arrastrada.dx / paso)));
+    if (de < a && j > de && j <= a) return -paso;
+    if (de > a && j >= a && j < de) return paso;
+    return 0;
+  };
+  /** Al soltar, el navegador también manda un clic: no debe elegir otra lámina. */
+  const recienSoltada = () => Date.now() - soltadaEn.current < 300;
+  return { setTira, arrastrada, corrimiento, recienSoltada };
 }
 
 /** El tamaño de la letra grande para que quepa, como lo calcula el canvas (src/lib/laminas.ts), a ojo. */
@@ -373,6 +508,7 @@ const styles = StyleSheet.create({
   stageTitle: { fontWeight: '700', fontSize: 15, flex: 1 },
   iconBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   off: { opacity: 0.35 },
+  levantada: { zIndex: 2, opacity: 0.92 },
   lock: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', paddingHorizontal: 4 },
   tip: { flexDirection: 'row', gap: 6, alignItems: 'center', alignSelf: 'center' },
   hint: { fontSize: 13, textAlign: 'center' },

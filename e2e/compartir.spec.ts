@@ -260,11 +260,20 @@ test('en el carrusel se tocan las láminas para editar sus textos, se agregan, s
   await expect(page.getByLabel('Lámina 3: ¿Qué te dice?')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mover a la derecha' })).toBeDisabled();
 
-  // Quitar la pregunta del principio
-  await page.getByLabel('Lámina 1: Pregunta').click();
+  // Arrastrar la pregunta del principio dos lugares a la derecha
+  const caja = (await page.getByLabel('Lámina 1: Pregunta').boundingBox())!;
+  await page.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 3);
+  await page.mouse.down();
+  for (let x = 1; x <= 10; x++) await page.mouse.move(caja.x + caja.width / 2 + x * 14.4, caja.y + caja.height / 3);
+  await page.mouse.up();
+  await expect(page.getByLabel('Lámina 3: Pregunta, elegida')).toBeVisible();
+  await expect(page.getByLabel('Lámina 1: Versículo')).toBeVisible();
+
+  // Quitar la pregunta
+  await page.getByLabel('Lámina 3: Pregunta').click();
   await page.getByRole('button', { name: 'Quitar lámina' }).click();
   await expect(page.getByLabel(/^Lámina \d/)).toHaveCount(3);
-  await expect(page.getByLabel('Lámina 1: Versículo, elegida')).toBeVisible();
+  await expect(page.getByLabel('Lámina 3: Texto, elegida')).toBeVisible();
 
   // Lo escrito sigue ahí al volver a la lámina
   await page.getByLabel('Lámina 2: ¿Qué te dice?').click();
