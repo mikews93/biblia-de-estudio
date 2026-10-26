@@ -191,7 +191,11 @@ export default function AccountForm({ mode }: { mode: Mode }) {
               />
               {error || (ext.error && !proveedores.length) ? <ErrorNote colors={colors}>{error || ext.error}</ErrorNote> : null}
               <Text style={[text.small, { color: colors.muted, textAlign: 'center', marginTop: 4 }]}>
-                {signingUp ? 'Al crear tu cuenta aceptas cómo cuidamos tus datos: ' : 'Cómo cuidamos tus datos: '}
+                {signingUp ? 'Al crear tu cuenta aceptas los ' : 'Al entrar aceptas los '}
+                <Link href="/terminos" style={{ color: colors.accent, fontWeight: '600' }}>
+                  Términos
+                </Link>
+                {' y la '}
                 <Link href="/privacidad" style={{ color: colors.accent, fontWeight: '600' }}>
                   Privacidad
                 </Link>
