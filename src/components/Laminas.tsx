@@ -61,7 +61,7 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
   const mini = 58;
   // Lo que ocupa cada lámina en la tira: la lámina, su anillo (2 + 2 a cada lado) y el espacio entre ellas.
   const paso = mini + 8 + 6;
-  const { setTira, arrastrada, corrimiento, recienSoltada } = useArrastre(laminas, paso, (de, a) => {
+  const { setTira, arrastrada, corrimiento } = useArrastre(laminas, paso, (de, a) => {
     const ls = [...laminas];
     const [l] = ls.splice(de, 1);
     ls.splice(a, 0, l);
@@ -139,7 +139,6 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
               key={l.id}
               nativeID={`lamina-${l.id}`}
               onPress={() => {
-                if (recienSoltada()) return;
                 setElegida(l.id);
                 setAgregando(false);
               }}
@@ -275,7 +274,6 @@ function useArrastre(laminas: Lamina[], paso: number, mover: (de: number, a: num
   const [tira, setTira] = useState<HTMLElement | null>(null);
   const [arrastrada, setArrastrada] = useState<{ id: string; dx: number } | null>(null);
   const gesto = useRef<{ id: string; x: number; activo: boolean; timer?: ReturnType<typeof setTimeout> } | null>(null);
-  const soltadaEn = useRef(0);
   const ultimo = useRef({ laminas, paso, mover });
   useEffect(() => {
     ultimo.current = { laminas, paso, mover };
@@ -319,14 +317,24 @@ function useArrastre(laminas: Lamina[], paso: number, mover: (de: number, a: num
       if (!g) return;
       clearTimeout(g.timer);
       if (!g.activo) return;
-      soltadaEn.current = Date.now();
       setArrastrada(null);
       const { laminas: ls, paso: p, mover: m } = ultimo.current;
       const de = ls.findIndex((l) => l.id === g.id);
       const a = Math.max(0, Math.min(ls.length - 1, de + Math.round((x - g.x) / p)));
       if (de >= 0 && a !== de) m(de, a);
     };
-    const arriba = (e: PointerEvent) => soltar(e.clientX);
+    const arriba = (e: PointerEvent) => {
+      // Al soltar con el mouse el navegador manda un clic, que no debe elegir otra lámina.
+      if (gesto.current?.activo && e.pointerType === 'mouse') {
+        const tragar = (c: Event) => {
+          c.stopPropagation();
+          c.preventDefault();
+        };
+        window.addEventListener('click', tragar, { capture: true, once: true });
+        setTimeout(() => window.removeEventListener('click', tragar, { capture: true }), 0);
+      }
+      soltar(e.clientX);
+    };
     const cancela = (e: PointerEvent) => {
       // Con el dedo, el navegador cancela el puntero al ver que se mueve; el arrastre sigue con los toques.
       if (gesto.current?.activo && e.pointerType !== 'mouse') return;
@@ -376,9 +384,7 @@ function useArrastre(laminas: Lamina[], paso: number, mover: (de: number, a: num
     if (de > a && j >= a && j < de) return paso;
     return 0;
   };
-  /** Al soltar, el navegador también manda un clic: no debe elegir otra lámina. */
-  const recienSoltada = () => Date.now() - soltadaEn.current < 300;
-  return { setTira, arrastrada, corrimiento, recienSoltada };
+  return { setTira, arrastrada, corrimiento };
 }
 
 /** El tamaño de la letra grande para que quepa, como lo calcula el canvas (src/lib/laminas.ts), a ojo. */
