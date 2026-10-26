@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { pauseAudio } from './audio';
 import { chunks, pickVoices } from './podcast';
+import { paraHablar } from './voces';
 
 // El narrador del Espacio Niños: lee en voz alta, con la voz del dispositivo, una lista de partes (la entrada de
 // la historia, cada versículo, una pregunta) y avisa cuál suena para iluminarla. Un poco más lento que el pódcast,
@@ -33,7 +34,7 @@ export async function narrar(
     if (mio !== turno) return;
     if (i >= partes.length || (una && i > desde)) return alCambiar(null);
     alCambiar(i);
-    const trozos = chunks(partes[i]);
+    const trozos = chunks(paraHablar(partes[i]));
     const decir = (j: number) => {
       if (mio !== turno) return;
       if (j >= trozos.length) return parte(i + 1);

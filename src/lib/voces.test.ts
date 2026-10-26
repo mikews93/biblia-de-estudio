@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { citaHablada, nombreCorto, ordenar } from './voces';
+import { citaHablada, nombreCorto, ordenar, paraHablar } from './voces';
 
 const v = (name: string, language: string, extra: { identifier?: string; localService?: boolean } = {}) => ({
   identifier: extra.identifier ?? name,
@@ -51,4 +51,8 @@ describe('nombreCorto', () => {
 
 it('dice la cita sin «dos puntos»', () => {
   expect(citaHablada('Juan', 3, 16)).toBe('Juan, capítulo 3, versículo 16');
+});
+
+it('las citas con dos puntos se leen como capítulo y versículo', () => {
+  expect(paraHablar('Lee Juan 3:16 y Salmo 23:1-3.')).toBe('Lee Juan capítulo 3, versículo 16 y Salmo capítulo 23, versículos 1 al 3.');
 });

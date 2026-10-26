@@ -176,3 +176,12 @@ export const RITMO_DESPERTAR = 0.94;
 /** «Juan 3:16» dicho como lo diría una persona; «3:16» lo leen muchas voces como «tres dos puntos dieciséis». */
 export const citaHablada = (libro: string, capitulo: number, versiculo: number) =>
   `${libro}, capítulo ${capitulo}, versículo ${versiculo}`;
+
+/**
+ * Lo que lee una voz del dispositivo, con las citas dichas como las diría una persona: «Juan 3:16» → «Juan capítulo
+ * 3, versículo 16» y «Salmo 23:1-3» → «Salmo capítulo 23, versículos 1 al 3».
+ */
+export const paraHablar = (texto: string) =>
+  texto
+    .replace(/\b(\d{1,3}):(\d{1,3})\s*[-–]\s*(\d{1,3})\b/g, 'capítulo $1, versículos $2 al $3')
+    .replace(/\b(\d{1,3}):(\d{1,3})\b/g, 'capítulo $1, versículo $2');
