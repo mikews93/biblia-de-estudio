@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "export ZARZA_FECHA_COMPILACION=$(date -u +%Y-%m-%dT%H:%M:%SZ) && npm run data && npm run semantica && npm run comentarios && npm run teologia && npm run diccionario && npx expo export --platform web && python3 pipeline/seo_pages.py dist && node pipeline/version_web.mjs dist",
+  "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist",
   "ignoreCommand": "sh pipeline/vercel_ignorar.sh",
   "functions": {
