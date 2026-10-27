@@ -64,6 +64,7 @@
     "data": "python3 pipeline/build_data.py",
     "comentarios": "python3 pipeline/build_comentarios.py && python3 pipeline/importar_comentario.py --entorno",
     "teologia": "python3 pipeline/build_teologia.py --publicar",
+    "diccionario": "python3 pipeline/build_diccionario.py --publicar",
     "semantica": "sh pipeline/semantica/traer.sh && node pipeline/semantica/textos.mjs public/data",
     "start": "expo start",
     "android": "expo start --android",
