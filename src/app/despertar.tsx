@@ -294,7 +294,9 @@ function Amanecer({ dark }: { dark: boolean }) {
   const opacity = rise.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] });
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    // Recortado: el sol es más ancho que la pantalla y, suelto, ensanchaba la página en el teléfono (y con ella el
+    // devocional que se abre encima).
+    <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} pointerEvents="none">
       <Svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="cielo" x1="0" y1="0" x2="0" y2="1">

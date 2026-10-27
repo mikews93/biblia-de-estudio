@@ -105,8 +105,8 @@ class Navegador {
 }
 
 /** Empieza el viaje a Facebook desde la app: la dirección con el pase y el estado que solo conoce la app. */
-async function inicio(modo: 'entrar' | 'conectar', llave?: string) {
-  const r = await call<{ url: string; estado: string }>('proveedorInicio', { proveedor: 'facebook', modo }, llave);
+async function inicio(modo: 'entrar' | 'conectar', llave?: string, nativo = false) {
+  const r = await call<{ url: string; estado: string }>('proveedorInicio', { proveedor: 'facebook', modo, nativo }, llave);
   return r.json;
 }
 
@@ -277,6 +277,19 @@ describe.skipIf(!DB_URL || !HAS_DATA)('Entrar con Facebook (Auth.js)', () => {
     const res = await nav.get(`http://localhost/api/auth?${q}`);
     expect(await (await nav.get(res.headers.get('location')!)).text()).toContain('Tu cuenta quedó creada');
     expect((await resultado(estado)).json.usuario).toMatchObject({ nombre: 'Juan Marcos' });
+  });
+
+  it('en la app nativa, la vuelta abre la app con una redirección y la app recoge la sesión', async () => {
+    const code = fbPersona('Tabita de Jope');
+    const { url, estado } = await inicio('entrar', undefined, true);
+    const nav = new Navegador();
+    const dialog = await aFacebook(nav, url);
+    const res = await nav.get(`${dialog.searchParams.get('redirect_uri')}?${new URLSearchParams({ state: dialog.searchParams.get('state')!, code })}`);
+    const fin = await nav.get(res.headers.get('location')!);
+    // El navegador del teléfono no deja que la página abra la app sola: tiene que ser una redirección.
+    expect(fin.status).toBe(302);
+    expect(fin.headers.get('location')).toBe('bibliadeestudio://vuelta');
+    expect((await resultado(estado)).json.usuario).toMatchObject({ nombre: 'Tabita de Jope' });
   });
 
   it('conectar desde el perfil; la misma cuenta de Facebook no se conecta a dos cuentas', async () => {
