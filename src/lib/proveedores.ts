@@ -111,7 +111,9 @@ export async function entrarCon(proveedor: Proveedor, modo: Modo): Promise<boole
       .catch(() => {})
       .finally(() => (closed = true));
     const r = await result;
-    WebBrowser.dismissAuthSession();
+    // Solo iOS sabe cerrar la ventana desde la app; en Android dismissAuthSession lanza un error y la sesión ya
+    // recogida se perdía. Allí la ventana se cierra sola con la redirección a bibliadeestudio://vuelta.
+    if (Platform.OS === 'ios') WebBrowser.dismissAuthSession();
     return apply(r);
   }
   // La ventana se abre antes de esperar al servidor: los navegadores solo dejan abrirla al tocar.
