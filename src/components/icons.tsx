@@ -639,3 +639,21 @@ export const HammerIcon = (p: Props) => (
     <Path d="m13.6 5.2 1.2-1.2a2.4 2.4 0 0 1 3 .3" />
   </Line>
 );
+
+/** Libro con pestañas de letras: el diccionario bíblico. */
+export const DictionaryIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M6 4.5h10.5a1.5 1.5 0 0 1 1.5 1.5v14H7.5A1.5 1.5 0 0 1 6 18.5z" />
+    <Path d="M6 18.5A1.5 1.5 0 0 1 7.5 17H18" />
+    <Path d="m9.5 13.5 2-6 2 6M10.2 11.5h2.6" />
+    <Path d="M18 7.5h1.5M18 11h1.5" />
+  </Line>
+);
+
+/** Etiqueta: los temas de la Biblia y sus pasajes. */
+export const TopicIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h6l8.5 8.5-7.5 7.5L4 11.5z" />
+    <Circle cx={8.5} cy={8.5} r={1.4} />
+  </Line>
+);

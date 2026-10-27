@@ -9,10 +9,12 @@ import {
   ChevronUpIcon,
   CommentaryIcon,
   ConcordanceIcon,
+  DictionaryIcon,
   type IconProps,
   LinkIcon,
   ScrollIcon,
   SearchIcon,
+  TopicIcon,
 } from '@/components/icons';
 import type { Paso } from '@/lib/estudio';
 import { Colors, serif } from '@/lib/theme';
@@ -25,6 +27,8 @@ const TIPOS: Record<Paso['tipo'], { icon: ((p: IconProps) => ReactNode) | string
   original: { icon: 'α', haciendo: 'Mirando el original de', hecho: 'Original de' },
   concordancia: { icon: ConcordanceIcon, haciendo: 'Buscando dónde más aparece', hecho: 'Concordancia de' },
   teologia: { icon: BooksIcon, haciendo: 'Consultando teologías clásicas sobre', hecho: 'Teología sobre' },
+  diccionario: { icon: DictionaryIcon, haciendo: 'Buscando en el diccionario bíblico:', hecho: 'Diccionario bíblico:' },
+  temas: { icon: TopicIcon, haciendo: 'Reuniendo los pasajes sobre', hecho: 'Pasajes sobre' },
 };
 
 function Icon({ tipo, color, size = 14 }: { tipo: Paso['tipo']; color: string; size?: number }) {

@@ -10,7 +10,10 @@ const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 /** Una fuente de la respuesta: un pasaje que se abre en la app («ref») o una obra que se lee fuera («url»). */
 export type Source = { n: number; label: string; ref?: string; url?: string; nota?: string };
 /** Lo que la IA consultó para responder una pregunta (las herramientas de api/_investigar.ts). */
-export type Paso = { tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia'; texto: string };
+export type Paso = {
+  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas';
+  texto: string;
+};
 export type Turn = {
   role: 'user' | 'assistant';
   text: string;

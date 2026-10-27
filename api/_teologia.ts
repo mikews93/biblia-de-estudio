@@ -28,28 +28,30 @@ export type Seccion = [number, string, string, Record<string, number>];
 export type Indice = { obras: Obra[]; secciones: Seccion[] };
 export type Hallazgo = { obra: Obra; titulo: string; url: string; parrafos: string[] };
 
-async function read(request: Request, rel: string): Promise<Buffer | null> {
-  const local = await readFile(path.join(DIR, rel)).catch(() => null);
-  if (local) return local;
-  // En las vistas previas protegidas de Vercel la cookie de quien pregunta abre también los archivos.
-  const cookie = request.headers.get('cookie');
-  const res = await fetch(new URL(`/teologia/${rel}`, request.url), {
-    headers: cookie ? { cookie } : {},
-    signal: AbortSignal.timeout(8000),
-  }).catch(() => null);
-  return res?.ok ? Buffer.from(await res.arrayBuffer()) : null;
-}
-
-async function json<T>(request: Request, rel: string): Promise<T | null> {
-  const raw = await read(request, rel);
+/**
+ * Un archivo de datos estáticos de la web (/teologia/…, /diccionario/…): del despliegue si está en la función, o
+ * pedido a la misma web. Los .gz llegan comprimidos o ya descomprimidos según el servidor.
+ */
+export async function leerJson<T>(request: Request, carpeta: string, rel: string, dir = path.join(process.cwd(), 'dist', carpeta)): Promise<T | null> {
+  let raw = await readFile(path.join(dir, rel)).catch(() => null);
+  if (!raw) {
+    // En las vistas previas protegidas de Vercel la cookie de quien pregunta abre también los archivos.
+    const cookie = request.headers.get('cookie');
+    const res = await fetch(new URL(`/${carpeta}/${rel}`, request.url), {
+      headers: cookie ? { cookie } : {},
+      signal: AbortSignal.timeout(8000),
+    }).catch(() => null);
+    raw = res?.ok ? Buffer.from(await res.arrayBuffer()) : null;
+  }
   if (!raw) return null;
   try {
-    // Según el servidor, el .gz llega comprimido o ya descomprimido.
     return JSON.parse((raw[0] === 0x1f && raw[1] === 0x8b ? gunzipSync(raw) : raw).toString('utf8')) as T;
   } catch {
     return null;
   }
 }
+
+const json = <T>(request: Request, rel: string) => leerJson<T>(request, 'teologia', rel, DIR);
 
 let indice: Promise<Indice | null> | null = null;
 function getIndice(request: Request) {
