@@ -95,6 +95,7 @@ function AppStack() {
           <Stack.Screen name="tarjetas/[book]/[chapter]" options={{ title: 'Tarjetas de repaso' }} />
           <Stack.Screen name="repaso" options={{ title: 'Repaso' }} />
           <Stack.Screen name="buscar" options={{ title: '' }} />
+          <Stack.Screen name="preguntar" options={{ title: '' }} />
           <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
           <Stack.Screen name="genealogia/index" options={{ title: 'Genealogías' }} />
           <Stack.Screen name="genealogia/[id]" options={{ title: '' }} />

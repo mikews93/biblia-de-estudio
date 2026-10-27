@@ -1,5 +1,6 @@
 // /buscar?q=…: una cita («1 reyes 2:5 nbla») abre el pasaje; unas palabras recordadas o una idea se buscan al momento
 // sin IA (por el sentido con internet, por palabras sin conexión) y la IA puede afinar después (con cuenta).
+// Una pregunta («¿qué dice la Biblia sobre la ansiedad?») además se responde arriba (src/lib/preguntar.ts).
 // /buscar?voz=1 empieza a escuchar al abrir.
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
@@ -8,6 +9,7 @@ import { AccessibilityInfo, Animated, Linking, Platform, Pressable, ScrollView, 
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
 import { ChevronRightIcon, ClockIcon, CloseIcon, MicIcon, SearchIcon, SparkIcon, type IconProps } from '@/components/icons';
+import { PreguntaCard, Preparadas } from '@/components/Preguntar';
 import { NeedsConnection } from '@/components/SinConexion';
 import {
   IdeaResult,
@@ -27,6 +29,7 @@ import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/li
 import { Icono } from '@/components/FichaChips';
 import { IndiceRow, buscarFichas, fichaHref, getIndice } from '@/lib/fichas';
 import { type Licensed, licensedById } from '@/lib/licenciadas';
+import { esPregunta } from '@/lib/preguntar';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -236,6 +239,8 @@ export default function Search() {
   const searchedName = versions.find((v) => v.id === searchedIn)?.name ?? searchedLicensed?.name ?? 'Reina-Valera 1909';
   const shownLicensed = !!searchedLicensed && !!results?.some((r) => r.version === searchedIn);
   const bookName = cita ? (books.find((b) => b.id === cita.book)?.name ?? '') : '';
+  // Lo buscado es una pregunta: arriba va su respuesta y debajo los pasajes de la búsqueda rápida.
+  const pregunta = !!asked && !cita && esPregunta(asked);
 
   return (
     <ScrollView
@@ -244,7 +249,7 @@ export default function Search() {
       keyboardShouldPersistTaps="handled"
     >
       <Appear>
-        <Text style={[styles.overline, { color: colors.muted }]}>Citas, palabras o ideas</Text>
+        <Text style={[styles.overline, { color: colors.muted }]}>Citas, palabras, ideas o preguntas</Text>
         <Text style={[styles.title, { color: colors.text, fontFamily: serif }]}>¿Qué quieres encontrar?</Text>
       </Appear>
 
@@ -270,7 +275,7 @@ export default function Search() {
             maxLength={200}
             autoFocus={!params.q && !params.voz}
             style={[styles.input, { color: colors.text }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
-            accessibilityLabel="Buscar una cita, unas palabras o una idea"
+            accessibilityLabel="Buscar una cita, unas palabras o una idea, o hacer una pregunta"
           />
           {!!query && !listening && (
             <Pressable
@@ -404,6 +409,8 @@ export default function Search() {
         </Appear>
       )}
 
+      {!listening && pregunta && <PreguntaCard key={asked} texto={asked} colors={colors} />}
+
       {idle && (
         <>
           {recent.length > 0 && (
@@ -421,6 +428,11 @@ export default function Search() {
               </View>
             </Appear>
           )}
+
+          <Appear delay={70}>
+            <Text style={[styles.section, { color: colors.muted }]}>Preguntas que muchos hacen</Text>
+            <Preparadas colors={colors} onPick={(t) => submit([t])} />
+          </Appear>
 
           <Appear delay={80}>
             <Text style={[styles.section, { color: colors.muted }]}>Ir a una cita</Text>
@@ -519,7 +531,8 @@ export default function Search() {
         <>
           <View style={styles.resultsHead}>
             <Text style={[styles.section, { color: colors.muted, marginBottom: 0, flex: 1 }]}>
-              {results.length === 1 ? '1 pasaje' : `${results.length} pasajes`} para «{asked}»
+              {pregunta ? 'También en la Biblia' : results.length === 1 ? '1 pasaje' : `${results.length} pasajes`}
+              {pregunta ? '' : ` para «${asked}»`}
             </Text>
             <ModeBadge mode={mode} colors={colors} abbr={abbrOf(searchedIn)} />
           </View>
