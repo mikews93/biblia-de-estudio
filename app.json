@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Zarza",
-    "slug": "zarza",
+    "slug": "zarza-biblia-de-estudio",
+    "owner": "mb-technology-solucions",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -68,6 +69,11 @@
         }
       ]
     ],
-    "scheme": "bibliadeestudio"
+    "scheme": "bibliadeestudio",
+    "extra": {
+      "eas": {
+        "projectId": "5609d0ef-509f-4651-9151-3e4dfbf8835e"
+      }
+    }
   }
 }

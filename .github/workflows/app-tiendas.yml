@@ -25,13 +25,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
+      # Enlaza la app con el proyecto de expo.dev (owner y slug de app.json) y escribe su projectId, que hace falta
+      # para las notificaciones push. Si app.json ya lo trae, no cambia nada.
+      - name: Enlazar con expo.dev
+        run: |
+          eas init --non-interactive --force
+          echo "projectId: $(node -p "require('./app.json').expo.extra?.eas?.projectId")"
       - name: Compilar
         run: >
           eas build --non-interactive --no-wait
