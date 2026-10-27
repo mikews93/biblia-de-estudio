@@ -85,6 +85,22 @@ test('entrar con Facebook crea la cuenta con su nombre y su foto', async ({ page
   await expect(page.locator('img[src*="/fotos-prueba/"]').first()).toBeVisible();
 });
 
+test('si la app se recarga mientras estás en Facebook, al volver sigue con la cuenta abierta', async ({ page }) => {
+  // Así lo hace Android cuando pausa o descarta la app mientras la persona está en el proveedor.
+  const nombre = `Lidia ${Date.now().toString(36)}`;
+  await page.goto('/entrar');
+  const popup = page.waitForEvent('popup');
+  await page.getByRole('button', { name: 'Continuar con Facebook' }).click();
+  const fb = await popup;
+  await page.reload();
+  await fb.getByLabel('Tu nombre en Facebook').fill(nombre);
+  await fb.getByRole('button', { name: 'Continuar como en Facebook' }).click();
+
+  await expect(page.getByText('Pregúntale algo a la comunidad…')).toBeVisible();
+  await page.goto('/cuenta');
+  await expect(page.getByText(`Conectado como ${nombre}`)).toBeVisible();
+});
+
 test('conectar Facebook desde el perfil y cancelar en Facebook', async ({ page, request }) => {
   const ana = await cuentaNueva(request, 'Febe');
   await conSesion(page, ana);

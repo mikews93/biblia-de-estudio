@@ -4,9 +4,13 @@
 // El viaje: la app pide a proveedorInicio una dirección con un pase de un solo uso y un estado que solo ella conoce;
 // abre la dirección (en la web, en una ventana aparte o en la misma pestaña si el navegador la bloquea; en el
 // teléfono, en el navegador seguro del sistema) y pregunta cada poco con el estado hasta que la persona termina.
+// El estado se guarda en el dispositivo: si Android pausa o recarga la app mientras la persona está en el proveedor,
+// al volver a la app se retoma la espera (useViajePendiente) en vez de perder la sesión.
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
+import { useEffect } from 'react';
+import { AppState, Platform } from 'react-native';
 
 import { api, startSession, updateUser, Usuario } from './comunidad';
 
@@ -55,21 +59,35 @@ const session = {
 type Result = { usuario: Usuario; llave?: string };
 
 let attempt = 0;
+// El estado del viaje que esta pantalla ya está esperando, para no esperarlo dos veces al volver a la app.
+let waiting: string | null = null;
+
+const guardar = (estado: string | null) =>
+  (estado ? AsyncStorage.setItem(PENDING, estado) : AsyncStorage.removeItem(PENDING)).catch(() => {});
 
 async function waitFor(estado: string, closed: () => boolean): Promise<Result | null> {
   const mine = ++attempt;
+  waiting = estado;
   // Algunas páginas cortan el vínculo con la ventana y la dan por cerrada aunque siga abierta, y en el teléfono el
-  // navegador se cierra justo al terminar: al verla cerrada se sigue preguntando un rato antes de rendirse.
+  // navegador se cierra justo al terminar: al verla cerrada se sigue preguntando un rato antes de rendirse. Ese rato
+  // solo corre con la app a la vista: mientras la persona sigue en el proveedor, Android pausa la app.
   let closedAt: number | null = null;
   const deadline = Date.now() + 10 * 60_000;
-  while (Date.now() < deadline && mine === attempt) {
-    const r = await api<Result & { pendiente?: boolean }>('proveedorResultado', { estado });
-    if (!r.pendiente) return r;
-    if (closed()) closedAt ??= Date.now();
-    if (closedAt && Date.now() - closedAt > (NATIVO ? 15_000 : 45_000)) return null;
-    await new Promise((ok) => setTimeout(ok, 1200));
+  try {
+    while (Date.now() < deadline && mine === attempt) {
+      const r = await api<Result & { pendiente?: boolean }>('proveedorResultado', { estado });
+      if (!r.pendiente) return r;
+      if (AppState.currentState !== 'active') closedAt = null;
+      else if (closed()) closedAt ??= Date.now();
+      if (closedAt && Date.now() - closedAt > (NATIVO ? 15_000 : 45_000)) return null;
+      await new Promise((ok) => setTimeout(ok, 1200));
+    }
+    return null;
+  } finally {
+    if (waiting === estado) waiting = null;
+    // Terminó (o se rindió): ya no hay nada que retomar. Si lo reemplazó otro intento, ese guarda el suyo.
+    if (mine === attempt) guardar(null);
   }
-  return null;
 }
 
 async function apply(r: Result | null) {
@@ -86,6 +104,7 @@ async function apply(r: Result | null) {
 export async function entrarCon(proveedor: Proveedor, modo: Modo): Promise<boolean> {
   if (NATIVO) {
     const { url, estado } = await api<{ url: string; estado: string }>('proveedorInicio', { proveedor, modo, nativo: true });
+    await guardar(estado);
     let closed = false;
     const result = waitFor(estado, () => closed);
     WebBrowser.openAuthSessionAsync(url, 'bibliadeestudio://vuelta')
@@ -99,8 +118,8 @@ export async function entrarCon(proveedor: Proveedor, modo: Modo): Promise<boole
   const popup = window.open('', 'entrar', 'popup,width=520,height=680');
   try {
     const { url, estado } = await api<{ url: string; estado: string }>('proveedorInicio', { proveedor, modo });
+    await guardar(estado);
     if (!popup || popup.closed) {
-      session.set(PENDING, estado);
       session.set(SAME_TAB, '1');
       location.assign(url);
       return new Promise<boolean>(() => {});
@@ -113,13 +132,31 @@ export async function entrarCon(proveedor: Proveedor, modo: Modo): Promise<boole
   }
 }
 
-/** Al volver del proveedor en la misma pestaña (web): termina el viaje que quedó pendiente, si lo hay. */
+/**
+ * Termina el viaje que quedó pendiente en este dispositivo, si lo hay: al volver del proveedor en la misma pestaña
+ * (web), o cuando el teléfono pausó o recargó la app mientras la persona estaba en el proveedor.
+ */
 export async function retomarViaje() {
-  const estado = session.get(PENDING);
-  if (!estado) return false;
-  session.set(PENDING, null);
+  const estado = await AsyncStorage.getItem(PENDING).catch(() => null);
+  if (!estado || waiting === estado) return false;
   session.set(SAME_TAB, null);
   return apply(await waitFor(estado, () => true));
+}
+
+/**
+ * Retoma el viaje pendiente al abrir la pantalla y cada vez que la app vuelve a estar a la vista. `run` envuelve la
+ * espera (para mostrar los errores) y `onDone` se llama si terminó bien.
+ */
+export function useViajePendiente(run: (fn: () => Promise<void>) => unknown, onDone: () => void) {
+  useEffect(() => {
+    const retomar = () =>
+      run(async () => {
+        if (await retomarViaje()) onDone();
+      });
+    retomar();
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && retomar());
+    return () => sub.remove();
+  }, []);
 }
 
 export async function desconectar(proveedor: Proveedor) {

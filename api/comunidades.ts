@@ -1851,8 +1851,12 @@ export async function authRoute(request: Request) {
       resultado = !error || error === 'OAuthCallbackError' || error === 'AccessDenied' ? 'cancelado' : 'error';
       await sql`update viajes_cuenta set resultado = ${resultado} where estado_hash = ${trip.estado_hash} and resultado = 'pendiente'`;
     }
+    // En la app nativa se vuelve con una redirección del servidor: el navegador del teléfono (Chrome Custom Tabs)
+    // no deja que una página abra la app por su cuenta sin un toque, y la persona se quedaba en la página final.
+    // La app recoge el resultado, o el error, con proveedorResultado.
+    if (trip.nativo) return new Response(null, { status: 302, headers: { Location: 'bibliadeestudio://vuelta', 'Cache-Control': 'no-store' } });
     const [ok, titulo, texto] = textoVuelta(trip.proveedor, resultado);
-    return paginaVuelta(ok, titulo, texto, volver(trip.modo), trip.nativo);
+    return paginaVuelta(ok, titulo, texto, volver(trip.modo));
   }
 
   if (!ruta.startsWith('callback/')) return new Response('No encontrado', { status: 404 });
