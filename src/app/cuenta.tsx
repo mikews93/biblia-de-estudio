@@ -9,7 +9,7 @@ import Welcome from '@/components/comunidad/Welcome';
 import { confirm } from '@/components/comunidad/confirm';
 import { Avatar, Button, Chips, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import { ProviderLogo } from '@/components/comunidad/ProviderButtons';
-import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, DocumentIcon, FlagIcon, KeyIcon, LampIcon, LockIcon, PeopleIcon, PinIcon } from '@/components/icons';
+import { BellIcon, CameraIcon, ChevronRightIcon, ChurchIcon, DocumentIcon, FlagIcon, FlameIcon, KeyIcon, LampIcon, LockIcon, PeopleIcon, PinIcon } from '@/components/icons';
 import { deleteAccount, protectAccount, signOut, updateUser, useAccount } from '@/lib/comunidad';
 import { firstName, greeting } from '@/lib/daily';
 import { useRacha } from '@/lib/racha';
@@ -21,6 +21,7 @@ import { ETAPAS, type Etapa } from '@/lib/circulo';
 import { cambiarEtapa } from '@/lib/circuloApi';
 import { Colors, isDark, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { compilacion, etiqueta } from '@/lib/version';
 
 /** Tu perfil: la foto, cómo te ven los demás, las cuentas conectadas, cómo entrar y la sesión. */
 export default function AccountScreen() {
@@ -30,6 +31,7 @@ export default function AccountScreen() {
   const { modo } = useSettings().settings;
   const etapaAction = useAction();
   const servicio = useServicio();
+  const version = compilacion();
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [church, setChurch] = useState('');
@@ -477,6 +479,23 @@ export default function AccountScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Términos</Text>
             <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Las reglas para usar Zarza, en palabras sencillas</Text>
+          </View>
+          <ChevronRightIcon color={colors.muted} size={20} />
+        </Pressable>
+      </Appear>
+
+      <Appear delay={240}>
+        <Pressable
+          onPress={() => go('/acerca')}
+          accessibilityRole="link"
+          style={[styles.row, shadow(colors), { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <View style={[styles.rowIcon, { backgroundColor: colors.accentSoft }]}>
+            <FlameIcon color={colors.accent} size={20} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Acerca de Zarza</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Versión {etiqueta(version)} · datos para reportar un fallo</Text>
           </View>
           <ChevronRightIcon color={colors.muted} size={20} />
         </Pressable>
