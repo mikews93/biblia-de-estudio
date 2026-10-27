@@ -127,6 +127,7 @@ function AppStack() {
           <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
           <Stack.Screen name="privacidad" options={{ title: 'Privacidad' }} />
           <Stack.Screen name="terminos" options={{ title: 'Términos' }} />
+          <Stack.Screen name="acerca" options={{ title: 'Acerca de Zarza' }} />
           <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
           <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
           <Stack.Screen name="iglesia/postular" options={{ title: 'Postular mi iglesia' }} />

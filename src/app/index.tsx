@@ -27,6 +27,7 @@ import {
   WordJourneyIcon,
   StarIcon,
   SunIcon,
+  FlameIcon,
   type IconProps,
 } from '@/components/icons';
 import ParaTiHoy from '@/components/ParaTi';
@@ -55,6 +56,7 @@ import { chapterHref, verseHref } from '@/lib/routes';
 import { dueCards, useCards } from '@/lib/tarjetas';
 import { serif, useColors, useLastRead, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { compilacion, etiqueta } from '@/lib/version';
 import { voiceSupported } from '@/lib/voz';
 
 /**
@@ -68,6 +70,7 @@ export default function Hoy() {
 
 /** Inicio para todos: seguir leyendo, el versículo del día, la semana y accesos. */
 function Today() {
+  const version = compilacion();
   const colors = useColors();
   const { usuario } = useAccount();
   const saludo = greetingName(usuario);
@@ -413,6 +416,17 @@ function Today() {
         <Tile icon={WordJourneyIcon} label="Palabras" colors={colors} onPress={() => navigate(() => router.push(palabrasHref() as never), 'forward')} />
         <Tile icon={(p) => <StarIcon {...p} />} label="Niños y jóvenes" colors={colors} onPress={() => navigate(() => router.push('/modo' as never), 'forward')} />
       </Appear>
+
+      <Pressable
+        onPress={() => navigate(() => router.push('/acerca' as never), 'forward')}
+        accessibilityRole="link"
+        accessibilityLabel={`Acerca de Zarza. Versión ${etiqueta(version)}`}
+        hitSlop={8}
+        style={({ pressed }) => [styles.version, pressed && { opacity: 0.6 }]}
+      >
+        <FlameIcon color={colors.muted} size={14} />
+        <Text style={{ color: colors.muted, fontSize: 13 }}>Zarza {etiqueta(version)}</Text>
+      </Pressable>
       {devotional && books.find((b) => b.id === daily.book) && (
         <StudyPanel
           book={books.find((b) => b.id === daily.book)!}
@@ -609,4 +623,5 @@ const styles = StyleSheet.create({
   devotionalLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   tile: { flexGrow: 1, flexBasis: '28%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 20, alignItems: 'center' },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
+  version: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', marginTop: 8, paddingVertical: 6, paddingHorizontal: 12 },
 });
