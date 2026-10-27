@@ -5,7 +5,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import Appear from '@/components/Appear';
 import { CheckIcon } from '@/components/icons';
 import { signIn, signUp, useAccount } from '@/lib/comunidad';
-import { entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, retomarViaje } from '@/lib/proveedores';
+import { entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, useViajePendiente } from '@/lib/proveedores';
 import { verseHref } from '@/lib/routes';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -60,11 +60,9 @@ export default function AccountForm({ mode }: { mode: Mode }) {
 
   useEffect(() => {
     proveedoresDisponibles().then(setProveedores);
-    // Al volver del proveedor en esta misma pestaña (si el navegador no dejó abrir otra ventana).
-    ext.run(async () => {
-      if (await retomarViaje()) leave();
-    });
   }, []);
+  // Al volver del proveedor en esta misma pestaña, o si el teléfono pausó la app mientras estaba en el proveedor.
+  useViajePendiente(ext.run, leave);
 
   const withProvider = (p: Proveedor) => {
     setViaje(p);

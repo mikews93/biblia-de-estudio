@@ -14,7 +14,7 @@ import { deleteAccount, protectAccount, signOut, updateUser, useAccount } from '
 import { firstName, greeting } from '@/lib/daily';
 import { useRacha } from '@/lib/racha';
 import { MAX_APODO, MAX_BIO, MAX_PLACE, pickPhoto, removePhoto, saveProfile } from '@/lib/perfil';
-import { desconectar, entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, retomarViaje } from '@/lib/proveedores';
+import { desconectar, entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, useViajePendiente } from '@/lib/proveedores';
 import { useServicio } from '@/lib/servicioUso';
 import { HAY_SOSTENER } from '@/lib/sostener';
 import { ETAPAS, type Etapa } from '@/lib/circulo';
@@ -65,11 +65,9 @@ export default function AccountScreen() {
 
   useEffect(() => {
     proveedoresDisponibles().then(setProveedores);
-    // Si se fue al proveedor en esta misma pestaña, al volver se termina de conectar.
-    extAction.run(async () => {
-      if (await retomarViaje()) flash('Cuenta conectada');
-    });
   }, []);
+  // Si se fue al proveedor en esta misma pestaña, o el teléfono pausó la app, al volver se termina de conectar.
+  useViajePendiente(extAction.run, () => flash('Cuenta conectada'));
 
   if (ready && !usuario) {
     return (
