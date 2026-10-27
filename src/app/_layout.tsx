@@ -95,6 +95,7 @@ function AppStack() {
           <Stack.Screen name="tarjetas/[book]/[chapter]" options={{ title: 'Tarjetas de repaso' }} />
           <Stack.Screen name="repaso" options={{ title: 'Repaso' }} />
           <Stack.Screen name="buscar" options={{ title: '' }} />
+          <Stack.Screen name="preguntar" options={{ title: '' }} />
           <Stack.Screen name="libros" options={{ title: 'Libros', presentation: 'modal' }} />
           <Stack.Screen name="genealogia/index" options={{ title: 'Genealogías' }} />
           <Stack.Screen name="genealogia/[id]" options={{ title: '' }} />
@@ -126,6 +127,8 @@ function AppStack() {
           <Stack.Screen name="diario" options={{ title: 'Mi diario' }} />
           <Stack.Screen name="descargas" options={{ title: 'Sin conexión' }} />
           <Stack.Screen name="privacidad" options={{ title: 'Privacidad' }} />
+          <Stack.Screen name="terminos" options={{ title: 'Términos' }} />
+          <Stack.Screen name="acerca" options={{ title: 'Acerca de Zarza' }} />
           <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
           <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
           <Stack.Screen name="iglesia/postular" options={{ title: 'Postular mi iglesia' }} />

@@ -65,12 +65,17 @@ type Request = {
   version?: string;
   /** Una pregunta frecuente del pasaje (src/lib/senales.ts): su respuesta es la misma para todos. */
   frecuente?: number;
+  /** Una pregunta libre desde el buscador (src/lib/preguntar.ts); con «preparada», una de las que muchos hacen. */
+  pregunta?: { texto: string; nivel: 'sencillo' | 'fondo'; preparada?: string };
 };
 
 /** Los dos modos de la pestaña de estudio: un devocional guiado o el estudio profundo del texto. */
 export type Enfoque = 'devocional' | 'profundo';
 
-/** La historia de una palabra ya preparada se lee sin cuenta: la llave va solo si hay sesión (el servidor la pide si hay que prepararla). */
+/**
+ * La historia de una palabra y la respuesta a una pregunta que muchos hacen ya preparadas se leen sin cuenta: la llave
+ * va solo si hay sesión (el servidor la pide si hay que prepararla).
+ */
 async function palabraHeaders(): Promise<Record<string, string>> {
   requireConnection();
   const llave = await sessionKey();
@@ -87,14 +92,14 @@ export async function askStudy(
   if (getSettings().modo === 'ninos') throw new Error('En el Espacio Niños no hay IA. Pregúntale a un adulto: ¡conversen juntos!');
   const res = await fetch(`${API}/api/estudiar`, {
     method: 'POST',
-    headers: req.palabra ? await palabraHeaders() : await aiHeaders(),
+    headers: req.palabra || (req.pregunta?.preparada && !req.messages.length) ? await palabraHeaders() : await aiHeaders(),
     // En el Modo Jóvenes la IA escribe para su edad (ver JOVENES_SYSTEM en api/estudiar.ts).
     body: JSON.stringify({
       ...req,
       messages: req.messages.map(({ role, text }) => ({ role, text })),
       ...(getSettings().modo === 'jovenes' ? { publico: 'jovenes' } : {}),
       // Las preguntas sobre el pasaje pueden ayudar a otros, limpias y sin nombre. Nunca en el Modo Jóvenes.
-      ...(getSettings().modo === 'general' && getSettings().compartirPreguntas && req.messages.length > 0 && !req.taller && !req.semana && !req.tema
+      ...(getSettings().modo === 'general' && getSettings().compartirPreguntas && req.messages.length > 0 && !req.taller && !req.semana && !req.tema && !req.pregunta
         ? { compartir: true }
         : {}),
     }),

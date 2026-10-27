@@ -13,6 +13,7 @@ import {
   type IconProps,
   LampIcon,
   LinkIcon,
+  SparkIcon,
 } from '@/components/icons';
 import Appear from '@/components/Appear';
 import { citaLabel, parseCita } from '@/lib/cita';
@@ -46,6 +47,9 @@ export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors
 // La letra griega se queda como letra: es la misma marca del texto original en el lector.
 const SECTION_ICONS: [RegExp, ((p: IconProps) => ReactNode) | string][] = [
   [/^(panorama|resumen)/i, CompassIcon],
+  [/^en corto/i, SparkIcon],
+  [/^lo que dice la biblia/i, BooksIcon],
+  [/^cómo lo (han|ha) entendido/i, LampIcon],
   [/^(observa|cómo avanza)/i, EyeIcon],
   [/^(palabras|qué dice el)/i, 'α'],
   [/^interpreta/i, LampIcon],

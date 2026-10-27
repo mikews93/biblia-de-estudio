@@ -78,4 +78,19 @@ test.describe('Despertador', () => {
     await musica.click();
     await expect(musica).toHaveText('Música');
   });
+
+  test('en el teléfono la mañana y el devocional caben a lo ancho de la pantalla', async ({ page }) => {
+    await page.setViewportSize({ width: 412, height: 915 });
+    await page.route('**/audio/ambiente/amanecer.mp3', (r) => r.fulfill({ body: silencio(), contentType: 'audio/wav' }));
+    await page.goto('/despertar?modo=musica');
+    await expect(page.getByTestId('versiculo-despertar')).toBeVisible();
+    // El sol del amanecer es más ancho que la pantalla: no debe ensanchar la página.
+    const ancho = () => page.evaluate(() => document.documentElement.scrollWidth);
+    expect(await ancho()).toBeLessThanOrEqual(412);
+    const toca = page.getByTestId('toca-para-empezar');
+    if (await toca.count()) await toca.click();
+    await page.getByText('Haz el devocional').click();
+    await expect(page.getByText('Aquiétate').first()).toBeVisible();
+    expect(await ancho()).toBeLessThanOrEqual(412);
+  });
 });

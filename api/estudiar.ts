@@ -2,6 +2,8 @@
 // Con «word» (posición de una palabra hebrea o griega en el versículo) explica esa palabra: «¿Por qué esta palabra?».
 // Con «semana» convierte las notas de un sermón en cinco días de devocional sobre su pasaje («Del sermón a tu semana»).
 // Con «tema» (sin pasaje) investiga lo que alguien quiere tratar en el Taller: pasajes, comentarios y teologías.
+// Con «pregunta» (sin pasaje) responde una pregunta libre del buscador (src/lib/preguntar.ts); la de una pregunta que
+// muchos hacen («preparada») se guarda para todos y se lee sin cuenta.
 // Con «herramienta» prepara, para un capítulo, el guion de un resumen en audio a dos voces («podcast»),
 // tarjetas de repaso («tarjetas») o un mapa mental («mapa»), con el formato que la app sabe leer.
 // Con «palabra» (una del catálogo de src/lib/palabras.ts) cuenta la historia de esa palabra por toda la Biblia, o con
@@ -49,6 +51,7 @@ import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { original } from '../src/lib/original';
 import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabras';
+import { PREPARADAS } from '../src/lib/preguntasPreparadas';
 
 // Lo que se guarda para todos (el primer estudio de un pasaje, las herramientas) se paga una vez: va con el mejor modelo.
 // Lo de cada persona (preguntas de seguimiento, Taller, semana) se paga cada vez: va con uno más barato.
@@ -97,6 +100,8 @@ type Body = {
   compartir?: boolean;
   /** Id de una pregunta frecuente del pasaje: su respuesta, guardada para todos. */
   frecuente?: number;
+  /** Una pregunta libre sobre la Biblia desde el buscador (src/lib/preguntar.ts), sin pasaje. */
+  pregunta?: Pregunta;
   /** Pide las señales del estudio de este pasaje (api/_senales.ts). */
   senales?: true;
   /** Marca o quita «Me ayudó» («ayudo») o «Algo suena raro» («raro», con motivo y nota) en el estudio de este pasaje. */
@@ -123,6 +128,9 @@ type Taller = {
   revision?: string;
 };
 type Tema = { texto: string; tipo: Taller['tipo'] };
+// «sencillo»: corto y sin palabras técnicas; «fondo»: con contexto, el original y las fuentes. «preparada»: el id de una
+// de las preguntas que muchos hacen (src/lib/preguntasPreparadas.ts), cuya respuesta se guarda para todos.
+type Pregunta = { texto: string; nivel: 'sencillo' | 'fondo'; preparada?: string };
 
 const SYSTEM = `Eres el asistente de estudio de una app bíblica gratuita en español. Ayudas a entender el texto; no sustituyes la lectura de la persona ni predicas por ella.
 
@@ -133,7 +141,7 @@ Reglas:
 - Los comentarios ayudan a entender el texto (contexto, historia, costumbres, el sentido de una frase), pero son opiniones humanas, no tienen la autoridad de la Biblia. Cuando uses uno, no nombres al autor ni la obra en el texto: la cita ya dice de quién es y la persona la puede tocar. Preséntalo como una ayuda («un comentario señala…», «las notas de estudio explican…», «otro comentarista lo lee distinto…») o di la idea y cítala; dilo con tus palabras en español sin copiar párrafos. Nombra al autor solo si la persona pregunta quién lo dice. Si los comentaristas no coinciden, muéstralo sin tomar partido. Nunca atribuyas a un comentario algo que no dice.
 - Si algo no está en los documentos (autoría, fechas, historia, costumbres), dilo así: «esto no está en las fuentes de la app». Solo si de verdad ayuda, añade contexto general ampliamente aceptado, breve y marcado como «contexto general», sin inventar datos, fechas ni citas de autores.
 - Para el hebreo y el griego usa la glosa, el lema y la gramática del documento; no inventes significados ni etimologías.
-- Cuando hay interpretaciones distintas dentro del cristianismo histórico (católica, ortodoxa, protestante y evangélica), dilo con respeto y sin tomar partido.
+- Responde desde la lectura evangélica del texto. Cuando las tradiciones evangélicas y protestantes lo entienden distinto (el bautismo, la elección, los últimos tiempos), muestra cada postura con respeto y sin tomar partido. No presentes las posturas católica u ortodoxa como opciones; si la persona pregunta por ellas, explícalas con respeto y di con honestidad cuando no se apoyan con claridad en el texto bíblico.
 - No uses ni presentes como interpretación cristiana las enseñanzas de grupos que niegan doctrinas centrales del cristianismo histórico, como la Trinidad o la divinidad de Cristo (por ejemplo, Testigos de Jehová o mormones).
 - Escribe en español claro y cálido para alguien sin formación teológica: párrafos cortos, títulos con "## ", listas con "- " y **negritas** solo para palabras clave. Sin tablas.
 - En las preguntas de seguimiento responde a lo que se pregunta, con la misma regla de fuentes. Si la pregunta no tiene que ver con la Biblia o con el estudio, redirígela con amabilidad.`;
@@ -165,6 +173,15 @@ Esta vez la persona no llega con un pasaje: te cuenta una situación o un tema d
 - Parte de lo que la persona contó, pero deja que la Escritura defina el mensaje: propone pasajes que de verdad tratan el tema en su contexto, no versículos sueltos que solo comparten una palabra.
 - Lee cada pasaje antes de proponerlo. Consulta los comentarios de la app sobre los más fuertes y, si el tema toca doctrina (la gracia, el perdón, el sufrimiento, la soberanía de Dios), la teología.
 - Si la situación es personal o delicada (un duelo, una crisis, un conflicto en la iglesia), trátala con respeto y sin juzgar a nadie; no des consejo pastoral ni médico, ayuda a preparar el mensaje.`;
+
+const PREGUNTA_SYSTEM = `
+
+La persona te hace una pregunta sobre la Biblia o la fe desde el buscador de la app, sin un pasaje abierto, a veces dictada en voz alta y con errores del dictado. No hay documentos del pasaje: todo lo que digas sale de lo que investigues con las herramientas.
+- Investiga antes de responder: lee los pasajes que vas a usar, en su contexto, y no cites ninguno que no hayas leído. Si la pregunta toca doctrina o la historia de la Biblia, consulta la teología; si toca un pasaje concreto, sus comentarios.
+- Responde a lo que se pregunta, con honestidad: si la Biblia no lo dice o no lo dice con claridad (fechas del fin, detalles del cielo), dilo así y explica lo que sí dice.
+- Eres una ayuda para entender, no un pastor ni la voz de Dios: nada de «Dios te dice…», no escribas oraciones para que la persona las rece ni sermones.
+- Si la pregunta es personal o delicada (un duelo, una culpa, una crisis en casa), responde con calidez y sin juzgar, y anima a hablarlo con alguien de confianza en su iglesia. Si menciona que quiere hacerse daño o que alguien le hace daño, deja la respuesta a un lado: dile con calidez que no tiene que pasarlo sin ayuda, que hable hoy con alguien de confianza y que si está en peligro llame a emergencias.
+- No des consejo médico, legal ni financiero más allá de lo que dice el texto.`;
 
 const DEVOCIONAL_SYSTEM = `
 
@@ -263,6 +280,48 @@ De 2 a 5 líneas con lo que aportan los comentarios de la app y las teologías s
 Reglas del formato:
 - Cada pasaje dentro de un solo capítulo, de 1 a 30 versículos, con el nombre del libro completo en español («1 Corintios 13:4-7», «Salmos 46»), y antes del «|».
 - Si te respondo o te pido otra cosa, vuelve a dar la respuesta completa con este mismo formato, ajustada a lo nuevo.`;
+}
+
+function preguntaTask(p: Pregunta) {
+  const fondo = p.nivel === 'fondo';
+  return `Tengo una pregunta sobre la Biblia:
+
+«${p.texto.trim()}»
+
+Investiga con las herramientas antes de responder. Después responde con este formato, sin nada antes ni después:
+
+## En corto
+La respuesta directa en una o dos frases, con su cita.
+
+Debajo, en líneas aparte, la marca de uno o dos versículos clave entre ⟪ y ⟫ (por ejemplo ⟪Filipenses 4:6⟫, o un tramo de hasta tres versículos del mismo capítulo como ⟪Romanos 8:28-30⟫): la app pone en su lugar el versículo en la versión que lee la persona.
+
+## Lo que dice la Biblia
+${fondo ? 'De tres a cinco párrafos cortos' : 'Dos o tres párrafos cortos'} con los pasajes que responden la pregunta, leídos en su contexto, cada idea con su cita.${fondo ? ' Si ayuda, explica una palabra del texto original (transliterada en *cursiva*) o el contexto histórico.' : ''}
+
+## Cómo lo han entendido
+${fondo ? 'Dos o tres frases' : 'Una o dos frases'} con lo que aportan los comentarios o las teologías, con su cita y sin nombrar al autor. Si no aportan nada a esta pregunta, deja fuera esta parte.
+
+## Para pensar
+Una sola pregunta abierta que vuelva al texto y ayude a la persona a llevarlo a su vida. Sin respuesta.
+
+Sigue: dos preguntas cortas que yo podría hacer después, separadas por « | », en una sola línea al final.
+
+Reglas del formato:
+- ${fondo ? 'Entre 350 y 600 palabras en total.' : 'Entre 150 y 250 palabras en total, en palabras sencillas: sin términos técnicos sin explicar.'}
+- Cada marca ⟪…⟫ con el nombre del libro completo en español («1 Corintios 13:4-7»), en su propia línea y como mucho cuatro en toda la respuesta.
+- Si te hago otra pregunta, respóndela con el mismo formato y termina también con la línea «Sigue:».`;
+}
+
+function validPregunta(p: unknown): p is Pregunta {
+  if (!p || typeof p !== 'object') return false;
+  const x = p as Record<string, unknown>;
+  return (
+    typeof x.texto === 'string' &&
+    x.texto.trim().length >= 6 &&
+    x.texto.length <= MAX_PREGUNTA &&
+    (x.nivel === 'sencillo' || x.nivel === 'fondo') &&
+    (x.preparada === undefined || PREPARADAS.some((q) => q.id === x.preparada))
+  );
 }
 
 function tallerTask(book: Book, chapter: number, verse: number | undefined, t: Taller) {
@@ -441,6 +500,7 @@ const TALLER_TIPOS = ['reflexion', 'encuentro', 'sermon'];
 const TALLER_PASOS = ['pasaje', 'idea', 'bosquejo', 'revisar'];
 const MAX_DRAFT = 12000;
 const MAX_TEMA = 4000;
+const MAX_PREGUNTA = 300;
 
 function validTaller(t: unknown): t is Taller {
   if (!t || typeof t !== 'object') return false;
@@ -1065,6 +1125,70 @@ async function temaPost(request: Request, body: Body) {
   return streamAnswer(request, [], messages, system, MODEL_PROPIO, async () => {}, biblia);
 }
 
+// Una pregunta desde el buscador: sin pasaje, la IA investiga con las herramientas desde el principio. La primera
+// respuesta a una de las preguntas que muchos hacen es la misma para todos: se guarda y se lee sin cuenta.
+async function preguntaPost(request: Request, body: Body) {
+  const p = body.pregunta;
+  if (
+    !validPregunta(p) ||
+    body.book !== undefined ||
+    body.chapter !== undefined ||
+    body.taller !== undefined ||
+    body.herramienta !== undefined ||
+    body.semana !== undefined ||
+    body.tema !== undefined ||
+    body.frecuente !== undefined
+  ) {
+    return badRequest('Pregunta no válida');
+  }
+  if (body.publico !== undefined && body.publico !== 'jovenes') return badRequest('Público no válido');
+  const jovenes = body.publico === 'jovenes';
+  const turns = body.messages ?? [];
+  if (!validTurns(turns)) return badRequest('Conversación no válida');
+  const version = await lectura(body.version);
+  if (!version) return badRequest('Versión no válida');
+  // La preparada se guarda con su texto del catálogo, no con lo que escribió la persona.
+  const preparada = turns.length === 0 ? PREPARADAS.find((q) => q.id === p.preparada) : undefined;
+  const clave = preparada
+    ? [
+        'preg1' + (version.id === 'rv1909' ? '' : `-${version.id}`) + (version.licensed ? `-${MARCAS}` : ''),
+        p.nivel + (jovenes ? '-jovenes' : ''),
+        preparada.id,
+      ].join(':')
+    : null;
+  if (clave) {
+    const saved = await savedStudy(clave);
+    if (saved) {
+      return ndjson([...saved.fuentes.map((f) => ({ type: 'source', ...f })), { type: 'text', text: saved.texto }, { type: 'done' }]);
+    }
+  }
+  const denied = await needsAccount(request);
+  if (denied) return denied;
+  if (!clave) {
+    const vacia = await gastarLampara(request);
+    if (vacia) return vacia;
+  }
+  const books = await load<Book[]>('books.json');
+  const biblia = new Biblia(request, version, books);
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
+    { role: 'user', content: preguntaTask(preparada ? { ...p, texto: preparada.texto } : p) },
+    ...turns.map((t) => ({ role: t.role, content: t.text })),
+  ];
+  const system = SYSTEM + PREGUNTA_SYSTEM + versionSystem(version, true) + TOOLS_SYSTEM + (jovenes ? JOVENES_SYSTEM : '');
+  return streamAnswer(
+    request,
+    [],
+    messages,
+    system,
+    clave ? MODEL : MODEL_PROPIO,
+    async (saved) => {
+      if (clave) await saveStudy(clave, saved);
+    },
+    biblia,
+    Boolean(clave),
+  );
+}
+
 function badRequest(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
@@ -1076,6 +1200,8 @@ export async function POST(request: Request) {
     .json()
     .catch(() => null);
   if (peek && typeof peek === 'object' && 'palabra' in peek) return palabraPost(request, peek as Body);
+  // La respuesta guardada de una pregunta que muchos hacen también se lee sin cuenta.
+  if (peek && typeof peek === 'object' && 'pregunta' in peek) return preguntaPost(request, peek as Body);
   const denied = await needsAccount(request);
   if (denied) return denied;
   let body: Body;
