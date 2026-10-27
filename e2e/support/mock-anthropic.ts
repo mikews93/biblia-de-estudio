@@ -358,13 +358,33 @@ const TEMA: { text: string; tool?: number }[] = [
   { text: '\n\n## Para afinar\n- ¿Qué edades tiene el grupo y qué los preocupa más: estudios, trabajo, familia?\n- ¿Qué esperas que hagan distinto esta semana?\n- ¿Lo vas a predicar a todo el grupo o es para una conversación más pequeña?' },
 ];
 
+// Una pregunta del buscador (PREGUNTA_SYSTEM en api/estudiar.ts): lee el pasaje y sus comentarios y responde con el
+// formato de src/lib/preguntar.ts (En corto con un versículo ⟪…⟫, partes, Para pensar y la línea «Sigue:»).
+const PREGUNTA_CALLS = TEMA_CALLS.slice(0, 2);
+
+const PREGUNTA: { text: string; tool?: number }[] = [
+  { text: '## En corto\n' },
+  { text: 'La Biblia no llama pecado a sentir angustia: invita a llevarla a Dios en oración y a confiar en que él cuida de ti.', tool: 0 },
+  { text: '\n\n⟪Filipenses 4:6⟫\n\n⟪1 Pedro 5:7⟫\n\n## Lo que dice la Biblia\nPablo escribe desde la cárcel y no pide fingir calma: pide convertir cada preocupación en oración, con gratitud.' },
+  { text: ' La promesa es la paz de Dios que guarda el corazón, no que el problema desaparezca.', tool: 0 },
+  { text: '\n\nJesús también habla del afán del mañana y lo responde mirando al Padre que alimenta a las aves.\n\n## Cómo lo han entendido\n' },
+  { text: 'Un comentario señala que la oración con gratitud es el remedio contra el afán: no quita las cargas, cambia dónde las ponemos.', tool: 1 },
+  { text: '\n\n## Para pensar\n¿Qué preocupación de hoy podrías poner en palabras delante de Dios, como pide Filipenses 4:6?\n\nSigue: ¿Y si oro y la ansiedad no se va? | ¿Jesús sintió angustia?' },
+];
+
+function preguntaTools(body: Body): 'pedir' | 'responder' | null {
+  if (!body.tools?.length || !systemText(body.system).includes('te hace una pregunta sobre la Biblia o la fe desde el buscador')) return null;
+  const last = body.messages[body.messages.length - 1];
+  return typeof last.content !== 'string' && last.content.some((b) => b.type === 'tool_result') ? 'responder' : 'pedir';
+}
+
 function temaTools(body: Body): 'pedir' | 'responder' | null {
   if (!body.tools?.length || !systemText(body.system).includes('Esta vez la persona no llega con un pasaje')) return null;
   const last = body.messages[body.messages.length - 1];
   return typeof last.content !== 'string' && last.content.some((b) => b.type === 'tool_result') ? 'responder' : 'pedir';
 }
 
-function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) => void, body: Body) {
+function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) => void, body: Body, segments = TEMA) {
   // El índice del primer search_result que devolvió cada herramienta, en el orden en que los recibió la IA.
   const first: number[] = [];
   let n = 0;
@@ -374,7 +394,7 @@ function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) =>
     first.push(blocks.length ? n : -1);
     n += blocks.length;
   }
-  TEMA.forEach((seg, index) => {
+  segments.forEach((seg, index) => {
     const at = seg.tool !== undefined ? first[seg.tool] : -1;
     send({ type: 'content_block_start', index, content_block: { type: 'text', text: '', citations: at >= 0 ? [] : null } });
     send({ type: 'content_block_delta', index, delta: { type: 'text_delta', text: seg.text } });
@@ -419,6 +439,9 @@ async function sse(res: ServerResponse, body: Body) {
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
   const send = (event: Record<string, unknown>) => res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
   send({ type: 'message_start', message: { ...message([]), stop_reason: null } });
+  const pregunta = preguntaTools(body);
+  if (pregunta === 'pedir') return sendTools(res, send, PREGUNTA_CALLS);
+  if (pregunta === 'responder') return sendTema(res, send, body, PREGUNTA);
   const tema = temaTools(body);
   // «SATURADA» en el tema: la IA piensa y deja un texto vacío antes de pedir las herramientas, y la primera vez que
   // recibe los resultados responde que está saturada, como la API real en producción.
