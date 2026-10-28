@@ -14,7 +14,7 @@ import path from 'node:path';
 
 import { needsAccount } from './_cuenta';
 import { Biblia, type Lectura, lectura } from './_investigar';
-import { quickSearch } from './_semantica';
+import { quickSearch, warm } from './_semantica';
 import { formatRef, parseRef } from '../src/lib/refs';
 
 // Buscar es una tarea corta y frecuente: Sonnet cuesta la mitad que Opus y aquí rinde igual.
@@ -88,6 +88,12 @@ async function verify(ref: string, books: Book[], biblia: Biblia, rv: Biblia): P
 
 function badRequest(message: string, status = 400) {
   return Response.json({ error: message }, { status });
+}
+
+// GET: deja lista la búsqueda rápida en esta instancia (ver warm), sin buscar nada.
+export async function GET() {
+  await warm(await load<Book[]>('books.json')).catch((err) => console.error('buscar: calentar', err));
+  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(request: Request) {
