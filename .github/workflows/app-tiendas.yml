@@ -41,11 +41,8 @@ jobs:
       # Solo los nombres de las variables de EAS de ese entorno (no sus valores), para saber si llegan las de Firebase.
       - name: Variables de EAS
         run: |
-          eas env:list --help | head -30 || true
-          ENTORNO=${{ inputs.perfil == 'production' && 'production' || 'preview' }}
-          # Solo nombres y tipo, nunca valores
-          eas env:list --environment $ENTORNO --non-interactive 2>&1 | sed -E 's/=.*//' || true
-          eas env:list $ENTORNO --non-interactive 2>&1 | sed -E 's/=.*//' || true
+          # Solo nombres, nunca valores (sin --include-sensitive ni --include-file-content)
+          for e in preview production development; do echo "== $e"; eas env:list $e 2>&1 | sed -E 's/=.*//' || true; done
       - name: Compilar
         if: ${{ inputs.perfil != 'diagnostico' }}
         run: >
