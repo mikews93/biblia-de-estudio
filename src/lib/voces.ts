@@ -17,6 +17,8 @@ export type Voz = {
   acento: string;
   calidad: Calidad;
   puntos: number;
+  /** Android tiene la misma voz en dos copias: la «local» suena sin internet; la de red suele sonar mejor. */
+  sinInternet?: boolean;
 };
 
 type Bruta = Pick<Speech.Voice, 'identifier' | 'name' | 'language' | 'quality'> & { localService?: boolean };
@@ -84,24 +86,52 @@ export function nombreCorto(name: string): string {
     .replace(/\s+/g, ' ')
     .trim();
   if (/^google/i.test(name)) return 'Google';
-  // Android nombra sus voces con códigos («es-us-x-esf-network»): se numeran al listar
+  // Android nombra sus voces con códigos («es-us-x-esf-network»): se les da nombre al listar (ordenar)
   if (!limpio || /^[a-z]{2}[-_]/i.test(limpio)) return '';
   return limpio;
 }
 
-/** Ordena y etiqueta las voces en español; las de nombre en código quedan como «Voz 1», «Voz 2»… */
+// Android (y algunos navegadores) nombran sus voces con códigos («es-us-x-esf-network»). Para poder decir «me gusta
+// Ariel» se les da un nombre propio, siempre el mismo para el mismo código en cualquier teléfono. Son nombres que
+// sirven para hombre o mujer: el código no dice cómo suena la voz.
+const NOMBRES = ['Ariel', 'Alex', 'Dani', 'Sasha', 'Noa', 'René', 'Cruz', 'Paz', 'Fran', 'Reyes', 'Guadalupe', 'Trini'];
+
+/** La parte que distingue una voz de otra: «es-us-x-esf-network» → «es-us-esf» (la local y la de red son la misma). */
+export const codigoVoz = (id: string) => {
+  const m = id.toLowerCase().match(/^([a-z]{2})[-_]([a-z0-9]{2,3})[-_]x[-_]([a-z0-9]+)/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : id.toLowerCase();
+};
+
+const semilla = (texto: string) => [...texto].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+/** Un nombre para cada código sin repetir en este dispositivo; el mismo código siempre pide primero el mismo. */
+export function nombresParaCodigos(codigos: string[]): Map<string, string> {
+  const out = new Map<string, string>();
+  const usados = new Set<string>();
+  for (const c of [...new Set(codigos)].sort()) {
+    let i = semilla(c) % NOMBRES.length;
+    for (let k = 0; k < NOMBRES.length && usados.has(NOMBRES[i]); k++) i = (i + 1) % NOMBRES.length;
+    const nombre = usados.has(NOMBRES[i]) ? `${NOMBRES[i]} ${usados.size + 1}` : NOMBRES[i];
+    usados.add(NOMBRES[i]);
+    out.set(c, nombre);
+  }
+  return out;
+}
+
+/** Ordena y etiqueta las voces en español; las que solo tienen código reciben un nombre propio. */
 export function ordenar(todas: Bruta[]): Voz[] {
-  let sinNombre = 0;
-  return todas
-    .filter((v) => v.language?.toLowerCase().startsWith('es'))
+  const es = todas.filter((v) => v.language?.toLowerCase().startsWith('es'));
+  const sinNombre = nombresParaCodigos(es.filter((v) => !nombreCorto(v.name)).map((v) => codigoVoz(v.identifier)));
+  return es
     .map((v) => ({ v, p: puntos(v) }))
     .sort((a, b) => b.p - a.p)
     .map(({ v, p }) => ({
       id: v.identifier,
-      nombre: nombreCorto(v.name) || `Voz ${++sinNombre}`,
+      nombre: nombreCorto(v.name) || sinNombre.get(codigoVoz(v.identifier)) || 'Voz',
       acento: PAISES[region(v.language)] ?? 'Español',
       calidad: calidad(p),
       puntos: p,
+      sinInternet: /-local$/i.test(v.identifier),
     }));
 }
 
@@ -129,45 +159,56 @@ export function useVoces() {
   return voces;
 }
 
-// ---------------------------------------------------------------- la voz del despertador
+// ---------------------------------------------------------------- las voces elegidas
 
-const KEY = 'voz-despertar';
+/** Para qué se eligió la voz: el despertador, y Ana y Tomás en el pódcast leído con la voz del dispositivo. */
+export type Papel = 'despertar' | 'ana' | 'tomas';
+
+const KEYS: Record<Papel, string> = { despertar: 'voz-despertar', ana: 'voz-ana', tomas: 'voz-tomas' };
 /** null: automática (la más natural que haya). */
-let elegida: string | null = null;
-let cargada: Promise<void> | null = null;
+const elegidas: Record<Papel, string | null> = { despertar: null, ana: null, tomas: null };
+let cargadas: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
 const cargar = () =>
-  (cargada ??= AsyncStorage.getItem(KEY)
-    .then((v) => {
-      elegida = v || null;
-      listeners.forEach((l) => l());
-    })
-    .catch(() => {}));
+  (cargadas ??= Promise.all(
+    (Object.keys(KEYS) as Papel[]).map((papel) =>
+      AsyncStorage.getItem(KEYS[papel])
+        .then((v) => {
+          elegidas[papel] = v || null;
+        })
+        .catch(() => {}),
+    ),
+  ).then(() => listeners.forEach((l) => l())));
 
-export function elegirVozDespertar(id: string | null) {
-  elegida = id;
+export function elegirVoz(papel: Papel, id: string | null) {
+  elegidas[papel] = id;
   listeners.forEach((l) => l());
-  (id ? AsyncStorage.setItem(KEY, id) : AsyncStorage.removeItem(KEY)).catch(() => {});
+  (id ? AsyncStorage.setItem(KEYS[papel], id) : AsyncStorage.removeItem(KEYS[papel])).catch(() => {});
 }
 
-export function useVozDespertar() {
+export function useVozElegida(papel: Papel) {
   useEffect(() => void cargar(), []);
   return useSyncExternalStore(
     (l) => {
       listeners.add(l);
       return () => listeners.delete(l);
     },
-    () => elegida,
-    () => elegida,
+    () => elegidas[papel],
+    () => elegidas[papel],
   );
 }
 
-/** La voz con que habla el despertador: la elegida si este dispositivo aún la tiene; si no, la más natural. */
-export async function vozDespertar(): Promise<Voz | undefined> {
+/** La voz elegida para ese papel, si este dispositivo aún la tiene. */
+export async function vozElegida(papel: Papel): Promise<Voz | undefined> {
   await cargar();
-  const voces = await vocesEspanol();
-  return voces.find((v) => v.id === elegida) ?? voces[0];
+  const id = elegidas[papel];
+  return id ? (await vocesEspanol()).find((v) => v.id === id) : undefined;
+}
+
+/** La voz con que habla el despertador: la elegida; si no, la más natural. */
+export async function vozDespertar(): Promise<Voz | undefined> {
+  return (await vozElegida('despertar')) ?? (await vocesEspanol())[0];
 }
 
 /** Más calmado que una lectura normal: es lo primero que se oye en el día. */

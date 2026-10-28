@@ -11,6 +11,7 @@ import { TalkIcon } from '@/components/icons';
 import { PodcastGrabado } from '@/components/PodcastGrabado';
 import { Sources } from '@/components/StudyPanel';
 import { ToolFooter, ToolState } from '@/components/ToolState';
+import VocesPodcast from '@/components/VocesPodcast';
 import { IconText } from '@/components/comunidad/ui';
 import { parseRef } from '@/lib/data';
 import { useHerramienta } from '@/lib/herramientas';
@@ -135,6 +136,7 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
             {player.index + 1} de {lines.length} · {natural ? 'voces naturales' : 'voz del dispositivo'}
           </Text>
         )}
+        {!natural && <VocesPodcast />}
 
         <ToolState
           colors={colors}

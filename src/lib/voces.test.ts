@@ -24,15 +24,23 @@ describe('ordenar', () => {
     expect(voces.at(-1)?.calidad).toBe('basica');
   });
 
-  it('en Android prefiere las voces «network» y numera las que solo tienen código', () => {
-    const voces = ordenar([
+  it('en Android prefiere las voces «network» y da un nombre propio a las que solo tienen código', () => {
+    const lista = [
       v('es-us-x-esc-local', 'es-US', { identifier: 'es-us-x-esc-local' }),
       v('es-us-x-esf-network', 'es-US', { identifier: 'es-us-x-esf-network' }),
-    ]);
-    expect(voces.map((x) => [x.id, x.nombre])).toEqual([
-      ['es-us-x-esf-network', 'Voz 1'],
-      ['es-us-x-esc-local', 'Voz 2'],
-    ]);
+      v('es-us-x-esf-local', 'es-US', { identifier: 'es-us-x-esf-local' }),
+      v('es-us-x-sfb-network', 'es-US', { identifier: 'es-us-x-sfb-network' }),
+    ];
+    const voces = ordenar(lista);
+    expect(voces.map((x) => x.id).slice(0, 2)).toEqual(['es-us-x-esf-network', 'es-us-x-sfb-network']);
+    const nombre = (id: string) => voces.find((x) => x.id === id)!.nombre;
+    // La local y la de red son la misma voz: mismo nombre; voces distintas, nombres distintos
+    expect(nombre('es-us-x-esf-local')).toBe(nombre('es-us-x-esf-network'));
+    expect(new Set(voces.map((x) => x.nombre)).size).toBe(3);
+    expect(voces.every((x) => !/^voz/i.test(x.nombre))).toBe(true);
+    expect(voces.find((x) => x.id === 'es-us-x-esc-local')?.sinInternet).toBe(true);
+    // El mismo código se llama igual en cualquier teléfono, aunque cambie el orden o falten otras voces
+    expect(ordenar([lista[1]])[0].nombre).toBe(nombre('es-us-x-esf-network'));
   });
 
   it('a igual calidad, un acento latinoamericano antes que el de España', () => {
