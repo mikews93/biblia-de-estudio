@@ -4,7 +4,7 @@ name: CI
 # y un push nuevo al mismo PR cancela la ejecución anterior.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths-ignore:
       - '**/*.md'
       - public/audio/**
