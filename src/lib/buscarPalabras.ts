@@ -142,10 +142,16 @@ export function searchVersions(versions: { id: string; index: WordIndex }[], que
 
 /** Pone primero el fragmento recordado (si lo hay) en una lista ya mezclada con otras búsquedas. */
 export function pinRecalled(refs: string[], query: string, lists: { id: string; hits: Hit[] }[], reading?: string): string[] {
-  if (words(query).length < 4) return refs;
+  const best = recalled(query, lists, reading);
+  return best ? [best, ...refs.filter((r) => r !== best)] : refs;
+}
+
+/** El versículo del que viene un fragmento recordado casi palabra por palabra (desde 4 palabras), o null. */
+export function recalled(query: string, lists: { id: string; hits: Hit[] }[], reading?: string): string | null {
+  if (words(query).length < 4) return null;
   const best = lists
     .flatMap(({ id, hits }) => hits.slice(0, 5).map((h) => ({ ...h, mine: id === reading })))
     .filter((h) => (h.phrase ?? 0) >= PHRASE)
     .sort((a, b) => (b.phrase ?? 0) - (a.phrase ?? 0) || Number(b.mine) - Number(a.mine) || b.score - a.score)[0];
-  return best ? [best.ref, ...refs.filter((r) => r !== best.ref)] : refs;
+  return best?.ref ?? null;
 }
