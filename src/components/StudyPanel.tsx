@@ -354,13 +354,22 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1, minHeight: 0 }}
           >
+            {/* La cabecera va encima del texto y se aparta deslizándose: así no cambia el alto de lo que se desplaza.
+                Antes encogía su alto, el área de lectura crecía o menguaba bajo el dedo y en Android eso contaba como
+                desplazamiento: se apartaba, volvía y la pantalla subía y bajaba sin parar. */}
+            <View style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <Animated.View
               style={
                 barHeight
                   ? {
-                      height: bar.interpolate({ inputRange: [0, 1], outputRange: [barHeight, 0] }),
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      zIndex: 1,
+                      backgroundColor: colors.background,
+                      transform: [{ translateY: bar.interpolate({ inputRange: [0, 1], outputRange: [0, -barHeight] }) }],
                       opacity: bar.interpolate({ inputRange: [0, 0.6], outputRange: [1, 0], extrapolate: 'clamp' }),
-                      overflow: 'hidden',
                     }
                   : undefined
               }
@@ -399,11 +408,11 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
               </View>
             </Animated.View>
 
-            <View style={{ flex: 1, minHeight: 0 }}>
             <ScrollView
               ref={scroll}
               style={{ flex: 1, minHeight: 0 }}
-              contentContainerStyle={styles.body}
+              contentContainerStyle={[styles.body, { paddingTop: styles.body.paddingTop + barHeight }]}
+              scrollIndicatorInsets={{ top: barHeight }}
               scrollEventThrottle={16}
               onLayout={(e) => (viewHeight.current = e.nativeEvent.layout.height)}
               onTouchStart={grab}
