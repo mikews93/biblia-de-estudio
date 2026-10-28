@@ -4,7 +4,7 @@ name: CI
 # y un push nuevo al mismo PR cancela la ejecución anterior.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths-ignore:
       - '**/*.md'
       - public/audio/**
@@ -55,6 +55,7 @@ jobs:
       - run: npm run data
       - run: npm run comentarios
       - run: npm run teologia
+      - run: npm run diccionario
       - run: npm run build:web
       - name: Pruebas unitarias
         run: npm test

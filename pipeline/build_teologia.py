@@ -33,6 +33,8 @@ ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / ".cache" / "teologia"
 OUT = ROOT / "teologia"
 RELEASE = "https://github.com/mikews93/biblia-de-estudio/releases/download/teologia-fuentes-v1/"
+# Catecismos en JSON de Creeds.json (NonlinearFruit, dominio público), fijados a una versión
+CREEDS_JSON = "https://raw.githubusercontent.com/NonlinearFruit/Creeds.json/2ae21a4c5387ecc91f474c9d3d67c826d2a6b9d5/creeds/"
 
 # Palabras por sección: lo que la IA lee como mucho de una vez. Las secciones más largas se parten.
 SECTION_WORDS = 900
@@ -156,16 +158,20 @@ OBRAS = [
      "corto": "Westcott, Historia del canon del NT", "año": 1875, "tradicion": "anglicana", "area": "canon",
      "url": "https://biblicalstudies.org.uk/book_canon-of-the-nt_westcott.html",
      "partes": [{"pdf": "westcott.pdf"}]},
+    {"id": "catecismo-mayor", "autor": "Asamblea de Westminster", "titulo": "The Larger Catechism",
+     "corto": "Catecismo Mayor de Westminster", "año": 1647, "tradicion": "reformada (presbiteriana)", "area": "credos",
+     "url": "https://archive.org/details/humbleadviceofas200west/page/108/mode/2up",
+     "partes": [{"catecismo": "westminster_larger_catechism.json"}]},
 ]
 
 
-def fetch(name):
+def fetch(name, base=RELEASE):
     path = CACHE / name
     if path.exists():
         return path
     CACHE.mkdir(parents=True, exist_ok=True)
     print(f"Descargando {name}…")
-    data = urllib.request.urlopen(RELEASE + name, timeout=300).read()
+    data = urllib.request.urlopen(base + name, timeout=300).read()
     path.write_bytes(data)
     return path
 
@@ -505,6 +511,47 @@ def pdf_sections(parte):
     return out
 
 
+# ------------------------------------------------------------------------------------------------- Catecismos (Creeds.json)
+
+def proof(ref):
+    """«Rom.11.36» → «Rom. 11:36»; «Ps.73.24-Ps.73.28» → «Ps. 73:24-28»."""
+    def one(r):
+        m = re.match(r"^(\d?[A-Za-z]+)\.(\d+)(?:\.(\d+))?$", r)
+        return (m.group(1), m.group(2), m.group(3)) if m else None
+    a, _, b = ref.partition("-")
+    s, e = one(a), one(b) if b else None
+    if not s:
+        return ref
+    out = f"{s[0].rstrip('.')}. {s[1]}" + (f":{s[2]}" if s[2] else "")
+    if e:
+        out += f"-{e[2]}" if e[0] == s[0] and e[1] == s[1] and e[2] else f"-{e[1]}" + (f":{e[2]}" if e[2] else "")
+    return out
+
+
+def catecismo_sections(parte):
+    """Preguntas y respuestas con sus textos de prueba, de unas 450 palabras por sección."""
+    data = json.loads(fetch(parte["catecismo"], CREEDS_JSON).read_text())
+    titulo = f"{data['Metadata']['Title']}. A.D. {data['Metadata']['Year']}"
+    url = data["Metadata"]["SourceUrl"]
+    grupo, palabras = [], 0
+
+    def flush():
+        desde, hasta = grupo[0][0], grupo[-1][0]
+        preguntas = "; ".join(q for _, q, _ in grupo)
+        return [titulo, f"Q. {desde}-{hasta}: {preguntas}"], url, [p for _, _, p in grupo]
+
+    for item in data["Data"]:
+        pruebas = "; ".join(proof(r) for pr in item.get("Proofs", []) for r in pr["References"])
+        texto = f"Q. {item['Number']}. {item['Question']} A. {clean(item['Answer'])}" + (f" (Scripture: {pruebas})" if pruebas else "")
+        grupo.append((item["Number"], item["Question"], texto))
+        palabras += len(texto.split())
+        if palabras >= 450:
+            yield flush()
+            grupo, palabras = [], 0
+    if grupo:
+        yield flush()
+
+
 OBRAS_BY_FILE = {p.get("pdf"): o for o in OBRAS for p in o["partes"] if p.get("pdf")}
 
 
@@ -543,6 +590,8 @@ def build():
                     sections += gutenberg_sections(parte)
                 elif "ocr" in parte:
                     sections += ocr_sections(parte)
+                elif "catecismo" in parte:
+                    sections += catecismo_sections(parte)
                 else:
                     sections += pdf_sections(parte)
             except OSError as err:
@@ -556,7 +605,9 @@ def build():
         texto = {}
         for title, url, paras in chunks:
             texto[str(len(secciones))] = paras
-            secciones.append([oi, title, url, Counter(terms(title + " " + " ".join(paras)))])
+            # Los textos de prueba de los catecismos no cuentan para el índice: solo son siglas de libros.
+            palabras = re.sub(r"\(Scripture: [^)]*\)", "", " ".join(paras))
+            secciones.append([oi, title, url, Counter(terms(title + " " + palabras))])
         textos.append((o["id"], texto))
         print(f"  {o['id']}: {len(chunks)} secciones, {sum(len(p.split()) for _, _, ps in chunks for p in ps)} palabras")
 
