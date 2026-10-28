@@ -131,6 +131,13 @@ export async function quickSearch(query: string, books: Book[], limit = 20, embe
   return { refs: pinRecalled(mixed, query, lists, reading).slice(0, limit), semantica: !!(vs && model) };
 }
 
+/** Carga de antemano los vectores, el modelo y los índices de palabras: la app lo pide al abrir el buscador, para que
+ * la primera búsqueda no espere al arranque en frío (bajar el modelo y armar los índices tarda unos segundos). */
+export async function warm(books: Book[]) {
+  const vs = await loadVectors();
+  await Promise.all([vs ? loadEmbedder(vs) : null, searchWords('calentar', books)]);
+}
+
 /** Solo para las pruebas: vuelve a leer los archivos y el modelo. */
 export function resetForTests() {
   vectors = embedder = null;

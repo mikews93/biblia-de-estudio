@@ -44,6 +44,16 @@ export const NOTHING_DOWNLOADED = 'Sin conexión y sin versiones descargadas.';
  * Búsqueda rápida por idea o por palabras recordadas, sin IA ni cuenta. Con internet la hace el servidor (semántica +
  * palabras); sin conexión, o si el servidor no responde, el dispositivo busca por palabras en una versión descargada.
  */
+const WARM_MS = 4 * 60_000;
+let warmedAt = 0;
+
+/** Despierta la búsqueda rápida del servidor al abrir el buscador, mientras la persona escribe (ver api/_semantica.ts warm). */
+export function warmSearch() {
+  if (!isOnline() || Date.now() - warmedAt < WARM_MS) return;
+  warmedAt = Date.now();
+  fetch(`${API}/api/buscar`, { cache: 'no-store' }).catch(() => {});
+}
+
 export async function quickSearch(
   query: string,
   version: string,

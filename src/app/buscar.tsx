@@ -20,6 +20,7 @@ import {
   getRecent,
   quickSearch,
   searchByIdea,
+  warmSearch,
   withVersion,
 } from '@/lib/buscar';
 import { NEEDS_ACCOUNT } from '@/lib/comunidad';
@@ -90,6 +91,7 @@ export default function Search() {
   const fichas = useMemo(() => (quiereFichas && indice ? buscarFichas(indice, settled, 5) : []), [quiereFichas, indice, settled]);
 
   useEffect(() => {
+    warmSearch();
     getRecent().then(setRecent);
     Promise.all([getBooks(), getVersions()]).then(([b, v]) => {
       setBooks(b);
