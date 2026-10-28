@@ -40,7 +40,12 @@ jobs:
           echo "projectId: $(node -p "require('./app.json').expo.extra?.eas?.projectId")"
       # Solo los nombres de las variables de EAS de ese entorno (no sus valores), para saber si llegan las de Firebase.
       - name: Variables de EAS
-        run: eas env:list --environment ${{ inputs.perfil == 'production' && 'production' || 'preview' }} --json --non-interactive | jq -r '.[] | "\(.name) (\(.type // "string"), \(.visibility))"' || true
+        run: |
+          eas env:list --help | head -30 || true
+          ENTORNO=${{ inputs.perfil == 'production' && 'production' || 'preview' }}
+          # Solo nombres y tipo, nunca valores
+          eas env:list --environment $ENTORNO --non-interactive 2>&1 | sed -E 's/=.*//' || true
+          eas env:list $ENTORNO --non-interactive 2>&1 | sed -E 's/=.*//' || true
       - name: Compilar
         if: ${{ inputs.perfil != 'diagnostico' }}
         run: >
