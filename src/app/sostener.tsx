@@ -4,7 +4,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import Appear from '@/components/Appear';
 import { text } from '@/components/comunidad/ui';
 import { ChurchIcon, ExternalIcon, HeartIcon, LampIcon, ListenIcon, SparkIcon, type IconProps } from '@/components/icons';
-import { ENLACE_GITHUB, ENLACE_IGLESIAS, ENLACE_STRIPE, FONDO, HAY_SOSTENER, cubierta } from '@/lib/sostener';
+import { ENLACE_GITHUB, ENLACE_IGLESIAS, FONDO, HAY_SOSTENER, STRIPE_MENSUAL, STRIPE_UNA_VEZ, cubierta } from '@/lib/sostener';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 
 type Forma = {
@@ -18,7 +18,7 @@ type Forma = {
   ruta?: string;
   /** Un enlace dentro de la app debajo del botón. */
   extra?: { texto: string; accion: string; ruta: string };
-  /** Varias formas de pagar en vez de un solo botón (la primera es la principal). */
+  /** Montos al mes y otras formas de pagar en vez de un solo botón. */
   pagos?: Pago[];
 };
 
@@ -33,7 +33,7 @@ const FORMAS: Forma[] = [
     boton: 'Sembrar',
     enlace: null,
     pagos: [
-      { boton: 'Sembrar con tarjeta', nota: 'Una vez o cada mes · con tarjeta o billetera digital', enlace: ENLACE_STRIPE },
+      { boton: 'Una sola vez, lo que quieras', nota: 'Con tarjeta, Apple Pay o Google Pay', enlace: STRIPE_UNA_VEZ },
       { boton: 'Patrocinar en GitHub', nota: 'Para quien ya usa GitHub · sin comisión', enlace: ENLACE_GITHUB },
     ],
   },
@@ -117,8 +117,9 @@ export default function Sostener() {
             </View>
             {f.pagos ? (
               <View style={styles.pagos}>
-                {f.pagos.map((p, k) => (
-                  <BotonPago key={p.boton} pago={p} principal={k === 0} colors={colors} />
+                <Mensual colors={colors} />
+                {f.pagos.map((p) => (
+                  <BotonPago key={p.boton} pago={p} colors={colors} />
                 ))}
               </View>
             ) : (
@@ -161,10 +162,42 @@ export default function Sostener() {
   );
 }
 
+/** Sembrar cada mes: un botón por monto, con el del medio sugerido. */
+function Mensual({ colors }: { colors: Colors }) {
+  if (!STRIPE_MENSUAL.length) return null;
+  const sugerido = STRIPE_MENSUAL[Math.floor(STRIPE_MENSUAL.length / 2)].monto;
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={[styles.label, { color: colors.muted }]}>CADA MES</Text>
+      <View style={styles.montos}>
+        {STRIPE_MENSUAL.map(({ monto, enlace }) => {
+          const lleno = monto === sugerido;
+          return (
+            <Pressable
+              key={monto}
+              onPress={() => Linking.openURL(enlace)}
+              accessibilityRole="link"
+              accessibilityLabel={`Sembrar ${monto} dólares cada mes`}
+              style={({ pressed }) => [
+                styles.monto,
+                lleno ? { backgroundColor: colors.accent } : { borderColor: colors.accent, borderWidth: 1 },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={[styles.montoValor, { color: lleno ? colors.background : colors.accent }]}>{monto} USD</Text>
+              <Text style={[styles.montoMes, { color: lleno ? colors.background : colors.muted }]}>al mes</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>Cancelas cuando quieras · tarjeta o billetera digital</Text>
+    </View>
+  );
+}
+
 /** Un botón de pago con su nota debajo. Sin enlace queda apagado y dice «Muy pronto». */
-function BotonPago({ pago, principal, colors }: { pago: Pago; principal: boolean; colors: Colors }) {
+function BotonPago({ pago, colors }: { pago: Pago; colors: Colors }) {
   const abierto = !!pago.enlace;
-  const lleno = abierto && principal;
   return (
     <View style={{ gap: 6 }}>
       <Pressable
@@ -175,15 +208,15 @@ function BotonPago({ pago, principal, colors }: { pago: Pago; principal: boolean
         style={({ pressed }) => [
           styles.button,
           styles.pago,
-          lleno ? { backgroundColor: colors.accent } : { borderColor: abierto ? colors.accent : colors.border, borderWidth: 1 },
+          { borderColor: abierto ? colors.accent : colors.border, borderWidth: 1 },
           pressed && { opacity: 0.8 },
         ]}
       >
-        <Text style={{ color: lleno ? colors.background : abierto ? colors.accent : colors.muted, fontWeight: '700', fontSize: 15 }}>
+        <Text style={{ color: abierto ? colors.accent : colors.muted, fontWeight: '700', fontSize: 15 }}>
           {pago.boton}
         </Text>
         {abierto ? (
-          <ExternalIcon color={lleno ? colors.background : colors.accent} size={15} />
+          <ExternalIcon color={colors.accent} size={15} />
         ) : (
           <Text style={[styles.pronto, { color: colors.muted, borderColor: colors.border }]}>Muy pronto</Text>
         )}
@@ -214,7 +247,12 @@ const styles = StyleSheet.create({
   dot: { width: 5, height: 5, borderRadius: 3, marginTop: 7 },
   button: { marginTop: 16, borderRadius: 24, paddingVertical: 12, alignItems: 'center' },
   extra: { marginTop: 10, paddingVertical: 4 },
-  pagos: { marginTop: 16, gap: 12 },
+  pagos: { marginTop: 16, gap: 14 },
+  label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textAlign: 'center' },
+  montos: { flexDirection: 'row', gap: 10 },
+  monto: { flex: 1, borderRadius: 18, paddingVertical: 12, alignItems: 'center' },
+  montoValor: { fontSize: 17, fontWeight: '800' },
+  montoMes: { fontSize: 12, fontWeight: '600', marginTop: 1 },
   pago: { marginTop: 0, flexDirection: 'row', justifyContent: 'center', gap: 8 },
   pronto: { fontSize: 11, fontWeight: '600', borderWidth: 1, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1, overflow: 'hidden' },
   note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14 },

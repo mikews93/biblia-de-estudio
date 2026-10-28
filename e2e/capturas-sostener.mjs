@@ -10,7 +10,7 @@ for (const [pref, opts] of [['m', { viewport: { width: 390, height: 844 }, devic
   await p.getByText('Círculo de sembradores').filter({ visible: true }).waitFor();
   await p.waitForTimeout(900);
   await p.screenshot({ path: `${out}/${pref}-1-inicio.png` });
-  await p.getByText('Patrocinar en GitHub').filter({ visible: true }).scrollIntoViewIfNeeded();
+  await p.getByText('CADA MES', { exact: true }).filter({ visible: true }).evaluate((e) => e.scrollIntoView({ block: 'center' }));
   await p.waitForTimeout(400);
   await p.screenshot({ path: `${out}/${pref}-2-sembrar.png` });
   await ctx.close();
