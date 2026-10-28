@@ -48,6 +48,7 @@ import ReaderHeader, { HEADER_HEIGHT, TOOLBAR_HEIGHT } from '@/components/Reader
 import ToolButton from '@/components/ToolButton';
 import ChapterTools, { type ChapterTool, type ToolGroup } from '@/components/ChapterTools';
 import {
+  ArcsIcon,
   CardsIcon,
   CheckIcon,
   ChevronDownIcon,
@@ -375,6 +376,14 @@ export default function Reader() {
           },
         ]
       : []),
+    {
+      key: 'conexiones',
+      label: 'Conexiones',
+      hint: 'Las referencias cruzadas del capítulo como arcos sobre toda la Biblia',
+      icon: (c: string) => <ArcsIcon color={c} size={20} />,
+      onPress: () =>
+        navigate(() => router.push(`/conexiones?libro=${BOOK_SLUGS[bookId] ?? bookId}&cap=${chapter}` as never), 'forward'),
+    },
     {
       key: 'mapa',
       label: 'Mapa mental',

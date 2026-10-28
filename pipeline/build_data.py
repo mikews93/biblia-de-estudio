@@ -4,7 +4,7 @@ Uso: python3 pipeline/build_data.py [carpeta_salida]   (por defecto: public/data
 
 Fuentes (se descargan, no se guardan en el repositorio):
 - Reina-Valera 1909 (dominio público), vía scrollmapper/bible_databases
-- Referencias cruzadas de OpenBible.info (CC BY), vía scrollmapper/bible_databases
+- Referencias cruzadas de OpenBible.info (CC BY), vía scrollmapper/bible_databases; también los arcos de /conexiones
 - TAGNT de STEPBible / Tyndale House (CC BY 4.0): griego del NT con morfología y glosas
 - TAHOT de STEPBible / Tyndale House (CC BY 4.0): hebreo y arameo del AT con morfología y glosas inglesas;
   las glosas españolas son propias y están en pipeline/hebreo/glosas.tsv.gz
@@ -165,6 +165,59 @@ def build_xrefs(out):
         by_chapter[(bid, ch)][v] = [[r, n] for n, r in refs[:MAX_XREFS]]
     for (bid, ch), verses in by_chapter.items():
         write(out, f"xrefs/{bid}/{ch}.json", verses)
+
+
+def build_arcos(out, chapters):
+    """Todas las referencias cruzadas como arcos entre capítulos, para /conexiones (src/lib/conexiones.ts).
+
+    Cada par de versículos cuenta una vez, aunque OpenBible lo tenga en los dos sentidos; los de un mismo capítulo no
+    se dibujan. arcos/resumen.json: totales, conexiones de cada capítulo (en orden de Génesis 1 a Apocalipsis 22) y de
+    cada par de libros. arcos/{libro}.json: por capítulo, [índice del otro capítulo, conexiones, …] de más a menos.
+    """
+    index, start = {}, 0
+    for b in BOOKS:
+        for ch in range(1, chapters[b[0]] + 1):
+            index[(b[0], ch)] = start + ch - 1
+        start += chapters[b[0]]
+    book_of = [i for i, b in enumerate(BOOKS) for _ in range(chapters[b[0]])]
+    verse_pairs = set()
+    with fetch("xref.txt").open(encoding="utf-8") as f:
+        next(f)
+        for line in f:
+            src, dst, votes = line.rstrip("\n").split("\t")
+            if int(votes) <= 0:
+                continue
+            a = convert_ref(src).split(".")
+            b = convert_ref(dst.split("-")[0]).split(".")
+            va = (index[(a[0], int(a[1]))], int(a[2]))
+            vb = (index[(b[0], int(b[1]))], int(b[2]))
+            if va[0] != vb[0]:
+                verse_pairs.add((min(va, vb), max(va, vb)))
+    pairs = defaultdict(int)
+    for va, vb in verse_pairs:
+        pairs[(va[0], vb[0])] += 1
+    per_chapter = defaultdict(list)
+    totals = [0] * start
+    books = [[0] * len(BOOKS) for _ in BOOKS]
+    for (a, b), n in pairs.items():
+        per_chapter[a].append((n, b))
+        per_chapter[b].append((n, a))
+        totals[a] += n
+        totals[b] += n
+        books[book_of[a]][book_of[b]] += n
+        books[book_of[b]][book_of[a]] += n
+    for b in BOOKS:
+        first = index[(b[0], 1)]
+        rows = []
+        for i in range(first, first + chapters[b[0]]):
+            row = []
+            for n, other in sorted(per_chapter[i], key=lambda t: (-t[0], t[1])):
+                row += [other, n]
+            rows.append(row)
+        write(out, f"arcos/{b[0]}.json", rows)
+    write(out, "arcos/resumen.json", {"versiculos": len(verse_pairs), "pares": len(pairs), "capitulos": totals,
+                                      "libros": books})
+    print(f"Arcos: {len(verse_pairs)} conexiones entre {len(pairs)} pares de capítulos")
 
 
 def remember_lemma(meta, strong, lemma, meaning, form, translit):
@@ -562,6 +615,7 @@ def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "public" / "data"
     chapters, text = build_text(out)
     build_xrefs(out)
+    build_arcos(out, chapters)
     build_interlinear(out)
     build_hebrew(out)
     build_palabras(out)
