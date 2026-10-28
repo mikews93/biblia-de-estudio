@@ -18,6 +18,7 @@ type Body = {
   messages: Msg[];
   output_config?: { format?: { type: string; schema?: { properties?: Record<string, unknown> } } };
   tools?: { name: string }[];
+  tool_choice?: { type: string; name?: string };
 };
 
 export const requests: Body[] = [];
@@ -315,6 +316,24 @@ function structured(body: Body) {
   };
 }
 
+/**
+ * La tarjeta «Del diccionario bíblico» (api/comentario.ts): una explicación corta con los pasajes que vienen en la
+ * lista de las fuentes, y uno inventado («gen.99.1») que el servidor debe quitar.
+ */
+function explicar(body: Body) {
+  const pedido = text(body.messages[0].content);
+  const palabra = pedido.match(/^Palabra: (.+)$/m)?.[1] ?? '';
+  const citas = [...pedido.matchAll(/\b([1-3]?[a-z]{2,3}\.\d+\.\d+(?:-[1-3]?[a-z]{2,3}\.\d+\.\d+)?) \(/g)].map((m) => m[1]);
+  return {
+    breve: `${palabra} era un huerto de olivos al pie del monte de los Olivos, donde Jesús oró la noche antes de morir.`,
+    mas: ['Su nombre significa «prensa de aceite».', 'Jesús iba allí a menudo con sus discípulos, y allí lo arrestaron.'],
+    pasajes: [
+      { tema: 'Jesús ora en el huerto', refs: [...citas.slice(0, 2), 'gen.99.1'] },
+      { tema: 'Allí lo arrestan', refs: citas.slice(2, 3) },
+    ],
+  };
+}
+
 const usage = { input_tokens: 10, output_tokens: 10, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
 const message = (content: unknown[]) => ({
   id: 'msg_prueba',
@@ -360,14 +379,16 @@ const TEMA: { text: string; tool?: number }[] = [
 
 // Una pregunta del buscador (PREGUNTA_SYSTEM en api/estudiar.ts): lee el pasaje y sus comentarios y responde con el
 // formato de src/lib/preguntar.ts (En corto con un versículo ⟪…⟫, partes, Para pensar y la línea «Sigue:»).
-const PREGUNTA_CALLS = TEMA_CALLS.slice(0, 2);
+// Y reúne los pasajes del tema en el índice de Nave.
+const PREGUNTA_CALLS = [...TEMA_CALLS.slice(0, 2), { name: 'temas_biblicos', input: { tema: 'la ansiedad', termino: 'Anxiety' } }];
 
 const PREGUNTA: { text: string; tool?: number }[] = [
   { text: '## En corto\n' },
   { text: 'La Biblia no llama pecado a sentir angustia: invita a llevarla a Dios en oración y a confiar en que él cuida de ti.', tool: 0 },
   { text: '\n\n⟪Filipenses 4:6⟫\n\n⟪1 Pedro 5:7⟫\n\n## Lo que dice la Biblia\nPablo escribe desde la cárcel y no pide fingir calma: pide convertir cada preocupación en oración, con gratitud.' },
   { text: ' La promesa es la paz de Dios que guarda el corazón, no que el problema desaparezca.', tool: 0 },
-  { text: '\n\nJesús también habla del afán del mañana y lo responde mirando al Padre que alimenta a las aves.\n\n## Cómo lo han entendido\n' },
+  { text: '\n\nJesús también habla del afán del mañana y lo responde mirando al Padre que alimenta a las aves.', tool: 2 },
+  { text: '\n\n## Cómo lo han entendido\n' },
   { text: 'Un comentario señala que la oración con gratitud es el remedio contra el afán: no quita las cargas, cambia dónde las ponemos.', tool: 1 },
   { text: '\n\n## Para pensar\n¿Qué preocupación de hoy podrías poner en palabras delante de Dios, como pide Filipenses 4:6?\n\nSigue: ¿Y si oro y la ansiedad no se va? | ¿Jesús sintió angustia?' },
 ];
@@ -418,7 +439,7 @@ function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) =>
 // Los temas con «SATURADA» que ya recibieron el error una vez
 const SATURADAS = new Set<string>();
 
-function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) => void, list?: typeof TEMA_CALLS, from = 0) {
+function sendTools(res: ServerResponse, send: (event: Record<string, unknown>) => void, list?: { name: string; input: Record<string, unknown> }[], from = 0) {
   const calls = list ?? [
     { name: 'leer_pasaje', input: { cita: '2 Timoteo 3:14-17' } },
     { name: 'buscar_en_la_biblia', input: { palabras: 'escritur', testamento: 'NT' } },
@@ -594,6 +615,10 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return res.end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: invalido } }));
   }
   if (body.stream) return sse(res, body);
+  if (body.tool_choice?.name === 'explicar') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify(message([{ type: 'tool_use', id: 'toolu_explicar', name: 'explicar', input: explicar(body) }])));
+  }
   const content =
     body.output_config?.format?.type === 'json_schema'
       ? [{ type: 'text', text: JSON.stringify(structured(body)) }]

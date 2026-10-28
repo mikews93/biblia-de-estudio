@@ -17,6 +17,10 @@
 // POST { contexto: { libro, capitulo, versiculo } }  -> { texto, fuente } o { texto: null }: una línea de contexto para
 //      la imagen de un versículo («Pablo lo escribe desde la cárcel»), sacada de los comentarios y guardada para todos.
 // POST { ficha: 'h1732' }  traduce el artículo y lo envía por partes como NDJSON, igual que un comentario.
+//
+// «Del diccionario bíblico» en el buscador (src/lib/diccionario.ts): una palabra se explica en español desde Easton,
+// Smith y Nave (api/_diccionario.ts), con IA la primera vez, y queda guardada para todos.
+// POST { diccionario: 'getsemani' }  -> { explicacion: Explicacion } o { explicacion: null } si no hay fuentes.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
@@ -24,8 +28,10 @@ import path from 'node:path';
 import postgres from 'postgres';
 
 import { Section, sections } from './_comentarios';
+import { entrada, etiqueta, tema } from './_diccionario';
 import { waitUntil } from './_seguir';
 import { ACTIVAS, Fuente } from '../src/lib/comentarioFuentes';
+import { type Explicacion, palabraPorId } from '../src/lib/diccionario';
 
 const MODEL = process.env.COMENTARIO_MODEL ?? 'claude-sonnet-5-5';
 const REVIEW_MODEL = process.env.COMENTARIO_REVISOR ?? 'claude-opus-5-5';
@@ -79,6 +85,16 @@ create table if not exists contexto_es (
   primary key (libro, capitulo, versiculo)
 );
 create table if not exists contexto_uso (
+  dia date primary key,
+  n int not null default 0
+);
+create table if not exists diccionario_es (
+  id text primary key,
+  datos jsonb not null,
+  modelo text,
+  creado timestamptz not null default now()
+);
+create table if not exists diccionario_uso (
   dia date primary key,
   n int not null default 0
 );
@@ -136,6 +152,43 @@ Reglas:
 - No apliques el versículo, no prediques, no expliques su significado teológico, no opines.
 - Escribe los nombres como la Reina-Valera 1909.
 - Responde solo con la frase.`;
+
+const DICCIONARIO = `Explicas palabras de la Biblia para el buscador de una app bíblica gratuita, a partir de dos diccionarios bíblicos del siglo XIX (Easton, Smith) y un índice por temas (Nave), de dominio público y en inglés.
+
+Reglas:
+- Escribe en español claro y cálido, para alguien que no ha estudiado teología: frases cortas, sin tecnicismos o explicándolos.
+- Usa solo lo que dicen las fuentes y los pasajes que se te dan. No inventes datos, fechas ni lugares. Lo que las fuentes dan de arqueología o geografía de su época, dilo con prudencia («según la tradición», «probablemente»).
+- Explica desde la lectura evangélica del texto bíblico. Si las fuentes mencionan tradiciones o prácticas católicas u ortodoxas, déjalas fuera.
+- No nombres a los autores de las fuentes en el texto: la app las acredita aparte.
+- Escribe los nombres como la Reina-Valera 1909 (Getsemaní, Gólgota, Melquisedec).
+- No prediques ni apliques: explica qué es y qué dice la Biblia de ello.
+- En los pasajes, usa solo citas de la lista que se te da, con su código tal cual («luk.22.39»), y pon a cada grupo un título corto en español.`;
+
+const DICCIONARIO_TOOL: Anthropic.Tool = {
+  name: 'explicar',
+  description: 'La explicación de la palabra para la tarjeta del buscador.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      breve: { type: 'string', description: 'Dos o tres frases sencillas: qué es y por qué importa en la Biblia. Hasta 320 caracteres.' },
+      mas: { type: 'array', items: { type: 'string' }, description: 'De dos a cuatro párrafos cortos (hasta 450 caracteres cada uno) con lo más útil de las fuentes.' },
+      pasajes: {
+        type: 'array',
+        description: 'De dos a cuatro grupos de pasajes clave, el más importante primero.',
+        items: {
+          type: 'object',
+          properties: {
+            tema: { type: 'string', description: 'Título corto en español: «Jesús ora antes de la cruz».' },
+            refs: { type: 'array', items: { type: 'string' }, description: 'De una a tres citas de la lista, con su código.' },
+          },
+          required: ['tema', 'refs'],
+        },
+      },
+    },
+    required: ['breve', 'mas', 'pasajes'],
+  },
+};
+const DICCIONARIO_DIA = Number(process.env.DICCIONARIO_DIA ?? 150);
 
 // Fuentes para la línea de contexto, en orden: notas modernas primero, después los clásicos.
 const FUENTES_CONTEXTO = ['tosn', 'jfb', 'mhc'];
@@ -535,6 +588,77 @@ async function contexto(request: Request, body: Record<string, unknown>) {
   return Response.json({ texto: linea, fuente: fuente.id });
 }
 
+/**
+ * La explicación en español de una palabra del diccionario: escrita una vez con IA desde Easton, Smith y Nave, y
+ * guardada para todos.
+ */
+async function diccionario(request: Request, id: unknown) {
+  const palabra = typeof id === 'string' ? palabraPorId(id) : undefined;
+  if (!palabra) throw new Fail('Palabra no válida');
+  const sql = await db();
+  const [hecha] = await sql<{ datos: Explicacion }[]>`select datos from diccionario_es where id = ${palabra.id}`;
+  if (hecha) return Response.json({ explicacion: hecha.datos });
+
+  const [e, t] = await Promise.all([
+    palabra.entrada ? entrada(request, palabra.entrada) : undefined,
+    palabra.tema ? tema(request, palabra.tema) : undefined,
+  ]);
+  if (e === null || t === null) throw new Fail('El diccionario no está disponible ahora. Inténtalo en un momento.', 503);
+  if (!e && !t) return Response.json({ explicacion: null });
+
+  const [uso] = await sql`select n from diccionario_uso where dia = current_date`;
+  if (uso && uso.n >= DICCIONARIO_DIA) throw new Fail('Hoy ya se explicaron muchas palabras nuevas. Vuelve mañana.', 429);
+  await sql`insert into diccionario_uso (dia, n) values (current_date, 1) on conflict (dia) do update set n = diccionario_uso.n + 1`;
+
+  const libros = await books();
+  const citas = new Set<string>();
+  const lista = (refs: string[]) =>
+    refs
+      .filter((r) => r.split('.').length >= 3)
+      .slice(0, 10)
+      .map((r) => {
+        citas.add(r);
+        return `${r} (${etiqueta(r, libros)})`;
+      })
+      .join(', ');
+  const partes: string[] = [];
+  if (e?.easton) partes.push(`Diccionario de Easton (1897):\n${e.easton}`);
+  if (e?.smith) partes.push(`Diccionario de Smith (1863):\n${e.smith}`);
+  if (e?.refs.length) partes.push(`Pasajes que citan los diccionarios: ${lista(e.refs.slice(0, 24))}`);
+  if (t) {
+    const lineas = t.lineas
+      .filter(([, , refs]) => refs.length)
+      .slice(0, 40)
+      .map(([nivel, label, refs]) => `${'  '.repeat(nivel)}- ${label}: ${lista(refs)}`);
+    partes.push(`Índice por temas de Nave (1896), tema ${t.clave}:\n${lineas.join('\n')}`);
+  }
+  const res = await client.messages.create({
+    model: MODEL,
+    max_tokens: 2000,
+    system: DICCIONARIO,
+    tools: [DICCIONARIO_TOOL],
+    tool_choice: { type: 'tool', name: 'explicar' },
+    messages: [{ role: 'user', content: `Palabra: ${palabra.nombre}\n\n${partes.join('\n\n')}`.slice(0, 24000) }],
+  });
+  const out = res.content.find((b) => b.type === 'tool_use')?.input as Partial<Explicacion> | undefined;
+  const texto = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  const breve = texto(out?.breve, 500);
+  if (!breve) throw new Fail('No se pudo explicar esta palabra. Inténtalo de nuevo.', 502);
+  const explicacion: Explicacion = {
+    breve,
+    mas: (Array.isArray(out?.mas) ? out.mas : []).map((p) => texto(p, 700)).filter(Boolean).slice(0, 4),
+    // Solo citas de las fuentes: la IA no añade pasajes por su cuenta.
+    pasajes: (Array.isArray(out?.pasajes) ? out.pasajes : [])
+      .map((g) => ({ tema: texto(g?.tema, 80), refs: (Array.isArray(g?.refs) ? g.refs : []).filter((r) => citas.has(r)).slice(0, 3) }))
+      .filter((g) => g.tema && g.refs.length)
+      .slice(0, 4),
+    fuentes: [...(e?.easton ? ['easton' as const] : []), ...(e?.smith ? ['smith' as const] : []), ...(t ? ['nave' as const] : [])],
+  };
+  await sql`insert into diccionario_es (id, datos, modelo) values (${palabra.id}, ${sql.json(explicacion)}, ${MODEL})
+    on conflict do nothing`;
+  return Response.json({ explicacion });
+}
+
 async function report(request: Request, body: Record<string, unknown>) {
   const k = await key(request, body);
   const nota = typeof body.nota === 'string' ? body.nota.trim().slice(0, MAX_NOTE) : '';
@@ -569,6 +693,7 @@ export async function POST(request: Request) {
     }
     if (body.reporte && typeof body.reporte === 'object') return await report(request, body.reporte as Record<string, unknown>);
     if (body.ficha !== undefined) return await translateFicha(request, body.ficha);
+    if (body.diccionario !== undefined) return await diccionario(request, body.diccionario);
     if (body.contexto && typeof body.contexto === 'object') return await contexto(request, body.contexto as Record<string, unknown>);
     return await translate(request, body);
   } catch (err) {

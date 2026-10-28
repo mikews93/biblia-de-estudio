@@ -1,5 +1,7 @@
 // Cliente de /api/comentario: comentarios bíblicos traducidos al español (ver comentarioFuentes.ts).
 
+import type { Explicacion } from './diccionario';
+
 export { ACTIVAS, FUENTES, comenta } from './comentarioFuentes';
 export type { Fuente } from './comentarioFuentes';
 
@@ -119,4 +121,26 @@ export async function getContexto(book: string, chapter: number, verse: number):
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new Error(body?.error ?? 'No se pudo traer el contexto');
   return body?.texto ?? null;
+}
+
+const explicaciones = new Map<string, Promise<Explicacion | null>>();
+
+/** La explicación en español de una palabra del diccionario bíblico (null si no hay fuentes). Una vez por visita. */
+export function getExplicacion(id: string): Promise<Explicacion | null> {
+  let p = explicaciones.get(id);
+  if (!p) {
+    p = fetch(`${API}/api/comentario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ diccionario: id }),
+    }).then(async (res) => {
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? 'No se pudo abrir el diccionario');
+      return (body?.explicacion as Explicacion | null) ?? null;
+    });
+    // Si falla, se puede volver a intentar.
+    p.catch(() => explicaciones.delete(id));
+    explicaciones.set(id, p);
+  }
+  return p;
 }

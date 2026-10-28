@@ -9,6 +9,7 @@ import { AccessibilityInfo, Animated, Linking, Platform, Pressable, ScrollView, 
 import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
 import { ChevronRightIcon, ClockIcon, CloseIcon, MicIcon, SearchIcon, SparkIcon, type IconProps } from '@/components/icons';
+import DiccionarioCard from '@/components/DiccionarioCard';
 import { PreguntaCard, Preparadas } from '@/components/Preguntar';
 import { NeedsConnection } from '@/components/SinConexion';
 import {
@@ -30,6 +31,7 @@ import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/li
 import { Icono } from '@/components/FichaChips';
 import { IndiceRow, buscarFichas, fichaHref, getIndice } from '@/lib/fichas';
 import { type Licensed, licensedById } from '@/lib/licenciadas';
+import { palabraDe } from '@/lib/diccionario';
 import { permisoIaDado } from '@/lib/permisoIa';
 import { esPregunta } from '@/lib/preguntar';
 import { chapterHref, verseHref } from '@/lib/routes';
@@ -285,6 +287,8 @@ export default function Search() {
   const bookName = cita ? (books.find((b) => b.id === cita.book)?.name ?? '') : '';
   // Lo buscado es una pregunta: arriba va su respuesta y debajo los pasajes de la búsqueda rápida.
   const pregunta = !!asked && !cita && esPregunta(asked);
+  // Una palabra de la Biblia (Getsemaní, el efod, la gracia), sola o en una pregunta corta: su explicación del diccionario.
+  const palabra = !cita ? palabraDe(pregunta ? asked : settled) : undefined;
 
   return (
     <ScrollView
@@ -454,6 +458,8 @@ export default function Search() {
       )}
 
       {!listening && pregunta && <PreguntaCard key={asked} texto={asked} colors={colors} />}
+
+      {!listening && palabra && <DiccionarioCard palabra={palabra} books={books} colors={colors} preguntar={!pregunta} />}
 
       {idle && (
         <>

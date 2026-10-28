@@ -14,6 +14,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Section, sections } from './_comentarios';
+import { OBRAS, buscarEntradas, buscarTema, etiqueta, partes } from './_diccionario';
 import { Area, buscarTeologia } from './_teologia';
 import { parseCita } from '../src/lib/cita';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
@@ -274,7 +275,10 @@ export async function searchVerses(query: string, books: Book[], testamento?: 'A
 
 // ---------------------------------------------------------------- Las herramientas
 
-export type Paso = { tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia'; texto: string };
+export type Paso = {
+  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas';
+  texto: string;
+};
 
 const cita = (description: string) => ({
   type: 'object' as const,
@@ -341,7 +345,7 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
   {
     name: 'teologia',
     description:
-      'Busca en obras clásicas de teología y de historia de la Iglesia, de dominio público y en su inglés original: las teologías sistemáticas de Charles Hodge (presbiteriano, 1872), A. H. Strong (bautista, 1907), W. G. T. Shedd (presbiteriano, 1888) y John Miley (metodista arminiano, 1892), la Institución de Calvino, los credos y confesiones (Apostólico, Calcedonia, Westminster, Heidelberg, Belga, Treinta y Nueve Artículos, Dort, confesiones bautistas y metodistas), y para la historia del canon la Historia eclesiástica de Eusebio, la Carta festal 39 de Atanasio, el fragmento de Muratori y la historia del canon del NT de Westcott. Úsala para preguntas de doctrina o de historia (cómo se definió el canon, qué es la justificación, cómo se entiende la Trinidad). Devuelve hasta tres secciones, como mucho una por obra.',
+      'Busca en obras clásicas de teología y de historia de la Iglesia, de dominio público y en su inglés original: las teologías sistemáticas de Charles Hodge (presbiteriano, 1872), A. H. Strong (bautista, 1907), W. G. T. Shedd (presbiteriano, 1888) y John Miley (metodista arminiano, 1892), la Institución de Calvino, los credos y confesiones (Apostólico, Calcedonia, la Confesión y los catecismos Mayor y Menor de Westminster, Heidelberg, Belga, Treinta y Nueve Artículos, Dort, confesiones bautistas y metodistas), y para la historia del canon la Historia eclesiástica de Eusebio, la Carta festal 39 de Atanasio, el fragmento de Muratori y la historia del canon del NT de Westcott. Úsala para preguntas de doctrina o de historia (cómo se definió el canon, qué es la justificación, cómo se entiende la Trinidad). Devuelve hasta tres secciones, como mucho una por obra.',
     input_schema: {
       type: 'object',
       properties: {
@@ -361,6 +365,36 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
     },
     strict: true,
   },
+  {
+    name: 'diccionario',
+    description:
+      'Busca una palabra en dos diccionarios bíblicos clásicos de dominio público, en su inglés original: el de Easton (1897) y el de Smith (1863). Explican personas, lugares, objetos, costumbres y palabras de la Biblia (Getsemaní, el maná, los fariseos, el efod, la gracia) con su trasfondo histórico y sus pasajes. Úsalo cuando la pregunta trate de algo concreto de la Biblia que convenga explicar.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tema: { type: 'string', description: 'La palabra en español, para enseñársela a la persona: «Getsemaní».' },
+        termino: { type: 'string', description: 'La palabra en inglés, como entrada de diccionario: «Gethsemane», «Manna», «Pharisees», «Ephod», «Grace».' },
+      },
+      required: ['tema', 'termino'],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: 'temas_biblicos',
+    description:
+      'El índice por temas de Nave (1896, dominio público): para un tema, sus aspectos en inglés y los pasajes de toda la Biblia que tratan cada uno, con el texto de una muestra. Sirve para responder «¿qué dice la Biblia sobre…?» reuniendo los pasajes de un tema (la oración, el perdón, la ansiedad, el matrimonio).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tema: { type: 'string', description: 'El tema en español, corto, para enseñárselo a la persona: «la oración».' },
+        termino: { type: 'string', description: 'El tema en inglés, una o dos palabras como en un índice: «Prayer», «Forgiveness», «Anxiety», «Marriage».' },
+      },
+      required: ['tema', 'termino'],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
 ];
 
 export type Resultado = {
@@ -373,6 +407,7 @@ export type Resultado = {
 
 const MAX_READ = 60;
 const COMMENT_TOOL_WORDS = 600;
+const DICCIONARIO_WORDS = 450;
 
 function result(title: string, source: string, blocks: Block[]): { param: Anthropic.Beta.BetaSearchResultBlockParam; metas: BlockMeta[] } {
   return {
@@ -415,6 +450,10 @@ export function pasoDe(name: string, input: Record<string, unknown>, biblia: Bib
       return { tipo: 'original', texto: where };
     case 'teologia':
       return { tipo: 'teologia', texto: raw };
+    case 'diccionario':
+      return { tipo: 'diccionario', texto: raw };
+    case 'temas_biblicos':
+      return { tipo: 'temas', texto: raw };
     default:
       return { tipo: 'concordancia', texto: raw.toUpperCase() };
   }
@@ -464,6 +503,49 @@ export async function investigar(name: string, input: Record<string, unknown>, b
       const aviso =
         'Obras humanas de dominio público, en inglés: explícalas en español con tus palabras, sin traducir párrafos enteros, di de quién es cada idea y su tradición, y no las pongas al nivel de la Escritura.';
       return { content: [{ type: 'text', text: aviso }, ...rs.map((r) => r.param)], results: rs.map((r) => r.metas), paso };
+    }
+
+    if (name === 'diccionario') {
+      const termino = String(input.termino ?? '').slice(0, 80);
+      const tema = String(input.tema ?? termino).slice(0, 80);
+      const found = await buscarEntradas(biblia.request, termino);
+      if (!found) return fail(paso, 'Los diccionarios bíblicos no están disponibles ahora. Sigue con lo que tienes.');
+      if (!found.length) return { content: `Los diccionarios no tienen «${termino}». Prueba con otra palabra en inglés (singular, o el nombre como en la KJV).`, results: [], paso };
+      const rs = found.flatMap((e) =>
+        (['easton', 'smith'] as const).flatMap((id) => {
+          const texto = id === 'easton' ? e.easton : e.smith;
+          if (!texto) return [];
+          const obra = OBRAS[id];
+          const meta = { label: `${obra.corto}, «${tema}»`, url: obra.url, nota: obra.nota };
+          return [result(`${obra.corto} (en inglés) · ${e.clave}`, `diccionario:${id}:${e.clave}`, firstWords(partes(texto), DICCIONARIO_WORDS).map((t) => ({ text: t, meta })))];
+        }),
+      );
+      const aviso =
+        'Diccionarios del siglo XIX, en inglés: explícalos en español con tus palabras y sin traducir párrafos enteros. Sus datos de arqueología y geografía pueden estar superados: no los afirmes como seguros. No los pongas al nivel de la Escritura.';
+      return { content: [{ type: 'text', text: aviso }, ...rs.map((r) => r.param)], results: rs.map((r) => r.metas), paso };
+    }
+
+    if (name === 'temas_biblicos') {
+      const termino = String(input.termino ?? '').slice(0, 80);
+      const tema = String(input.tema ?? termino).slice(0, 80);
+      const found = await buscarTema(biblia.request, termino);
+      if (found === null) return fail(paso, 'El índice por temas no está disponible ahora. Sigue con lo que tienes.');
+      if (!found) return { content: `El índice de Nave no tiene «${termino}». Prueba con otra palabra en inglés, en singular.`, results: [], paso };
+      const lineas = found.lineas.slice(0, 60);
+      const resumen = lineas
+        .map(([nivel, t, refs]) => `${'  '.repeat(nivel)}- ${t}${refs.length ? `: ${refs.slice(0, 8).map((r) => etiqueta(r, books)).join('; ')}${refs.length > 8 ? '…' : ''}` : ''}`)
+        .join('\n');
+      // Una muestra para citar: el primer versículo de cada aspecto, hasta 12.
+      const muestra = lineas.flatMap(([, t, refs]) => (refs[0]?.split('.').length === 3 || refs[0]?.includes('-') ? [[t, refs[0]] as const] : [])).slice(0, 12);
+      const blocks = await Promise.all(
+        muestra.map(async ([t, r]) => ({ text: `${t} · ${biblia.label(r)}: ${firstWords([await biblia.refText(r)], 70)[0] ?? ''}`, meta: { label: biblia.label(r), ref: r } })),
+      );
+      const r = result(`${OBRAS.nave.corto}: ${tema} (${found.clave}) · muestra de pasajes`, `nave:${found.clave}`, blocks);
+      return {
+        content: [{ type: 'text', text: `Índice de Nave, tema ${found.clave}, en inglés (los aspectos con sus pasajes):\n${resumen}${found.lineas.length > lineas.length ? '\n…' : ''}\n\nAntes de citar un pasaje que no esté en la muestra, léelo con leer_pasaje.` }, r.param],
+        results: [r.metas],
+        paso,
+      };
     }
 
     if (name === 'concordancia') {
