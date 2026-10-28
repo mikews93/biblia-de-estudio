@@ -21,9 +21,10 @@ import {
   getRecent,
   quickSearch,
   searchByIdea,
+  warmSearch,
   withVersion,
 } from '@/lib/buscar';
-import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_ACCOUNT, useAccount } from '@/lib/comunidad';
 import { NEEDS_CONNECTION, useOnline } from '@/lib/conexion';
 import { Cita, citaLabel, parseCita } from '@/lib/cita';
 import { Book, Version, getBooks, getChapter, getVersions, parseRef } from '@/lib/data';
@@ -31,6 +32,7 @@ import { Icono } from '@/components/FichaChips';
 import { IndiceRow, buscarFichas, fichaHref, getIndice } from '@/lib/fichas';
 import { type Licensed, licensedById } from '@/lib/licenciadas';
 import { palabraDe } from '@/lib/diccionario';
+import { permisoIaDado } from '@/lib/permisoIa';
 import { esPregunta } from '@/lib/preguntar';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
@@ -60,6 +62,11 @@ export default function Search() {
   // Cómo se encontraron los resultados: al momento sin IA (QuickMode) o leídos y elegidos por la IA
   const [mode, setMode] = useState<QuickMode | 'ia' | null>(null);
   const [showAll, setShowAll] = useState(false);
+  // Búsqueda rápida floja (api/_semantica.ts esFloja): con cuenta la IA la afina sola («auto»); sin cuenta, se invita.
+  const [weak, setWeak] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [auto, setAuto] = useState(false);
+  const { llave } = useAccount();
   const online = useOnline();
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -92,6 +99,7 @@ export default function Search() {
   const fichas = useMemo(() => (quiereFichas && indice ? buscarFichas(indice, settled, 5) : []), [quiereFichas, indice, settled]);
 
   useEffect(() => {
+    warmSearch();
     getRecent().then(setRecent);
     Promise.all([getBooks(), getVersions()]).then(([b, v]) => {
       setBooks(b);
@@ -162,6 +170,9 @@ export default function Search() {
     addRecent(text).then(setRecent);
     setBusy(true);
     setError(null);
+    setWeak(false);
+    setRefining(false);
+    setAuto(false);
     if (!ai) setResults(null);
     setShowAll(false);
     router.setParams({ q: text });
@@ -176,12 +187,45 @@ export default function Search() {
       setMode(r.mode);
       setSearchedIn(fromServer ? version : (shown[0]?.version ?? version));
       setNote('note' in r ? r.note : undefined);
+      const floja = r.mode !== 'ia' && r.mode !== 'sin-conexion' && !!r.floja;
+      setWeak(floja);
+      if (floja && llave && (await permisoIaDado())) refine(text, version, controller);
     } catch (e) {
       if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'No se pudo hacer la búsqueda.');
     } finally {
       if (abort.current === controller) setBusy(false);
     }
   };
+
+  /** Una búsqueda rápida floja, con cuenta: la IA la afina sola mientras se ven los resultados rápidos. */
+  const refine = async (text: string, version: string, controller: AbortController) => {
+    setRefining(true);
+    try {
+      const r = await searchByIdea(text, version, controller.signal);
+      const shown = licensedById(version) ? await withVersion(r.results, version, (b, c) => getChapter(b, c, version)) : r.results;
+      if (controller.signal.aborted || !shown.length) return;
+      setResults(shown);
+      setMode('ia');
+      setSearchedIn(version);
+      setNote(r.note);
+      setShowAll(false);
+      setWeak(false);
+      setAuto(true);
+    } catch {
+      // Si la IA no responde, se quedan los resultados rápidos
+    } finally {
+      if (abort.current === controller) setRefining(false);
+    }
+  };
+
+  // Al volver con cuenta desde la invitación, la IA afina la búsqueda floja que quedó en pantalla
+  useEffect(() => {
+    const controller = abort.current;
+    if (!llave || !weak || refining || mode === 'ia' || !asked || !controller || controller.signal.aborted) return;
+    permisoIaDado().then((ok) => {
+      if (ok) refine(asked, settings.version, controller);
+    });
+  }, [llave]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Enter, un ejemplo o lo dictado. Con varias formas posibles (dictado), gana la primera que sea una cita. */
   const submit = async (options: string[]) => {
@@ -528,7 +572,7 @@ export default function Search() {
             <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 6 }}>
               No encontré pasajes para «{asked}». Prueba a decirlo con otras palabras o con lo que recuerdes del versículo.
             </Text>
-            {mode !== 'ia' && online && <Refine colors={colors} onPress={() => runIdea(asked, true)} />}
+            <AiHint colors={colors} refining={refining} weak={weak && online} account={!!llave} auto={false} onRefine={() => runIdea(asked, true)} />
           </View>
         </Appear>
       )}
@@ -542,7 +586,7 @@ export default function Search() {
             </Text>
             <ModeBadge mode={mode} colors={colors} abbr={abbrOf(searchedIn)} />
           </View>
-          {mode !== 'ia' && online && <Refine colors={colors} onPress={() => runIdea(asked, true)} />}
+          <AiHint colors={colors} refining={refining} weak={weak && online} account={!!llave} auto={auto && mode === 'ia'} onRefine={() => runIdea(asked, true)} />
           {note ? (
             <View style={[styles.notice, { backgroundColor: colors.accentSoft, borderColor: colors.accent, marginTop: 0 }]}>
               <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{note}</Text>
@@ -596,8 +640,8 @@ export default function Search() {
                 : mode === 'sin-conexion'
                   ? `Sin conexión: buscado por palabras en la ${abbrOf(searchedIn)} descargada en este dispositivo.`
                   : mode === 'palabras'
-                    ? 'Búsqueda rápida por palabras, sin IA. Si no ves lo que buscas, pide a la IA que la afine.'
-                    : 'Búsqueda rápida por el sentido y las palabras, sin IA: encuentra pasajes que dicen lo mismo con otras palabras. Si quieres que alguien los lea y te explique por qué, pide a la IA que la afine.'}
+                    ? 'Búsqueda rápida por palabras, sin IA.'
+                    : 'Búsqueda rápida por el sentido y las palabras, sin IA: encuentra pasajes que dicen lo mismo con otras palabras.'}
             </Text>
           )}
         </>
@@ -621,11 +665,54 @@ function ModeBadge({ mode, colors, abbr }: { mode: QuickMode | 'ia' | null; colo
   );
 }
 
-/** Pedir a la IA que lea y elija: una franja discreta sobre los resultados rápidos. */
-function Refine({ colors, onPress }: { colors: Colors; onPress: () => void }) {
+/**
+ * Lo que se ve de la IA en una búsqueda rápida: nada si salió buena; si salió floja, la IA afinándola sola (con cuenta),
+ * la invitación a crear una cuenta (sin ella) o el botón para afinarla (con cuenta, sin permiso para la IA todavía en
+ * el teléfono); y al terminar, una nota de que la afinó.
+ */
+function AiHint({
+  colors,
+  refining,
+  weak,
+  account,
+  auto,
+  onRefine,
+}: {
+  colors: Colors;
+  refining: boolean;
+  weak: boolean;
+  account: boolean;
+  auto: boolean;
+  onRefine: () => void;
+}) {
+  if (refining) return <Refining colors={colors} />;
+  if (auto)
+    return (
+      <View style={styles.aiNote}>
+        <SparkIcon color={colors.accent} size={14} />
+        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, flex: 1 }}>
+          La búsqueda rápida no encontró algo claro, así que la afiné con IA.
+        </Text>
+      </View>
+    );
+  if (!weak) return null;
+  if (!account)
+    return (
+      <Pressable
+        onPress={() => navigate(() => router.push('/registro'), 'forward')}
+        style={({ pressed }) => [styles.invite, { borderColor: colors.border }, pressed && styles.pressed]}
+        accessibilityRole="link"
+      >
+        <SparkIcon color={colors.accent} size={16} />
+        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, flex: 1 }}>
+          Con una cuenta gratuita, la IA afina las búsquedas que no salen claras.{' '}
+          <Text style={{ color: colors.accent, fontWeight: '700' }}>Crear cuenta</Text>
+        </Text>
+      </Pressable>
+    );
   return (
     <Pressable
-      onPress={onPress}
+      onPress={onRefine}
       style={({ pressed }) => [styles.refine, { backgroundColor: colors.accentSoft, borderColor: colors.accent }, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel="Afinar con la IA"
@@ -635,10 +722,34 @@ function Refine({ colors, onPress }: { colors: Colors; onPress: () => void }) {
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Afinar con la IA</Text>
-        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 1 }}>Lee los pasajes, elige los mejores y explica por qué.</Text>
+        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 1 }}>No encontré algo muy claro. La IA lee los pasajes y elige los mejores.</Text>
       </View>
       <ChevronRightIcon color={colors.accent} size={18} />
     </Pressable>
+  );
+}
+
+/** La IA afinando sola una búsqueda floja: una franja que respira sobre los resultados rápidos. */
+function Refining({ colors }: { colors: Colors }) {
+  const [pulse] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(pulse, { toValue: 0, duration: 700, useNativeDriver: Platform.OS !== 'web' }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] });
+  return (
+    <View style={[styles.aiNote, { backgroundColor: colors.accentSoft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 }]} accessibilityLiveRegion="polite">
+      <Animated.View style={{ opacity }}>
+        <SparkIcon color={colors.accent} size={14} />
+      </Animated.View>
+      <Text style={{ color: colors.text, fontSize: 13, lineHeight: 18, flex: 1 }}>Afinando la búsqueda con IA…</Text>
+    </View>
   );
 }
 
@@ -815,6 +926,8 @@ const styles = StyleSheet.create({
   resultsHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4 },
   refine: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, marginTop: 4 },
+  aiNote: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  invite: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 },
   refineIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   more: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginBottom: 8 },
   result: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginBottom: 12 },
