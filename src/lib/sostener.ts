@@ -15,8 +15,22 @@ export type Fondo = {
 /** La barra de la lámpara de la comunidad. Sin datos todavía, no se muestra. */
 export const FONDO: Fondo | null = null;
 
-/** Dónde se aporta (Open Collective o GitHub Sponsors). Sin enlace, el botón dice «Muy pronto». */
-export const ENLACE_APORTES: string | null = null;
+/**
+ * Enlaces de pago de Stripe (Payment Links del producto «Sostén Zarza» de MB Technology Solutions LLC).
+ * Cada mes: 1, 3 o 5 dólares. Una vez: el monto que la persona quiera (desde 1 dólar, sugiere 10).
+ */
+export const STRIPE_MENSUAL: { monto: number; enlace: string }[] = [
+  { monto: 1, enlace: 'https://buy.stripe.com/3cI8wO2HybmT3cnd3RcEw02' },
+  { monto: 3, enlace: 'https://buy.stripe.com/aFaeVc0zq4YveV50h5cEw03' },
+  { monto: 5, enlace: 'https://buy.stripe.com/aFacN4fukgHd6oz6FtcEw04' },
+];
+export const STRIPE_UNA_VEZ: string | null = 'https://donate.stripe.com/eVqdR80zqbmT5kv8NBcEw01';
+
+/** Perfil de GitHub Sponsors, por ejemplo https://github.com/sponsors/mikews93, cuando GitHub lo apruebe. */
+export const ENLACE_GITHUB: string | null = null;
+
+/** Hay al menos una forma de aportar abierta. */
+export const HAY_APORTES = !!(STRIPE_MENSUAL.length || STRIPE_UNA_VEZ || ENLACE_GITHUB);
 
 /** Dónde escribe una iglesia que quiere ser anfitriona o apadrinar un libro. */
 export const ENLACE_IGLESIAS: string | null = null;

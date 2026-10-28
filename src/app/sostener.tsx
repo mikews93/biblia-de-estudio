@@ -3,8 +3,8 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 
 import Appear from '@/components/Appear';
 import { text } from '@/components/comunidad/ui';
-import { ChurchIcon, HeartIcon, LampIcon, ListenIcon, SparkIcon, type IconProps } from '@/components/icons';
-import { ENLACE_APORTES, ENLACE_IGLESIAS, FONDO, HAY_SOSTENER, cubierta } from '@/lib/sostener';
+import { ChurchIcon, ExternalIcon, HeartIcon, LampIcon, ListenIcon, SparkIcon, type IconProps } from '@/components/icons';
+import { ENLACE_GITHUB, ENLACE_IGLESIAS, FONDO, HAY_SOSTENER, STRIPE_MENSUAL, STRIPE_UNA_VEZ, cubierta } from '@/lib/sostener';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 
 type Forma = {
@@ -18,7 +18,11 @@ type Forma = {
   ruta?: string;
   /** Un enlace dentro de la app debajo del botón. */
   extra?: { texto: string; accion: string; ruta: string };
+  /** Montos al mes y otras formas de pagar en vez de un solo botón. */
+  pagos?: Pago[];
 };
+
+type Pago = { boton: string; nota: string; enlace: string | null };
 
 const FORMAS: Forma[] = [
   {
@@ -27,7 +31,11 @@ const FORMAS: Forma[] = [
     detalle: 'Un aporte pequeño cada mes, de 1, 3 o 5 dólares, mantiene encendida la lámpara de otros.',
     puntos: ['No desbloquea nada: la app es gratis para todos, siempre.', 'Ves en qué se gasta cada dólar, factura por factura.'],
     boton: 'Sembrar',
-    enlace: ENLACE_APORTES,
+    enlace: null,
+    pagos: [
+      { boton: 'Una sola vez, lo que quieras', nota: 'Con tarjeta, Apple Pay o Google Pay', enlace: STRIPE_UNA_VEZ },
+      { boton: 'Patrocinar en GitHub', nota: 'Para quien ya usa GitHub · sin comisión', enlace: ENLACE_GITHUB },
+    ],
   },
   {
     icon: ChurchIcon,
@@ -107,20 +115,29 @@ export default function Sostener() {
                 </View>
               ))}
             </View>
-            <Pressable
-              onPress={() => (f.ruta ? router.push(f.ruta as never) : f.enlace && Linking.openURL(f.enlace))}
-              disabled={!f.enlace && !f.ruta}
-              accessibilityRole="link"
-              style={({ pressed }) => [
-                styles.button,
-                f.enlace || f.ruta ? { backgroundColor: colors.accent } : { borderColor: colors.border, borderWidth: 1 },
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <Text style={{ color: f.enlace || f.ruta ? colors.background : colors.muted, fontWeight: '700', fontSize: 15 }}>
-                {f.enlace || f.ruta ? f.boton : 'Muy pronto'}
-              </Text>
-            </Pressable>
+            {f.pagos ? (
+              <View style={styles.pagos}>
+                <Mensual colors={colors} />
+                {f.pagos.map((p) => (
+                  <BotonPago key={p.boton} pago={p} colors={colors} />
+                ))}
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => (f.ruta ? router.push(f.ruta as never) : f.enlace && Linking.openURL(f.enlace))}
+                disabled={!f.enlace && !f.ruta}
+                accessibilityRole="link"
+                style={({ pressed }) => [
+                  styles.button,
+                  f.enlace || f.ruta ? { backgroundColor: colors.accent } : { borderColor: colors.border, borderWidth: 1 },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <Text style={{ color: f.enlace || f.ruta ? colors.background : colors.muted, fontWeight: '700', fontSize: 15 }}>
+                  {f.enlace || f.ruta ? f.boton : 'Muy pronto'}
+                </Text>
+              </Pressable>
+            )}
             {f.extra && (
               <Pressable onPress={() => router.push(f.extra!.ruta as never)} accessibilityRole="link" style={styles.extra}>
                 <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>
@@ -145,6 +162,70 @@ export default function Sostener() {
   );
 }
 
+/** Sembrar cada mes: un botón por monto, con el del medio sugerido. */
+function Mensual({ colors }: { colors: Colors }) {
+  if (!STRIPE_MENSUAL.length) return null;
+  const sugerido = STRIPE_MENSUAL[Math.floor(STRIPE_MENSUAL.length / 2)].monto;
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={[styles.label, { color: colors.muted }]}>CADA MES</Text>
+      <View style={styles.montos}>
+        {STRIPE_MENSUAL.map(({ monto, enlace }) => {
+          const lleno = monto === sugerido;
+          return (
+            <Pressable
+              key={monto}
+              onPress={() => Linking.openURL(enlace)}
+              accessibilityRole="link"
+              accessibilityLabel={`Sembrar ${monto} dólares cada mes`}
+              style={({ pressed }) => [
+                styles.monto,
+                lleno ? { backgroundColor: colors.accent } : { borderColor: colors.accent, borderWidth: 1 },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={[styles.montoValor, { color: lleno ? colors.background : colors.accent }]}>{monto} USD</Text>
+              <Text style={[styles.montoMes, { color: lleno ? colors.background : colors.muted }]}>al mes</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>Cancelas cuando quieras · tarjeta o billetera digital</Text>
+    </View>
+  );
+}
+
+/** Un botón de pago con su nota debajo. Sin enlace queda apagado y dice «Muy pronto». */
+function BotonPago({ pago, colors }: { pago: Pago; colors: Colors }) {
+  const abierto = !!pago.enlace;
+  return (
+    <View style={{ gap: 6 }}>
+      <Pressable
+        onPress={() => pago.enlace && Linking.openURL(pago.enlace)}
+        disabled={!abierto}
+        accessibilityRole="link"
+        accessibilityLabel={abierto ? pago.boton : `${pago.boton}: muy pronto`}
+        style={({ pressed }) => [
+          styles.button,
+          styles.pago,
+          { borderColor: abierto ? colors.accent : colors.border, borderWidth: 1 },
+          pressed && { opacity: 0.8 },
+        ]}
+      >
+        <Text style={{ color: abierto ? colors.accent : colors.muted, fontWeight: '700', fontSize: 15 }}>
+          {pago.boton}
+        </Text>
+        {abierto ? (
+          <ExternalIcon color={colors.accent} size={15} />
+        ) : (
+          <Text style={[styles.pronto, { color: colors.muted, borderColor: colors.border }]}>Muy pronto</Text>
+        )}
+      </Pressable>
+      <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>{pago.nota}</Text>
+    </View>
+  );
+}
+
 const usd = (n: number) => `${n.toLocaleString('es', { maximumFractionDigits: 0 })} USD`;
 
 const shadow = (colors: Colors) =>
@@ -166,5 +247,13 @@ const styles = StyleSheet.create({
   dot: { width: 5, height: 5, borderRadius: 3, marginTop: 7 },
   button: { marginTop: 16, borderRadius: 24, paddingVertical: 12, alignItems: 'center' },
   extra: { marginTop: 10, paddingVertical: 4 },
+  pagos: { marginTop: 16, gap: 14 },
+  label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textAlign: 'center' },
+  montos: { flexDirection: 'row', gap: 10 },
+  monto: { flex: 1, borderRadius: 18, paddingVertical: 12, alignItems: 'center' },
+  montoValor: { fontSize: 17, fontWeight: '800' },
+  montoMes: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+  pago: { marginTop: 0, flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  pronto: { fontSize: 11, fontWeight: '600', borderWidth: 1, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1, overflow: 'hidden' },
   note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14 },
 });
