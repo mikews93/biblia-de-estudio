@@ -18,7 +18,7 @@ La licencia de [LICENSE](LICENSE) (todos los derechos reservados) cubre solo la 
 | Datos | Fuente | Licencia |
 | --- | --- | --- |
 | Griego y hebreo, morfología, glosas, léxicos breves (TAGNT, TAHOT, TBESG, TBESH) y nombres propios (TIPNR) | [STEPBible Data](https://github.com/STEPBible/STEPBible-Data), Tyndale House, Cambridge | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Con cambios: glosas corregidas, nombres de la RV1909 y descripciones traducidas con IA |
-| Referencias cruzadas y ubicación de lugares | [OpenBible.info](https://www.openbible.info/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| Referencias cruzadas (también los arcos de /conexiones y su imagen en assets/arcos/) y ubicación de lugares | [OpenBible.info](https://www.openbible.info/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Genealogías | [Theographic Bible Metadata](https://github.com/robertrouse/theographic-bible-metadata), Robert Rouse | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Los datos derivados (árboles y familias de las fichas) se comparten con la misma licencia |
 | Fotos de lugares, objetos y mapas | Wikimedia Commons | La de cada foto (dominio público, CC0, CC BY o CC BY-SA), con su autor y licencia junto a la imagen |
 

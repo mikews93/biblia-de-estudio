@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 
 import Appear from '@/components/Appear';
 import ArcoPromesas from '@/components/ArcoPromesas';
-import { PromiseIcon } from '@/components/icons';
+import { ArcsIcon, ArrowRightIcon, PromiseIcon } from '@/components/icons';
 import { HiloCard, abrirHilo } from '@/components/Promesas';
 import { Book, getBooks } from '@/lib/data';
 import { FUENTE_PROMESAS, HILOS, ORDEN_TEMAS, TEMAS, Tema, espera } from '@/lib/promesas';
@@ -62,6 +62,23 @@ export default function Promesas() {
           <Stat value={`${siglos} siglos`} label="de espera, en promedio" colors={colors} />
         </View>
       </Appear>
+
+      <Pressable
+        onPress={() => navigate(() => router.push('/conexiones' as never), 'forward')}
+        accessibilityRole="link"
+        style={({ pressed }) => [styles.todas, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+      >
+        <View style={[styles.todasIcono, { backgroundColor: colors.warmSoft }]}>
+          <ArcsIcon color={colors.warm} size={20} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.text, fontSize: 15.5, fontWeight: '600' }}>Todas las referencias cruzadas</Text>
+          <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }}>
+            Aquí van los hilos elegidos. Mira las más de 286 000 conexiones de toda la Biblia en arcos
+          </Text>
+        </View>
+        <ArrowRightIcon color={colors.muted} size={18} />
+      </Pressable>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipsWrap}>
         <Chip label="Todas" on={!tema} color={colors.accent} colors={colors} onPress={() => setTema(undefined)} />
@@ -139,6 +156,8 @@ const styles = StyleSheet.create({
   lead: { fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: 6, opacity: 0.85 },
   stats: { flexDirection: 'row', gap: 8, marginTop: 6 },
   stat: { flex: 1, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center' },
+  todas: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 14, marginTop: 12 },
+  todasIcono: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   chipsWrap: { marginTop: 16, flexGrow: 0 },
   chips: { gap: 8, paddingRight: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 7 },

@@ -99,6 +99,13 @@ El estudio de cada capítulo (o versículo) muestra arriba dos secciones fijas, 
 - **Descripción:** el artículo de TIPNR está en inglés. `api/comentario.ts` (`?ficha=` y `{ ficha }`) lo traduce la primera vez que alguien abre la ficha, con un glosario de nombres de la RV1909, y lo guarda en `fichas_es` para todos. Tope diario de fichas nuevas: `FICHAS_DIA` (300). Va en la misma función que los comentarios porque el plan Hobby de Vercel admite 12 funciones.
 - **Cómo se llega:** al elegir un versículo, la barra muestra a las personas y lugares que nombra y, en la RV1909, sus nombres se pueden tocar; el buscador encuentra fichas por nombre; el mapa del versículo y la genealogía enlazan a la ficha.
 
+## Conexiones
+
+`/conexiones` dibuja todas las referencias cruzadas de OpenBible.info como arcos entre los 1189 capítulos, al estilo del gráfico de Chris Harrison: 286 602 pares de versículos (cada par una vez, sin los del mismo capítulo) en 141 001 arcos, con el color según la distancia. Se toca o se desliza el dedo por la fila de libros para encender en ámbar los arcos de un libro, y luego un capítulo para ver sus referencias más fuertes y abrir el pasaje. Se llega desde «Más» en la barra del capítulo (`?libro=juan&cap=3`) y desde `/promesas`.
+
+- **Datos:** `build_arcos` en `pipeline/build_data.py` escribe `arcos/resumen.json` (totales por capítulo y por par de libros) y `arcos/<libro>.json` (con qué capítulos se conecta cada capítulo).
+- **Fondo:** 141 001 arcos son demasiados para dibujarlos en el teléfono, así que `node pipeline/arcos_imagen.mjs` los pinta una vez con el canvas de Chromium en `assets/arcos/{claro,oscuro}.webp` (se vuelve a correr si cambian los datos). La app solo dibuja encima, con pocos trazos SVG, los del libro o capítulo elegido.
+
 ## Rutas y Google
 
 Las rutas son en español: `/juan/3` y `/juan/3/16` (`src/lib/routes.ts`); los códigos antiguos como `/jhn/3?v=16` siguen funcionando. Después de exportar la web, `pipeline/seo_pages.py` escribe una página por capítulo con el texto de la RV1909, título, descripción y enlaces, además de `sitemap.xml` y `robots.txt`. La app reemplaza ese contenido al cargar. Las demás rutas sirven `app.html`.

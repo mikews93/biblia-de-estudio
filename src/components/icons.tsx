@@ -440,6 +440,16 @@ export const PromiseIcon = (p: Props) => (
   </Line>
 );
 
+/** Arcos que se cruzan sobre una línea: las referencias cruzadas de toda la Biblia. */
+export const ArcsIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M3 16h18" />
+    <Path d="M4.5 16a7.5 7.5 0 0 1 15 0" />
+    <Path d="M4.5 16a3.5 3.5 0 0 1 7 0" />
+    <Path d="M11.5 16a4 4 0 0 1 8 0" />
+  </Line>
+);
+
 /** Ondas a los lados de un punto: un evento en vivo. */
 export const LiveIcon = (p: Props) => (
   <Line {...p}>
