@@ -1,5 +1,5 @@
 import { splitCites } from './herramientas';
-import { Voz, vocesEspanol } from './voces';
+import { Voz, vocesEspanol, vozElegida } from './voces';
 
 // Resumen en audio de un capítulo, al estilo de los «Audio Overviews» de NotebookLM: la IA escribe una
 // conversación entre Ana y Tomás y el teléfono la lee con sus voces en español (sin servidor de voz:
@@ -45,9 +45,20 @@ let voicesPromise: Promise<Voices> | null = null;
 
 /**
  * Elige dos voces distintas en español, las más naturales del dispositivo (src/lib/voces.ts): una de mujer para Ana
- * y una de hombre para Tomás. Si el sistema tiene una sola, cambia el tono.
+ * y una de hombre para Tomás, salvo que la persona haya elegido otras. Si el sistema tiene una sola, cambia el tono.
  */
-export function pickVoices(): Promise<Voices> {
+export async function pickVoices(): Promise<Voices> {
+  const [auto, ana, tomas] = await Promise.all([pickAutoVoices(), vozElegida('ana'), vozElegida('tomas')]);
+  if (!ana && !tomas) return auto;
+  const es = await vocesEspanol();
+  const a = ana?.id ?? (auto.ana.voice !== tomas?.id ? auto.ana.voice : es.find((v) => v.id !== tomas?.id)?.id);
+  const t = tomas?.id ?? (auto.tomas.voice !== a ? auto.tomas.voice : es.find((v) => v.id !== a)?.id);
+  if (!t || t === a) return { ana: { voice: a, pitch: 1.12 }, tomas: { voice: a, pitch: 0.85 } };
+  return { ana: { voice: a, pitch: 1 }, tomas: { voice: t, pitch: 1 } };
+}
+
+/** Las voces que pondría la app sola, sin lo que eligió la persona. */
+export function pickAutoVoices(): Promise<Voices> {
   voicesPromise ??= vocesEspanol().then((es) => {
     const nombre = (v: Voz) => `${v.nombre} ${v.id}`;
     const female = es.find((v) => FEMALE.test(nombre(v)) && !MALE.test(nombre(v)));
