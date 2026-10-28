@@ -42,7 +42,7 @@ jobs:
       - name: Variables de EAS
         run: |
           # Solo nombres, nunca valores (sin --include-sensitive ni --include-file-content)
-          for e in preview production development; do echo "== $e"; eas env:list $e 2>&1 | sed -E 's/=.*//' || true; done
+          for s in project account; do for e in preview production development; do echo "== $s $e"; eas env:list $e --scope $s 2>&1 | sed -E 's/=.*//' || true; done; done
       - name: Compilar
         if: ${{ inputs.perfil != 'diagnostico' }}
         run: >
