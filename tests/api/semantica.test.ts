@@ -1,7 +1,7 @@
 // api/_semantica.ts: el vecino más cercano sobre vectores int8 con su escala.
 import { describe, expect, it } from 'vitest';
 
-import { nearest } from '../../api/_semantica';
+import { PARECIDO_MIN, esFloja, nearest } from '../../api/_semantica';
 
 const vectors = (rows: number[][]) => {
   const dim = rows[0].length;
@@ -23,5 +23,21 @@ describe('nearest', () => {
     expect(nearest(q, vs, 1).map((h) => h.ref)).toEqual(['r1']);
     expect(nearest(q, vs, 2, (r) => r !== 'r1').map((h) => h.ref)).toEqual(['r0', 'r2']);
     expect(nearest(q, vs, 1)[0].score).toBeCloseTo(0.96, 2);
+  });
+});
+
+describe('esFloja', () => {
+  const base = { recordado: false, parecido: 0.9, coinciden: 3, total: 20 };
+  it('da por buena una búsqueda con buen parecido y que coincide con las palabras', () => {
+    expect(esFloja(base)).toBe(false);
+  });
+  it('un versículo recordado siempre es bueno', () => {
+    expect(esFloja({ ...base, recordado: true, parecido: null, total: 2 })).toBe(false);
+  });
+  it('floja con pocos resultados, sin modelo, con parecido bajo o sin coincidencias', () => {
+    expect(esFloja({ ...base, total: 4 })).toBe(true);
+    expect(esFloja({ ...base, parecido: null })).toBe(true);
+    expect(esFloja({ ...base, parecido: PARECIDO_MIN - 0.01 })).toBe(true);
+    expect(esFloja({ ...base, coinciden: 0 })).toBe(true);
   });
 });

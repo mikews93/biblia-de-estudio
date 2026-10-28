@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { type Book, load } from './_investigar';
-import { type Hit, WordIndex, fuse, pinRecalled } from '../src/lib/buscarPalabras';
+import { type Hit, WordIndex, fuse, pinRecalled, recalled } from '../src/lib/buscarPalabras';
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
 
@@ -115,7 +115,30 @@ export function nearest(v: Float32Array, vs: Vectors, limit: number, keep?: (ref
   return top.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-export type Quick = { refs: string[]; semantica: boolean };
+/**
+ * Lo que dice qué tan buena salió una búsqueda rápida: si es un versículo recordado, el parecido del mejor resultado
+ * por el sentido (null sin modelo), cuántos de los 10 primeros por el sentido están también entre los 10 primeros por
+ * palabras, y cuántos resultados hay.
+ */
+export type Senales = { recordado: boolean; parecido: number | null; coinciden: number; total: number };
+export type Quick = { refs: string[]; semantica: boolean; floja: boolean; senales: Senales };
+
+/**
+ * Parecido mínimo del mejor resultado por el sentido para dar la búsqueda por buena. Calibrado (2026-10-28) con
+ * pipeline/semantica/calibrar.ts: con 0,88 separó bien las 37 búsquedas de prueba (los parecidos van de 0,85 a 0,93).
+ */
+export const PARECIDO_MIN = Number(process.env.SEMANTICA_PARECIDO_MIN ?? 0.88);
+
+/**
+ * Una búsqueda floja: la app le pide a la IA que la afine sola (con cuenta) o invita a crear una. Buena si es un
+ * versículo recordado; floja con menos de 5 resultados, sin el modelo, con el mejor parecido bajo o si el sentido y
+ * las palabras no coinciden en nada.
+ */
+export function esFloja(s: Senales): boolean {
+  if (s.recordado) return false;
+  if (s.total < 5 || s.parecido === null) return true;
+  return s.parecido < PARECIDO_MIN || s.coinciden === 0;
+}
 
 /**
  * Las referencias que mejor responden a la búsqueda. Con vectores y modelo, semántica y palabras mezcladas (la
@@ -126,9 +149,18 @@ export async function quickSearch(query: string, books: Book[], limit = 20, embe
   const [vs, lists] = await Promise.all([loadVectors(), searchWords(query, books)]);
   const byWords = { refs: fuse(lists.map(({ id, hits }) => ({ refs: hits.map((h) => h.ref), weight: id === reading ? 1.5 : 1 }))) };
   const model = vs ? (embed ?? (await loadEmbedder(vs))) : null;
-  const mixed = vs && model ? fuse([{ refs: nearest(await model(query), vs, 40).map((h) => h.ref), weight: 1.5 }, byWords]) : byWords.refs;
+  const sentido = vs && model ? nearest(await model(query), vs, 40) : null;
+  const mixed = sentido ? fuse([{ refs: sentido.map((h) => h.ref), weight: 1.5 }, byWords]) : byWords.refs;
   // Un fragmento recordado casi palabra por palabra («no te dejaré ni te desampararé») va primero.
-  return { refs: pinRecalled(mixed, query, lists, reading).slice(0, limit), semantica: !!(vs && model) };
+  const refs = pinRecalled(mixed, query, lists, reading).slice(0, limit);
+  const top = new Set(byWords.refs.slice(0, 10));
+  const senales: Senales = {
+    recordado: recalled(query, lists, reading) !== null,
+    parecido: sentido?.[0]?.score ?? null,
+    coinciden: sentido ? sentido.slice(0, 10).filter((h) => top.has(h.ref)).length : 0,
+    total: refs.length,
+  };
+  return { refs, semantica: !!sentido, floja: esFloja(senales), senales };
 }
 
 /** Carga de antemano los vectores, el modelo y los índices de palabras: la app lo pide al abrir el buscador, para que
