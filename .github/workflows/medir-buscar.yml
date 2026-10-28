@@ -1,0 +1,21 @@
+name: Medir buscador
+on:
+  push:
+    branches: [claude/project-thread-awsnku-medir]
+jobs:
+  medir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tiempos de /api/buscar
+        run: |
+          u=https://biblia.migueblanco.com/api/buscar
+          t() { curl -s -o /tmp/r.json -w "%{http_code} total=%{time_total}s ttfb=%{time_starttransfer}s" -X POST $u -H 'Content-Type: application/json' -d "{\"query\":\"$1\",\"version\":\"$2\",\"modo\":\"rapido\"}"; echo " | $1 ($2) $(jq -c '{n:(.results|length),semantica}' /tmp/r.json 2>/dev/null)"; }
+          t "cuando tengo miedo $RANDOM" rv1909
+          t "perdonar a quien me hirio $RANDOM" rv1909
+          t "dar gracias en la prueba $RANDOM" rv1909
+          t "esperar en Dios $RANDOM" rvr1865
+          t "esperar en Dios $RANDOM" rvr1865
+          t "la ansiedad $RANDOM" nbla
+          t "la ansiedad $RANDOM" nbla
+          sleep 5
+          t "todo lo puedo en Cristo $RANDOM" rv1909
