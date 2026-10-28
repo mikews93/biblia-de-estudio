@@ -3,8 +3,8 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 
 import Appear from '@/components/Appear';
 import { text } from '@/components/comunidad/ui';
-import { ChurchIcon, HeartIcon, LampIcon, ListenIcon, SparkIcon, type IconProps } from '@/components/icons';
-import { ENLACE_APORTES, ENLACE_IGLESIAS, FONDO, HAY_SOSTENER, cubierta } from '@/lib/sostener';
+import { ChurchIcon, ExternalIcon, HeartIcon, LampIcon, ListenIcon, SparkIcon, type IconProps } from '@/components/icons';
+import { ENLACE_GITHUB, ENLACE_IGLESIAS, ENLACE_STRIPE, FONDO, HAY_SOSTENER, cubierta } from '@/lib/sostener';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 
 type Forma = {
@@ -18,7 +18,11 @@ type Forma = {
   ruta?: string;
   /** Un enlace dentro de la app debajo del botón. */
   extra?: { texto: string; accion: string; ruta: string };
+  /** Varias formas de pagar en vez de un solo botón (la primera es la principal). */
+  pagos?: Pago[];
 };
+
+type Pago = { boton: string; nota: string; enlace: string | null };
 
 const FORMAS: Forma[] = [
   {
@@ -27,7 +31,11 @@ const FORMAS: Forma[] = [
     detalle: 'Un aporte pequeño cada mes, de 1, 3 o 5 dólares, mantiene encendida la lámpara de otros.',
     puntos: ['No desbloquea nada: la app es gratis para todos, siempre.', 'Ves en qué se gasta cada dólar, factura por factura.'],
     boton: 'Sembrar',
-    enlace: ENLACE_APORTES,
+    enlace: null,
+    pagos: [
+      { boton: 'Sembrar con tarjeta', nota: 'Una vez o cada mes · con tarjeta o billetera digital', enlace: ENLACE_STRIPE },
+      { boton: 'Patrocinar en GitHub', nota: 'Para quien ya usa GitHub · sin comisión', enlace: ENLACE_GITHUB },
+    ],
   },
   {
     icon: ChurchIcon,
@@ -107,20 +115,28 @@ export default function Sostener() {
                 </View>
               ))}
             </View>
-            <Pressable
-              onPress={() => (f.ruta ? router.push(f.ruta as never) : f.enlace && Linking.openURL(f.enlace))}
-              disabled={!f.enlace && !f.ruta}
-              accessibilityRole="link"
-              style={({ pressed }) => [
-                styles.button,
-                f.enlace || f.ruta ? { backgroundColor: colors.accent } : { borderColor: colors.border, borderWidth: 1 },
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <Text style={{ color: f.enlace || f.ruta ? colors.background : colors.muted, fontWeight: '700', fontSize: 15 }}>
-                {f.enlace || f.ruta ? f.boton : 'Muy pronto'}
-              </Text>
-            </Pressable>
+            {f.pagos ? (
+              <View style={styles.pagos}>
+                {f.pagos.map((p, k) => (
+                  <BotonPago key={p.boton} pago={p} principal={k === 0} colors={colors} />
+                ))}
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => (f.ruta ? router.push(f.ruta as never) : f.enlace && Linking.openURL(f.enlace))}
+                disabled={!f.enlace && !f.ruta}
+                accessibilityRole="link"
+                style={({ pressed }) => [
+                  styles.button,
+                  f.enlace || f.ruta ? { backgroundColor: colors.accent } : { borderColor: colors.border, borderWidth: 1 },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <Text style={{ color: f.enlace || f.ruta ? colors.background : colors.muted, fontWeight: '700', fontSize: 15 }}>
+                  {f.enlace || f.ruta ? f.boton : 'Muy pronto'}
+                </Text>
+              </Pressable>
+            )}
             {f.extra && (
               <Pressable onPress={() => router.push(f.extra!.ruta as never)} accessibilityRole="link" style={styles.extra}>
                 <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>
@@ -145,6 +161,38 @@ export default function Sostener() {
   );
 }
 
+/** Un botón de pago con su nota debajo. Sin enlace queda apagado y dice «Muy pronto». */
+function BotonPago({ pago, principal, colors }: { pago: Pago; principal: boolean; colors: Colors }) {
+  const abierto = !!pago.enlace;
+  const lleno = abierto && principal;
+  return (
+    <View style={{ gap: 6 }}>
+      <Pressable
+        onPress={() => pago.enlace && Linking.openURL(pago.enlace)}
+        disabled={!abierto}
+        accessibilityRole="link"
+        accessibilityLabel={abierto ? pago.boton : `${pago.boton}: muy pronto`}
+        style={({ pressed }) => [
+          styles.button,
+          styles.pago,
+          lleno ? { backgroundColor: colors.accent } : { borderColor: abierto ? colors.accent : colors.border, borderWidth: 1 },
+          pressed && { opacity: 0.8 },
+        ]}
+      >
+        <Text style={{ color: lleno ? colors.background : abierto ? colors.accent : colors.muted, fontWeight: '700', fontSize: 15 }}>
+          {pago.boton}
+        </Text>
+        {abierto ? (
+          <ExternalIcon color={lleno ? colors.background : colors.accent} size={15} />
+        ) : (
+          <Text style={[styles.pronto, { color: colors.muted, borderColor: colors.border }]}>Muy pronto</Text>
+        )}
+      </Pressable>
+      <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>{pago.nota}</Text>
+    </View>
+  );
+}
+
 const usd = (n: number) => `${n.toLocaleString('es', { maximumFractionDigits: 0 })} USD`;
 
 const shadow = (colors: Colors) =>
@@ -166,5 +214,8 @@ const styles = StyleSheet.create({
   dot: { width: 5, height: 5, borderRadius: 3, marginTop: 7 },
   button: { marginTop: 16, borderRadius: 24, paddingVertical: 12, alignItems: 'center' },
   extra: { marginTop: 10, paddingVertical: 4 },
+  pagos: { marginTop: 16, gap: 12 },
+  pago: { marginTop: 0, flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  pronto: { fontSize: 11, fontWeight: '600', borderWidth: 1, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1, overflow: 'hidden' },
   note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14 },
 });

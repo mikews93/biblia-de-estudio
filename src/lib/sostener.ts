@@ -15,8 +15,17 @@ export type Fondo = {
 /** La barra de la lámpara de la comunidad. Sin datos todavía, no se muestra. */
 export const FONDO: Fondo | null = null;
 
-/** Dónde se aporta (Open Collective o GitHub Sponsors). Sin enlace, el botón dice «Muy pronto». */
-export const ENLACE_APORTES: string | null = null;
+/**
+ * Enlace de pago de Stripe (Payment Link de MB Technology Solutions LLC, monto libre, una vez o cada mes).
+ * Sin enlace, el botón dice «Muy pronto».
+ */
+export const ENLACE_STRIPE: string | null = null;
+
+/** Perfil de GitHub Sponsors, por ejemplo https://github.com/sponsors/mikews93, cuando GitHub lo apruebe. */
+export const ENLACE_GITHUB: string | null = null;
+
+/** Hay al menos una forma de aportar abierta. */
+export const HAY_APORTES = !!(ENLACE_STRIPE || ENLACE_GITHUB);
 
 /** Dónde escribe una iglesia que quiere ser anfitriona o apadrinar un libro. */
 export const ENLACE_IGLESIAS: string | null = null;
