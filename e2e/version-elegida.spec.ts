@@ -54,7 +54,8 @@ test('buscar por idea con la NBLA muestra cada pasaje en la NBLA, con su aviso',
   await simularApiBible(page);
   await leyendoEn(page, 'nbla');
   await conSesion(page, await cuentaNueva(request, 'Lectora NBLA'));
-  const pedido = page.waitForRequest((r) => r.url().endsWith('/api/buscar'));
+  // La búsqueda (POST); el GET de al abrir solo despierta el servidor
+  const pedido = page.waitForRequest((r) => r.url().endsWith('/api/buscar') && r.method() === 'POST');
   await buscar(page, `ansiedad ${Date.now().toString(36)}`);
   expect((await pedido).postDataJSON()).toMatchObject({ version: 'nbla' });
 
