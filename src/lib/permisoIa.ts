@@ -9,6 +9,13 @@ export const SIN_PERMISO_IA = 'La IA queda apagada hasta que des permiso. Puedes
 
 let given: boolean | null = null;
 
+/** Si ya hay permiso, sin pedirlo (la IA que trabaja sola, como afinar una búsqueda floja, no lo pide de sorpresa). */
+export async function permisoIaDado(): Promise<boolean> {
+  if (Platform.OS === 'web') return true;
+  given ??= (await AsyncStorage.getItem(KEY).catch(() => null)) === 'si';
+  return given;
+}
+
 /** Resuelve si hay permiso; si nunca se pidió, lo pide. Lanza un error si la persona dice que no. */
 export async function pedirPermisoIa(): Promise<void> {
   if (Platform.OS === 'web') return;

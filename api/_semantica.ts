@@ -124,10 +124,10 @@ export type Senales = { recordado: boolean; parecido: number | null; coinciden: 
 export type Quick = { refs: string[]; semantica: boolean; floja: boolean; senales: Senales };
 
 /**
- * Parecido mínimo del mejor resultado por el sentido para dar la búsqueda por buena. Calibrado con
- * pipeline/semantica/calibrar.ts sobre búsquedas con respuesta conocida y otras sin respuesta clara.
+ * Parecido mínimo del mejor resultado por el sentido para dar la búsqueda por buena. Calibrado (2026-10-28) con
+ * pipeline/semantica/calibrar.ts: con 0,88 separó bien las 37 búsquedas de prueba (los parecidos van de 0,85 a 0,93).
  */
-export const PARECIDO_MIN = Number(process.env.SEMANTICA_PARECIDO_MIN ?? 0.82);
+export const PARECIDO_MIN = Number(process.env.SEMANTICA_PARECIDO_MIN ?? 0.88);
 
 /**
  * Una búsqueda floja: la app le pide a la IA que la afine sola (con cuenta) o invita a crear una. Buena si es un

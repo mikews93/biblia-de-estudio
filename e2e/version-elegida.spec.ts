@@ -43,9 +43,7 @@ async function buscar(page: Page, consulta: string) {
   await page.goto('/buscar');
   await campo(page).fill(consulta);
   await campo(page).press('Enter');
-  // Primero salen los resultados rápidos (sin IA); la IA los afina a petición
-  await expect(texto(page, `para «${consulta}»`)).toBeVisible();
-  await visible(page.getByRole('button', { name: 'Afinar con la IA' })).click();
+  // Primero salen los resultados rápidos (sin IA); la búsqueda sale floja y, con cuenta, la IA la afina sola
   await expect(texto(page, `2 pasajes para «${consulta}»`)).toBeVisible();
 }
 
