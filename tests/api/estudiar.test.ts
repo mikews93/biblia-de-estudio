@@ -429,6 +429,38 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(aiRequests.length).toBe(before + 2);
   });
 
+  it('el pódcast se escribe en la versión libre que se lee, y con una con derechos en la PDT', async () => {
+    const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
+    await sql`delete from herramientas_ia where libro = 'jhn' and capitulo = 6 and herramienta like 'podcast%'`.catch(() => {});
+    const base = { book: 'jhn', chapter: 6, herramienta: 'podcast' };
+    const before = aiRequests.length;
+
+    await events(await ask({ ...base, version: 'bes' }));
+    expect(aiRequests.length).toBe(before + 1);
+    expect(aiRequests.at(-1)!.messages[0].content[0].title).toBe('Juan 6 · La Biblia en Español Sencillo');
+    expect(JSON.stringify(aiRequests.at(-1)!.system)).toContain('«La Biblia en Español Sencillo» (BES)');
+
+    // Cada versión tiene su guion: la RV1909 no reutiliza el de la BES, y la BES ya no llama a la IA
+    await events(await ask(base));
+    expect(aiRequests.length).toBe(before + 2);
+    expect(aiRequests.at(-1)!.messages[0].content[0].title).toBe('Juan 6 · Reina-Valera 1909');
+    await events(await ask({ ...base, version: 'bes' }));
+    expect(aiRequests.length).toBe(before + 2);
+
+    // La NBLA no se pasa a la IA ni se convierte en audio: su pódcast es el de la PDT, que comparten las dos
+    await events(await ask({ ...base, version: 'nbla' }));
+    expect(aiRequests.length).toBe(before + 3);
+    expect(aiRequests.at(-1)!.messages[0].content[0].title).toBe('Juan 6 · Palabra de Dios para ti');
+    expect(JSON.stringify(aiRequests.at(-1)!).toLowerCase()).not.toContain('nueva biblia de las américas');
+    await events(await ask({ ...base, version: 'pdt' }));
+    expect(aiRequests.length).toBe(before + 3);
+    const guardadas = await sql<{ herramienta: string }[]>`select herramienta from herramientas_ia
+      where libro = 'jhn' and capitulo = 6 order by herramienta`;
+    expect(guardadas.map((r) => r.herramienta)).toEqual(['podcast', 'podcast:bes', 'podcast:pdt']);
+    expect(await bad({ ...base, version: 'inventada' })).toBe('Versión no válida');
+    await sql.end();
+  });
+
   it('la historia de una palabra: pide cuenta para prepararla, cita los pasajes y luego se lee sin cuenta', async () => {
     const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
     await sql`delete from herramientas_ia where libro = 'jesed'`.catch(() => {});
@@ -459,6 +491,11 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     await events(await ask({ palabra: 'jesed', herramienta: 'podcast' }));
     expect(aiRequests.length).toBe(before + 2);
     expect(lastAiText()).toContain('guion de un pódcast sobre la historia de la palabra jésed');
+    // En otra versión libre, otro guion con los pasajes en esa versión
+    await events(await ask({ palabra: 'jesed', herramienta: 'podcast', version: 'bes' }));
+    expect(aiRequests.length).toBe(before + 3);
+    expect(lastAiText()).toContain('su glosa y la BES');
+    expect(lastAiText()).not.toContain('RV1909:');
   });
 
   it('el primer estudio y el devocional de un pasaje se guardan para todos; las preguntas no', async () => {

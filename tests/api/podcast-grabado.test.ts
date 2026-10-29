@@ -96,15 +96,19 @@ beforeAll(async () => {
     await sql`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes)
       values ('podcast', ${libro}, 1, ${SCRIPT}, '[]') on conflict do nothing`;
   }
+  await sql`delete from podcast_grabado where libro like 'oba:%'`;
+  await sql`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes)
+    values ('podcast:pdt', 'oba', 1, ${SCRIPT.replace('Pregunta 0', 'En la PDT')}, '[]')
+    on conflict (herramienta, libro, capitulo) do update set texto = excluded.texto`;
 });
 
 afterAll(async () => {
   eleven.close();
   // Las e2e usan la misma base de datos en CI: no dejar grabado ni guardado lo que estas pruebas prepararon.
   if (sql) {
-    await sql`delete from podcast_grabado where libro in ('oba', 'phm', 'jud', '2jn', '3jn', 'palabra:jesed')`;
+    await sql`delete from podcast_grabado where libro in ('oba', 'phm', 'jud', '2jn', '3jn', 'palabra:jesed') or libro like 'oba:%'`;
     await sql`delete from herramientas_ia where (herramienta = 'palabra-podcast' and libro in ('jesed', 'agape'))
-      or (herramienta = 'podcast' and libro in ('oba', 'phm', 'jud', '2jn', '3jn'))`;
+      or (herramienta in ('podcast', 'podcast:pdt') and libro in ('oba', 'phm', 'jud', '2jn', '3jn'))`;
   }
   await sql?.end();
 });
@@ -202,6 +206,23 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     const res = await post({ book: '2jn', chapter: 1 }, llaves[1]);
     expect(res.status).toBe(429);
     expect((await res.json()).error).toContain('2 pódcasts al día');
+  });
+
+  it('cada versión libre tiene su grabación; una con derechos usa la de la PDT', async () => {
+    const q = (v: string) => api.GET(new Request(`http://localhost/api/podcast-grabado?book=oba&chapter=1&version=${v}`)).then((r) => r.json());
+    expect((await api.GET(new Request('http://localhost/api/podcast-grabado?book=oba&chapter=1&version=../x'))).status).toBe(400);
+    expect(await q('pdt')).toEqual({ estado: 'ninguno' });
+    expect((await post({ book: 'oba', chapter: 1, version: 'bes' }, llaves[2])).status).toBe(409); // sin guion en la BES
+    const antes = calls.length;
+    const res = await post({ book: 'oba', chapter: 1, version: 'nbla' }, llaves[2]);
+    expect(res.status).toBe(200);
+    const listo = await res.json();
+    // Se grabó el guion de la PDT, no el de la RV1909, y con otro nombre de archivo
+    expect(calls[antes].inputs[0].text).toBe('En la PDT?');
+    expect(path.basename(new URL(listo.url).pathname)).toMatch(/^oba-pdt-1-[0-9a-f]{10}\.mp3$/);
+    expect(await q('pdt')).toEqual(listo);
+    expect(await q('nbla')).toEqual(listo);
+    expect(await get('oba', 1)).not.toEqual(listo);
   });
 
   it('el pódcast de una palabra se graba con su guion y queda listo para todos', async () => {
