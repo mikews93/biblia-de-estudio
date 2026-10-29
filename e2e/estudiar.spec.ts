@@ -355,3 +355,31 @@ test('«Me ayudó» y «Algo suena raro» bajo el estudio guardado', async ({ pa
   await estudio.getByRole('button', { name: 'Quitar mi aviso' }).click();
   await expect(estudio.getByRole('button', { name: 'Algo suena raro' })).toBeVisible();
 });
+
+test('el devocional profundo de Hoy y «Estudiar» en el lector son el mismo estudio', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Mismo estudio'));
+  await page.goto('/');
+  // Devocional del día y luego la pestaña Profundo: se genera el estudio del versículo
+  await page.getByRole('button', { name: /devocional de hoy/i }).click();
+  const primero = page.waitForRequest((r) => esEstudio(r) && r.postDataJSON().enfoque === 'profundo');
+  await page.getByRole('tab', { name: /Profundo/ }).click();
+  const { book, chapter, verse } = (await primero).postDataJSON();
+  await expect(panel(page).getByText(ESTUDIO)).toBeVisible();
+  await page.getByLabel('Cerrar estudio').last().click();
+
+  // En el capítulo, el «Estudiar» de arriba abre ese mismo estudio, ya guardado: la IA no escribe otro
+  const antes = (await peticionesIA(request, '')).length;
+  await page.getByRole('button', { name: 'Leer el capítulo' }).click();
+  const segundo = page.waitForRequest(esEstudio);
+  await page.getByRole('button', { name: `Estudiar el versículo ${verse} con IA: contexto, preguntas y fuentes` }).click();
+  expect((await segundo).postDataJSON()).toMatchObject({ book, chapter, verse, enfoque: 'profundo' });
+  const estudio = panel(page);
+  await expect(estudio.getByText(ESTUDIO)).toBeVisible();
+  expect((await peticionesIA(request, '')).length).toBe(antes);
+
+  // Y desde ahí se puede pasar al estudio de todo el capítulo
+  const capitulo = page.waitForRequest(esEstudio);
+  await estudio.getByRole('button', { name: `Estudiar todo el capítulo ${chapter}` }).click();
+  expect((await capitulo).postDataJSON().verse).toBeUndefined();
+  await expect(estudio.getByRole('button', { name: `Estudiar solo el versículo ${verse}` })).toBeVisible();
+});

@@ -18,7 +18,7 @@ import Appear from '@/components/Appear';
 import { IconText } from '@/components/comunidad/ui';
 import AskBar from '@/components/AskBar';
 import Devotional from '@/components/Devotional';
-import { ArrowDownIcon, ChevronDownIcon, CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
+import { ArrowDownIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
 import Investigacion from '@/components/Investigacion';
 import StudyContext from '@/components/StudyContext';
 import StudySignals from '@/components/StudySignals';
@@ -68,8 +68,11 @@ const FOLLOW_PAUSE = 1200;
  * dispositivo (src/lib/misPreguntas.ts). Al seguir un enlace la ventana se oculta y, al volver atrás,
  * reaparece donde estaba.
  */
-export default function StudyPanel({ book, chapter, verse, word, onClose, enfoque: initial }: Props) {
+export default function StudyPanel({ book, chapter, verse: given, word, onClose, enfoque: initial }: Props) {
   const colors = useColors();
+  // Abierto en un versículo, se puede pasar al estudio de todo el capítulo (y volver): es otro estudio guardado.
+  const [whole, setWhole] = useState(false);
+  const verse = whole ? undefined : given;
   const { settings, update } = useSettings();
   // «¿Por qué esta palabra?» siempre es estudio profundo.
   const [chosen, setChosen] = useState<Enfoque>(initial ?? settings.enfoque);
@@ -383,19 +386,35 @@ export default function StudyPanel({ book, chapter, verse, word, onClose, enfoqu
                       </Text>
                     </IconText>
                     <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-                    <Pressable
-                      onPress={() => setPicking(true)}
-                      hitSlop={6}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Versión del estudio: ${aiVersion.name}. Cambiar versión`}
-                      style={({ pressed }) => [styles.versionChip, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.6 }]}
-                    >
-                      <Text style={[styles.versionAbbr, { color: colors.accent }]}>{licensed ? licensed.abbr : aiVersion.abbr}</Text>
-                      <Text style={[styles.versionText, { color: colors.muted }]} numberOfLines={1}>
-                        {licensed ? 'Versículos en tu versión' : 'Cambiar versión'}
-                      </Text>
-                      <ChevronDownIcon color={colors.muted} size={13} />
-                    </Pressable>
+                    <View style={styles.chips}>
+                      <Pressable
+                        onPress={() => setPicking(true)}
+                        hitSlop={6}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Versión del estudio: ${aiVersion.name}. Cambiar versión`}
+                        style={({ pressed }) => [styles.versionChip, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.6 }]}
+                      >
+                        <Text style={[styles.versionAbbr, { color: colors.accent }]}>{licensed ? licensed.abbr : aiVersion.abbr}</Text>
+                        <Text style={[styles.versionText, { color: colors.muted }]} numberOfLines={1}>
+                          {licensed ? 'Versículos en tu versión' : 'Cambiar versión'}
+                        </Text>
+                        <ChevronDownIcon color={colors.muted} size={13} />
+                      </Pressable>
+                      {given !== undefined && !word && (
+                        <Pressable
+                          onPress={() => setWhole(!whole)}
+                          hitSlop={6}
+                          accessibilityRole="button"
+                          accessibilityLabel={whole ? `Estudiar solo el versículo ${given}` : `Estudiar todo el capítulo ${chapter}`}
+                          style={({ pressed }) => [styles.versionChip, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.6 }]}
+                        >
+                          <Text style={[styles.versionText, { color: colors.muted }]} numberOfLines={1}>
+                            {whole ? `Solo el versículo ${given}` : 'Todo el capítulo'}
+                          </Text>
+                          <ChevronRightIcon color={colors.muted} size={13} />
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
                   <View style={styles.headActions}>
                     <AmbienteBoton colors={colors} />
@@ -672,6 +691,7 @@ const styles = StyleSheet.create({
   modeHint: { fontSize: 12, textAlign: 'center', marginTop: 8 },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   title: { fontSize: 22, fontFamily: serif, marginTop: 2 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8 },
   versionChip: {
     alignSelf: 'flex-start',
     flexDirection: 'row',

@@ -472,7 +472,7 @@ export default function Reader() {
         title={title}
         progress={progress}
         onSettings={() => setShowSettings(true)}
-        toolbar={book ? <ChapterTools groups={toolGroups} onStudy={() => setStudy({})} colors={colors} /> : undefined}
+        toolbar={book ? <ChapterTools groups={toolGroups} studyVerse={selected ?? undefined} onStudy={() => setStudy({ verse: selected ?? undefined })} colors={colors} /> : undefined}
       />
 
       <ScrollView
