@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { citaHablada, nombreCorto, ordenar, paraHablar } from './voces';
+import { citaHablada, generoDeVoz, nombreCorto, ordenar, paraHablar } from './voces';
 
 const v = (name: string, language: string, extra: { identifier?: string; localService?: boolean } = {}) => ({
   identifier: extra.identifier ?? name,
@@ -19,7 +19,10 @@ describe('ordenar', () => {
       v('Eddy (español (México))', 'es-MX'),
       v('English', 'en-US'),
     ]);
-    expect(voces.map((x) => x.nombre)).toEqual(['Salome', 'Google', 'Sabina', 'Eddy']);
+    expect(voces.map((x) => x.nombre)).toEqual(['Salome', voces[1].nombre, 'Sabina', 'Eddy']);
+    // «Google español» es una voz de hombre: recibe un nombre de hombre
+    expect(voces[1]).toMatchObject({ genero: 'hombre' });
+    expect(['Pablo', 'Pedro', 'Andrés', 'Felipe', 'Esteban', 'Samuel', 'Daniel', 'Gabriel', 'Timoteo', 'Lucas', 'Mateo', 'Simón']).toContain(voces[1].nombre);
     expect(voces[0]).toMatchObject({ acento: 'Colombia', calidad: 'natural' });
     expect(voces.at(-1)?.calidad).toBe('basica');
   });
@@ -38,6 +41,12 @@ describe('ordenar', () => {
     expect(nombre('es-us-x-esf-local')).toBe(nombre('es-us-x-esf-network'));
     expect(new Set(voces.map((x) => x.nombre)).size).toBe(3);
     expect(voces.every((x) => !/^voz/i.test(x.nombre))).toBe(true);
+    // Nombre de mujer para las voces de mujer y de hombre para las de hombre
+    const mujeres = ['Sara', 'Rut', 'Lidia', 'Débora', 'Ester', 'Miriam', 'Marta', 'Priscila', 'Noemí', 'Raquel', 'Abigail', 'Elisa'];
+    expect(voces.find((x) => x.id === 'es-us-x-esf-network')).toMatchObject({ genero: 'hombre' });
+    expect(mujeres).not.toContain(nombre('es-us-x-esf-network'));
+    expect(mujeres).toContain(nombre('es-us-x-sfb-network'));
+    expect(mujeres).toContain(nombre('es-us-x-esc-local'));
     expect(voces.find((x) => x.id === 'es-us-x-esc-local')?.sinInternet).toBe(true);
     // El mismo código se llama igual en cualquier teléfono, aunque cambie el orden o falten otras voces
     expect(ordenar([lista[1]])[0].nombre).toBe(nombre('es-us-x-esf-network'));
@@ -46,6 +55,26 @@ describe('ordenar', () => {
   it('a igual calidad, un acento latinoamericano antes que el de España', () => {
     const voces = ordenar([v('Mónica', 'es-ES'), v('Paulina', 'es-MX')]);
     expect(voces.map((x) => x.nombre)).toEqual(['Paulina', 'Mónica']);
+  });
+});
+
+describe('generoDeVoz', () => {
+  it('sabe si suena a mujer o a hombre por el código, la voz de Google o el nombre', () => {
+    expect(generoDeVoz('es-es-x-eed-network', 'es-es-x-eed-network')).toBe('hombre');
+    expect(generoDeVoz('es-es-x-eea-local', 'es-es-x-eea-local')).toBe('mujer');
+    expect(generoDeVoz('Google español', 'Google español')).toBe('hombre');
+    expect(generoDeVoz('Google español de Estados Unidos', 'Google español de Estados Unidos')).toBe('mujer');
+    expect(generoDeVoz('Google español de Estados Unidos 3 (Natural)', 'x')).toBe('hombre');
+    expect(generoDeVoz('Microsoft Dalia Online (Natural) - Spanish (Mexico)', 'x')).toBe('mujer');
+    expect(generoDeVoz('Microsoft Tomas Online (Natural) - Spanish (Argentina)', 'x')).toBe('hombre');
+    expect(generoDeVoz('Jorge', 'com.apple.voice.compact.es-ES.Jorge')).toBe('hombre');
+    expect(generoDeVoz('Spanish female', 'x')).toBe('mujer');
+    expect(generoDeVoz('español (México)', 'x')).toBeUndefined();
+  });
+
+  it('las voces que no se sabe cómo suenan no reciben nombre de persona', () => {
+    const voces = ordenar([v('es-mx-x-abc-local', 'es-MX', { identifier: 'es-mx-x-abc-local' })]);
+    expect(voces[0].nombre).toBe('Voz 1');
   });
 });
 

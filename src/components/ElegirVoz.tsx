@@ -27,7 +27,7 @@ type Props = {
  */
 export default function ElegirVoz({ papel, muestra, ritmo, automatica, sinNota, testID }: Props) {
   const colors = useColors();
-  const voces = useVoces();
+  const voces = useVocesPara(papel);
   const elegida = useVozElegida(papel);
   const [sonando, setSonando] = useState<string | null>(null);
   const [todas, setTodas] = useState(false);
@@ -87,7 +87,7 @@ export default function ElegirVoz({ papel, muestra, ritmo, automatica, sinNota, 
             </View>
             <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
               {v
-                ? `${v.acento}${v.sinInternet ? ' · sin internet' : ''}`
+                ? [v.genero && GENERO[v.genero], v.acento, v.sinInternet && 'sin internet'].filter(Boolean).join(' · ')
                 : auto
                   ? `La más natural de aquí: ${auto.nombre}, ${auto.acento}`
                   : 'Buscando voces…'}
@@ -139,6 +139,17 @@ export default function ElegirVoz({ papel, muestra, ritmo, automatica, sinNota, 
       )}
     </View>
   );
+}
+
+const GENERO = { mujer: 'Mujer', hombre: 'Hombre' } as const;
+
+/** Para Ana primero las voces de mujer y para Tomás las de hombre; las que no se sabe, en medio. */
+function useVocesPara(papel: Papel) {
+  const voces = useVoces();
+  const busca = papel === 'ana' ? 'mujer' : papel === 'tomas' ? 'hombre' : null;
+  if (!voces || !busca) return voces;
+  const orden = (v: Voz) => (v.genero === busca ? 0 : v.genero ? 2 : 1);
+  return [...voces].sort((a, b) => orden(a) - orden(b));
 }
 
 /** Dónde conseguir una voz más natural en este dispositivo. */

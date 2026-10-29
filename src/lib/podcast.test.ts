@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { minutes, parseScript } from './podcast';
+import { elegirAuto, minutes, parseScript } from './podcast';
+import { ordenar } from './voces';
 import { lineStarts } from './podcastTiempos';
 
 describe('parseScript', () => {
@@ -71,5 +72,32 @@ describe('pickVoices', () => {
     expect(v.tomas.voice).toContain('Jorge');
     elegirVoz('ana', null);
     elegirVoz('tomas', null);
+  });
+});
+
+describe('elegirAuto', () => {
+  const voz = (id: string, language = 'es-US') => ({ identifier: id, name: id, language, quality: 'Default' as never });
+
+  it('Ana con voz de mujer y Tomás con voz de hombre, aunque la más natural sea de hombre', () => {
+    // En Android la primera de la lista es «esf», una voz de hombre: antes le tocaba a Ana
+    const es = ordenar([voz('es-us-x-esf-network'), voz('es-us-x-sfb-network'), voz('es-us-x-esd-local')]);
+    expect(es[0].id).toBe('es-us-x-esf-network');
+    expect(elegirAuto(es)).toEqual({
+      ana: { voice: 'es-us-x-sfb-network', pitch: 1 },
+      tomas: { voice: 'es-us-x-esf-network', pitch: 1 },
+    });
+  });
+
+  it('en Chrome de escritorio «Google español» (hombre) es Tomás', () => {
+    const es = ordenar([voz('Google español', 'es-ES'), voz('Google español de Estados Unidos')]);
+    expect(elegirAuto(es)).toMatchObject({ ana: { voice: 'Google español de Estados Unidos' }, tomas: { voice: 'Google español' } });
+  });
+
+  it('sin voz de hombre, Tomás usa otra voz con un tono más grave', () => {
+    const es = ordenar([voz('es-us-x-sfb-network'), voz('es-us-x-esc-network')]);
+    const v = elegirAuto(es);
+    expect(v.ana.pitch).toBe(1);
+    expect(v.tomas.pitch).toBeLessThan(1);
+    expect(v.tomas.voice).not.toBe(v.ana.voice);
   });
 });
