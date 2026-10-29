@@ -36,6 +36,7 @@ export default function Podcast() {
         version={version}
         recorded={recorded}
         waiting="Escribiendo la conversación con el texto, el griego y las referencias…"
+        disclaimer={`Generado con IA solo a partir de la ${version.sigla}, el texto original de STEPBible y las referencias de OpenBible.info. Los números llevan a la fuente de cada idea.`}
       />
     </>
   );

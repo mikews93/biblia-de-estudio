@@ -1,4 +1,4 @@
-import type { Locator, TestInfo } from '@playwright/test';
+import type { Locator, Page, TestInfo } from '@playwright/test';
 
 import { abrirHoja, conSesion, cuentaNueva, expect, peticionesIA, test } from './support/fixtures';
 
@@ -289,5 +289,37 @@ test.describe('Mapas, genealogías e historia', () => {
     await v(page.getByText('Caída de Samaria')).first().click();
     await v(page.getByText('Leer 2 Reyes 17 ›')).click();
     await expect(page).toHaveURL(/\/2-reyes\/17$/);
+  });
+});
+
+test.describe('Pódcast en la versión que se lee', () => {
+  const leyendoEn = (page: Page, version: string) =>
+    page.addInitScript((v) => window.localStorage.setItem('ajustes', JSON.stringify({ version: v })), version);
+  const captura = (page: Page, nombre: string) =>
+    page.waitForTimeout(400).then(() => page.screenshot({ path: `test-results/capturas/podcast-${nombre}-${test.info().project.name}.png` }));
+
+  test('con la BES el guion se pide en la BES y se guarda aparte del de la RV1909', async ({ page, request }, info) => {
+    const cap = capitulo(info, 14);
+    await leyendoEn(page, 'bes');
+    await conSesion(page, await cuentaNueva(request, 'Oyente BES'));
+    const pedido = page.waitForRequest((r) => r.url().endsWith('/api/estudiar') && r.method() === 'POST');
+    await page.goto(`/podcast/juan/${cap}`);
+    expect((await pedido).postDataJSON()).toMatchObject({ herramienta: 'podcast', version: 'bes' });
+    await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
+    await expect(v(page.getByText(/Ana y Tomás conversan sobre el capítulo · BES/))).toBeVisible();
+    await expect(v(page.getByTestId('podcast-version-libre'))).toHaveCount(0);
+    await captura(page, 'bes');
+  });
+
+  test('con la NBLA el pódcast es el de la PDT y lo dice', async ({ page, request }, info) => {
+    const cap = capitulo(info, 16);
+    await leyendoEn(page, 'nbla');
+    await conSesion(page, await cuentaNueva(request, 'Oyente NBLA'));
+    const pedido = page.waitForRequest((r) => r.url().endsWith('/api/estudiar') && r.method() === 'POST');
+    await page.goto(`/podcast/juan/${cap}`);
+    expect((await pedido).postDataJSON()).toMatchObject({ herramienta: 'podcast', version: 'pdt' });
+    await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
+    await expect(v(page.getByTestId('podcast-version-libre'))).toContainText('La licencia de la NBLA no permite convertir su texto en audio');
+    await captura(page, 'nbla');
   });
 });
