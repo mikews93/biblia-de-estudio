@@ -5,6 +5,7 @@ import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
 import AvisosSync from '@/components/AvisosSync';
+import InvitacionSync from '@/components/InvitacionSync';
 import Celebracion from '@/components/Celebracion';
 import { LuceroNuevo } from '@/components/Servicio';
 import Confeti from '@/components/Confeti';
@@ -110,6 +111,8 @@ function AppStack() {
           <Stack.Screen name="comunidades/publicacion/[id]" options={{ title: '' }} />
           <Stack.Screen name="comunidades/persona/[id]" options={{ title: '' }} />
           <Stack.Screen name="amigo/[codigo]" options={{ title: 'Amistad' }} />
+          <Stack.Screen name="i/[codigo]" options={{ title: 'Invitación' }} />
+          <Stack.Screen name="invitar" options={{ title: 'Invitar amigos' }} />
           <Stack.Screen name="grupos/index" options={{ title: 'Planes en grupo' }} />
           <Stack.Screen name="grupos/[id]" options={{ title: '' }} />
           <Stack.Screen name="grupos/nuevo" options={{ title: 'Nuevo grupo' }} />
@@ -173,6 +176,7 @@ function AppStack() {
       <OfflineBanner />
       <TabBar />
       {Platform.OS === 'web' && <AvisosSync />}
+      <InvitacionSync />
       <SincroniaCuenta />
       <Celebracion />
       <LuceroNuevo />

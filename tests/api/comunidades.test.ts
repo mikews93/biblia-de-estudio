@@ -187,6 +187,36 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/comunidades con Postgres', () => {
       expect((await call('amigos', {}, carla.llave)).json.enviadas).toEqual([]);
     });
 
+    it('el enlace de invitación a Zarza deja amigos sin solicitud y cuenta a quién invitó', async () => {
+      const ana = await persona('Ana');
+      const beto = await persona('Beto');
+      const { codigo } = (await call('amigos', {}, ana.llave)).json;
+      expect((await call('amigos', {}, ana.llave)).json.invitados).toEqual([]);
+
+      const r = await call('aceptarInvitacion', { codigo: codigo.toLowerCase() }, beto.llave);
+      expect(r.json).toEqual({ id: ana.id, nombre: ana.nombre, relacion: 'amigos' });
+      const red = (await call('amigos', {}, ana.llave)).json;
+      expect(red.amigos).toMatchObject([{ id: beto.id }]);
+      expect(red.invitados).toEqual([{ id: beto.id, nombre: beto.nombre, foto: null }]);
+
+      // Repetir no duplica nada; el propio enlace y sin cuenta no valen
+      expect((await call('aceptarInvitacion', { codigo }, beto.llave)).json.relacion).toBe('amigos');
+      expect((await call('amigos', {}, ana.llave)).json.invitados).toHaveLength(1);
+      expect((await call('aceptarInvitacion', { codigo }, ana.llave)).json.error).toBe('Este es tu propio enlace');
+      expect((await call('aceptarInvitacion', { codigo })).status).toBe(401);
+      expect((await call('aceptarInvitacion', { codigo: 'ZZZZZZZZ' }, beto.llave)).status).toBe(404);
+
+      // Si ya había una solicitud pendiente, la invitación la acepta; solo cuenta el primer enlace que lo trajo
+      const carla = await persona('Carla');
+      const dani = await persona('Dani');
+      await call('pedirAmistad', { usuario: carla.id }, dani.llave);
+      await call('aceptarInvitacion', { codigo: (await call('amigos', {}, carla.llave)).json.codigo }, dani.llave);
+      expect((await call('amigos', {}, carla.llave)).json).toMatchObject({ amigos: [{ id: dani.id }], recibidas: [], invitados: [{ id: dani.id }] });
+      await call('aceptarInvitacion', { codigo }, dani.llave);
+      expect((await call('amigos', {}, ana.llave)).json.invitados).toHaveLength(1);
+      expect((await call('persona', { usuario: ana.id }, dani.llave)).json.persona.relacion).toBe('amigos');
+    });
+
     it('códigos y personas que no existen', async () => {
       const ana = await persona('Ana');
       expect((await call('verCodigoAmigo', { codigo: 'ZZZZZZZZ' })).status).toBe(404);

@@ -8,7 +8,7 @@ import Welcome from '@/components/comunidad/Welcome';
 import { NeedsConnection } from '@/components/SinConexion';
 import { Avatar, Button, Card, Chips, ErrorText, text } from '@/components/comunidad/ui';
 import { useRacha } from '@/lib/racha';
-import { ChevronRightIcon, HeartIcon } from '@/components/icons';
+import { ChevronRightIcon, HeartIcon, InviteIcon } from '@/components/icons';
 import { useServicio } from '@/lib/servicioUso';
 import { useAccount } from '@/lib/comunidad';
 import { useOnline } from '@/lib/conexion';
@@ -140,6 +140,22 @@ export default function Comunidad() {
             ) : (
               <ChevronRightIcon color={colors.muted} size={18} />
             )}
+          </Pressable>
+
+          <Pressable
+            onPress={() => go('/invitar')}
+            accessibilityRole="link"
+            testID="entrada-invitar"
+            style={({ pressed }) => [styles.entry, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.75 }]}
+          >
+            <View style={[styles.entryIcon, { backgroundColor: colors.warmSoft }]}>
+              <InviteIcon color={colors.warm} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Invitar amigos a Zarza</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 1 }}>Un enlace para compartir: quien se une queda como tu amigo</Text>
+            </View>
+            <ChevronRightIcon color={colors.muted} size={18} />
           </Pressable>
 
           <View style={styles.bar}>

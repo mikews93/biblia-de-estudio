@@ -166,6 +166,8 @@ alter table usuarios add column if not exists fotos_n int not null default 0;
 alter table usuarios add column if not exists racha int not null default 0;
 alter table usuarios add column if not exists racha_vence date;
 alter table usuarios add column if not exists servicio int not null default 0;
+-- Quién le pasó a la persona su enlace de invitación a Zarza (/i/CODIGO), para contarle cuántos se unieron.
+alter table usuarios add column if not exists invitado_por uuid references usuarios on delete set null;
 -- Cada quien puede silenciar los avisos de un grupo sin salir de él.
 alter table miembros add column if not exists avisos boolean not null default true;
 create table if not exists cuentas_externas (
@@ -1447,8 +1449,11 @@ const actions: Record<string, Handler> = {
     const [{ nuevos }] = await sql<{ nuevos: number }[]>`
       select count(*)::int as nuevos from versiculos_enviados v
       where v.para = ${user.id} and not v.visto and not ${blocked(sql, user.id, sql`v.de`)}`;
+    const invitados = await sql`
+      select id, nombre, foto from usuarios where invitado_por = ${user.id} order by creado desc limit 50`;
     return {
       codigo,
+      invitados,
       versiculosNuevos: nuevos,
       bloqueadas,
       compartirLecturas: compartir,
@@ -1485,6 +1490,32 @@ const actions: Record<string, Handler> = {
       }
     }
     return { id: target, relacion: await relation(sql, user.id, target) };
+  },
+
+  // El enlace de invitación a Zarza (/i/CODIGO): quien se une con él queda como amigo de quien lo compartió, sin
+  // solicitud de por medio, porque compartir el enlace ya es la invitación. Solo se cuenta como su invitado la
+  // primera vez (y nunca a uno mismo); si ya eran amigos, no se avisa de nuevo.
+  async aceptarInvitacion({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const host = await personByCode(sql, body.codigo);
+    if (host.id === user.id) throw new Fail('Este es tu propio enlace');
+    const [ok] = await sql`select 1 from usuarios where id = ${host.id} and not ${blocked(sql, user.id, host.id)}`;
+    if (!ok) throw new Fail('Esa persona ya no está en la comunidad', 404);
+    const before = await relation(sql, user.id, host.id);
+    const updated = await sql`
+      update amistades set aceptada = true where (de = ${user.id} and para = ${host.id}) or (de = ${host.id} and para = ${user.id}) returning 1`;
+    if (!updated.length) await sql`insert into amistades (de, para, aceptada) values (${host.id}, ${user.id}, true) on conflict do nothing`;
+    const [nuevo] = await sql`
+      update usuarios set invitado_por = ${host.id} where id = ${user.id} and invitado_por is null returning 1`;
+    if (before !== 'amigos') {
+      await notifyUser(sql, host.id, {
+        title: nuevo ? `${user.nombre} se unió a Zarza con tu invitación` : `${user.nombre} aceptó tu invitación`,
+        body: 'Ya son amigos: verán lo que cada uno lee y comparte.',
+        url: `/comunidades/persona/${user.id}`,
+        tag: `amistad-${user.id}`,
+      });
+    }
+    return { id: host.id, nombre: host.nombre, relacion: await relation(sql, user.id, host.id) };
   },
 
   async responderAmistad({ sql, body, request }) {

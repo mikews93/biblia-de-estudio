@@ -14,6 +14,7 @@ import {
   DownloadIcon,
   HeartIcon,
   LecternIcon,
+  InviteIcon,
   RingsIcon,
   HammerIcon,
   MicIcon,
@@ -401,6 +402,7 @@ function Today() {
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
+        <Tile icon={InviteIcon} label="Invitar amigos" colors={colors} onPress={() => navigate(() => router.push('/invitar' as never), 'forward')} />
         <Tile icon={RingsIcon} label="En pareja" colors={colors} onPress={() => navigate(() => router.push('/pareja' as never), 'forward')} />
         <Tile icon={HammerIcon} label="Hombres de pie" colors={colors} onPress={() => navigate(() => router.push('/hombres' as never), 'forward')} />
         <Tile
