@@ -20,7 +20,7 @@ import { navigate } from '@/lib/transition';
 import { RITMO_DESPERTAR } from '@/lib/voces';
 
 const PRESETS = [5 * 60, 5 * 60 + 30, 6 * 60, 6 * 60 + 30, 7 * 60];
-const SITIO = 'https://biblia.migueblanco.com';
+const SITIO = 'https://zarzabiblia.com';
 
 /** Ajustes del despertador: hora, días y qué suena. La experiencia de la mañana está en /despertar. */
 export default function DespertadorScreen() {

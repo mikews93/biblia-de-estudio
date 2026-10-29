@@ -67,7 +67,7 @@ export default function MiAnoTarjeta({ tarjeta, width, viewRef }: Props) {
           </>
         )}
       </View>
-      <Text style={[styles.site, { color: f.muted, fontSize: 28 * s, bottom: (250 - 28) * s }]}>biblia.migueblanco.com</Text>
+      <Text style={[styles.site, { color: f.muted, fontSize: 28 * s, bottom: (250 - 28) * s }]}>zarzabiblia.com</Text>
     </View>
   );
 }

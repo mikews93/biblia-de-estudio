@@ -15,7 +15,7 @@ import { todayKey } from '@/lib/temporadas';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-const URL = 'https://biblia.migueblanco.com/hombres';
+const URL = 'https://zarzabiblia.com/hombres';
 
 /** Una semana de «Hombres de pie»: lectura, pasajes, preguntas a solas y el reto de la semana. */
 export default function SemanaHombresScreen() {

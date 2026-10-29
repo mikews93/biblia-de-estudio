@@ -1,6 +1,6 @@
 """Páginas estáticas por capítulo para que Google pueda leer la Biblia sin ejecutar JavaScript.
 
-Uso (después de `expo export`): python3 pipeline/seo_pages.py [dist] [https://biblia.migueblanco.com]
+Uso (después de `expo export`): python3 pipeline/seo_pages.py [dist] [https://zarzabiblia.com]
 
 Escribe dist/<libro>/<capítulo>/index.html con el texto de la RV1909 dentro de #root (la app lo
 reemplaza al cargar), título, descripción, URL canónica y enlaces al capítulo anterior y siguiente.
@@ -47,7 +47,7 @@ def page(shell, *, title, description, url, body):
 
 def main():
     dist = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "dist"
-    site = (sys.argv[2] if len(sys.argv) > 2 else "https://biblia.migueblanco.com").rstrip("/")
+    site = (sys.argv[2] if len(sys.argv) > 2 else "https://zarzabiblia.com").rstrip("/")
     shell = (dist / "index.html").read_text(encoding="utf-8")
     # La app sin contenido queda en app.html: vercel.json manda allí las rutas que no tienen página propia
     (dist / "app.html").write_text(shell, encoding="utf-8")

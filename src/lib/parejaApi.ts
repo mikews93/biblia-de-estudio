@@ -89,7 +89,7 @@ export async function marcarAcierto(plan: string, dia: number, valor: Acierto) {
 
 /** El enlace de invitación que se comparte fuera de la app. */
 export function enlacePareja(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : (process.env.EXPO_PUBLIC_API_URL || 'https://biblia.migueblanco.com');
+  const origin = typeof location !== 'undefined' ? location.origin : (process.env.EXPO_PUBLIC_API_URL || 'https://zarzabiblia.com');
   return `${origin}/pareja/unirse/${codigo}`;
 }
 

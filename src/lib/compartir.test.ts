@@ -7,20 +7,20 @@ const v = { book: '1jn', chapter: 4, verse: 8, text: 'Dios es amor.', reference:
 
 describe('compartir un versículo', () => {
   it('enlace a la página pública del versículo', () => {
-    expect(verseUrl(v)).toBe('https://biblia.migueblanco.com/1-juan/4/8');
+    expect(verseUrl(v)).toBe('https://zarzabiblia.com/1-juan/4/8');
   });
 
   it('el texto lleva comillas, la cita con la versión y el enlace', async () => {
     await shareVerse(v);
     expect(vi.mocked(Share.share)).toHaveBeenCalledWith({
-      message: '«Dios es amor.» 1 Juan 4:8 (RV1909)\n\nhttps://biblia.migueblanco.com/1-juan/4/8',
+      message: '«Dios es amor.» 1 Juan 4:8 (RV1909)\n\nhttps://zarzabiblia.com/1-juan/4/8',
     });
   });
 
   it('las invitaciones llevan el enlace una sola vez (sin `url` aparte)', async () => {
     vi.mocked(Share.share).mockClear();
-    await shareMessage('Únete aquí: https://biblia.migueblanco.com/g/ABC');
-    expect(vi.mocked(Share.share)).toHaveBeenCalledWith({ message: 'Únete aquí: https://biblia.migueblanco.com/g/ABC' });
+    await shareMessage('Únete aquí: https://zarzabiblia.com/g/ABC');
+    expect(vi.mocked(Share.share)).toHaveBeenCalledWith({ message: 'Únete aquí: https://zarzabiblia.com/g/ABC' });
   });
 
   it('nombre de archivo de la imagen sin espacios ni dos puntos, con acentos', () => {

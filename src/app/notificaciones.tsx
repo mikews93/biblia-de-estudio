@@ -244,7 +244,7 @@ function StatusCard({
       },
       nativo: {
         title: 'Pronto en esta app',
-        body: 'Por ahora las notificaciones funcionan en la versión web instalada (biblia.migueblanco.com).',
+        body: 'Por ahora las notificaciones funcionan en la versión web instalada (zarzabiblia.com).',
       },
     };
     return <Notice colors={colors} tone="muted" title={msg[support].title} body={msg[support].body} />;

@@ -14,7 +14,7 @@ import urllib.request
 from html import unescape
 
 API = "https://en.wikipedia.org/w/api.php"
-USER_AGENT = "BibliaDeEstudio/1.0 (https://biblia.migueblanco.com; datos para una app bíblica gratuita)"
+USER_AGENT = "BibliaDeEstudio/1.0 (https://zarzabiblia.com; datos para una app bíblica gratuita)"
 FREE = re.compile(r"^(public domain|pd\b|cc0|cc[ -]by\b|cc[ -]by-sa\b|cc[ -]zero)", re.I)
 # Wikimedia solo sirve miniaturas en unos anchos fijos (https://w.wiki/GHai): cualquier otro responde con un
 # error 429 y la imagen no carga en la app (pasaba con las de 800 px, como la de Samaria en Juan 4).

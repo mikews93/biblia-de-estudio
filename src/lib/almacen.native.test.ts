@@ -93,7 +93,7 @@ describe('data.ts en el teléfono', () => {
     const { data, f, refreshed } = await phone({ online: true, saved: { 'text/rv1909/jhn/3.json': '[[16,"guardado"]]' } });
     await expect(data.getChapter('jhn', 3)).resolves.toEqual([[16, 'guardado']]);
     await vi.waitFor(() => expect(refreshed).toEqual(['text/rv1909/jhn/3.json']));
-    expect(f).toHaveBeenCalledWith('https://biblia.migueblanco.com/data/text/rv1909/jhn/3.json');
+    expect(f).toHaveBeenCalledWith('https://zarzabiblia.com/data/text/rv1909/jhn/3.json');
     // Lo que no está descargado viene de la red
     await expect(data.getChapter('jhn', 4)).resolves.toMatchObject({ from: 'red' });
   });

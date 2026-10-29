@@ -127,7 +127,7 @@ export const chapterHref = (book: string, chapter: number, verse?: number) =>
 
 /** Enlace de invitación que se comparte fuera de la app. */
 export function inviteUrl(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : (API || 'https://biblia.migueblanco.com');
+  const origin = typeof location !== 'undefined' ? location.origin : (API || 'https://zarzabiblia.com');
   return `${origin}/unirse/${codigo}`;
 }
 

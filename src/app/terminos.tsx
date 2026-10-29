@@ -15,7 +15,7 @@ import {
   TrashIcon,
 } from '@/components/icons';
 
-// Los términos y condiciones de Zarza, también en https://biblia.migueblanco.com/terminos (los piden Google, Apple y
+// Los términos y condiciones de Zarza, también en https://zarzabiblia.com/terminos (los piden Google, Apple y
 // Facebook para el inicio de sesión, y las tiendas). Parten de los términos de DeusRex que revisan los abogados de MB
 // Technology Solutions LLC, adaptados a una app gratuita, sin anuncios y con comunidad. Si cambian en algo importante,
 // hay que avisar en la app con 30 días de anticipación (ver «Si cambian estos términos»).
@@ -26,7 +26,7 @@ const PARTES: Parte[] = [
     icon: DocumentIcon,
     titulo: 'Quiénes somos y qué aceptas',
     puntos: [
-      'Zarza (biblia.migueblanco.com y sus apps) la ofrece MB Technology Solutions LLC, compañía de Nuevo México (Estados Unidos), número de registro 0008106326, con domicilio en 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110.',
+      'Zarza (zarzabiblia.com y sus apps) la ofrece MB Technology Solutions LLC, compañía de Nuevo México (Estados Unidos), número de registro 0008106326, con domicilio en 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110.',
       'Al usar Zarza, o al crear tu cuenta o entrar con Google, Apple o Facebook, aceptas estos términos y la política de Privacidad. Aceptarlos así, por medios electrónicos, vale igual que firmarlos (Ley 527 de 1999 de Colombia).',
       'Si no estás de acuerdo con ellos, no uses la app.',
     ],
@@ -135,7 +135,7 @@ const PARTES: Parte[] = [
     titulo: 'Ley, quejas y contacto',
     puntos: [
       'Estos términos se rigen por las leyes de Colombia. Cualquier diferencia la resolverán los jueces competentes de Colombia, sin perjuicio de tus derechos como consumidor, incluido presentar una queja ante la Superintendencia de Industria y Comercio.',
-      'Antes de eso, escríbenos a zarza@migueblanco.com: casi todo se arregla hablando.',
+      'Antes de eso, escríbenos a hola@zarzabiblia.com: casi todo se arregla hablando.',
     ],
   },
 ];

@@ -10,7 +10,7 @@ import { OFFLINE_DAYS, OFFLINE_MAX_VERSES, licensedById } from './licenciadas';
 
 // En web los datos se sirven desde public/data; en el teléfono, desde EXPO_PUBLIC_DATA_URL o la web publicada.
 // Lo que el teléfono tiene descargado para leer sin conexión (almacen.native.ts) se lee del dispositivo.
-const BASE = process.env.EXPO_PUBLIC_DATA_URL ?? (Platform.OS === 'web' ? '/data' : 'https://biblia.migueblanco.com/data');
+const BASE = process.env.EXPO_PUBLIC_DATA_URL ?? (Platform.OS === 'web' ? '/data' : 'https://zarzabiblia.com/data');
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 
 export type Book = {

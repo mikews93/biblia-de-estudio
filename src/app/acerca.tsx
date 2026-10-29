@@ -20,7 +20,7 @@ import {
   ultimaPublicada,
 } from '@/lib/version';
 
-const CORREO = 'zarza@migueblanco.com';
+const CORREO = 'hola@zarzabiblia.com';
 const mono = Platform.select({ web: 'ui-monospace, SFMono-Regular, Menlo, monospace', ios: 'Menlo', default: 'monospace' });
 
 /**

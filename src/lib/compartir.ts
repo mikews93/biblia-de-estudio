@@ -6,7 +6,7 @@ import { Share } from 'react-native';
 import { FONDOS, Fondo, LETRA_DEDICATORIA, Letra, fondoPorNombre, letraPorId, palabras } from './fondos';
 import { verseHref } from './routes';
 
-const SITE = 'https://biblia.migueblanco.com';
+const SITE = 'https://zarzabiblia.com';
 
 export type VerseToShare = { book: string; chapter: number; verse: number; text: string; reference: string; version?: string };
 
@@ -244,7 +244,7 @@ export async function drawVerseImage(v: VerseToShare, format: ImageFormat, look:
   ctx.fillStyle = fondo.muted;
   ctx.font = `28px ${SANS}`;
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText('biblia.migueblanco.com', width / 2, height - siteBottom(format));
+  ctx.fillText('zarzabiblia.com', width / 2, height - siteBottom(format));
 
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('No se pudo crear la imagen'))), 'image/png'),

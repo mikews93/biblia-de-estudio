@@ -12,7 +12,7 @@ import {
 } from '@/components/icons';
 
 // La política de privacidad que piden las tiendas (App Store y Google Play), también en
-// https://biblia.migueblanco.com/privacidad. Si cambia lo que la app guarda o a quién lo envía, hay que cambiarla aquí
+// https://zarzabiblia.com/privacidad. Si cambia lo que la app guarda o a quién lo envía, hay que cambiarla aquí
 // y en las fichas de las tiendas (etiquetas de privacidad y «Seguridad de los datos»).
 const ACTUALIZADA = '25 de octubre de 2026';
 
@@ -105,7 +105,7 @@ const PARTES: Parte[] = [
     puntos: [
       'La cuenta vive en Neon (base de datos) y Vercel (servidor y fotos), con conexión cifrada.',
       'En «Tu cuenta», «Borrar mi cuenta» borra al instante tu cuenta, tus datos sincronizados, tus publicaciones, tus comentarios y tu foto.',
-      'Para cualquier pregunta sobre tus datos, escríbenos a zarza@migueblanco.com.',
+      'Para cualquier pregunta sobre tus datos, escríbenos a privacidad@zarzabiblia.com.',
     ],
   },
 ];
