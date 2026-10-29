@@ -14,7 +14,7 @@ import { ToolFooter, ToolState } from '@/components/ToolState';
 import VocesPodcast from '@/components/VocesPodcast';
 import { IconText } from '@/components/comunidad/ui';
 import { parseRef } from '@/lib/data';
-import { useHerramienta } from '@/lib/herramientas';
+import { VersionPodcast, useHerramienta } from '@/lib/herramientas';
 import {
   RemoteRecording,
   chapterTime,
@@ -41,6 +41,8 @@ type Props = {
   kicker: string;
   subtitle: string;
   tool: ReturnType<typeof useHerramienta>;
+  /** En qué versión se escribió y se graba (cada versión libre tiene su guion y su grabación). */
+  version: VersionPodcast;
   /** Grabado con voces naturales y guardado en la app (public/audio/podcast). */
   recorded: boolean;
   palabra?: string;
@@ -51,14 +53,14 @@ type Props = {
   disclaimer?: string;
 };
 
-export default function PodcastView({ book: bookId, chapter, title, kicker, subtitle, tool, recorded, palabra, waiting, header, disclaimer }: Props) {
+export default function PodcastView({ book: bookId, chapter, title, kicker, subtitle, tool, version, recorded, palabra, waiting, header, disclaimer }: Props) {
   const colors = useColors();
   const lines = useMemo(() => parseScript(tool.text), [tool.text]);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const positions = useRef<Record<number, number>>({});
   const listY = useRef(0);
 
-  const grabado = usePodcastGrabado(bookId, chapter, palabra);
+  const grabado = usePodcastGrabado(bookId, chapter, palabra, version.id);
   // Ya grabado con voces naturales (en la app o bajo demanda): el reproductor suena con esas voces y no con las del
   // dispositivo. Mientras se pregunta al servidor, el botón espera para no cambiar de voz a mitad.
   const natural = recorded ? {} : grabado.estado === 'listo' ? { remote: grabado } : null;
@@ -89,6 +91,7 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
         <Text style={[styles.title, { color: colors.text, fontFamily: serif }]}>{title}</Text>
         <Text style={{ color: colors.muted, marginTop: 4 }}>
           {subtitle}
+          {` · ${version.sigla}`}
           {ready ? ` · unos ${minutes(lines)} min` : ''}
         </Text>
 

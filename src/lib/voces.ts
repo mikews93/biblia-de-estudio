@@ -8,6 +8,8 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 // voz. La elegida para el despertador se guarda en el dispositivo (no en la cuenta: cada teléfono tiene sus voces).
 
 export type Calidad = 'natural' | 'buena' | 'basica';
+/** Si la voz suena a mujer o a hombre; sin dato cuando ni el nombre ni el código lo dicen. */
+export type Genero = 'mujer' | 'hombre';
 
 export type Voz = {
   id: string;
@@ -16,6 +18,7 @@ export type Voz = {
   /** «México», «Colombia», «España»… */
   acento: string;
   calidad: Calidad;
+  genero?: Genero;
   puntos: number;
   /** Android tiene la misma voz en dos copias: la «local» suena sin internet; la de red suele sonar mejor. */
   sinInternet?: boolean;
@@ -86,33 +89,97 @@ export function nombreCorto(name: string): string {
     .replace(/\s+/g, ' ')
     .trim();
   if (/^google/i.test(name)) return 'Google';
+  // «Android Speech Recognition and Synthesis from Google es-us-x-esd-network» (Firefox en Android): solo código
+  if (/\b[a-z]{2}[-_][a-z0-9]{2,3}[-_]x[-_]/i.test(name)) return '';
   // Android nombra sus voces con códigos («es-us-x-esf-network»): se les da nombre al listar (ordenar)
   if (!limpio || /^[a-z]{2}[-_]/i.test(limpio)) return '';
   return limpio;
 }
 
-// Android (y algunos navegadores) nombran sus voces con códigos («es-us-x-esf-network»). Para poder decir «me gusta
-// Ariel» se les da un nombre propio, siempre el mismo para el mismo código en cualquier teléfono. Son nombres que
-// sirven para hombre o mujer: el código no dice cómo suena la voz.
-const NOMBRES = ['Ariel', 'Alex', 'Dani', 'Sasha', 'Noa', 'René', 'Cruz', 'Paz', 'Fran', 'Reyes', 'Guadalupe', 'Trini'];
+// Android (y algunos navegadores) nombran sus voces con códigos («es-us-x-esf-network») o solo con «Google». Para
+// poder decir «me gusta Esteban» se les da un nombre propio, siempre el mismo para el mismo código en cualquier
+// teléfono, de mujer o de hombre según cómo suena la voz. Si no se sabe, «Voz 1», «Voz 2»: un nombre de persona que no
+// coincide con la voz confunde (una «Guadalupe» que habla con voz de hombre). No se usan Ana ni Tomás, los del pódcast.
+const NOMBRES: Record<Genero, string[]> = {
+  mujer: ['Sara', 'Rut', 'Lidia', 'Débora', 'Ester', 'Miriam', 'Marta', 'Priscila', 'Noemí', 'Raquel', 'Abigail', 'Elisa'],
+  hombre: ['Pablo', 'Pedro', 'Andrés', 'Felipe', 'Esteban', 'Samuel', 'Daniel', 'Gabriel', 'Timoteo', 'Lucas', 'Mateo', 'Simón'],
+};
+
+// Las voces de Google en Android (y en Chrome de Android y ChromeOS, que las nombran «Google español 3 (Natural)»).
+// Fuente: readium/speech, json/es.json.
+const CODIGOS: Record<string, Genero> = {
+  'es-es-eea': 'mujer',
+  'es-es-eec': 'mujer',
+  'es-es-eee': 'mujer',
+  'es-es-eed': 'hombre',
+  'es-es-eef': 'hombre',
+  'es-us-esc': 'mujer',
+  'es-us-sfb': 'mujer',
+  'es-us-esd': 'hombre',
+  'es-us-esf': 'hombre',
+};
+const GOOGLE_NUMERADA: Record<string, Genero> = {
+  'español 1': 'mujer',
+  'español 2': 'mujer',
+  'español 4': 'mujer',
+  'español 3': 'hombre',
+  'español 5': 'hombre',
+  'español de estados unidos 1': 'mujer',
+  'español de estados unidos 2': 'mujer',
+  'español de estados unidos 3': 'hombre',
+  'español de estados unidos 4': 'hombre',
+};
+
+// Nombres de las voces de Apple, Microsoft (Edge y Windows) y otras. «male» no se busca suelto: está dentro de «female».
+const MUJER =
+  /\b(paulina|m[oó]nica|marisol|ang[eé]lica|isabela|francisca|soledad|jimena|ximena|helena|laura|sabina|elvira|dalia|salom[eé]|paloma|elena|sof[ií]a|catalina|mar[ií]a|belkys|andrea|lorena|marta|teresa|karla|yolanda|margarita|tania|camila|karina|ramona|valentina|paola|beatriz|candela|carlota|larissa|marina|nuria|renata|abril|estrella|irene|laia|l[ií]a|triana|vera|luc[ií]a|esperanza|female|woman|mujer|femenin[ao])\b/i;
+const HOMBRE =
+  /\b(jorge|juan|diego|carlos|pablo|ra[uú]l|[aá]lvaro|tom[aá]s|marcelo|lorenzo|gonzalo|manuel|luis|rodrigo|alonso|andr[eé]s|javier|federico|roberto|mario|alex|v[ií]ctor|emilio|mateo|sebasti[aá]n|cecilio|gerardo|liberto|luciano|pelayo|yago|arnau|dar[ií]o|el[ií]as|nil|sa[uú]l|teo|enrique|jos[eé]|male|man|hombre|masculin[ao])\b/i;
+
+/** Mujer u hombre, por el código de Android, la voz de Google o el nombre; sin dato si no se puede saber. */
+export function generoDeVoz(name: string, identifier: string): Genero | undefined {
+  const porCodigo = CODIGOS[codigoVoz(identifier)] ?? CODIGOS[codigoVoz(name)];
+  if (porCodigo) return porCodigo;
+  const google = name.match(/^google\s+(.*?)\s*(?:\(.*)?$/i)?.[1]?.toLowerCase();
+  if (google !== undefined) {
+    // En Chrome de escritorio «Google español» es de hombre y «Google español de Estados Unidos», de mujer
+    if (google === 'español') return 'hombre';
+    if (google === 'español de estados unidos') return 'mujer';
+    return GOOGLE_NUMERADA[google];
+  }
+  const texto = `${name} ${identifier}`;
+  const m = MUJER.test(texto);
+  const h = HOMBRE.test(texto);
+  return m === h ? undefined : m ? 'mujer' : 'hombre';
+}
 
 /** La parte que distingue una voz de otra: «es-us-x-esf-network» → «es-us-esf» (la local y la de red son la misma). */
 export const codigoVoz = (id: string) => {
-  const m = id.toLowerCase().match(/^([a-z]{2})[-_]([a-z0-9]{2,3})[-_]x[-_]([a-z0-9]+)/);
+  const m = id.toLowerCase().match(/\b([a-z]{2})[-_]([a-z0-9]{2,3})[-_]x[-_]([a-z0-9]+)/);
   return m ? `${m[1]}-${m[2]}-${m[3]}` : id.toLowerCase();
 };
 
 const semilla = (texto: string) => [...texto].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
-/** Un nombre para cada código sin repetir en este dispositivo; el mismo código siempre pide primero el mismo. */
-export function nombresParaCodigos(codigos: string[]): Map<string, string> {
+/**
+ * Un nombre para cada código sin repetir en este dispositivo, de mujer o de hombre según la voz; el mismo código
+ * siempre pide primero el mismo. Las voces que no se sabe cómo suenan quedan «Voz 1», «Voz 2»…
+ */
+export function nombresParaCodigos(codigos: string[], generos: Map<string, Genero | undefined> = new Map()): Map<string, string> {
   const out = new Map<string, string>();
   const usados = new Set<string>();
+  let sinGenero = 0;
   for (const c of [...new Set(codigos)].sort()) {
-    let i = semilla(c) % NOMBRES.length;
-    for (let k = 0; k < NOMBRES.length && usados.has(NOMBRES[i]); k++) i = (i + 1) % NOMBRES.length;
-    const nombre = usados.has(NOMBRES[i]) ? `${NOMBRES[i]} ${usados.size + 1}` : NOMBRES[i];
-    usados.add(NOMBRES[i]);
+    const genero = generos.get(c);
+    if (!genero) {
+      out.set(c, `Voz ${++sinGenero}`);
+      continue;
+    }
+    const lista = NOMBRES[genero];
+    let i = semilla(c) % lista.length;
+    for (let k = 0; k < lista.length && usados.has(lista[i]); k++) i = (i + 1) % lista.length;
+    const nombre = usados.has(lista[i]) ? `${lista[i]} ${usados.size + 1}` : lista[i];
+    usados.add(lista[i]);
     out.set(c, nombre);
   }
   return out;
@@ -121,15 +188,22 @@ export function nombresParaCodigos(codigos: string[]): Map<string, string> {
 /** Ordena y etiqueta las voces en español; las que solo tienen código reciben un nombre propio. */
 export function ordenar(todas: Bruta[]): Voz[] {
   const es = todas.filter((v) => v.language?.toLowerCase().startsWith('es'));
-  const sinNombre = nombresParaCodigos(es.filter((v) => !nombreCorto(v.name)).map((v) => codigoVoz(v.identifier)));
+  const genero = new Map(es.map((v) => [v.identifier, generoDeVoz(v.name, v.identifier)]));
+  // Las de Google se llaman todas «Google» en Chrome de Android: también reciben un nombre propio
+  const sinNombre = es.filter((v) => !nombreCorto(v.name) || nombreCorto(v.name) === 'Google');
+  const nombres = nombresParaCodigos(
+    sinNombre.map((v) => codigoVoz(v.identifier)),
+    new Map(sinNombre.map((v) => [codigoVoz(v.identifier), genero.get(v.identifier)])),
+  );
   return es
     .map((v) => ({ v, p: puntos(v) }))
     .sort((a, b) => b.p - a.p)
     .map(({ v, p }) => ({
       id: v.identifier,
-      nombre: nombreCorto(v.name) || sinNombre.get(codigoVoz(v.identifier)) || 'Voz',
+      nombre: nombres.get(codigoVoz(v.identifier)) || nombreCorto(v.name) || 'Voz',
       acento: PAISES[region(v.language)] ?? 'Español',
       calidad: calidad(p),
+      genero: genero.get(v.identifier),
       puntos: p,
       sinInternet: /-local$/i.test(v.identifier),
     }));

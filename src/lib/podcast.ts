@@ -35,10 +35,6 @@ export function parseScript(script: string): Line[] {
 export const minutes = (lines: Line[]) =>
   Math.max(1, Math.round(lines.reduce((s, l) => s + l.text.split(/\s+/).length, 0) / 150));
 
-// Nombres frecuentes de voces del sistema para distinguir a Ana (femenina) de Tomás (masculina).
-const FEMALE = /paulina|m[oó]nica|helena|laura|elvira|dalia|sabina|salom[eé]|paloma|marisol|francisca|isabela|lucia|luc[ií]a|camila|valeria|elena|esperanza|ximena|larissa|abril|irene|triana|vera|estrella|google espa|female|mujer/i;
-const MALE = /jorge|diego|juan|pablo|carlos|[aá]lvaro|ra[uú]l|enrique|jos[eé]|gonzalo|andr[eé]s|tom[aá]s|alonso|gerardo|lorenzo|emilio|male|hombre/i;
-
 export type Voices = Record<Speaker, { voice?: string; pitch: number }>;
 
 let voicesPromise: Promise<Voices> | null = null;
@@ -54,26 +50,39 @@ export async function pickVoices(): Promise<Voices> {
   const a = ana?.id ?? (auto.ana.voice !== tomas?.id ? auto.ana.voice : es.find((v) => v.id !== tomas?.id)?.id);
   const t = tomas?.id ?? (auto.tomas.voice !== a ? auto.tomas.voice : es.find((v) => v.id !== a)?.id);
   if (!t || t === a) return { ana: { voice: a, pitch: 1.12 }, tomas: { voice: a, pitch: 0.85 } };
-  return { ana: { voice: a, pitch: 1 }, tomas: { voice: t, pitch: 1 } };
+  // La que eligió la persona suena tal cual; la automática conserva su ajuste de tono
+  const tono = (s: Speaker, id: string | undefined, elegida: unknown) => (!elegida && id === auto[s].voice ? auto[s].pitch : 1);
+  return { ana: { voice: a, pitch: tono('ana', a, ana) }, tomas: { voice: t, pitch: tono('tomas', t, tomas) } };
 }
 
-/** Las voces que pondría la app sola, sin lo que eligió la persona. */
+/**
+ * Las voces que pondría la app sola, sin lo que eligió la persona: para Ana la más natural de mujer y para Tomás la
+ * más natural de hombre (src/lib/voces.ts sabe cuál es cuál por el nombre o el código de la voz). Si falta una de
+ * las dos, la otra voz se acerca con el tono: más agudo para Ana, más grave para Tomás.
+ */
 export function pickAutoVoices(): Promise<Voices> {
   voicesPromise ??= vocesEspanol().then((es) => {
-    const nombre = (v: Voz) => `${v.nombre} ${v.id}`;
-    const female = es.find((v) => FEMALE.test(nombre(v)) && !MALE.test(nombre(v)));
-    const male = es.find((v) => MALE.test(nombre(v)) && v !== female);
-    const ana = female ?? es[0];
-    const tomas = male ?? es.find((v) => v !== ana);
-    const voices: Voices =
-      ana && tomas
-        ? { ana: { voice: ana.id, pitch: 1 }, tomas: { voice: tomas.id, pitch: 1 } }
-        : { ana: { voice: ana?.id, pitch: 1.12 }, tomas: { voice: ana?.id, pitch: 0.85 } };
-    // Si no hubo voces, se vuelve a buscar la próxima vez (pueden cargar más tarde)
-    if (!voices.ana.voice) voicesPromise = null;
-    return voices;
+    voicesPromise = es.length ? voicesPromise : null;
+    return elegirAuto(es);
   });
   return voicesPromise;
+}
+
+/** Ana y Tomás de una lista de voces ordenada de la más natural a la más robótica. */
+export function elegirAuto(es: Voz[]): Voices {
+  const mujer = es.find((v) => v.genero === 'mujer');
+  const hombre = es.find((v) => v.genero === 'hombre');
+  const ana = mujer ?? es.find((v) => !v.genero) ?? es.find((v) => v !== hombre);
+  const tomas = hombre ?? es.find((v) => !v.genero && v !== ana) ?? es.find((v) => v !== ana);
+  if (!ana && !tomas) return { ana: { pitch: 1 }, tomas: { pitch: 1 } };
+  if (!ana || !tomas) {
+    const una = (ana ?? tomas)!.id;
+    return { ana: { voice: una, pitch: 1.12 }, tomas: { voice: una, pitch: 0.85 } };
+  }
+  return {
+    ana: { voice: ana.id, pitch: ana.genero === 'mujer' ? 1 : 1.12 },
+    tomas: { voice: tomas.id, pitch: tomas.genero === 'hombre' ? 1 : 0.85 },
+  };
 }
 
 /** Trozos cortos: algunos navegadores cortan las frases muy largas a mitad. */
