@@ -102,6 +102,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (pathname.startsWith('/api/')) return api(pathname.slice(5).replace(/\/$/, ''), req, res);
   // Como vercel.json: los archivos que existen se sirven tal cual; el resto de rutas abren la app.
   let p = await file(path.join(DIST, path.normalize(pathname)));
+  if (!p && /^\/i\/[^/]+$/.test(pathname)) p = await file(path.join(DIST, 'invitar.html'));
   if (!p && !/^\/(data|_expo|assets)\//.test(pathname)) p = path.join(DIST, 'app.html');
   if (!p) {
     res.writeHead(404);

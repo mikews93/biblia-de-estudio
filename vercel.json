@@ -52,6 +52,10 @@
       "destination": "/api/auth?ruta=$1"
     },
     {
+      "source": "/i/:codigo",
+      "destination": "/invitar.html"
+    },
+    {
       "source": "/((?!api/|data/|_expo/|assets/|audio/).*)",
       "destination": "/app.html"
     }

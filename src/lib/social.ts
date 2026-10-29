@@ -59,6 +59,8 @@ export type Red = {
   bloqueadas?: PersonaBreve[];
   /** Versículos que te enviaron y aún no abriste. */
   versiculosNuevos?: number;
+  /** Quienes se unieron a Zarza con tu enlace de invitación (src/lib/invitar.ts). */
+  invitados?: PersonaBreve[];
 };
 export type Persona = PersonaBreve & {
   bio: string | null;
