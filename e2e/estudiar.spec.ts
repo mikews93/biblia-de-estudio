@@ -356,7 +356,7 @@ test('«Me ayudó» y «Algo suena raro» bajo el estudio guardado', async ({ pa
   await expect(estudio.getByRole('button', { name: 'Algo suena raro' })).toBeVisible();
 });
 
-test('el devocional profundo de Hoy y «Estudiar» en el lector son el mismo estudio', async ({ page, request }) => {
+test('el devocional profundo de Hoy y «Estudiar» del versículo en el lector son el mismo estudio', async ({ page, request }) => {
   await conSesion(page, await cuentaNueva(request, 'Mismo estudio'));
   await page.goto('/');
   // Devocional del día y luego la pestaña Profundo: se genera el estudio del versículo
@@ -367,11 +367,11 @@ test('el devocional profundo de Hoy y «Estudiar» en el lector son el mismo est
   await expect(panel(page).getByText(ESTUDIO)).toBeVisible();
   await page.getByLabel('Cerrar estudio').last().click();
 
-  // En el capítulo, el «Estudiar» de arriba abre ese mismo estudio, ya guardado: la IA no escribe otro
+  // En el capítulo, el «Estudiar» del versículo marcado abre ese mismo estudio, ya guardado: la IA no escribe otro
   const antes = (await peticionesIA(request, '')).length;
   await page.getByRole('button', { name: 'Leer el capítulo' }).click();
   const segundo = page.waitForRequest(esEstudio);
-  await page.getByRole('button', { name: `Estudiar el versículo ${verse} con IA: contexto, preguntas y fuentes` }).click();
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
   expect((await segundo).postDataJSON()).toMatchObject({ book, chapter, verse, enfoque: 'profundo' });
   const estudio = panel(page);
   await expect(estudio.getByText(ESTUDIO)).toBeVisible();
@@ -382,4 +382,15 @@ test('el devocional profundo de Hoy y «Estudiar» en el lector son el mismo est
   await estudio.getByRole('button', { name: `Estudiar todo el capítulo ${chapter}` }).click();
   expect((await capitulo).postDataJSON().verse).toBeUndefined();
   await expect(estudio.getByRole('button', { name: `Estudiar solo el versículo ${verse}` })).toBeVisible();
+});
+
+test('el «Estudiar» de arriba estudia todo el capítulo aunque haya un versículo marcado', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Capitulo marcado'));
+  await page.goto('/juan/3/16');
+  const pedido = page.waitForRequest(esEstudio);
+  await page.getByRole('button', { name: 'Estudiar este capítulo' }).click();
+  const cuerpo = (await pedido).postDataJSON();
+  expect(cuerpo).toMatchObject({ book: 'jhn', chapter: 3 });
+  expect(cuerpo.verse).toBeUndefined();
+  await expect(panel(page).getByText('Juan 3', { exact: true })).toBeVisible();
 });

@@ -18,20 +18,14 @@ export type ChapterTool = {
 
 export type ToolGroup = { key: 'escuchar' | 'original' | 'explorar'; title: string; tools: ChapterTool[] };
 
-type Props = {
-  groups: ToolGroup[];
-  onStudy: () => void;
-  /** El versículo elegido: «Estudiar» abre su estudio, el mismo del devocional de ese versículo. */
-  studyVerse?: number;
-  colors: Colors;
-};
+type Props = { groups: ToolGroup[]; onStudy: () => void; colors: Colors };
 
 /**
  * La barra de herramientas del capítulo, bajo la cabecera del lector: Estudiar con IA, Escuchar, Pódcast, Interlineal
  * y Más. Lo de escuchar (lectura, dramatizado, en el idioma original) se elige en una hoja; lo demás (mapa, mapa mental,
  * tarjetas) va en «Más». Se aparta con la cabecera al bajar leyendo.
  */
-export default function ChapterTools({ groups, onStudy, studyVerse, colors }: Props) {
+export default function ChapterTools({ groups, onStudy, colors }: Props) {
   const [sheet, setSheet] = useState<'escuchar' | 'mas' | null>(null);
   const all = groups.flatMap((g) => g.tools);
   const podcast = all.find((t) => t.key === 'podcast');
@@ -40,7 +34,7 @@ export default function ChapterTools({ groups, onStudy, studyVerse, colors }: Pr
   const more = groups.find((g) => g.key === 'explorar')?.tools ?? [];
 
   const items: (ChapterTool & { strong?: boolean })[] = [
-    { key: 'estudiar', label: 'Estudiar', hint: studyVerse ? `Estudiar el versículo ${studyVerse} con IA: contexto, preguntas y fuentes` : 'Estudiar este capítulo con IA: contexto, preguntas y fuentes', icon: (c) => <SparkIcon color={c} size={21} />, onPress: onStudy, strong: true },
+    { key: 'estudiar', label: 'Estudiar', hint: 'Estudiar este capítulo con IA: contexto, preguntas y fuentes', icon: (c) => <SparkIcon color={c} size={21} />, onPress: onStudy, strong: true },
     {
       key: 'escuchar',
       label: 'Escuchar',
