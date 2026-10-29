@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import { siglaDe } from './enVersion';
 import { Herramienta, Source, askStudy } from './estudio';
-import { licensedById } from './licenciadas';
 import { conVersion, versionPodcast } from './podcastVersion';
 import { useSettings } from './theme';
 
@@ -38,8 +37,6 @@ export type VersionPodcast = {
   /** La versión libre en que está el pódcast. */
   id: string;
   sigla: string;
-  /** La versión con derechos que lee la persona, si es una: su texto no se convierte en audio. */
-  licenciada?: string;
 };
 
 /** En qué versión suena el pódcast para quien lee la versión elegida en los ajustes. */
@@ -51,7 +48,7 @@ export function useVersionPodcast(): VersionPodcast {
     if (sigla[id]) return;
     siglaDe(id).then((s) => s && setSigla((m) => ({ ...m, [id]: s })));
   }, [id, sigla]);
-  return { id, sigla: sigla[id] ?? id.toUpperCase(), licenciada: licensedById(settings.version)?.abbr };
+  return { id, sigla: sigla[id] ?? id.toUpperCase() };
 }
 
 type Pedido = { book?: string; chapter?: number; palabra?: string; herramienta?: Herramienta; version?: string };
