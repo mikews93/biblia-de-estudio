@@ -106,7 +106,7 @@ export const getPerson = (usuario: string) =>
 
 /** Enlace para que alguien te agregue como amigo. */
 export function friendUrl(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : (process.env.EXPO_PUBLIC_API_URL || 'https://biblia.migueblanco.com');
+  const origin = typeof location !== 'undefined' ? location.origin : (process.env.EXPO_PUBLIC_API_URL || 'https://zarzabiblia.com');
   return `${origin}/amigo/${codigo}`;
 }
 

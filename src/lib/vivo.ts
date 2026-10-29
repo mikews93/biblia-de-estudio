@@ -100,7 +100,7 @@ export function cleanCode(input: string) {
 export const spacedCode = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
 
 export function liveUrl(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : API || 'https://biblia.migueblanco.com';
+  const origin = typeof location !== 'undefined' ? location.origin : API || 'https://zarzabiblia.com';
   return `${origin}/vivo/${codigo}`;
 }
 

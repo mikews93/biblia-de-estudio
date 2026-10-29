@@ -10,7 +10,7 @@ export type IglesiaPublica = { nombre: string; ciudad: string | null; codigo: st
 
 /** El enlace que abre el QR de la iglesia. */
 export function enlaceIglesia(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : API || 'https://biblia.migueblanco.com';
+  const origin = typeof location !== 'undefined' ? location.origin : API || 'https://zarzabiblia.com';
   return `${origin}/iglesia/${codigo}`;
 }
 

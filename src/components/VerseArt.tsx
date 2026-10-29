@@ -109,7 +109,7 @@ export default function VerseArt({ text, caption, format, look, width, viewRef, 
           </Text>
         </>
       )}
-      <Text style={[styles.site, { color: fondo.muted, fontSize: 28 * scale, bottom: (siteBottom(format) - 28) * scale }]}>biblia.migueblanco.com</Text>
+      <Text style={[styles.site, { color: fondo.muted, fontSize: 28 * scale, bottom: (siteBottom(format) - 28) * scale }]}>zarzabiblia.com</Text>
     </View>
   );
 }

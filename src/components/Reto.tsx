@@ -566,7 +566,7 @@ function Company({
   colors: Colors;
 }) {
   const [copied, setCopied] = useState(false);
-  const origin = Platform.OS === 'web' && typeof location !== 'undefined' ? location.origin : 'https://biblia.migueblanco.com';
+  const origin = Platform.OS === 'web' && typeof location !== 'undefined' ? location.origin : 'https://zarzabiblia.com';
   const url = `${origin}/planes/${def.id}`;
   const message = `Te invito a hacer conmigo el reto «${def.title}»: un capítulo al día y una pregunta para pensar. ${url}`;
   const canShare = Platform.OS !== 'web' || (typeof navigator !== 'undefined' && 'share' in navigator);

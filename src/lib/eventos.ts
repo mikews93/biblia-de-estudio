@@ -100,7 +100,7 @@ export function limpiarCodigo(input: string) {
 export const codigoLegible = (c: string) => `${c.slice(0, 3)} ${c.slice(3)}`;
 
 /** En la web, el mismo dominio; en el teléfono, la web publicada (como inviteUrl). */
-const origen = () => (typeof location !== 'undefined' ? location.origin : API || 'https://biblia.migueblanco.com');
+const origen = () => (typeof location !== 'undefined' ? location.origin : API || 'https://zarzabiblia.com');
 export const enlaceEvento = (codigo: string) => `${origen()}/evento/${codigo}`;
 /** Sin «https://», para escribirlo a mano desde la pantalla de la iglesia. */
 export const enlaceCorto = (codigo: string) => enlaceEvento(codigo).replace(/^https?:\/\//, '');

@@ -494,7 +494,7 @@ function LaminaEditable({ lamina: l, n, verse, look, width, borde, onEdit }: Edi
           </>
         )}
       </View>
-      <Text style={[styles.site, { color: fondo.muted, fontSize: 28 * s, bottom: (250 - 28) * s }]}>biblia.migueblanco.com</Text>
+      <Text style={[styles.site, { color: fondo.muted, fontSize: 28 * s, bottom: (250 - 28) * s }]}>zarzabiblia.com</Text>
     </View>
   );
 }

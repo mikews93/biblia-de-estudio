@@ -23,7 +23,7 @@ export type Suscripcion = { endpoint: string; p256dh: string; auth: string };
 export type Vapid = { publicKey: string; privateKey: string; subject: string };
 
 const PUSH_HOSTS = ['fcm.googleapis.com', 'push.services.mozilla.com', 'notify.windows.com', 'push.apple.com'];
-const SUBJECT = process.env.VAPID_SUBJECT ?? 'https://biblia.migueblanco.com';
+const SUBJECT = process.env.VAPID_SUBJECT ?? 'https://zarzabiblia.com';
 
 // usuario_id sin clave foránea: /api/notificaciones crea esta tabla aunque aún no existan las de la comunidad.
 // Al borrar una cuenta, /api/comunidades suelta sus suscripciones.
