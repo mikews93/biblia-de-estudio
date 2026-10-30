@@ -4,6 +4,9 @@
 //   POST {book, chapter}      → lo graba (necesita cuenta) y responde como GET. Tarda uno o dos minutos.
 // Con ?palabra=jesed (o {palabra} en el POST) es el pódcast de «La historia de una palabra»: se guarda con el libro
 // «palabra:jesed» y el capítulo 0, y cuenta en los mismos límites diarios.
+// Con &version=pdt (o {version} en el POST) es el pódcast en esa versión libre: su guion se guarda en herramientas_ia
+// como «podcast:pdt» y su grabación con el libro «jhn:pdt». La RV1909 va sin sufijo, como antes. Una versión con
+// derechos usa la libre de src/lib/podcastVersion.ts: su texto no se convierte en audio.
 // El MP3 se guarda en Vercel Blob y su ficha en Neon (tabla podcast_grabado). Hay un límite diario por cuenta y
 // otro para toda la app, para que nadie gaste los créditos de ElevenLabs abriendo capítulos.
 // ElevenLabs entrega a Ana bastante más baja que a Tomás: cada intervención se lleva al mismo volumen antes de
@@ -18,6 +21,7 @@ import postgres from 'postgres';
 
 import { muestrasA16, nivelar, pcmAMuestras, type Tramo, tramosPorSilencio } from '../src/lib/nivelarVoces';
 import { palabraAudioId, palabraPorId } from '../src/lib/palabras';
+import { conVersion, versionPodcast } from '../src/lib/podcastVersion';
 import { lineStarts } from '../src/lib/podcastTiempos';
 import { codificarMp3, decodificarMp3 } from './_mp3';
 import { waitUntil } from './_seguir';
@@ -97,15 +101,21 @@ const json = (body: object, status = 200) =>
 /** Dónde se guarda la grabación (libro y capítulo) y de dónde sale su guion (la fila de herramientas_ia). */
 type Target = { book: string; chapter: number; guion: { herramienta: string; libro: string; capitulo: number } };
 
-function place(book: unknown, chapter: unknown, palabra?: unknown): Target | null {
+function place(book: unknown, chapter: unknown, palabra?: unknown, pedida?: unknown): Target | null {
+  if (pedida !== undefined && pedida !== null && (typeof pedida !== 'string' || !/^[a-z0-9]{2,12}$/.test(pedida))) return null;
+  const version = versionPodcast((pedida as string | null | undefined) ?? undefined);
   if (palabra !== undefined && palabra !== null) {
     const p = typeof palabra === 'string' ? palabraPorId(palabra) : null;
     if (!p || book !== undefined || chapter !== undefined) return null;
-    return { book: palabraAudioId(p.id), chapter: 0, guion: { herramienta: 'palabra-podcast', libro: p.id, capitulo: 0 } };
+    return {
+      book: conVersion(palabraAudioId(p.id), version),
+      chapter: 0,
+      guion: { herramienta: conVersion('palabra-podcast', version), libro: p.id, capitulo: 0 },
+    };
   }
   const ch = Number(chapter);
   if (typeof book !== 'string' || !/^[0-9a-z]{3}$/.test(book) || !Number.isInteger(ch) || ch < 1 || ch > 150) return null;
-  return { book, chapter: ch, guion: { herramienta: 'podcast', libro: book, capitulo: ch } };
+  return { book: conVersion(book, version), chapter: ch, guion: { herramienta: conVersion('podcast', version), libro: book, capitulo: ch } };
 }
 
 function answer(row: Row | undefined) {
@@ -118,7 +128,7 @@ function answer(row: Row | undefined) {
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const where = place(params.get('book') ?? undefined, params.get('chapter') ?? undefined, params.get('palabra'));
+  const where = place(params.get('book') ?? undefined, params.get('chapter') ?? undefined, params.get('palabra'), params.get('version'));
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const s = await db().catch(() => null);
   if (!s) return json({ estado: 'ninguno' });
@@ -259,13 +269,13 @@ export async function POST(request: Request) {
   const user = await account(s, request);
   if (!user) return json({ error: 'Necesitas una cuenta', cuenta: true }, 401);
 
-  let body: { book?: unknown; chapter?: unknown; palabra?: unknown };
+  let body: { book?: unknown; chapter?: unknown; palabra?: unknown; version?: unknown };
   try {
     body = await request.json();
   } catch {
     return json({ error: 'Pedido no válido' }, 400);
   }
-  const where = place(body.book, body.chapter, body.palabra);
+  const where = place(body.book, body.chapter, body.palabra, body.version);
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const { book, chapter } = where;
 
@@ -308,7 +318,7 @@ export async function POST(request: Request) {
   try {
     const { audio, tiempos, duracion: largo } = await record(lines);
     const tag = createHash('sha256').update(guion.texto).digest('hex').slice(0, 10);
-    const url = await store(`${chapter ? `${book}-${chapter}` : book.replace(':', '-')}-${tag}.mp3`, audio);
+    const url = await store(`${(chapter ? `${book}-${chapter}` : book).replaceAll(':', '-')}-${tag}.mp3`, audio);
     const duracion = Math.round(largo);
     await s`update podcast_grabado set estado = 'listo', url = ${url}, duracion = ${duracion}, credito = ${CREDIT},
       tiempos = ${s.json(tiempos)}, nivelado = true, nivelando = null, actualizado = now() where libro = ${book} and capitulo = ${chapter}`;

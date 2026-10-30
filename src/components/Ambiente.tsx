@@ -118,7 +118,7 @@ function AmbienteHoja({ colors, onClose }: { colors: Colors; onClose: () => void
                 key={p.id}
                 onPress={() => (on ? stopAmbiente() : playAmbiente(p.id))}
                 accessibilityRole="button"
-                accessibilityState={{ selected: on }}
+                aria-selected={on}
                 accessibilityLabel={`${p.nombre}: ${p.detalle}${on ? '. Sonando, toca para apagar' : ''}`}
                 style={({ pressed }) => [
                   styles.card,

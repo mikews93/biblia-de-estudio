@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import Welcome from '@/components/comunidad/Welcome';
+import { ChevronRightIcon, InviteIcon } from '@/components/icons';
 import { Avatar, Button, Card, ErrorText, Field, SectionTitle, text, useAction } from '@/components/comunidad/ui';
 import { shareMessage } from '@/lib/compartir';
 import { useAccount } from '@/lib/comunidad';
@@ -112,6 +113,19 @@ export default function Amigos() {
             </View>
           </Card>
 
+          <Pressable
+            onPress={() => navigate(() => router.push('/invitar' as never), 'forward')}
+            accessibilityRole="link"
+            style={({ pressed }) => [styles.invite, { backgroundColor: colors.warmSoft }, pressed && { opacity: 0.8 }]}
+          >
+            <InviteIcon color={colors.warm} size={22} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700' }}>¿Aún no usan Zarza?</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 1 }}>Invítalos con tu enlace, un mensaje listo o un código QR</Text>
+            </View>
+            <ChevronRightIcon color={colors.warm} size={18} />
+          </Pressable>
+
           <SectionTitle>Agregar con un código</SectionTitle>
           <View style={{ gap: 10 }}>
             <Field
@@ -197,6 +211,7 @@ export default function Amigos() {
 
 const styles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 60, maxWidth: 640, width: '100%', alignSelf: 'center' },
+  invite: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 14, marginTop: 12 },
   code: { fontSize: 28, fontWeight: '700', letterSpacing: 6, textAlign: 'center', marginVertical: 16, fontVariant: ['tabular-nums'] },
   buttons: { flexDirection: 'row', gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },

@@ -20,7 +20,7 @@ npm run data      # descarga las fuentes y genera public/data (unos 26 MB)
 npm run web       # abre la app en el navegador
 ```
 
-En el teléfono (Expo Go o una build de desarrollo) los datos se leen de la web publicada (https://biblia.migueblanco.com/data); para usar otra, publica la web (`npm run build:web` genera `dist/`) y define `EXPO_PUBLIC_DATA_URL=https://tu-sitio/data` antes de `npm start`. Las traducciones libres, el interlineal y las referencias se pueden descargar completos desde «Sin conexión» (en la web con Cache Storage y en el teléfono con expo-file-system, ver `src/lib/almacen.native.ts`).
+En el teléfono (Expo Go o una build de desarrollo) los datos se leen de la web publicada (https://zarzabiblia.com/data); para usar otra, publica la web (`npm run build:web` genera `dist/`) y define `EXPO_PUBLIC_DATA_URL=https://tu-sitio/data` antes de `npm start`. Las traducciones libres, el interlineal y las referencias se pueden descargar completos desde «Sin conexión» (en la web con Cache Storage y en el teléfono con expo-file-system, ver `src/lib/almacen.native.ts`).
 
 ## Datos y licencias
 
@@ -143,7 +143,7 @@ El botón «Compartir» de la barra del versículo abre `src/components/VerseIma
 
 ## Publicación
 
-La web está en https://biblia.migueblanco.com (proyecto `biblia-de-estudio` en Vercel). El DNS está en Cloudflare: un CNAME `biblia` → `cname.vercel-dns.com` sin proxy (nube gris), igual que `hoyvemos`. Mientras el MVP no esté en `main`, el dominio sigue la rama `claude/estudiar`; las publicaciones de esa rama son de tipo Preview, así que `ANTHROPIC_API_KEY` tiene que estar también en Preview.
+La web está en https://zarzabiblia.com (proyecto `biblia-de-estudio` en Vercel). El dominio `zarzabiblia.com` está registrado y con DNS en Cloudflare: un registro A del ápex → `76.76.21.21` y un CNAME `www` → `cname.vercel-dns.com`, los dos sin proxy (nube gris); `www` redirige al ápex. `biblia.migueblanco.com` (CNAME `biblia` en la zona de migueblanco.com) sigue sirviendo la misma app para no perder lo que los usuarios guardaron en ese origen. Mientras el MVP no esté en `main`, el dominio sigue la rama `claude/estudiar`; las publicaciones de esa rama son de tipo Preview, así que `ANTHROPIC_API_KEY` tiene que estar también en Preview.
 
 ## Estructura
 

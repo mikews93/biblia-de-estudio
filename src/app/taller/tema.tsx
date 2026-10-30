@@ -483,7 +483,7 @@ function Contar({
               key={t.tipo}
               onPress={() => setTipo(t.tipo)}
               accessibilityRole="radio"
-              accessibilityState={{ checked: on }}
+              aria-checked={on}
               style={({ pressed }) => [
                 styles.tipo,
                 { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accentSoft : colors.surface },
@@ -574,7 +574,7 @@ function Opcion({ on, onPress, colors, disabled, children }: { on: boolean; onPr
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="radio"
-      accessibilityState={{ checked: on, disabled }}
+      aria-checked={on} aria-disabled={disabled}
       style={({ pressed }) => [
         styles.opcion,
         { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accentSoft : colors.surface },

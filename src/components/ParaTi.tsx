@@ -145,7 +145,7 @@ function Versiculo({ r, books, colors }: { r: ParaTi; books: Book[]; colors: Col
             disabled={unido || !texto}
             style={({ pressed }) => [styles.small, { backgroundColor: unido ? colors.accentSoft : colors.accent }, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityState={{ disabled: unido }}
+            aria-disabled={unido}
           >
             {unido ? <CheckIcon color={colors.accent} size={15} strokeWidth={2.4} /> : <PrayIcon color={colors.surface} size={15} strokeWidth={2} />}
             <Text style={{ color: unido ? colors.accent : colors.surface, fontWeight: '700', fontSize: 13 }}>

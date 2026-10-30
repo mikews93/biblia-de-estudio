@@ -135,7 +135,7 @@ export function Segmented<T extends string>({ options, value, onChange }: { opti
             key={key}
             onPress={() => onChange(key)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
+            aria-selected={on}
             style={[styles.segment, on && { backgroundColor: colors.surface, boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }]}
           >
             <Text style={{ color: on ? colors.text : colors.muted, fontWeight: '700', fontSize: 13.5 }}>{label}</Text>

@@ -1,6 +1,6 @@
 """Páginas estáticas por capítulo para que Google pueda leer la Biblia sin ejecutar JavaScript.
 
-Uso (después de `expo export`): python3 pipeline/seo_pages.py [dist] [https://biblia.migueblanco.com]
+Uso (después de `expo export`): python3 pipeline/seo_pages.py [dist] [https://zarzabiblia.com]
 
 Escribe dist/<libro>/<capítulo>/index.html con el texto de la RV1909 dentro de #root (la app lo
 reemplaza al cargar), título, descripción, URL canónica y enlaces al capítulo anterior y siguiente.
@@ -30,7 +30,7 @@ def slug(name):
     return re.sub(r"[^a-z0-9]+", "-", n).strip("-")
 
 
-def page(shell, *, title, description, url, body):
+def page(shell, *, title, description, url, body, extra=""):
     head = (
         f"<title>{html.escape(title)}</title>\n"
         f'    <meta name="description" content="{html.escape(description)}" />\n'
@@ -39,7 +39,7 @@ def page(shell, *, title, description, url, body):
         f'    <meta property="og:description" content="{html.escape(description)}" />\n'
         f'    <meta property="og:url" content="{url}" />\n'
         f'    <meta property="og:type" content="article" />\n'
-        f'    <meta property="og:locale" content="es_ES" />\n    {STYLE}'
+        f'    <meta property="og:locale" content="es_ES" />\n    {extra}{STYLE}'
     )
     out = re.sub(r"<title>.*?</title>", lambda _: head, shell, count=1, flags=re.S)
     return out.replace('<div id="root"></div>', f'<div id="root"><main class="seo">{body}</main></div>', 1)
@@ -47,7 +47,7 @@ def page(shell, *, title, description, url, body):
 
 def main():
     dist = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "dist"
-    site = (sys.argv[2] if len(sys.argv) > 2 else "https://biblia.migueblanco.com").rstrip("/")
+    site = (sys.argv[2] if len(sys.argv) > 2 else "https://zarzabiblia.com").rstrip("/")
     shell = (dist / "index.html").read_text(encoding="utf-8")
     # La app sin contenido queda en app.html: vercel.json manda allí las rutas que no tienen página propia
     (dist / "app.html").write_text(shell, encoding="utf-8")
@@ -96,6 +96,23 @@ def main():
         + "</nav>",
     )
     (dist / "index.html").write_text(root, encoding="utf-8")
+
+    # La invitación a Zarza (/i/CODIGO, src/app/i/[codigo].tsx): vercel.json la sirve con esta página para que
+    # WhatsApp y las demás apps muestren una tarjeta de invitación y no la de la portada. No va al sitemap.
+    invitar = "https://zarzabiblia.com"
+    (dist / "invitar.html").write_text(
+        page(
+            shell,
+            title="Te invitan a leer la Biblia en Zarza",
+            description="Una Biblia de estudio gratis, en español: griego y hebreo, audio, planes y lectura en compañía. "
+            "Únete con este enlace y quedan como amigos.",
+            url=f"{invitar}/",
+            body="<h1>Te invitan a leer la Biblia en Zarza</h1><p>Una Biblia de estudio gratis, en español.</p>",
+            extra=f'<meta name="robots" content="noindex" />\n    <meta property="og:image" content="{invitar}/logo512.png" />\n    '
+            '<meta property="og:site_name" content="Zarza" />\n    ',
+        ),
+        encoding="utf-8",
+    )
 
     sitemap = "".join(f"<url><loc>{u}</loc></url>" for u in urls)
     (dist / "sitemap.xml").write_text(

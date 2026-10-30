@@ -66,7 +66,7 @@ export default function AvisarGrupos({ evento }: { evento: Evento }) {
                 onPress={() => cambiar(g.id)}
                 disabled={guardando !== null}
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: on }}
+                aria-checked={on}
                 style={({ pressed }) => [
                   styles.chip,
                   { borderColor: on ? colors.warm : colors.border, backgroundColor: on ? colors.warmSoft : colors.surface },

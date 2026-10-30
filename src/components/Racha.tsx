@@ -13,6 +13,7 @@ import { diasLabel, fechaLocal, siguienteHito, sumarDias } from '@/lib/rachaText
 import { avance, selloPorId, sellosPara, useSellos } from '@/lib/sellos';
 import { Colors, serif } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { useTranquila } from '@/lib/tranquila';
 
 type Props = { racha: Racha & { dias: string[] }; colors: Colors; onHoy?: () => void };
 
@@ -39,7 +40,11 @@ function estadoTexto(r: Racha) {
 }
 
 /** La tarjeta de la racha: el número, los últimos siete días, cómo va hoy y la próxima insignia. */
-export function RachaTarjeta({ racha, colors, onHoy }: Props) {
+export function RachaTarjeta(p: Props) {
+  return useTranquila() ? null : <Tarjeta {...p} />;
+}
+
+function Tarjeta({ racha, colors, onHoy }: Props) {
   const hoy = fechaLocal();
   const hechos = new Set(racha.dias);
   const libres = new Set(racha.descansos);
@@ -168,7 +173,11 @@ export function RachaTarjeta({ racha, colors, onHoy }: Props) {
 }
 
 /** Las insignias de la racha, en fila: las ganadas en el tono cálido; las demás, con lo que falta. */
-export function RachaInsignias({ colors }: { colors: Colors }) {
+export function RachaInsignias(p: { colors: Colors }) {
+  return useTranquila() ? null : <Insignias {...p} />;
+}
+
+function Insignias({ colors }: { colors: Colors }) {
   const estado = useSellos();
   const lista = sellosPara().filter((s) => s.familia === 'devocional');
   return (
@@ -198,7 +207,13 @@ export function RachaInsignias({ colors }: { colors: Colors }) {
 }
 
 /** La racha en una pastilla: la llama y el número. */
-export function RachaChip({ dias, hecha, colors, claro }: { dias: number; hecha: boolean; colors: Colors; claro?: boolean }) {
+type ChipProps = { dias: number; hecha: boolean; colors: Colors; claro?: boolean };
+
+export function RachaChip(p: ChipProps) {
+  return useTranquila() ? null : <Chip {...p} />;
+}
+
+function Chip({ dias, hecha, colors, claro }: ChipProps) {
   const tinta = claro ? colors.surface : colors.warm;
   return (
     <View

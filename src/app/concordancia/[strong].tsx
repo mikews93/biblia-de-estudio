@@ -266,7 +266,7 @@ function Filters({
                 key={g.key}
                 onPress={() => onGloss(g.key)}
                 accessibilityRole="button"
-                accessibilityState={{ selected: on }}
+                aria-selected={on}
                 accessibilityLabel={`${g.key}, ${g.count} veces`}
                 style={({ pressed, hovered }: Hover) => [
                   styles.chip,
@@ -301,7 +301,7 @@ function Filters({
                 key={id}
                 onPress={() => onBook(id)}
                 accessibilityRole="button"
-                accessibilityState={{ selected: on }}
+                aria-selected={on}
                 accessibilityLabel={`${b?.name ?? id}: ${count} veces`}
                 style={({ pressed, hovered }: Hover) => [
                   styles.bookRow,

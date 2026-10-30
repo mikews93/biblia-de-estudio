@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
 
+import { siglaDe } from './enVersion';
 import { Herramienta, Source, askStudy } from './estudio';
+import { conVersion, versionPodcast } from './podcastVersion';
+import { useSettings } from './theme';
 
 // Resultado de las herramientas de un capítulo (pódcast, tarjetas, mapa mental). El servidor guarda la de cada
 // capítulo para todos; además se guarda en el dispositivo para abrirla sin esperar ni pedirla otra vez.
@@ -10,16 +13,45 @@ type Saved = { text: string; sources: Source[]; created: number };
 
 const key = (tool: Herramienta, book: string, chapter: number) => `herramienta.${tool}.${book}.${chapter}`;
 
-export function useHerramienta(tool: Herramienta, book: string, chapter: number) {
-  return useGuardado(key(tool, book, chapter), { book, chapter, herramienta: tool });
+/** Con «version», la herramienta en esa versión (solo el pódcast la tiene: ver src/lib/podcastVersion.ts). */
+export function useHerramienta(tool: Herramienta, book: string, chapter: number, version = 'rv1909') {
+  return useGuardado(conVersion(key(tool, book, chapter), version), {
+    book,
+    chapter,
+    herramienta: tool,
+    ...(version !== 'rv1909' && { version }),
+  });
 }
 
-/** El relato o el guion del pódcast de «La historia de una palabra». */
-export function usePalabraIA(palabra: string, tool: 'relato' | 'podcast') {
-  return useGuardado(`palabra.${tool}.${palabra}`, { palabra, ...(tool === 'podcast' && { herramienta: 'podcast' as const }) });
+/** El relato o el guion del pódcast de «La historia de una palabra»; el pódcast, en «version». */
+export function usePalabraIA(palabra: string, tool: 'relato' | 'podcast', version = 'rv1909') {
+  const conVersionDelPodcast = tool === 'podcast' && version !== 'rv1909';
+  return useGuardado(conVersionDelPodcast ? `palabra.${tool}.${palabra}.${version}` : `palabra.${tool}.${palabra}`, {
+    palabra,
+    ...(tool === 'podcast' && { herramienta: 'podcast' as const }),
+    ...(conVersionDelPodcast && { version }),
+  });
 }
 
-type Pedido = { book?: string; chapter?: number; palabra?: string; herramienta?: Herramienta };
+export type VersionPodcast = {
+  /** La versión libre en que está el pódcast. */
+  id: string;
+  sigla: string;
+};
+
+/** En qué versión suena el pódcast para quien lee la versión elegida en los ajustes. */
+export function useVersionPodcast(): VersionPodcast {
+  const { settings } = useSettings();
+  const id = versionPodcast(settings.version);
+  const [sigla, setSigla] = useState<Record<string, string>>({ rv1909: 'RV1909', pdt: 'PDT' });
+  useEffect(() => {
+    if (sigla[id]) return;
+    siglaDe(id).then((s) => s && setSigla((m) => ({ ...m, [id]: s })));
+  }, [id, sigla]);
+  return { id, sigla: sigla[id] ?? id.toUpperCase() };
+}
+
+type Pedido = { book?: string; chapter?: number; palabra?: string; herramienta?: Herramienta; version?: string };
 
 function useGuardado(storageKey: string, pedido: Pedido) {
   const [text, setText] = useState('');

@@ -201,6 +201,15 @@ export const PersonIcon = (p: Props) => (
   </Line>
 );
 
+/** Persona con un «+»: invitar a alguien a Zarza. */
+export const InviteIcon = (p: Props) => (
+  <Line {...p}>
+    <Circle cx={10} cy={8.5} r={3.6} />
+    <Path d="M3.5 20c.8-3.6 3.3-5.8 6.5-5.8 1.4 0 2.7.4 3.8 1.2" />
+    <Path d="M18 13.5v6M15 16.5h6" />
+  </Line>
+);
+
 /** Campana: recordatorios y notificaciones. */
 export const BellIcon = (p: Props) => (
   <Line {...p}>

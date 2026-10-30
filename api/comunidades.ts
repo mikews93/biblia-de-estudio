@@ -26,6 +26,7 @@ import { authJs, esProveedor, Externo, NOMBRE, paginaVuelta, Proveedor, proveedo
 import { downloadPhoto, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
 import { CIRCULO_SCHEMA, circuloActions } from './_circulo';
 import { CUIDAR_SCHEMA, cuidarActions } from './_cuidar';
+import { ERRORES_SCHEMA, erroresActions } from './_errores';
 import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
 import { type Aviso, notifyUser, PUSH_SCHEMA } from './_push';
@@ -166,6 +167,8 @@ alter table usuarios add column if not exists fotos_n int not null default 0;
 alter table usuarios add column if not exists racha int not null default 0;
 alter table usuarios add column if not exists racha_vence date;
 alter table usuarios add column if not exists servicio int not null default 0;
+-- Quién le pasó a la persona su enlace de invitación a Zarza (/i/CODIGO), para contarle cuántos se unieron.
+alter table usuarios add column if not exists invitado_por uuid references usuarios on delete set null;
 -- Cada quien puede silenciar los avisos de un grupo sin salir de él.
 alter table miembros add column if not exists avisos boolean not null default true;
 create table if not exists cuentas_externas (
@@ -351,7 +354,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA + ERRORES_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -1447,8 +1450,11 @@ const actions: Record<string, Handler> = {
     const [{ nuevos }] = await sql<{ nuevos: number }[]>`
       select count(*)::int as nuevos from versiculos_enviados v
       where v.para = ${user.id} and not v.visto and not ${blocked(sql, user.id, sql`v.de`)}`;
+    const invitados = await sql`
+      select id, nombre, foto from usuarios where invitado_por = ${user.id} order by creado desc limit 50`;
     return {
       codigo,
+      invitados,
       versiculosNuevos: nuevos,
       bloqueadas,
       compartirLecturas: compartir,
@@ -1485,6 +1491,32 @@ const actions: Record<string, Handler> = {
       }
     }
     return { id: target, relacion: await relation(sql, user.id, target) };
+  },
+
+  // El enlace de invitación a Zarza (/i/CODIGO): quien se une con él queda como amigo de quien lo compartió, sin
+  // solicitud de por medio, porque compartir el enlace ya es la invitación. Solo se cuenta como su invitado la
+  // primera vez (y nunca a uno mismo); si ya eran amigos, no se avisa de nuevo.
+  async aceptarInvitacion({ sql, body, request }) {
+    const user = await auth(sql, request);
+    const host = await personByCode(sql, body.codigo);
+    if (host.id === user.id) throw new Fail('Este es tu propio enlace');
+    const [ok] = await sql`select 1 from usuarios where id = ${host.id} and not ${blocked(sql, user.id, host.id)}`;
+    if (!ok) throw new Fail('Esa persona ya no está en la comunidad', 404);
+    const before = await relation(sql, user.id, host.id);
+    const updated = await sql`
+      update amistades set aceptada = true where (de = ${user.id} and para = ${host.id}) or (de = ${host.id} and para = ${user.id}) returning 1`;
+    if (!updated.length) await sql`insert into amistades (de, para, aceptada) values (${host.id}, ${user.id}, true) on conflict do nothing`;
+    const [nuevo] = await sql`
+      update usuarios set invitado_por = ${host.id} where id = ${user.id} and invitado_por is null returning 1`;
+    if (before !== 'amigos') {
+      await notifyUser(sql, host.id, {
+        title: nuevo ? `${user.nombre} se unió a Zarza con tu invitación` : `${user.nombre} aceptó tu invitación`,
+        body: 'Ya son amigos: verán lo que cada uno lee y comparte.',
+        url: `/comunidades/persona/${user.id}`,
+        tag: `amistad-${user.id}`,
+      });
+    }
+    return { id: host.id, nombre: host.nombre, relacion: await relation(sql, user.id, host.id) };
   },
 
   async responderAmistad({ sql, body, request }) {
@@ -1626,6 +1658,17 @@ Object.assign(actions, parejaActions({ auth, fail: (message, status) => new Fail
 // «Zarza para Iglesias» (api/_iglesias.ts) y «Cuidar Zarza» (api/_cuidar.ts), con la misma cuenta.
 Object.assign(actions, iglesiaActions({ auth, fail: (message, status) => new Fail(message, status) }));
 Object.assign(actions, cuidarActions({ auth, fail: (message, status) => new Fail(message, status), books }));
+// «Fallos de la app» (api/_errores.ts): «errorApp» llega sin cuenta; verlos en /cuidar pide ser cuidador.
+Object.assign(
+  actions,
+  erroresActions({
+    cuidador: async (sql, request) => {
+      const yo = await auth(sql, request);
+      if (!esCuidador(yo.correo)) throw new Fail('Solo quienes cuidan Zarza pueden ver esto.', 403);
+    },
+    fail: (message, status) => new Fail(message, status),
+  }),
+);
 // «Círculo de solteros» (api/_circulo.ts): sus acciones empiezan por «circulo» (y las de /cuidar, por «cuidar»).
 Object.assign(actions, circuloActions({ auth, fail: (message, status) => new Fail(message, status) }));
 

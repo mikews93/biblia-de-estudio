@@ -15,6 +15,7 @@ import { createCipheriv, createECDH, createHmac, createPrivateKey, randomBytes, 
 import type postgres from 'postgres';
 
 import type { Aviso } from '../src/lib/avisosTexto';
+import { enSilencio, localNow } from '../src/lib/avisosTexto';
 
 type Sql = ReturnType<typeof postgres>;
 
@@ -23,7 +24,7 @@ export type Suscripcion = { endpoint: string; p256dh: string; auth: string };
 export type Vapid = { publicKey: string; privateKey: string; subject: string };
 
 const PUSH_HOSTS = ['fcm.googleapis.com', 'push.services.mozilla.com', 'notify.windows.com', 'push.apple.com'];
-const SUBJECT = process.env.VAPID_SUBJECT ?? 'https://biblia.migueblanco.com';
+const SUBJECT = process.env.VAPID_SUBJECT ?? 'https://zarzabiblia.com';
 
 // usuario_id sin clave foránea: /api/notificaciones crea esta tabla aunque aún no existan las de la comunidad.
 // Al borrar una cuenta, /api/comunidades suelta sus suscripciones.
@@ -54,7 +55,9 @@ alter table suscripciones add column if not exists despertar_dias int not null d
 alter table suscripciones add column if not exists despertar_enviado date;
 alter table suscripciones add column if not exists pospuesto timestamptz;
 alter table suscripciones add column if not exists racha boolean not null default true;
-alter table suscripciones add column if not exists racha_enviado date;`;
+alter table suscripciones add column if not exists racha_enviado date;
+alter table suscripciones add column if not exists silencio_desde int;
+alter table suscripciones add column if not exists silencio_hasta int;`;
 
 const EXPO_TOKEN = /^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,200}\]$/;
 
@@ -232,9 +235,11 @@ export async function sendMany(sql: Sql, subs: Suscripcion[], aviso: Aviso) {
 /** Aviso de la comunidad para una persona, en todos sus dispositivos que los aceptan. Nunca lanza. */
 export async function notifyUser(sql: Sql, userId: string, aviso: Aviso) {
   try {
-    const subs = await sql<Suscripcion[]>`
-      select endpoint, p256dh, auth from suscripciones where usuario_id = ${userId} and comunidad`;
-    await sendMany(sql, subs, aviso);
+    const subs = await sql<(Suscripcion & { zona: string; silencio_desde: number | null; silencio_hasta: number | null })[]>`
+      select endpoint, p256dh, auth, zona, silencio_desde, silencio_hasta from suscripciones where usuario_id = ${userId} and comunidad`;
+    // En su horario de silencio no se manda: la persona lo verá al abrir la app.
+    const now = new Date();
+    await sendMany(sql, subs.filter((s) => !enSilencio(localNow(s.zona, now).minutos, s.silencio_desde, s.silencio_hasta)), aviso);
   } catch (err) {
     console.error('aviso', err);
   }

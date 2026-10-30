@@ -60,7 +60,7 @@ export function ComponerPeticion({
                   key={g.id}
                   onPress={() => setElegido(g.id)}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
+                  aria-checked={on}
                   style={[styles.chip, { borderColor: on ? colors.accent : colors.border }, on && { backgroundColor: colors.accentSoft }]}
                 >
                   <Text style={{ color: on ? colors.accent : colors.text, fontWeight: on ? '700' : '600', fontSize: 14 }}>{g.nombre}</Text>
@@ -87,7 +87,7 @@ export function ComponerPeticion({
       <Pressable
         onPress={() => setAnonima((a) => !a)}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: anonima }}
+        aria-checked={anonima}
         style={styles.check}
         testID="sin-mi-nombre"
       >

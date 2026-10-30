@@ -8,7 +8,9 @@ import { router } from 'expo-router';
 import { useEffect } from 'react';
 
 import { useAvisos } from './avisos';
+import { enSilencio } from './avisosTexto';
 import { HORA_RACHA, Racha, rachaMessage, rachaParaAvisos } from './rachaTexto';
+import { useTranquila } from './tranquila';
 
 const TIPO = 'racha';
 
@@ -30,8 +32,10 @@ async function programar(racha: Racha, activo: boolean) {
 }
 
 export function useAvisoRacha(racha: Racha) {
-  const { avisos, ready } = useAvisos();
-  const activo = avisos.racha !== false;
+  const { avisos, ready, silencio } = useAvisos();
+  const tranquila = useTranquila();
+  // Ni en «Lectura tranquila» ni si las ocho de la noche caen en el horario de silencio
+  const activo = avisos.racha !== false && !tranquila && !(silencio.activo && enSilencio(HORA_RACHA, silencio.desde, silencio.hasta));
   useEffect(() => {
     if (ready) programar(racha, activo).catch(() => {});
   }, [racha.actual, racha.vence, activo, ready]); // eslint-disable-line react-hooks/exhaustive-deps

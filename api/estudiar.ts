@@ -51,6 +51,7 @@ import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
 import { original } from '../src/lib/original';
 import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabras';
+import { conVersion, versionPodcast } from '../src/lib/podcastVersion';
 import { PREPARADAS } from '../src/lib/preguntasPreparadas';
 
 // Lo que se guarda para todos (el primer estudio de un pasaje, las herramientas) se paga una vez: va con el mejor modelo.
@@ -606,7 +607,7 @@ async function frecuenteDe(id: number, libro: string, capitulo: number) {
 }
 
 // Si la base de datos falla, la herramienta se genera igual: guardar es una ayuda, no un requisito.
-async function savedTool(herramienta: Guardada, libro: string, capitulo: number): Promise<Saved | null> {
+async function savedTool(herramienta: Guardada | string, libro: string, capitulo: number): Promise<Saved | null> {
   try {
     const s = await db();
     if (!s) return null;
@@ -619,7 +620,7 @@ async function savedTool(herramienta: Guardada, libro: string, capitulo: number)
   }
 }
 
-async function saveTool(herramienta: Guardada, libro: string, capitulo: number, saved: Saved) {
+async function saveTool(herramienta: Guardada | string, libro: string, capitulo: number, saved: Saved) {
   try {
     const s = await db();
     if (!s) return;
@@ -906,7 +907,7 @@ type Lexico = { strong: string; lema: string; glosa: string; definicion: string 
 
 const PALABRA_SYSTEM = `
 
-Ahora cuentas «la historia de una palabra»: cómo una palabra del texto original recorre la Biblia. Recibes la entrada del léxico breve de STEPBible (Tyndale House, en inglés), cuántas veces y dónde aparece según la concordancia de la app, y una selección de pasajes con la forma original, su glosa y el texto de la Reina-Valera 1909.
+Ahora cuentas «la historia de una palabra»: cómo una palabra del texto original recorre la Biblia. Recibes la entrada del léxico breve de STEPBible (Tyndale House, en inglés), cuántas veces y dónde aparece según la concordancia de la app, y una selección de pasajes con la forma original, su glosa y el texto de la Reina-Valera 1909 (u otra versión, si se dice).
 
 Reglas de la historia:
 - Cuenta lo que muestran los pasajes y cítalos; cada momento se apoya en versículos concretos de la lista.
@@ -947,7 +948,7 @@ async function usesDoc(title: string, uses: Use[], biblia: Biblia) {
   const blocks = await Promise.all(
     uses.map(async ([ref, form, gloss]) => {
       const label = biblia.label(ref);
-      return { text: `${label}: ${form} «${gloss}». RV1909: ${await biblia.refText(ref)}`, meta: { label, ref } };
+      return { text: `${label}: ${form} «${gloss}». ${biblia.version.abbr}: ${await biblia.refText(ref)}`, meta: { label, ref } };
     }),
   );
   return doc(title, blocks);
@@ -988,7 +989,7 @@ async function palabraSources(p: PalabraEnTema, biblia: Biblia) {
       },
     ]),
   );
-  docs.push(await usesDoc(`Pasajes con ${p.nombre} (${p.original}), con la forma original, su glosa y la RV1909`, repartir(uses, PALABRA_USES), biblia));
+  docs.push(await usesDoc(`Pasajes con ${p.nombre} (${p.original}), con la forma original, su glosa y la ${biblia.version.abbr}`, repartir(uses, PALABRA_USES), biblia));
   if (p.pareja && pareja.length) {
     const otro = p.hebreo ? 'griego del Nuevo Testamento' : 'hebreo del Antiguo Testamento';
     docs.push(
@@ -1061,7 +1062,11 @@ async function palabraPost(request: Request, body: Body) {
   ) {
     return badRequest('Pedido no válido');
   }
-  const tool = body.herramienta === 'podcast' ? 'palabra-podcast' : 'palabra';
+  if (body.version !== undefined && typeof body.version !== 'string') return badRequest('Versión no válida');
+  // El relato es el mismo para todos, con la RV1909; el pódcast, uno por versión libre (src/lib/podcastVersion.ts).
+  const version = await lectura(body.herramienta === 'podcast' ? versionPodcast(body.version) : undefined);
+  if (!version) return badRequest('Versión no válida');
+  const tool = body.herramienta === 'podcast' ? conVersion('palabra-podcast', version.id) : 'palabra';
   if (!body.nueva) {
     const saved = await savedTool(tool, palabra.id, 0);
     if (saved) {
@@ -1072,8 +1077,7 @@ async function palabraPost(request: Request, body: Body) {
   if (denied) return denied;
 
   const books = await load<Book[]>('books.json');
-  // La historia de una palabra es la misma para todos: siempre con la RV1909.
-  const docs = await palabraSources(palabra, new Biblia(request, (await lectura(undefined))!, books));
+  const docs = await palabraSources(palabra, new Biblia(request, version, books));
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     {
       role: 'user',
@@ -1083,7 +1087,8 @@ async function palabraPost(request: Request, body: Body) {
       ],
     },
   ];
-  return streamAnswer(request, docs, messages, SYSTEM + PALABRA_SYSTEM, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true);
+  const system = SYSTEM + PALABRA_SYSTEM + versionSystem(version);
+  return streamAnswer(request, docs, messages, system, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true);
 }
 
 /** La conversación después del primer mensaje: respuestas de la IA y preguntas de la persona, alternadas. */
@@ -1246,9 +1251,14 @@ export async function POST(request: Request) {
     return badRequest('Herramienta no válida');
   }
   if (body.nueva !== undefined && (typeof body.nueva !== 'boolean' || !herramienta)) return badRequest('Pedido no válido');
-  // Las herramientas (pódcast, tarjetas, mapa) se guardan por capítulo para todos: siempre con la RV1909.
-  const version = await lectura(herramienta ? undefined : body.version);
+  // Las herramientas (tarjetas, mapa…) se guardan por capítulo para todos: siempre con la RV1909. El pódcast, en la
+  // versión libre que lee la persona (o una libre de lenguaje actual si la suya tiene derechos): uno por versión.
+  if (body.version !== undefined && typeof body.version !== 'string') return badRequest('Versión no válida');
+  const version = await lectura(
+    herramienta === 'podcast' ? versionPodcast(body.version) : herramienta ? undefined : body.version,
+  );
   if (!version) return badRequest('Versión no válida');
+  const guardada = herramienta === 'podcast' ? conVersion(herramienta, version.id) : herramienta;
 
   // Una pregunta frecuente del capítulo: la respuesta es la misma para todos y se guarda como el estudio.
   let frecuente: { texto: string; versiculo: number | null } | null = null;
@@ -1285,7 +1295,7 @@ export async function POST(request: Request) {
   }
 
   if ((herramienta || clave) && !body.nueva) {
-    const saved = herramienta ? await savedTool(herramienta, book.id, chapter) : await savedStudy(clave!);
+    const saved = guardada ? await savedTool(guardada, book.id, chapter) : await savedStudy(clave!);
     if (saved) {
       return ndjson([
         ...saved.fuentes.map((f) => ({ type: 'source', ...f })),
@@ -1360,7 +1370,7 @@ export async function POST(request: Request) {
     system,
     compartido ? MODEL : MODEL_PROPIO,
     async (saved) => {
-      if (herramienta) await saveTool(herramienta, book.id, chapter, saved);
+      if (guardada) await saveTool(guardada, book.id, chapter, saved);
       else if (clave) await saveStudy(clave, saved);
     },
     investiga ? biblia : undefined,

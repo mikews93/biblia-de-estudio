@@ -4,7 +4,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import PodcastView from '@/components/PodcastView';
-import { usePalabraIA } from '@/lib/herramientas';
+import { usePalabraIA, useVersionPodcast } from '@/lib/herramientas';
 import { palabraAudioId, palabraHref, palabraPorId, palabrasHref } from '@/lib/palabras';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -28,7 +28,8 @@ export default function PalabraPodcast() {
 function Podcast({ id }: { id: string }) {
   const palabra = palabraPorId(id)!;
   const colors = useColors();
-  const tool = usePalabraIA(palabra.id, 'podcast');
+  const version = useVersionPodcast();
+  const tool = usePalabraIA(palabra.id, 'podcast', version.id);
   const title = `La historia de ${palabra.nombre}`;
   return (
     <>
@@ -40,9 +41,10 @@ function Podcast({ id }: { id: string }) {
         kicker="PÓDCAST · LA HISTORIA DE UNA PALABRA"
         subtitle={`Ana y Tomás siguen ${palabra.nombre} por la Biblia`}
         tool={tool}
+        version={version}
         recorded={false}
         palabra={palabra.id}
-        waiting={`Escribiendo la conversación con el léxico, la concordancia y la RV1909…`}
+        waiting={`Escribiendo la conversación con el léxico, la concordancia y la ${version.sigla}…`}
         header={
           <Pressable
             onPress={() => navigate(() => router.push(palabraHref(palabra.id) as never), 'back')}
@@ -56,7 +58,7 @@ function Podcast({ id }: { id: string }) {
             </Text>
           </Pressable>
         }
-        disclaimer="Guion preparado con IA solo a partir del léxico breve y la concordancia de STEPBible (Tyndale House, CC BY 4.0) y de la Reina-Valera 1909. Los números llevan a la fuente de cada idea."
+        disclaimer={`Guion preparado con IA solo a partir del léxico breve y la concordancia de STEPBible (Tyndale House, CC BY 4.0) y de la ${version.sigla}. Los números llevan a la fuente de cada idea.`}
       />
     </>
   );

@@ -230,7 +230,6 @@ export default function VerseImage({ verse: dado, onClose, inicial }: Props) {
       key={label}
       onPress={onPress}
       accessibilityRole="radio"
-      accessibilityState={{ checked: on }}
       aria-checked={on}
       style={[styles.chip, { borderColor: on ? colors.warm : colors.border }, on && { backgroundColor: colors.warmSoft }, extra]}
     >
@@ -246,7 +245,6 @@ export default function VerseImage({ verse: dado, onClose, inicial }: Props) {
         onPress={() => elegirFondo(f)}
         accessibilityRole="radio"
         accessibilityLabel={`Fondo ${f.name}`}
-        accessibilityState={{ checked: on }}
         aria-checked={on}
         style={styles.thumbWrap}
       >
@@ -313,7 +311,7 @@ export default function VerseImage({ verse: dado, onClose, inicial }: Props) {
                     key={t.id}
                     onPress={() => setTab(t.id)}
                     accessibilityRole="tab"
-                    accessibilityState={{ selected: on }}
+                    aria-selected={on}
                     style={[styles.tab, on && { backgroundColor: colors.surface }]}
                   >
                     <Text style={{ color: on ? colors.text : colors.muted, fontWeight: on ? '700' : '500' }}>{t.label}</Text>
@@ -345,7 +343,6 @@ export default function VerseImage({ verse: dado, onClose, inicial }: Props) {
                       onPress={() => elegirLetra(l)}
                       accessibilityRole="radio"
                       accessibilityLabel={`Letra ${l.name}`}
-                      accessibilityState={{ checked: on }}
                       aria-checked={on}
                       style={[styles.font, { borderColor: on ? colors.warm : colors.border }, on && { backgroundColor: colors.warmSoft }]}
                     >
@@ -428,7 +425,6 @@ export default function VerseImage({ verse: dado, onClose, inicial }: Props) {
                           key={o.palabra + o.glosa}
                           onPress={() => setOriginal(on ? null : o)}
                           accessibilityRole="radio"
-                          accessibilityState={{ checked: on }}
                           aria-checked={on}
                           accessibilityLabel={`${o.translit}, ${o.glosa}`}
                           style={[styles.word, { borderColor: on ? colors.warm : colors.border }, on && { backgroundColor: colors.warmSoft }]}
@@ -535,7 +531,6 @@ function PublishToCommunity({
       key={label}
       onPress={onPress}
       accessibilityRole="radio"
-      accessibilityState={{ checked: on }}
       aria-checked={on}
       style={[styles.chip, { borderColor: on ? colors.accent : colors.border }, on && { backgroundColor: colors.accentSoft }]}
     >

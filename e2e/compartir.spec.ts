@@ -100,6 +100,8 @@ test('una ocasión trae sus versículos, su fondo y su dedicatoria, y la IA busc
   await conSesion(page, cuenta);
   await page.addInitScript(() => window.localStorage.setItem('permiso-ia', 'si'));
   await page.goto('/');
+  // Desde Hoy se llega por «Todo en Zarza»
+  await page.getByText('Todo en Zarza', { exact: true }).click();
   await page.getByText('Para alguien', { exact: true }).click();
   await expect(page.getByText('¿A quién le hace falta hoy un versículo?')).toBeVisible();
 

@@ -120,7 +120,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
                 onPress={() => setTab(key)}
                 style={[styles.tab, tab === key && { borderBottomColor: colors.accent }]}
                 accessibilityRole="tab"
-                accessibilityState={{ selected: tab === key }}
+                aria-selected={tab === key}
               >
                 <Text style={{ color: tab === key ? colors.text : colors.muted, fontWeight: '600' }}>{label}</Text>
               </Pressable>

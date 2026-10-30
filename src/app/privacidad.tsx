@@ -12,7 +12,7 @@ import {
 } from '@/components/icons';
 
 // La política de privacidad que piden las tiendas (App Store y Google Play), también en
-// https://biblia.migueblanco.com/privacidad. Si cambia lo que la app guarda o a quién lo envía, hay que cambiarla aquí
+// https://zarzabiblia.com/privacidad. Si cambia lo que la app guarda o a quién lo envía, hay que cambiarla aquí
 // y en las fichas de las tiendas (etiquetas de privacidad y «Seguridad de los datos»).
 const ACTUALIZADA = '25 de octubre de 2026';
 
@@ -24,6 +24,8 @@ const PARTES: Parte[] = [
       'La Biblia, los planes, el interlineal, los comentarios y el audio se usan sin cuenta.',
       'Lo que haces sin cuenta (notas, subrayados, progreso, ajustes) se queda solo en tu dispositivo.',
       'No hay anuncios, no vendemos datos y no usamos herramientas de analítica ni de seguimiento de terceros.',
+      'Si algo se rompe en la app, nos llega un aviso con el error, la pantalla y la versión, para arreglarlo. No lleva tu cuenta, tu nombre ni lo que escribiste, y se borran correos y teléfonos antes de guardarlo.',
+      'Si usas «Reportar un problema» en Acerca de Zarza, guardamos lo que escribes, la pantalla y la versión. Tu correo, solo si lo pones para que te respondamos.',
     ],
   },
   {
@@ -105,7 +107,7 @@ const PARTES: Parte[] = [
     puntos: [
       'La cuenta vive en Neon (base de datos) y Vercel (servidor y fotos), con conexión cifrada.',
       'En «Tu cuenta», «Borrar mi cuenta» borra al instante tu cuenta, tus datos sincronizados, tus publicaciones, tus comentarios y tu foto.',
-      'Para cualquier pregunta sobre tus datos, escríbenos a zarza@migueblanco.com.',
+      'Para cualquier pregunta sobre tus datos, escríbenos a privacidad@zarzabiblia.com.',
     ],
   },
 ];

@@ -40,7 +40,7 @@ export default function Guides({ group, admin }: { group: string; admin: boolean
         <View style={{ gap: 10 }}>
           {guides.map((g) => (
             <Card key={g.id}>
-              <Pressable onPress={() => setOpen(open === g.id ? null : g.id)} accessibilityRole="button" accessibilityState={{ expanded: open === g.id }}>
+              <Pressable onPress={() => setOpen(open === g.id ? null : g.id)} accessibilityRole="button" aria-expanded={open === g.id}>
                 <Text style={{ color: colors.muted, fontSize: 12 }}>
                   {g.autor} · {ago(g.creado)}
                 </Text>

@@ -14,7 +14,7 @@ describe('eventos', () => {
   it('limpia el código como lo escriba la persona', () => {
     expect(limpiarCodigo('abc 234')).toBe('ABC234');
     expect(limpiarCodigo('ABC-234')).toBe('ABC234');
-    expect(limpiarCodigo('https://biblia.migueblanco.com/evento/QWE789?x=1')).toBe('QWE789');
+    expect(limpiarCodigo('https://zarzabiblia.com/evento/QWE789?x=1')).toBe('QWE789');
     expect(codigoLegible('ABC234')).toBe('ABC 234');
   });
 

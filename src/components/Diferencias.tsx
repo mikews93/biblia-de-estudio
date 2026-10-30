@@ -194,7 +194,6 @@ export function WhyToggle({
       <Pressable
         onPress={() => setOpen(!open)}
         accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
         aria-expanded={open}
         style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
           styles.toggle,

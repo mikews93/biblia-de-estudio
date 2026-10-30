@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { EstadoAvisos, HORA_POR_DEFECTO } from './avisosTexto';
+import { EstadoAvisos, HORA_POR_DEFECTO, Silencio, SILENCIO_POR_DEFECTO } from './avisosTexto';
 import type { EstadoRacha } from './rachaTexto';
 import { DESPERTADOR_POR_DEFECTO, Despertador } from './despertarTexto';
 import { sessionKey } from './comunidad';
@@ -37,6 +37,8 @@ export type Ajustes = {
   avisos: Record<Tipo, boolean>;
   /** El despertador (src/lib/despertar.ts). En la web lo manda el servidor; en la app nativa, el teléfono. */
   despertar: Despertador;
+  /** Horas en que no llegan los avisos de la comunidad ni el de la racha (src/lib/avisosTexto.ts). */
+  silencio: Silencio;
   /** La persona cerró la invitación de la pantalla Hoy. */
   invitacionVista?: boolean;
 };
@@ -46,6 +48,7 @@ const DEFAULTS: Ajustes = {
   hora: HORA_POR_DEFECTO,
   avisos: { lectura: true, tarjetas: true, reto: true, racha: true, comunidad: true },
   despertar: DESPERTADOR_POR_DEFECTO,
+  silencio: SILENCIO_POR_DEFECTO,
 };
 
 let state: Ajustes = DEFAULTS;
@@ -63,6 +66,7 @@ function load() {
           ...saved,
           avisos: { ...DEFAULTS.avisos, ...saved.avisos },
           despertar: { ...DEFAULTS.despertar, ...saved.despertar },
+          silencio: { ...DEFAULTS.silencio, ...saved.silencio },
         };
       }
     })
@@ -169,6 +173,7 @@ async function save(sub: Suscripcion, next: Ajustes) {
     avisos: next.avisos,
     // En la app nativa el despertador suena desde el teléfono: el servidor no debe mandarlo otra vez.
     despertar: Platform.OS === 'web' ? next.despertar : { ...next.despertar, activo: false },
+    silencio: next.silencio,
     estado: lastEstado,
   });
 }
@@ -231,6 +236,7 @@ export async function revisar() {
       hora?: number;
       avisos?: Record<Tipo, boolean>;
       despertar?: { hora: number; dias: number } | null;
+      silencio?: { desde: number; hasta: number } | null;
     }>('leer', { endpoint: sub.endpoint });
     if (r.existe) {
       set({
@@ -238,6 +244,7 @@ export async function revisar() {
         hora: r.hora ?? state.hora,
         avisos: { ...state.avisos, ...r.avisos },
         despertar: r.despertar ? { ...state.despertar, ...r.despertar, activo: true } : state.despertar,
+        silencio: r.silencio ? { ...r.silencio, activo: true } : state.silencio,
       });
     }
     return;
@@ -281,16 +288,27 @@ export async function desactivar() {
 }
 
 /** Cambia la hora, qué avisos llegan o el despertador. Con las notificaciones activas, lo guarda también en el servidor. */
-export async function cambiar(patch: { hora?: number; avisos?: Partial<Record<Tipo, boolean>>; despertar?: Partial<Despertador> }) {
+export async function cambiar(patch: {
+  hora?: number;
+  avisos?: Partial<Record<Tipo, boolean>>;
+  despertar?: Partial<Despertador>;
+  silencio?: Partial<Silencio>;
+}) {
   await load();
   const prev = state;
-  const next = { ...state, ...patch, avisos: { ...state.avisos, ...patch.avisos }, despertar: { ...state.despertar, ...patch.despertar } };
+  const next = {
+    ...state,
+    ...patch,
+    avisos: { ...state.avisos, ...patch.avisos },
+    despertar: { ...state.despertar, ...patch.despertar },
+    silencio: { ...state.silencio, ...patch.silencio },
+  };
   set(next);
   if (!next.endpoint) return;
   try {
     await resave(next);
   } catch (e) {
-    set({ hora: prev.hora, avisos: prev.avisos, despertar: prev.despertar });
+    set({ hora: prev.hora, avisos: prev.avisos, despertar: prev.despertar, silencio: prev.silencio });
     throw e;
   }
 }

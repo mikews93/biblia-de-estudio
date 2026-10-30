@@ -233,7 +233,7 @@ function Pasos({ pasos, colors }: { pasos: { titulo: string; texto: string }[]; 
             key={p.titulo}
             onPress={() => setHechos(on ? hechos.filter((x) => x !== i) : [...hechos, i])}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: on }}
+            aria-checked={on}
             style={[styles.encPaso, { backgroundColor: colors.surface, borderColor: on ? colors.accent : colors.border }]}
           >
             <View style={[styles.check, { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accent : 'transparent' }]}>
@@ -463,7 +463,7 @@ function Adivinanza({
                   setBusy(null);
                 }}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: on }}
+                aria-checked={on}
                 style={({ pressed }) => [
                   styles.marca,
                   { borderColor: on ? colors.warm : colors.border, backgroundColor: on ? colors.warm : 'transparent' },

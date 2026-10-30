@@ -223,7 +223,7 @@ export async function drawLamina(l: Lamina, v: VerseToShare, look: ImageLook, to
   ctx.fillStyle = fondo.muted;
   ctx.font = `28px ${SANS}`;
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText('biblia.migueblanco.com', width / 2, height - 250);
+  ctx.fillText('zarzabiblia.com', width / 2, height - 250);
 
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('No se pudo crear la lámina'))), 'image/png'));
 }

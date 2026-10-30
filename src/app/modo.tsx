@@ -221,7 +221,7 @@ function Opcion({
         pressed && styles.pressed,
       ]}
       accessibilityRole="radio"
-      accessibilityState={{ checked: activo }}
+      aria-checked={activo}
       testID={testID}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

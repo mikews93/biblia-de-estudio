@@ -96,7 +96,7 @@ export default function ChapterCards() {
                   })
                 }
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: on || saved, disabled: saved }}
+                aria-checked={on || saved} aria-disabled={saved}
                 style={[
                   styles.card,
                   { backgroundColor: colors.surface, borderColor: on ? colors.accent : colors.border },

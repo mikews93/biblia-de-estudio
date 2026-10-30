@@ -80,7 +80,7 @@ function Item({ tool, strong, colors, index }: { tool: ChapterTool; strong?: boo
         onPressOut={() => spring(1)}
         style={styles.item}
         accessibilityRole={isSwitch ? 'switch' : 'button'}
-        accessibilityState={isSwitch ? { checked: on } : undefined}
+        aria-checked={isSwitch ? on : undefined}
         accessibilityLabel={tool.hint}
       >
         {(state) => {

@@ -31,6 +31,7 @@ import {
 } from '@/lib/taller';
 import { isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import EnlaceExportar from '@/components/EnlaceExportar';
 
 const fold = (s: string) =>
   s
@@ -263,6 +264,7 @@ export default function TallerScreen() {
           Los borradores se guardan mientras escribes, en este dispositivo y en tu cuenta si entraste. Al terminarlos pasan a
           «Mis sermones». Los encuentros se pueden enviar a tus grupos.
         </Text>
+        {ready && terminados.length + borradores.length > 0 && <EnlaceExportar texto="Guardar todos tus mensajes en un documento" />}
         {opciones && <OpcionesMensaje m={opciones} books={books} onElegir={(o) => elegir(opciones, o)} onClose={() => setOpciones(null)} />}
         {presentar && <ComoPresentar m={presentar} books={books} onClose={() => setPresentar(null)} />}
       </ScrollView>

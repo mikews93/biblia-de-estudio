@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { dailyMessage, EstadoAvisos, horaLabel, isDue, localNow, validZone } from './avisosTexto';
+import { dailyMessage, enSilencio, EstadoAvisos, horaLabel, isDue, localNow, validZone } from './avisosTexto';
 
 const all = { lectura: true, tarjetas: true, reto: true };
 const HOY = '2026-12-03';
@@ -98,4 +98,15 @@ it('horaLabel lo dice como la gente', () => {
   expect(horaLabel(750)).toEqual({ hora: '12:30', parte: 'de la tarde' });
   expect(horaLabel(21 * 60)).toEqual({ hora: '9:00', parte: 'de la noche' });
   expect(horaLabel(0)).toEqual({ hora: '12:00', parte: 'de la madrugada' });
+});
+
+describe('enSilencio', () => {
+  it('cubre un horario que cruza la medianoche y uno dentro del día', () => {
+    expect(enSilencio(23 * 60, 22 * 60, 7 * 60)).toBe(true);
+    expect(enSilencio(3 * 60, 22 * 60, 7 * 60)).toBe(true);
+    expect(enSilencio(7 * 60, 22 * 60, 7 * 60)).toBe(false);
+    expect(enSilencio(12 * 60, 9 * 60, 13 * 60)).toBe(true);
+    expect(enSilencio(14 * 60, 9 * 60, 13 * 60)).toBe(false);
+    expect(enSilencio(14 * 60, null, null)).toBe(false);
+  });
 });

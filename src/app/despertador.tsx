@@ -20,7 +20,7 @@ import { navigate } from '@/lib/transition';
 import { RITMO_DESPERTAR } from '@/lib/voces';
 
 const PRESETS = [5 * 60, 5 * 60 + 30, 6 * 60, 6 * 60 + 30, 7 * 60];
-const SITIO = 'https://biblia.migueblanco.com';
+const SITIO = 'https://zarzabiblia.com';
 
 /** Ajustes del despertador: hora, días y qué suena. La experiencia de la mañana está en /despertar. */
 export default function DespertadorScreen() {
@@ -122,7 +122,7 @@ export default function DespertadorScreen() {
               value={d.activo}
               disabled={save.busy}
               onValueChange={(v) => void update({ activo: v })}
-              trackColor={{ false: colors.border, true: dark ? '#E2A868' : '#A8641F' }}
+              trackColor={{ false: colors.border, true: dark ? '#E2A868' : '#94561A' }}
               thumbColor={colors.surface}
               {...(Platform.OS === 'web' ? ({ activeThumbColor: colors.surface } as object) : {})}
               accessibilityLabel="Despertador"
@@ -166,7 +166,7 @@ export default function DespertadorScreen() {
                   key={p}
                   onPress={() => update({ hora: p })}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: sel }}
+                  aria-checked={sel}
                   style={({ pressed }) => [
                     styles.preset,
                     { borderColor: sel ? colors.accent : colors.border, backgroundColor: sel ? colors.accentSoft : 'transparent' },
@@ -200,7 +200,7 @@ export default function DespertadorScreen() {
                   key={dia.bit}
                   onPress={() => toggleDia(dia.bit)}
                   accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on }}
+                  aria-checked={on}
                   accessibilityLabel={dia.nombre}
                   style={({ pressed }) => [
                     styles.day,
@@ -226,7 +226,7 @@ export default function DespertadorScreen() {
                 key={m.modo}
                 onPress={() => update({ modo: m.modo })}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: sel }}
+                aria-checked={sel}
                 style={({ pressed }) => [
                   styles.option,
                   i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },

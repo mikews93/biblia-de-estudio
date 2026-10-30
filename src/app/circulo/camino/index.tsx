@@ -149,7 +149,7 @@ function FilaEtapa({
       onPress={() => go(`/circulo/camino/${n}`)}
       disabled={!abierta}
       accessibilityRole="link"
-      accessibilityState={{ disabled: !abierta }}
+      aria-disabled={!abierta}
       style={({ pressed }) => [
         styles.fila,
         actual && abierta && shadow(colors),

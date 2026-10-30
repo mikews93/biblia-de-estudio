@@ -62,7 +62,7 @@ export default function MemoriaScreen() {
             onPress={() => setNivel(nv)}
             style={[styles.nivel, nivel === nv && { backgroundColor: colors.surface }]}
             accessibilityRole="tab"
-            accessibilityState={{ selected: nivel === nv }}
+            aria-selected={nivel === nv}
             testID={`nivel-${nv}`}
           >
             <Text style={{ color: nivel === nv ? colors.text : colors.muted, fontWeight: '800', fontSize: 15 }}>{nv === 1 ? '1 · Ordena' : '2 · De memoria'}</Text>
@@ -83,7 +83,7 @@ export default function MemoriaScreen() {
               onPress={() => elegir(m)}
               style={({ pressed }) => [styles.item, { backgroundColor: colors.surface, borderColor: activo ? colors.warm : colors.border }, pressed && styles.pressed]}
               accessibilityRole="button"
-              accessibilityState={{ selected: activo }}
+              aria-selected={activo}
             >
               <View style={[styles.corazon, { backgroundColor: ok ? colors.warm : colors.accentSoft }]}>
                 <HeartIcon color={ok ? colors.surface : colors.muted} size={16} />

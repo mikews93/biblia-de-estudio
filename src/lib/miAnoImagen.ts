@@ -154,6 +154,6 @@ export async function drawMiAno(t: Tarjeta): Promise<Blob> {
   ctx.fillStyle = fondo.muted;
   ctx.font = `28px ${SANS}`;
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText('biblia.migueblanco.com', cx, height - 250);
+  ctx.fillText('zarzabiblia.com', cx, height - 250);
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('No se pudo crear la imagen'))), 'image/png'));
 }

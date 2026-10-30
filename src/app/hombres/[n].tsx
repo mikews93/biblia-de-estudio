@@ -15,7 +15,7 @@ import { todayKey } from '@/lib/temporadas';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-const URL = 'https://biblia.migueblanco.com/hombres';
+const URL = 'https://zarzabiblia.com/hombres';
 
 /** Una semana de «Hombres de pie»: lectura, pasajes, preguntas a solas y el reto de la semana. */
 export default function SemanaHombresScreen() {
@@ -135,7 +135,7 @@ export default function SemanaHombresScreen() {
             onPress={() => marcarReto(semana.n, !reto)}
             disabled={!diario}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: reto }}
+            aria-checked={reto}
             style={[styles.fila, { marginTop: 14 }]}
           >
             <View style={[styles.box, { borderColor: reto ? colors.accent : colors.warm, backgroundColor: reto ? colors.accent : 'transparent' }]}>
