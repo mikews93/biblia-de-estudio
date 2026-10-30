@@ -1,0 +1,60 @@
+# Cada vez que se publica main, manda los cambios de pantallas y funciones a las apps ya instaladas (APK de prueba,
+# Google Play y App Store) con EAS Update, sin pasar por las tiendas. La app los baja al abrirse y los usa la vez
+# siguiente. Solo llega a las copias con la misma huella nativa (runtimeVersion «fingerprint» en app.json): si un
+# cambio toca módulos nativos o permisos, hace falta compilar otra vez con «App para tiendas».
+# Necesita el secreto EXPO_TOKEN, el mismo de app-tiendas.yml.
+name: Actualizar apps instaladas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'app.json'
+      - 'app.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'fingerprint.config.js'
+  workflow_dispatch:
+
+concurrency:
+  group: app-actualizar
+  cancel-in-progress: false
+
+jobs:
+  eas-update:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      # El google-services.json de Firebase cuenta en la huella nativa. Se baja de expo.dev (variable de tipo archivo
+      # GOOGLE_SERVICES_JSON) a .eas/.env/, que git ignora; sin él la actualización no le llegaría a ningún APK.
+      - name: Bajar google-services.json de EAS
+        run: |
+          eas env:pull --environment production --non-interactive --path "$RUNNER_TEMP/eas.env"
+          if [ -f .eas/.env/GOOGLE_SERVICES_JSON ]; then
+            echo "ZARZA_GOOGLE_SERVICES=$PWD/.eas/.env/GOOGLE_SERVICES_JSON" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No llegó GOOGLE_SERVICES_JSON de expo.dev; la actualización no coincidirá con los APK que lo traen."
+          fi
+      # Solo Android por ahora: iOS se suma cuando exista la app en el App Store.
+      - name: Publicar actualización
+        env:
+          EXPO_PUBLIC_API_URL: https://biblia.migueblanco.com
+        run: >
+          eas update --non-interactive
+          --channel production
+          --environment production
+          --platform android
+          --message "$(git log -1 --pretty=%s | cut -c1-200)"

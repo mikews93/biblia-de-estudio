@@ -57,3 +57,6 @@ playwright-report/
 pipeline/podcast/salida/
 comentarios-licencia/
 pipeline/ilustraciones/candidatas/
+
+# archivos que `eas env:pull` baja de expo.dev (google-services.json de Firebase)
+.eas/.env/
