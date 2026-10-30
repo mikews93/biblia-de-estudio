@@ -278,6 +278,13 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
     const parrafos = Array.from({ length: 40 }, (_, i) => `Párrafo ${i + 1} de la respuesta lenta: Dios ama al mundo.`);
     return { text: parrafos.join('\n\n'), cite: false, slow: true };
   }
+  // Una respuesta con una cita bien, una que no dice eso y otra que no existe, para la revisión de citas.
+  if (followUp?.includes('citas')) {
+    return {
+      text: 'Jesús le dice a Nicodemo «que ha dado á su Hijo unigénito» (Juan 3:16). También dice «el Señor es mi pastor, nada me faltará» (Juan 3:17), y lo repite en Juan 3:99.',
+      cite: false,
+    };
+  }
   if (followUp) return { text: `Respuesta simulada a «${followUp}».`, cite: true };
   // El estudio Profundo de Colosenses 3 con sus secciones, para el estudio en grupo de la lectura en vivo.
   if (first.includes('## Cómo avanza') && first.includes('Colosenses 3')) {

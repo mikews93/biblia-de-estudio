@@ -32,6 +32,7 @@ import { Mensaje, borradorParaIA, plantilla } from '@/lib/taller';
 import { guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import CitasRevisadas from '@/components/CitasRevisadas';
 
 export type Modo = TallerRequest['modo'];
 export type Paso = TallerRequest['paso'];
@@ -220,6 +221,9 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                     )}
                     {!!turn.sources?.length && (!busy || i < turns.length - 1) && (
                       <Sources sources={turn.sources} colors={colors} onOpen={open} />
+                    )}
+                    {!!turn.text && (!busy || i < turns.length - 1) && (
+                      <CitasRevisadas text={turn.text} sources={turn.sources} colors={colors} onOpen={open} />
                     )}
                   </View>
                 ),

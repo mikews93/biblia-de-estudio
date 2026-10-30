@@ -8,6 +8,7 @@ import { Markdown, Sources } from '@/components/StudyText';
 import { Source, askStudy } from '@/lib/estudio';
 import { Frecuente, MOTIVOS, Motivo, Pasaje, Senales, leerSenales, marcarAyudo, quitarRaro, reportarRaro } from '@/lib/senales';
 import { Colors, getSettings } from '@/lib/theme';
+import CitasRevisadas from '@/components/CitasRevisadas';
 
 type Props = {
   pasaje: Pasaje;
@@ -120,6 +121,7 @@ function FaqItem({ item, pasaje, colors, onOpen, onCite }: { item: Frecuente; pa
             <>
               <Markdown text={answer.text} colors={colors} sources={answer.sources} onCite={onCite} onOpenRef={onOpen} />
               {!busy && !!answer.sources.length && <Sources sources={answer.sources} colors={colors} onOpen={onOpen} />}
+              {!busy && <CitasRevisadas text={answer.text} sources={answer.sources} colors={colors} onOpen={onOpen} />}
             </>
           ) : error ? (
             <Pressable onPress={load} accessibilityRole="button">
