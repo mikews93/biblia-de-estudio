@@ -41,7 +41,7 @@ export const ENLACE_GITHUB: string | null = null;
  * Dónde cambia o cancela su aporte mensual quien siembra: el enlace de inicio de sesión del portal de cliente de
  * Stripe. Mientras sea null, se cancela escribiendo a CORREO_SOSTENER.
  */
-export const ENLACE_CANCELAR: string | null = null;
+export const ENLACE_CANCELAR: string | null = 'https://billing.stripe.com/p/login/fZu7sK81Sez5cMX1l9cEw00';
 export const CORREO_SOSTENER = 'zarza@migueblanco.com';
 
 /** Hay al menos una forma de aportar abierta. */
