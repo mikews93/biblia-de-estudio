@@ -51,7 +51,7 @@ jobs:
       # Solo Android por ahora: iOS se suma cuando exista la app en el App Store.
       - name: Publicar actualización
         env:
-          EXPO_PUBLIC_API_URL: https://biblia.migueblanco.com
+          EXPO_PUBLIC_API_URL: https://zarzabiblia.com
         run: >
           eas update --non-interactive
           --channel production

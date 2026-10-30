@@ -9,6 +9,7 @@ import type { Etapa } from './circulo';
 import { requireConnection } from './conexion';
 import { pedirPermisoIa } from './permisoIa';
 import { chapterHref as routeToChapter, verseHref } from './routes';
+import { origenCompartir } from './sitio';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
@@ -127,7 +128,7 @@ export const chapterHref = (book: string, chapter: number, verse?: number) =>
 
 /** Enlace de invitación que se comparte fuera de la app. */
 export function inviteUrl(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : (API || 'https://zarzabiblia.com');
+  const origin = origenCompartir();
   return `${origin}/unirse/${codigo}`;
 }
 

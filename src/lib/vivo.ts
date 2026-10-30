@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { sessionKey } from './comunidad';
+import { origenCompartir } from './sitio';
 import type { Juego, ModoRepaso, PreguntaRepaso } from './repaso';
 
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
@@ -100,7 +101,7 @@ export function cleanCode(input: string) {
 export const spacedCode = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
 
 export function liveUrl(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : API || 'https://zarzabiblia.com';
+  const origin = origenCompartir();
   return `${origin}/vivo/${codigo}`;
 }
 

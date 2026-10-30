@@ -4,6 +4,7 @@
 import { HighlightColor } from './highlights';
 import type { DatosImagen } from './compartir';
 import { api, type TipoGrupo } from './comunidad';
+import { origenCompartir } from './sitio';
 
 export type TipoPublicacion = 'lectura' | 'resaltado' | 'imagen' | 'pregunta' | 'reflexion';
 export type Audiencia = 'amigos' | 'todos';
@@ -108,7 +109,7 @@ export const getPerson = (usuario: string) =>
 
 /** Enlace para que alguien te agregue como amigo. */
 export function friendUrl(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : (process.env.EXPO_PUBLIC_API_URL || 'https://zarzabiblia.com');
+  const origin = origenCompartir();
   return `${origin}/amigo/${codigo}`;
 }
 

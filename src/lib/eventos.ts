@@ -15,6 +15,7 @@ import { requireConnection } from './conexion';
 import { type Book, getChapter } from './data';
 import { type PreguntaRepaso, parseRepaso } from './repaso';
 import { huella } from './sellos';
+import { origenCompartir } from './sitio';
 import { cambio, registrar } from './sincronia';
 import { ANUNCIOS, type Mensaje, type Pasaje, actualizarMensaje, anunciosDe, ideaCentral, tituloDe } from './taller';
 
@@ -99,9 +100,7 @@ export function limpiarCodigo(input: string) {
 /** «ABC234» → «ABC 234», para leerlo en voz alta o en la pantalla. */
 export const codigoLegible = (c: string) => `${c.slice(0, 3)} ${c.slice(3)}`;
 
-/** En la web, el mismo dominio; en el teléfono, la web publicada (como inviteUrl). */
-const origen = () => (typeof location !== 'undefined' ? location.origin : API || 'https://zarzabiblia.com');
-export const enlaceEvento = (codigo: string) => `${origen()}/evento/${codigo}`;
+export const enlaceEvento = (codigo: string) => `${origenCompartir()}/evento/${codigo}`;
 /** Sin «https://», para escribirlo a mano desde la pantalla de la iglesia. */
 export const enlaceCorto = (codigo: string) => enlaceEvento(codigo).replace(/^https?:\/\//, '');
 
