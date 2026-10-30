@@ -135,7 +135,7 @@ const PARTES: Parte[] = [
     titulo: 'Ley, quejas y contacto',
     puntos: [
       'Estos términos se rigen por las leyes de Colombia. Cualquier diferencia la resolverán los jueces competentes de Colombia, sin perjuicio de tus derechos como consumidor, incluido presentar una queja ante la Superintendencia de Industria y Comercio.',
-      'Antes de eso, escríbenos a hola@zarzabiblia.com: casi todo se arregla hablando.',
+      'Antes de eso, escríbenos a soporte@zarzabiblia.com: casi todo se arregla hablando.',
     ],
   },
 ];
