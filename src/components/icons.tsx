@@ -676,3 +676,12 @@ export const TopicIcon = (p: Props) => (
     <Circle cx={8.5} cy={8.5} r={1.4} />
   </Line>
 );
+
+/** Teléfono con una flecha hacia abajo: descargar la app de Android. */
+export const PhoneDownloadIcon = (p: Props) => (
+  <Line {...p}>
+    <Rect x={6} y={2.5} width={12} height={19} rx={2.2} />
+    <Path d="M12 7v7M9 11l3 3 3-3" />
+    <Path d="M10.5 18.5h3" />
+  </Line>
+);

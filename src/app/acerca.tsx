@@ -1,11 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { ArrowUpIcon, CheckIcon, CloudCheckIcon, CommentIcon, CopyIcon, DevicesIcon, FlagIcon, type IconProps, RefreshIcon } from '@/components/icons';
+import { ArrowUpIcon, CheckIcon, CloudCheckIcon, CommentIcon, CopyIcon, DevicesIcon, FlagIcon, type IconProps, PhoneDownloadIcon, RefreshIcon } from '@/components/icons';
+import { dispositivo, OFRECER_APK } from '@/lib/apk';
 import { reportarProblema } from '@/lib/errores';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import {
@@ -93,6 +94,26 @@ export default function AcercaScreen() {
       <Appear delay={40}>
         <EstadoCard colors={colors} estado={publicada === undefined ? undefined : estadoDe(c, publicada)} publicada={publicada} nativa={c.plataforma !== 'web'} onComprobar={comprobar} />
       </Appear>
+
+      {OFRECER_APK && dispositivo() !== 'iphone' && (
+        <Appear delay={55}>
+          <Pressable
+            onPress={() => router.push('/instalar' as never)}
+            accessibilityRole="link"
+            testID="acerca-instalar"
+            style={({ pressed }) => [styles.card, styles.android, { backgroundColor: colors.surface, borderColor: colors.border }, shadow(colors), pressed && { opacity: 0.8 }]}
+          >
+            <View style={[styles.estadoIcon, { backgroundColor: colors.accentSoft }]}>
+              <PhoneDownloadIcon color={colors.accent} size={22} />
+            </View>
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={[styles.estadoTitulo, { color: colors.text }]}>Zarza en tu Android</Text>
+              <Text style={[text.small, { color: colors.muted, lineHeight: 19 }]}>Descarga la app para tu teléfono, sin esperar a Google Play.</Text>
+            </View>
+            <Text style={{ color: colors.accent, fontSize: 22 }}>›</Text>
+          </Pressable>
+        </Appear>
+      )}
 
       <Appear delay={70}>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, shadow(colors)]}>
@@ -275,6 +296,7 @@ const styles = StyleSheet.create({
   icon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { fontFamily: serif, fontSize: 20, flex: 1 },
   estado: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  android: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   estadoIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   estadoTitulo: { fontSize: 16, fontWeight: '700' },
   actualizar: { alignSelf: 'flex-start', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 9, marginTop: 10 },
