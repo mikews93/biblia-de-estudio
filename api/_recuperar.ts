@@ -20,7 +20,7 @@ type Ctx = { sql: Sql; body: Json; request: Request };
 export const ENLACE_MINUTOS = 60;
 const POR_HORA = 3;
 const SITIO = 'https://zarzabiblia.com';
-const REMITENTE = 'Zarza <hola@zarzabiblia.com>';
+const REMITENTE = 'Zarza <soporte@zarzabiblia.com>';
 
 export const RECUPERAR_SCHEMA = `
 create table if not exists recuperar_clave (

@@ -62,7 +62,7 @@ describe.skipIf(!DB_URL)('/api/comunidades: recuperar la contraseña', () => {
     expect(r.status).toBe(200);
     expect(enviados).toHaveLength(1);
     expect(enviados[0].to).toEqual([rut.correo]);
-    expect(enviados[0].from).toBe('Zarza <hola@zarzabiblia.com>');
+    expect(enviados[0].from).toBe('Zarza <soporte@zarzabiblia.com>');
     const enlace = enlaceDe(enviados[0].text);
 
     expect((await call('enlaceClave', { enlace })).json).toEqual({ correo: rut.correo });
