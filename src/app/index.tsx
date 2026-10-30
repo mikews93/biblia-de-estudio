@@ -23,6 +23,7 @@ import {
   FlameIcon,
   type IconProps,
 } from '@/components/icons';
+import InvitacionSembrar from '@/components/InvitacionSembrar';
 import ParaTiHoy from '@/components/ParaTi';
 import PlanCard from '@/components/PlanCard';
 import HoyJovenes from '@/components/jovenes/HoyJovenes';
@@ -318,6 +319,10 @@ function Today() {
 
       <Appear delay={112}>
         <InvitacionCuenta chapters={chaptersRead} />
+      </Appear>
+
+      <Appear delay={113}>
+        <InvitacionSembrar chaptersRead={chaptersRead} colors={colors} />
       </Appear>
 
       {canNotify && avisos.ready && !avisos.endpoint && !avisos.invitacionVista && (
