@@ -75,6 +75,7 @@ import { abrirHilo } from '@/components/Promesas';
 import { hilosEn } from '@/lib/promesas';
 import { chrome, setChromeHidden, useAutoHide } from '@/lib/chrome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePantallaEncendida } from '@/lib/pantalla';
 
 export default function Reader() {
   const params = useLocalSearchParams<{ book: string; chapter: string; verse?: string; v?: string }>();
@@ -85,6 +86,7 @@ export default function Reader() {
 
   const colors = useColors();
   const { settings, update } = useSettings();
+  usePantallaEncendida(settings.pantallaEncendida);
   const catalog = useCatalog();
   const insets = useSafeAreaInsets();
   const autoHide = useAutoHide();

@@ -70,11 +70,13 @@ export type Settings = {
   compartirPreguntas: boolean;
   /** «Para ti» en Hoy: encendido, temas elegidos y ocultos (src/lib/paraTi.ts). Se decide en el dispositivo. */
   paraTi: AjustesParaTi;
+  /** Que la pantalla no se apague mientras se lee (src/lib/pantalla.ts). Al escuchar y presentar no se apaga nunca. */
+  pantallaEncendida: boolean;
 };
 
 export type Modo = 'general' | 'jovenes' | 'ninos';
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general', compartirPreguntas: true, paraTi: PARA_TI_INICIAL };
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general', compartirPreguntas: true, paraTi: PARA_TI_INICIAL, pantallaEncendida: true };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };

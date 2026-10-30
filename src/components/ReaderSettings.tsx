@@ -100,6 +100,12 @@ export default function ReaderSettings({ onClose }: { onClose: () => void }) {
           ['versiculo', 'Un versículo por línea'],
         ])}
 
+        <Text style={[styles.label, { color: colors.muted }]}>Pantalla al leer</Text>
+        {segment('pantallaEncendida', [
+          [true, 'Siempre encendida'],
+          [false, 'Se apaga sola'],
+        ])}
+
         <Pressable
           onPress={() => {
             onClose();

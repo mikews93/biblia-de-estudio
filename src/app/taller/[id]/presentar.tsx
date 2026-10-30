@@ -17,6 +17,7 @@ import { citasDeParte } from '@/lib/guion';
 import { codigoLegible, interactuarEvento, moverEvento, useMisEventos } from '@/lib/eventos';
 import { anunciosDe, enPasaje, ideaCentral, pasajeLabel, tituloDe, useTaller } from '@/lib/taller';
 import { sans, serif, useColors, useSettings } from '@/lib/theme';
+import { usePantallaEncendida } from '@/lib/pantalla';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -37,6 +38,7 @@ export default function PresentarScreen() {
   const [size, setSize] = useState(22);
   // El pasaje en la versión en que lees (las con derechos se piden en el momento), o la RV1909 si no se puede.
   const { settings } = useSettings();
+  usePantallaEncendida(true);
   const [shown, setShown] = useState(settings.version);
   const { abbr } = useVersion(shown);
   // La dinámica que se mandó a los teléfonos de la congregación, por parte.

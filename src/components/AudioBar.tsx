@@ -34,6 +34,7 @@ import { fixedInTransition, navigate } from '@/lib/transition';
 import { SPEAKERS } from '@/lib/podcast';
 
 import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, OriginalIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon, TalkIcon } from './audioIcons';
+import { usePantallaEncendida } from '@/lib/pantalla';
 
 const RATES = [1, 1.25, 1.5, 0.75];
 // En la lengua original también se puede ir a media velocidad, para repetir palabra por palabra.
@@ -50,6 +51,8 @@ const clock = (s: number) => {
 export default function AudioBar() {
   const audio = useAudio();
   const path = usePathname();
+  // Mientras se escucha, la pantalla no se apaga
+  usePantallaEncendida(audio.open);
 
   useEffect(() => setLocation(path), [path]);
 

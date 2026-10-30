@@ -419,3 +419,28 @@ test('en el teléfono, si la hoja se suelta a medio pasar vuelve sin parpadeo y 
   await expect(visible(page.getByRole('button', { name: 'Elegir libro y capítulo' }))).toHaveText('Juan 4');
   expect(await lector()).toBe(0);
 });
+
+test('la pantalla no se apaga al leer, salvo que se elija en los ajustes', async ({ page }) => {
+  // Un Wake Lock de mentira que cuenta los bloqueos activos
+  await page.addInitScript(() => {
+    const w = window as unknown as { bloqueos: number };
+    w.bloqueos = 0;
+    Object.defineProperty(navigator, 'wakeLock', {
+      value: {
+        request: async () => {
+          w.bloqueos++;
+          return { release: async () => void w.bloqueos--, addEventListener: () => {} };
+        },
+      },
+    });
+  });
+  const bloqueos = () => page.evaluate(() => (window as unknown as { bloqueos: number }).bloqueos);
+  await page.goto('/juan/1');
+  await expect.poll(bloqueos).toBeGreaterThan(0);
+
+  await visible(page.getByLabel('Ajustes de lectura')).click();
+  await visible(page.getByRole('button', { name: 'Se apaga sola' })).click();
+  await expect.poll(bloqueos).toBe(0);
+  await visible(page.getByRole('button', { name: 'Siempre encendida' })).click();
+  await expect.poll(bloqueos).toBeGreaterThan(0);
+});

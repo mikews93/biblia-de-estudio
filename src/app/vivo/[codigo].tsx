@@ -24,6 +24,7 @@ import { huella } from '@/lib/sellos';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { type PreguntaSala, type Sala, cleanCode, liveUrl, spacedCode, touchesByVerse, useSala, vivoApi } from '@/lib/vivo';
+import { usePantallaEncendida } from '@/lib/pantalla';
 
 type Open = null | 'pasaje' | 'pantalla' | 'personas' | 'invitar' | 'preguntas';
 /** La respuesta del estudio a una duda del grupo mientras se escribe (solo la ve quien guía). */
@@ -36,6 +37,7 @@ export default function SalaEnVivo() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
+  usePantallaEncendida(true);
   const { ready, usuario } = useAccount();
   const { sala, error, skew, apply } = useSala(codigo, ready && !!usuario);
   const { mensajes } = useTaller();
