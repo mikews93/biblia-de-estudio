@@ -179,6 +179,11 @@ export default function AccountForm({ mode }: { mode: Mode }) {
                     <Text style={{ color: longEnough ? colors.text : colors.muted, fontSize: 13 }}>Al menos 8 caracteres</Text>
                   </View>
                 )}
+                {!signingUp && (
+                  <Link href="/recuperar" style={[styles.forgot, { color: colors.accent }]}>
+                    ¿Olvidaste tu contraseña?
+                  </Link>
+                )}
               </View>
               <Button
                 label={signingUp ? 'Crear mi cuenta' : 'Entrar'}
@@ -281,6 +286,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 20 },
   show: { paddingHorizontal: 12, paddingVertical: 8 },
   hint: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 2 },
+  forgot: { alignSelf: 'flex-end', fontWeight: '600', fontSize: 13, paddingVertical: 2 },
   check: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   or: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   orLine: { flex: 1, height: StyleSheet.hairlineWidth },

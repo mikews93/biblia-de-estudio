@@ -2,15 +2,13 @@
 // código o su QR, tienen más preguntas a la IA al día.
 
 import { api, refreshGroups } from './comunidad';
-
-// En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
-const API = process.env.EXPO_PUBLIC_API_URL ?? '';
+import { origenCompartir } from './sitio';
 
 export type IglesiaPublica = { nombre: string; ciudad: string | null; codigo: string; lampara: number; miembros: number };
 
 /** El enlace que abre el QR de la iglesia. */
 export function enlaceIglesia(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : API || 'https://zarzabiblia.com';
+  const origin = origenCompartir();
   return `${origin}/iglesia/${codigo}`;
 }
 

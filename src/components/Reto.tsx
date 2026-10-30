@@ -28,6 +28,7 @@ import {
 } from '@/lib/planes';
 import { CELEBRATIONS, CalendarCell, Tint, calendarWeeks, focusDay, retoProgress, seasonTint } from '@/lib/retos';
 import { chapterHref } from '@/lib/routes';
+import { origenCompartir } from '@/lib/sitio';
 import { nextSeason, parseRetoId, seasonRun } from '@/lib/temporadas';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -566,7 +567,7 @@ function Company({
   colors: Colors;
 }) {
   const [copied, setCopied] = useState(false);
-  const origin = Platform.OS === 'web' && typeof location !== 'undefined' ? location.origin : 'https://zarzabiblia.com';
+  const origin = origenCompartir();
   const url = `${origin}/planes/${def.id}`;
   const message = `Te invito a hacer conmigo el reto «${def.title}»: un capítulo al día y una pregunta para pensar. ${url}`;
   const canShare = Platform.OS !== 'web' || (typeof navigator !== 'undefined' && 'share' in navigator);

@@ -15,12 +15,12 @@ import { Book, getBooks } from '@/lib/data';
 import { guardarDespertador, useDespertador } from '@/lib/despertar';
 import { DIAS, Despertador, ENTRE_SEMANA, ModoDespertar, TODOS_LOS_DIAS, diasLabel } from '@/lib/despertarTexto';
 import { todayKey, usePlans } from '@/lib/planes';
+import { origenCompartir } from '@/lib/sitio';
 import { Colors, getLastRead, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { RITMO_DESPERTAR } from '@/lib/voces';
 
 const PRESETS = [5 * 60, 5 * 60 + 30, 6 * 60, 6 * 60 + 30, 7 * 60];
-const SITIO = 'https://zarzabiblia.com';
 
 /** Ajustes del despertador: hora, días y qué suena. La experiencia de la mañana está en /despertar. */
 export default function DespertadorScreen() {
@@ -47,7 +47,7 @@ export default function DespertadorScreen() {
   const update = (patch: Partial<Despertador>) =>
     save.run(() => guardarDespertador(patch, { endpoint: d.endpoint, despertar: d }, lecturaTitulo ?? undefined));
   const { hora, parte } = horaLabel(d.hora);
-  const enlace = `${Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : SITIO}/despertar`;
+  const enlace = `${origenCompartir()}/despertar`;
 
   const copiar = async () => {
     await Clipboard.setStringAsync(enlace);
