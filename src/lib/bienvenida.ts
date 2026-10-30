@@ -29,10 +29,18 @@ export const SOBRE_VERSION: Record<string, string> = {
   rvg: 'Reina-Valera revisada por Gómez.',
   rv1865: 'La Reina-Valera de 1865.',
   blm: 'Traducción libre, en español actual.',
+  nbla: 'Fiel al original, en español actual. Necesita internet.',
+  ntv: 'Clara y natural, fácil de leer. Necesita internet.',
+  nvi: 'Equilibrada y muy usada. Necesita internet.',
+  lbla: 'Literal y precisa. Necesita internet.',
+  niv: 'En inglés. Necesita internet.',
 };
 
-/** En la bienvenida, las versiones libres van de la más actual a la más antigua (Mike, 2026-10-30). */
-export const ORDEN_VERSIONES = ['pdt', 'bes', 'blm', 'rvg', 'rv1909', 'rv1865'];
+/**
+ * En la bienvenida van primero las versiones actuales más leídas (NBLA, NTV…, con internet) y luego las libres de la
+ * más actual a la más antigua (Mike, 2026-10-30). La NIV, en inglés, va al final.
+ */
+export const ORDEN_VERSIONES = ['nbla', 'ntv', 'nvi', 'lbla', 'pdt', 'bes', 'blm', 'rvg', 'rv1909', 'rv1865', 'niv'];
 export const ordenBienvenida = <T extends { id: string }>(versiones: T[]) => {
   const pos = (id: string) => (ORDEN_VERSIONES.includes(id) ? ORDEN_VERSIONES.indexOf(id) : ORDEN_VERSIONES.length);
   return [...versiones].sort((a, b) => pos(a.id) - pos(b.id));

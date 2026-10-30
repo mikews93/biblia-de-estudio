@@ -52,8 +52,7 @@ export default function Bienvenida({ onDone }: { onDone: () => void }) {
   };
   const siguiente = () => (paso < PASOS - 1 ? setPaso(paso + 1) : terminar(true));
 
-  const libres = ordenBienvenida(versiones.filter((v) => !v.licensed));
-  const conDerechos = versiones.filter((v) => v.licensed);
+  const lista = ordenBienvenida(versiones);
 
   return (
     <Modal visible animationType="fade" onRequestClose={() => terminar(false)}>
@@ -83,7 +82,7 @@ export default function Bienvenida({ onDone }: { onDone: () => void }) {
                 <Text style={[styles.lead, { color: colors.muted }]}>Una Biblia para leer cada día y estudiar a fondo, gratis. Primero, ¿en qué versión quieres leer?</Text>
               </Appear>
               <Appear delay={60} style={styles.opciones}>
-                {libres.map((v) => (
+                {lista.map((v) => (
                   <Opcion
                     key={v.id}
                     on={settings.version === v.id}
@@ -94,11 +93,6 @@ export default function Bienvenida({ onDone }: { onDone: () => void }) {
                   />
                 ))}
               </Appear>
-              {conDerechos.length > 0 && (
-                <Text style={[styles.nota, { color: colors.muted }]}>
-                  {`También puedes leer ${conDerechos.map((v) => v.abbr).join(', ')} desde el lector, con internet.`}
-                </Text>
-              )}
             </>
           )}
 
