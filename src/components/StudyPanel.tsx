@@ -43,6 +43,7 @@ import { BOOK_SLUGS, chapterHref, verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 import StudyBackground from '@/components/StudyBackground';
 import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
+import CitasRevisadas from '@/components/CitasRevisadas';
 
 export { Markdown, Sources };
 
@@ -342,6 +343,9 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
                 <Sources sources={turn.sources} colors={colors} onOpen={open} />
               </Appear>
             )}
+            {!!turn.text && (busy ? i < turns.length - 1 : true) && (
+              <CitasRevisadas text={turn.text} sources={turn.sources} colors={colors} onOpen={open} />
+            )}
           </View>
         );
       })}
@@ -479,6 +483,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
                       <Sources sources={first.sources} colors={colors} onOpen={open} />
                     </Appear>
                   )}
+                  {(busy ? turns.length > 1 : true) && <CitasRevisadas text={first.text} sources={first.sources} colors={colors} onOpen={open} />}
                   {(busy ? turns.length > 1 : true) && context}
                   {signals}
                 </View>
@@ -569,7 +574,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
                   onPress={() => update({ compartirPreguntas: !settings.compartirPreguntas })}
                   hitSlop={8}
                   accessibilityRole="switch"
-                  accessibilityState={{ checked: settings.compartirPreguntas }}
+                  aria-checked={settings.compartirPreguntas}
                 >
                   <Text style={[styles.shareText, { color: colors.accent, fontWeight: '700' }]}>
                     {settings.compartirPreguntas ? 'No compartir' : 'Compartir'}
@@ -628,7 +633,7 @@ function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: E
               onPress={() => onChange(m.value)}
               style={({ pressed }) => [styles.mode, on && { backgroundColor: colors.accent }, pressed && !on && { opacity: 0.6 }]}
               accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               accessibilityLabel={`${m.label}: ${m.hint}`}
             >
               <IconText icon={m.icon} color={on ? colors.surface : colors.text} size={15}>

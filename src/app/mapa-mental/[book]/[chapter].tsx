@@ -56,7 +56,7 @@ export default function MindMapScreen() {
                   onPress={() => setAsList(l === 'Lista')}
                   style={[styles.toggleItem, on && { backgroundColor: colors.accent }]}
                   accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
+                  aria-selected={on}
                 >
                   <Text style={{ color: on ? colors.surface : colors.text, fontWeight: '600', fontSize: 13 }}>{l}</Text>
                 </Pressable>

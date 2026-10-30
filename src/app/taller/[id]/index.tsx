@@ -137,7 +137,7 @@ export default function MensajeScreen() {
                 key={s.step}
                 onPress={() => setStep(s.step)}
                 accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
+                aria-selected={on}
                 style={[styles.stepTab, on && { borderBottomColor: colors.accent }]}
               >
                 <Text style={{ color: on ? colors.text : colors.muted, fontWeight: '700' }}>{s.label}</Text>
@@ -540,7 +540,7 @@ function RevisarStep({ m, set, onReview }: StepProps & { onReview: () => void })
             key={r.id}
             onPress={() => toggle(r.id)}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: on }}
+            aria-checked={on}
             style={[styles.check, { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accentSoft : colors.surface }]}
           >
             <View style={[styles.box, { borderColor: colors.accent }, on && { backgroundColor: colors.accent }]}>

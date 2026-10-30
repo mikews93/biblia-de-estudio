@@ -557,7 +557,7 @@ function Apariciones({ ficha, books, colors, onVerse }: { ficha: Ficha; books: B
               onPress={() => setAbierto(on ? null : f.libro)}
               style={({ pressed }) => [styles.bookRow, pressed && styles.pressed]}
               accessibilityRole="button"
-              accessibilityState={{ expanded: on }}
+              aria-expanded={on}
             >
               <Text style={[styles.bookName, { color: colors.text }]} numberOfLines={1}>
                 {name(f.libro)}

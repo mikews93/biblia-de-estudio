@@ -93,7 +93,7 @@ export function OracionesVista() {
               key={k}
               onPress={() => setFiltro(k)}
               accessibilityRole="tab"
-              accessibilityState={{ selected: filtro === k }}
+              aria-selected={filtro === k}
               style={[styles.segmentItem, filtro === k && [styles.segmentOn, { backgroundColor: colors.surface }]]}
             >
               <Text style={{ color: filtro === k ? colors.text : colors.muted, fontWeight: filtro === k ? '700' : '600', fontSize: 13 }}>{label}</Text>

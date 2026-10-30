@@ -419,7 +419,7 @@ function Cell({
       style={styles.cell}
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={label}
-      accessibilityState={onPress ? { selected } : undefined}
+      aria-selected={onPress ? selected : undefined}
     >
       <View
         style={[

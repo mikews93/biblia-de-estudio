@@ -14,10 +14,15 @@ import { avance, porCelebrar, sellosPara, useSellos } from '@/lib/sellos';
 import { useServicio } from '@/lib/servicioUso';
 import { Colors, serif } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { useTranquila } from '@/lib/tranquila';
 
 const ir = (href: string) => navigate(() => router.push(href as never), 'forward');
 
-export function ServicioTarjeta({ colors }: { colors: Colors }) {
+export function ServicioTarjeta(p: { colors: Colors }) {
+  return useTranquila() ? null : <Tarjeta {...p} />;
+}
+
+function Tarjeta({ colors }: { colors: Colors }) {
   const s = useServicio();
   const [cielo, setCielo] = useState(false);
   const { nivel, siguiente } = s;
@@ -119,7 +124,11 @@ function Parte({
 }
 
 /** Las insignias de servicio, en fila. */
-export function ServicioInsignias({ colors }: { colors: Colors }) {
+export function ServicioInsignias(p: { colors: Colors }) {
+  return useTranquila() ? null : <Insignias {...p} />;
+}
+
+function Insignias({ colors }: { colors: Colors }) {
   const estado = useSellos();
   const lista = sellosPara().filter((s) => s.familia === 'servicio');
   return (
@@ -177,6 +186,10 @@ const VISTO = 'servicio-visto';
  * Mis sellos haya revisado lo de antes.
  */
 export function LuceroNuevo() {
+  return useTranquila() ? null : <LuceroQueLlega />;
+}
+
+function LuceroQueLlega() {
   const s = useServicio();
   const sellos = useSellos();
   const pathname = usePathname();

@@ -84,7 +84,7 @@ export default function SemanaScreen() {
       ))}
 
       <Appear delay={320} style={[styles.notas, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Pressable onPress={() => setNotas(!notas)} style={styles.notasHead} accessibilityRole="button" accessibilityState={{ expanded: notas }}>
+        <Pressable onPress={() => setNotas(!notas)} style={styles.notasHead} accessibilityRole="button" aria-expanded={notas}>
           <IconText icon={PencilIcon} color={colors.accent} size={15}>
             <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Tus notas del domingo</Text>
           </IconText>

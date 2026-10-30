@@ -39,7 +39,7 @@ export default function VocesPodcast() {
       <Pressable
         onPress={() => setAbierto((a) => !a)}
         accessibilityRole="button"
-        accessibilityState={{ expanded: abierto }}
+        aria-expanded={abierto}
         style={({ pressed }) => [styles.toggle, pressed && { opacity: 0.7 }]}
         testID="voces-podcast"
       >
@@ -58,7 +58,7 @@ export default function VocesPodcast() {
                   key={s}
                   onPress={() => setQuien(s)}
                   accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
+                  aria-selected={on}
                   style={[styles.tab, on && { backgroundColor: colors.accentSoft }]}
                 >
                   <Text style={{ color: on ? colors.text : colors.muted, fontWeight: '700', fontSize: 14 }}>

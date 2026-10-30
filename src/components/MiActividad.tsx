@@ -38,6 +38,8 @@ import { chapterHref } from '@/lib/routes';
 import { selloPorId, useSellos } from '@/lib/sellos';
 import { Colors, serif, useLastRead } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import Tranquila from '@/components/Tranquila';
+import { useTranquila } from '@/lib/tranquila';
 
 const ICONO: Record<TipoItem, (p: IconProps) => ReactNode> = {
   devocional: HeartIcon,
@@ -70,6 +72,7 @@ export default function MiActividad({ colors, onDevocional, onProfundo }: Props)
   const last = useLastRead();
   const [books, setBooks] = useState<Book[]>([]);
   const [mostrar, setMostrar] = useState(PAGINA);
+  const tranquila = useTranquila();
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
@@ -77,12 +80,12 @@ export default function MiActividad({ colors, onDevocional, onProfundo }: Props)
 
   const dias = useMemo(() => {
     const nombre = (id: string) => books.find((b) => b.id === id)?.name ?? id;
-    const ganados = Object.entries(sellos.ganados).flatMap(([id, g]) => {
+    const ganados = tranquila ? [] : Object.entries(sellos.ganados).flatMap(([id, g]) => {
       const s = selloPorId(id);
       return s ? [{ id, titulo: s.titulo, fecha: g.fecha }] : [];
     });
     return construirActividad({ registro, diario, resaltados, notas, oraciones, sellos: ganados, nombre });
-  }, [registro, diario, resaltados, notas, oraciones, sellos, books]);
+  }, [registro, diario, resaltados, notas, oraciones, sellos, books, tranquila]);
 
   const hoy = fechaLocal();
   const deHoy = resumenDe(dias.find((d) => d.fecha === hoy));
@@ -92,13 +95,21 @@ export default function MiActividad({ colors, onDevocional, onProfundo }: Props)
   return (
     <View>
       <Appear>
-        <RachaTarjeta racha={racha} colors={colors} onHoy={onDevocional} />
+        <Tranquila colors={colors} />
       </Appear>
 
-      <Appear delay={40}>
-        <Text style={[styles.seccion, { color: colors.muted }]}>INSIGNIAS DE LA RACHA</Text>
-        <RachaInsignias colors={colors} />
-      </Appear>
+      {!tranquila && (
+        <>
+          <Appear>
+            <RachaTarjeta racha={racha} colors={colors} onHoy={onDevocional} />
+          </Appear>
+
+          <Appear delay={40}>
+            <Text style={[styles.seccion, { color: colors.muted }]}>INSIGNIAS DE LA RACHA</Text>
+            <RachaInsignias colors={colors} />
+          </Appear>
+        </>
+      )}
 
       <Appear delay={70} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.kicker, { color: colors.accent }]}>HOY</Text>
@@ -116,14 +127,18 @@ export default function MiActividad({ colors, onDevocional, onProfundo }: Props)
         />
       </Appear>
 
-      <Appear delay={85}>
-        <ServicioTarjeta colors={colors} />
-      </Appear>
+      {!tranquila && (
+        <>
+          <Appear delay={85}>
+            <ServicioTarjeta colors={colors} />
+          </Appear>
 
-      <Appear delay={92}>
-        <Text style={[styles.seccion, { color: colors.muted }]}>INSIGNIAS DE SERVICIO</Text>
-        <ServicioInsignias colors={colors} />
-      </Appear>
+          <Appear delay={92}>
+            <Text style={[styles.seccion, { color: colors.muted }]}>INSIGNIAS DE SERVICIO</Text>
+            <ServicioInsignias colors={colors} />
+          </Appear>
+        </>
+      )}
 
       <Appear delay={100} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Calendario dias={dias} devocionales={new Set(racha.dias)} colors={colors} />
@@ -190,7 +205,7 @@ function Paso({
         pressed && { opacity: 0.7 },
       ]}
       accessibilityRole={hecho ? undefined : 'button'}
-      accessibilityState={{ checked: hecho }}
+      aria-checked={hecho}
       accessibilityLabel={`${titulo}: ${hecho ? 'hecho hoy' : 'pendiente'}`}
     >
       <View style={[styles.pasoIcono, { backgroundColor: hecho ? colors.warmSoft : colors.accentSoft }]}>

@@ -11,6 +11,7 @@ import { parseNoteKey, useNotes } from '@/lib/notas';
 import { verseHref } from '@/lib/routes';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import EnlaceExportar from '@/components/EnlaceExportar';
 
 type Filter = 'todo' | 'notas' | HighlightColor;
 
@@ -71,6 +72,7 @@ export default function MisNotas() {
           <IconText icon={LockIcon} color={colors.muted} size={13} style={{ marginTop: 20, justifyContent: 'center' }}>
             <Text style={[text.small, { color: colors.muted, flexShrink: 1 }]}>Tus notas y resaltados se guardan solo en este dispositivo.</Text>
           </IconText>
+          <EnlaceExportar />
         </>
       )}
       {editing && (

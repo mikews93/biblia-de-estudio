@@ -77,7 +77,7 @@ export default function Investigacion({ pasos, working, colors }: { pasos: Paso[
       <Pressable
         onPress={() => setOpen((o) => !o)}
         accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         style={({ pressed }) => [styles.toggle, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}
       >
         <SearchIcon color={colors.accent} size={13} strokeWidth={2.2} />

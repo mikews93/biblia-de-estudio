@@ -144,3 +144,16 @@ test.describe('Notificaciones en iPhone', () => {
     await expect(v(page.getByRole('button', { name: 'Activar notificaciones' }))).toHaveCount(0);
   });
 });
+
+test('el horario de silencio se elige y se recuerda', async ({ page }) => {
+  await page.goto('/notificaciones');
+  await page.getByRole('switch', { name: 'Horario de silencio' }).click();
+  const desde = page.getByTestId('silencio-desde');
+  const antes = await desde.textContent();
+  await page.getByRole('button', { name: 'Empezar media hora después' }).click();
+  await expect(desde).not.toHaveText(antes!);
+  await expect(page.getByText(/no llegan avisos de la comunidad ni el de la racha/)).toBeVisible();
+  const elegido = await desde.textContent();
+  await page.reload();
+  await expect(page.getByTestId('silencio-desde')).toHaveText(elegido!);
+});

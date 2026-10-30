@@ -71,7 +71,7 @@ export default function Prayer({ group }: { group: string }) {
           <Pressable
             onPress={() => toggle(p)}
             accessibilityRole="button"
-            accessibilityState={{ selected: p.yoOrando }}
+            aria-selected={p.yoOrando}
             style={[styles.pray, { borderColor: colors.accent }, p.yoOrando && { backgroundColor: colors.accent }]}
           >
             <IconText icon={p.yoOrando ? CheckIcon : PrayIcon} color={p.yoOrando ? colors.surface : colors.accent} size={14} gap={5}>

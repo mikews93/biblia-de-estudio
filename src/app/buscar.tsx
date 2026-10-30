@@ -352,7 +352,7 @@ export default function Search() {
               ]}
               accessibilityRole="button"
               accessibilityLabel={listening ? 'Dejar de escuchar' : 'Dictar la búsqueda'}
-              accessibilityState={{ selected: listening }}
+              aria-selected={listening}
             >
               <MicIcon color={listening ? colors.surface : colors.accent} />
             </Pressable>

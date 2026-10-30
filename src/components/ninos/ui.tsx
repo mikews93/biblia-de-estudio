@@ -18,7 +18,7 @@ export function BotonGrande({ label, onPress, disabled, kind = 'lleno', testID }
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      aria-disabled={disabled}
       testID={testID}
     >
       <Text style={{ color: lleno ? colors.surface : colors.warm, fontWeight: '800', fontSize: 18 }}>{label}</Text>

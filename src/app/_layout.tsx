@@ -10,10 +10,12 @@ import Celebracion from '@/components/Celebracion';
 import { LuceroNuevo } from '@/components/Servicio';
 import Confeti from '@/components/Confeti';
 import LlamaArranque from '@/components/LlamaArranque';
+import PantallaRota from '@/components/PantallaRota';
 import SincroniaCuenta from '@/components/Sincronia';
 import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
 import { init as initDownloads } from '@/lib/descargas';
+import { instalarAvisosDeErrores, seguirRuta } from '@/lib/errores';
 import { fixedInTransition } from '@/lib/transition';
 import { ESPACIO_NINOS, SettingsProvider, isDark, useColors, useSettings } from '@/lib/theme';
 
@@ -29,6 +31,19 @@ const fixedHeader = {
 
 // En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
 const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|circulo|iglesia|cuidar)(\/|$)/;
+
+// Los fallos se escuchan desde que carga el código, antes de la primera pantalla.
+instalarAvisosDeErrores();
+
+// Si una pantalla se rompe, se ve PantallaRota (con reintentar y volver a Hoy) y llega el aviso a /cuidar.
+export const ErrorBoundary = PantallaRota;
+
+/** Recuerda la pantalla abierta para decir dónde pasó un fallo (src/lib/errores.ts). */
+function RutaDeErrores() {
+  const path = usePathname();
+  useEffect(() => seguirRuta(path), [path]);
+  return null;
+}
 
 function GuardaNinos() {
   const path = usePathname();
@@ -133,6 +148,8 @@ function AppStack() {
           <Stack.Screen name="privacidad" options={{ title: 'Privacidad' }} />
           <Stack.Screen name="terminos" options={{ title: 'Términos' }} />
           <Stack.Screen name="acerca" options={{ title: 'Acerca de Zarza' }} />
+          <Stack.Screen name="todo" options={{ title: '' }} />
+          <Stack.Screen name="exportar" options={{ title: '' }} />
           <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
           <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
           <Stack.Screen name="iglesia/postular" options={{ title: 'Postular mi iglesia' }} />
@@ -182,6 +199,7 @@ function AppStack() {
       <LuceroNuevo />
       <Confeti />
       <GuardaNinos />
+      <RutaDeErrores />
       {Platform.OS !== 'web' && <LlamaArranque />}
       {Platform.OS === 'web' && (
         <>

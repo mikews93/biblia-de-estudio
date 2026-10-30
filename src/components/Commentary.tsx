@@ -134,7 +134,6 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
                 selected && { backgroundColor: colors.accent },
               ]}
               accessibilityRole={link ? 'link' : 'tab'}
-              accessibilityState={{ selected }}
               aria-selected={link ? undefined : selected}
               accessibilityHint={f.nota}
             >

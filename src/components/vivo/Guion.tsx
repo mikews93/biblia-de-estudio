@@ -192,7 +192,7 @@ export function BarraGuion({
       </View>
       {mensaje && p && (
         <>
-          <Pressable onPress={() => setNotas(!notas)} accessibilityRole="button" accessibilityState={{ expanded: notas }} hitSlop={6} style={styles.verNotas}>
+          <Pressable onPress={() => setNotas(!notas)} accessibilityRole="button" aria-expanded={notas} hitSlop={6} style={styles.verNotas}>
             <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>{notas ? 'Ocultar mis notas' : 'Mis notas de esta parte'}</Text>
             <Chevron color={colors.accent} size={14} />
           </Pressable>

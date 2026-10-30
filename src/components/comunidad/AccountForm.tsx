@@ -246,7 +246,7 @@ function Tabs({ mode, colors }: { mode: Mode; colors: Colors }) {
       <Pressable
         onPress={() => !on && navigate(() => router.replace(`/${to}`), 'fade')}
         accessibilityRole="tab"
-        accessibilityState={{ selected: on }}
+        aria-selected={on}
         style={[
           styles.tab,
           on &&

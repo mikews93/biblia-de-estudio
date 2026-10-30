@@ -26,6 +26,7 @@ import { authJs, esProveedor, Externo, NOMBRE, paginaVuelta, Proveedor, proveedo
 import { downloadPhoto, imageType, MAX_PHOTO_BYTES, removePhoto, storePhoto } from './_perfil';
 import { CIRCULO_SCHEMA, circuloActions } from './_circulo';
 import { CUIDAR_SCHEMA, cuidarActions } from './_cuidar';
+import { ERRORES_SCHEMA, erroresActions } from './_errores';
 import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
 import { type Aviso, notifyUser, PUSH_SCHEMA } from './_push';
@@ -353,7 +354,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA + ERRORES_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -1657,6 +1658,17 @@ Object.assign(actions, parejaActions({ auth, fail: (message, status) => new Fail
 // «Zarza para Iglesias» (api/_iglesias.ts) y «Cuidar Zarza» (api/_cuidar.ts), con la misma cuenta.
 Object.assign(actions, iglesiaActions({ auth, fail: (message, status) => new Fail(message, status) }));
 Object.assign(actions, cuidarActions({ auth, fail: (message, status) => new Fail(message, status), books }));
+// «Fallos de la app» (api/_errores.ts): «errorApp» llega sin cuenta; verlos en /cuidar pide ser cuidador.
+Object.assign(
+  actions,
+  erroresActions({
+    cuidador: async (sql, request) => {
+      const yo = await auth(sql, request);
+      if (!esCuidador(yo.correo)) throw new Fail('Solo quienes cuidan Zarza pueden ver esto.', 403);
+    },
+    fail: (message, status) => new Fail(message, status),
+  }),
+);
 // «Círculo de solteros» (api/_circulo.ts): sus acciones empiezan por «circulo» (y las de /cuidar, por «cuidar»).
 Object.assign(actions, circuloActions({ auth, fail: (message, status) => new Fail(message, status) }));
 

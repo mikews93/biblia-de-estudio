@@ -13,6 +13,7 @@ import { rachaParaAvisos } from '@/lib/rachaTexto';
 import { useCards } from '@/lib/tarjetas';
 import { getLastRead } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { useTranquila } from '@/lib/tranquila';
 
 /**
  * Sin interfaz: con las notificaciones activas, mantiene al día lo que el servidor sabe para el recordatorio
@@ -26,7 +27,9 @@ export default function AvisosSync() {
   const cards = useCards();
   const progress = useProgress();
   const r = useRacha();
-  const racha = rachaParaAvisos(r);
+  // En «Lectura tranquila» no se avisa de la racha
+  const tranquila = useTranquila();
+  const racha = tranquila ? undefined : rachaParaAvisos(r);
   const rachaJson = JSON.stringify(racha ?? null);
   const { llave, ready } = useAccount();
   const [books, setBooks] = useState<Book[]>([]);

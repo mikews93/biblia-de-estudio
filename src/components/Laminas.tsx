@@ -148,7 +148,7 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
                 movida && styles.levantada,
               ]}
               accessibilityRole="button"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               accessibilityLabel={`Lámina ${j + 1}: ${nombreLamina[l.tipo]}${on ? ', elegida' : ''}`}
             >
               <View style={[styles.ring, { borderColor: on ? colors.warm : 'transparent' }]}>
@@ -237,7 +237,6 @@ export default function Laminas({ verse, look, laminas, onChange, alto }: Props)
                     key={g}
                     onPress={() => editar('texto', g)}
                     accessibilityRole="radio"
-                    accessibilityState={{ checked: on }}
                     aria-checked={on}
                     style={[styles.chip, { borderColor: on ? colors.warm : colors.border }, on && { backgroundColor: colors.warmSoft }]}
                   >

@@ -201,7 +201,7 @@ function EntryCard({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityState={{ expanded: on }}
+      aria-expanded={on}
       style={({ pressed }) => [
         styles.card,
         {

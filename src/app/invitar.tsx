@@ -107,7 +107,7 @@ export default function Invitar() {
 
           <Appear delay={100}>
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, shadow(colors)]}>
-              <Pressable onPress={() => setQr((v) => !v)} style={styles.row} accessibilityRole="button" accessibilityState={{ expanded: qr }}>
+              <Pressable onPress={() => setQr((v) => !v)} style={styles.row} accessibilityRole="button" aria-expanded={qr}>
                 <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
                   <QrIcon color={colors.accent} size={20} />
                 </View>

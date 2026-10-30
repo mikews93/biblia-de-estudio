@@ -1,6 +1,6 @@
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import CirculosIglesia from '@/components/circulo/CirculosIglesia';
@@ -11,6 +11,7 @@ import {
   ChevronDownIcon,
   ChurchIcon,
   ExternalIcon,
+  FlameIcon,
   FlagIcon,
   HeartIcon,
   type IconProps,
@@ -20,6 +21,9 @@ import {
 } from '@/components/icons';
 import { useAccount } from '@/lib/comunidad';
 import {
+  FalloApp,
+  marcarReporte,
+  type ReporteApp,
   FrecuenteCuidada,
   IglesiaCuidada,
   PasajePendiente,
@@ -33,6 +37,8 @@ import {
   cambiarIglesia,
   descartar,
   detallePasaje,
+  fallos,
+  marcarFallo,
   marcarRevisado,
   nuevaIglesia,
   proponer,
@@ -47,21 +53,38 @@ import { MOTIVOS } from '@/lib/senales';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-type Tab = 'avisos' | 'preguntas' | 'iglesias';
+type Tab = 'avisos' | 'preguntas' | 'iglesias' | 'fallos';
+const TABS: Tab[] = ['avisos', 'preguntas', 'iglesias', 'fallos'];
 
 /**
  * «Cuidar Zarza»: lo que revisan quienes cuidan la app (CUIDADORES en Vercel). Los avisos de «Algo suena raro», las
- * preguntas anónimas que ya hicieron cinco o más personas y las iglesias anfitrionas.
+ * preguntas anónimas que ya hicieron cinco o más personas, las iglesias anfitrionas y los fallos de la app.
  */
 export default function Cuidar() {
   const colors = useColors();
   const { ready, usuario, cuidador } = useAccount();
   const [data, setData] = useState<Resumen | null>(null);
   const [books, setBooks] = useState<Map<string, Book>>(new Map());
-  const [tab, setTab] = useState<Tab>('avisos');
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<Tab>(TABS.find((t) => t === params.tab) ?? 'avisos');
+  const [errores, setErrores] = useState<FalloApp[]>([]);
+  const [reportes, setReportes] = useState<ReporteApp[]>([]);
   const load = useAction();
 
-  const refresh = () => load.run(async () => setData(await resumen()));
+  const refresh = () =>
+    load.run(async () => {
+      const [r, f] = await Promise.all([resumen(), fallos().catch(() => ({ errores: [], reportes: [] }))]);
+      setData(r);
+      setErrores(f.errores);
+      setReportes(f.reportes ?? []);
+    });
+  const refreshFallos = () =>
+    fallos()
+      .then((f) => {
+        setErrores(f.errores);
+        setReportes(f.reportes ?? []);
+      })
+      .catch(() => {});
   useEffect(() => {
     getBooks().then((b) => setBooks(new Map(b.map((x) => [x.id, x]))));
   }, []);
@@ -97,6 +120,7 @@ export default function Cuidar() {
     { value: 'preguntas', label: 'Preguntas', icon: PeopleIcon, n: data.pasajes.length },
     // Lo que espera a alguien: postulaciones nuevas e iglesias que se pausaron solas.
     { value: 'iglesias', label: 'Iglesias', icon: ChurchIcon, n: data.postulaciones.length + data.iglesias.filter((i) => i.pausa).length },
+    { value: 'fallos', label: 'Fallos', icon: FlameIcon, n: errores.filter((e) => !e.resuelto).length + reportes.filter((r) => !r.resuelto).length },
   ];
 
   return (
@@ -117,7 +141,7 @@ export default function Cuidar() {
               key={t.value}
               onPress={() => setTab(t.value)}
               accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               style={({ pressed }) => [styles.tab, on && { backgroundColor: colors.accent }, pressed && !on && { opacity: 0.6 }]}
             >
               <t.icon color={on ? colors.surface : colors.text} size={15} />
@@ -165,6 +189,8 @@ export default function Cuidar() {
           )}
         </>
       )}
+
+      {tab === 'fallos' && <Fallos errores={errores} reportes={reportes} colors={colors} onDone={refreshFallos} />}
 
       {tab === 'iglesias' && <Iglesias iglesias={data.iglesias} postulaciones={data.postulaciones} colors={colors} onDone={refresh} />}
     </ScrollView>
@@ -250,7 +276,7 @@ function PasajeCard({ pasaje, name, colors, onDone }: { pasaje: PasajePendiente;
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: open ? colors.accent : colors.border }, shadow(colors)]}>
-      <Pressable onPress={toggle} accessibilityRole="button" accessibilityState={{ expanded: open }} style={styles.cardHead}>
+      <Pressable onPress={toggle} accessibilityRole="button" aria-expanded={open} style={styles.cardHead}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>{titulo}</Text>
           <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
@@ -514,6 +540,154 @@ function IglesiaFila({ iglesia, colors, onDone }: { iglesia: IglesiaCuidada; col
   );
 }
 
+const PLATAFORMA = { web: 'Web', android: 'Android', ios: 'iPhone' } as const;
+const ORIGEN = { pantalla: 'Una pantalla', global: 'Fuera de las pantallas', promesa: 'Una tarea de fondo' } as const;
+
+/** «hace 5 min», «hace 3 h», «hace 2 días». */
+function hace(iso: string) {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (min < 1) return 'ahora';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
+}
+
+/** Los fallos que mandó la app (src/lib/errores.ts), los más recientes primero; los resueltos van al final. */
+function Fallos({ errores, reportes, colors, onDone }: { errores: FalloApp[]; reportes: ReporteApp[]; colors: Colors; onDone: () => void }) {
+  const abiertos = errores.filter((e) => !e.resuelto);
+  const resueltos = errores.filter((e) => e.resuelto);
+  const porLeer = reportes.filter((r) => !r.resuelto);
+  return (
+    <>
+      {reportes.length > 0 && (
+        <>
+          <Text style={[styles.kicker, { color: colors.muted }]}>LO QUE NOS CONTARON</Text>
+          {[...porLeer, ...reportes.filter((r) => r.resuelto)].map((r, i) => (
+            <Appear key={r.id} delay={i * 30}>
+              <Reporte reporte={r} colors={colors} onDone={onDone} />
+            </Appear>
+          ))}
+          <Text style={[styles.kicker, { color: colors.muted, marginTop: 12 }]}>FALLOS AUTOMÁTICOS</Text>
+        </>
+      )}
+      <Text style={[text.small, { color: colors.muted }]}>
+        Lo que se rompió en los teléfonos y en la web, sin datos de nadie. Los avisos iguales se juntan; si un fallo resuelto vuelve en otra versión, se abre otra
+        vez.
+      </Text>
+      {abiertos.length ? (
+        abiertos.map((e, i) => (
+          <Appear key={e.firma} delay={i * 30}>
+            <Fallo fallo={e} colors={colors} onDone={onDone} />
+          </Appear>
+        ))
+      ) : (
+        <Empty colors={colors} icon={CheckIcon} title="Sin fallos abiertos" body="Cuando algo se rompa en la app de alguien, aparecerá aquí con la pantalla y la versión." />
+      )}
+      {resueltos.length > 0 && (
+        <>
+          <Text style={[styles.kicker, { color: colors.muted, marginTop: 12 }]}>RESUELTOS</Text>
+          {resueltos.map((e) => (
+            <Fallo key={e.firma} fallo={e} colors={colors} onDone={onDone} />
+          ))}
+        </>
+      )}
+    </>
+  );
+}
+
+function Fallo({ fallo, colors, onDone }: { fallo: FalloApp; colors: Colors; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const act = useAction();
+  const cambiar = () => act.run(() => marcarFallo(fallo.firma, !fallo.resuelto)).then((ok) => ok && onDone());
+  return (
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: colors.surface, borderColor: fallo.fatal && !fallo.resuelto ? colors.accent : colors.border, opacity: fallo.resuelto ? 0.7 : 1 },
+        shadow(colors),
+      ]}
+    >
+      <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" aria-expanded={open} style={styles.cardHead}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.kicker, { color: colors.accent }]}>
+            {`${PLATAFORMA[fallo.plataforma]} · ${ORIGEN[fallo.origen]}${fallo.fatal ? ' · cerró la app' : ''}`.toUpperCase()}
+          </Text>
+          <Text style={[styles.falloTitle, { color: colors.text }]} numberOfLines={open ? undefined : 2}>
+            {fallo.mensaje}
+          </Text>
+        </View>
+        <View style={[styles.count, { backgroundColor: colors.accentSoft }]} accessibilityLabel={`${fallo.veces} ${fallo.veces === 1 ? 'vez' : 'veces'}`}>
+          <Text style={{ color: colors.accent, fontWeight: '800' }}>×{fallo.veces}</Text>
+        </View>
+      </Pressable>
+      <View style={styles.chips}>
+        {!!fallo.ruta && (
+          <View style={[styles.chip, { borderColor: colors.border }]}>
+            <Text style={{ color: colors.text, fontSize: 12.5 }}>{fallo.ruta}</Text>
+          </View>
+        )}
+        {!!fallo.version && (
+          <View style={[styles.chip, { borderColor: colors.border }]}>
+            <Text style={{ color: colors.text, fontSize: 12.5 }}>{fallo.version}</Text>
+          </View>
+        )}
+        <View style={[styles.chip, { borderColor: colors.border }]}>
+          <Text style={{ color: colors.muted, fontSize: 12.5 }}>{fallo.veces > 1 ? `Desde ${hace(fallo.primera)} · última ${hace(fallo.ultima)}` : hace(fallo.ultima)}</Text>
+        </View>
+      </View>
+      {open && !!fallo.pila && (
+        <View style={[styles.pila, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <Text selectable style={[styles.mono, { color: colors.text }]}>
+            {fallo.pila}
+          </Text>
+        </View>
+      )}
+      <View style={styles.actions}>
+        <Button label={fallo.resuelto ? 'Abrir otra vez' : 'Ya lo arreglé'} kind={fallo.resuelto ? 'quiet' : 'outline'} onPress={cambiar} busy={act.busy} />
+      </View>
+      <ErrorText>{act.error}</ErrorText>
+    </View>
+  );
+}
+
+function Reporte({ reporte, colors, onDone }: { reporte: ReporteApp; colors: Colors; onDone: () => void }) {
+  const act = useAction();
+  const cambiar = () => act.run(() => marcarReporte(reporte.id, !reporte.resuelto)).then((ok) => ok && onDone());
+  return (
+    <View
+      testID="reporte"
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, opacity: reporte.resuelto ? 0.7 : 1 }, shadow(colors)]}
+    >
+      <Text style={[styles.kicker, { color: colors.accent }]}>{`${PLATAFORMA[reporte.plataforma]} · ${hace(reporte.creado)}`.toUpperCase()}</Text>
+      <Text selectable style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>
+        {reporte.texto}
+      </Text>
+      <View style={styles.chips}>
+        {[reporte.ruta, reporte.version].filter(Boolean).map((x) => (
+          <View key={x} style={[styles.chip, { borderColor: colors.border }]}>
+            <Text style={{ color: colors.text, fontSize: 12.5 }}>{x}</Text>
+          </View>
+        ))}
+        {!!reporte.contacto && (
+          <Pressable
+            onPress={() => Linking.openURL(`mailto:${reporte.contacto}?subject=${encodeURIComponent('Tu reporte en Zarza')}`)}
+            accessibilityRole="link"
+            style={[styles.chip, { borderColor: colors.accent }]}
+          >
+            <Text style={{ color: colors.accent, fontSize: 12.5, fontWeight: '700' }}>Responder a {reporte.contacto}</Text>
+          </Pressable>
+        )}
+      </View>
+      <View style={styles.actions}>
+        <Button label={reporte.resuelto ? 'Marcar sin atender' : 'Ya lo atendí'} kind={reporte.resuelto ? 'quiet' : 'outline'} onPress={cambiar} busy={act.busy} />
+      </View>
+      <ErrorText>{act.error}</ErrorText>
+    </View>
+  );
+}
+
 function Empty({ colors, icon: Icon, title, body }: { colors: Colors; icon: (p: IconProps) => ReactNode; title: string; body: string }) {
   return (
     <Appear style={[styles.empty, { borderColor: colors.border }]}>
@@ -555,5 +729,8 @@ const styles = StyleSheet.create({
   verificar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   decidir: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
   empty: { alignItems: 'center', gap: 10, borderWidth: StyleSheet.hairlineWidth, borderStyle: 'dashed', borderRadius: 20, padding: 28, marginTop: 8 },
+  falloTitle: { fontSize: 15.5, fontWeight: '700', lineHeight: 21, marginTop: 4 },
+  pila: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, marginTop: 12 },
+  mono: { fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'ui-monospace, Menlo, monospace' }), fontSize: 11.5, lineHeight: 17 },
   emptyIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
 });

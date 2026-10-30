@@ -16,12 +16,14 @@ import { pasajeLabel, tipoInfo, tituloDe, useTaller } from '@/lib/taller';
 import { getLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { CODE_LENGTH, type Sala, cleanCode, vivoApi } from '@/lib/vivo';
+import { usePantallaEncendida } from '@/lib/pantalla';
 
 /** Entrar a una lectura en vivo con el código, o empezar una con tu grupo. */
 export default function LecturaEnVivo() {
   const params = useLocalSearchParams<{ grupo?: string; libro?: string; capitulo?: string; taller?: string }>();
   const colors = useColors();
   const { settings } = useSettings();
+  usePantallaEncendida(true);
   const { ready, usuario, grupos } = useAccount();
   const { mensajes } = useTaller();
   const [code, setCode] = useState('');

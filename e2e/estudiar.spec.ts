@@ -394,3 +394,24 @@ test('el «Estudiar» de arriba estudia todo el capítulo aunque haya un versíc
   expect(cuerpo.verse).toBeUndefined();
   await expect(panel(page).getByText('Juan 3', { exact: true })).toBeVisible();
 });
+
+test('las citas de la IA se revisan con el texto: avisa de la que no dice eso y de la que no existe', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Lectora de citas'));
+  await page.goto('/juan/3/16');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  const estudio = panel(page);
+  await expect(estudio.getByText(ESTUDIO)).toBeVisible();
+
+  await estudio.getByPlaceholder('Pregunta sobre Juan 3:16').fill('¿Qué citas lo apoyan?');
+  await estudio.getByLabel('Enviar pregunta').click();
+  const revision = estudio.getByTestId('citas-revisadas').last();
+  await expect(revision).toContainText('2 citas para mirar de 3');
+  await expect(revision).toContainText('El versículo no dice eso. En la RV1909 dice:');
+  await expect(revision).toContainText('«Porque no envió Dios á su Hijo al mundo');
+  await expect(revision).toContainText('Este pasaje no existe: Juan 3 tiene 36 versículos.');
+  await expect(revision).toContainText('Dice eso en la RV1909.');
+
+  // La que no coincide abre su versículo en el lector
+  await revision.getByRole('link', { name: 'Juan 3:17: leer en su capítulo' }).click();
+  await expect(page).toHaveURL(/\/juan\/3\/17/);
+});

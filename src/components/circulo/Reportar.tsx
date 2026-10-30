@@ -29,7 +29,7 @@ export default function Reportar({ usuario, nombre, colors, onDone }: { usuario:
         <Chips options={MOTIVOS_REPORTE.map((m) => ({ value: m, label: m }))} value={motivo} onChange={setMotivo} />
       </View>
       <Field value={detalle} onChangeText={setDetalle} multiline maxLength={500} placeholder="Si quieres, cuéntalo (solo lo leen los líderes)" style={{ marginTop: 10, minHeight: 60 }} />
-      <Pressable onPress={() => setBloquear(!bloquear)} accessibilityRole="checkbox" accessibilityState={{ checked: bloquear }} style={[styles.check, { marginTop: 10 }]}>
+      <Pressable onPress={() => setBloquear(!bloquear)} accessibilityRole="checkbox" aria-checked={bloquear} style={[styles.check, { marginTop: 10 }]}>
         <View style={[styles.box, { borderColor: bloquear ? colors.accent : colors.border, backgroundColor: bloquear ? colors.accent : 'transparent' }]}>
           {bloquear && <CheckIcon color={colors.surface} size={14} strokeWidth={2.6} />}
         </View>

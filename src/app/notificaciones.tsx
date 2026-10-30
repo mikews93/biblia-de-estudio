@@ -5,8 +5,8 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, SectionTitle, useAction } from '@/components/comunidad/ui';
-import { CandleIcon, CardsIcon, ChevronRightIcon, CommentIcon, FlameIcon, type IconProps, OpenBookIcon, PlusSquareIcon, ShareIcon, SunIcon } from '@/components/icons';
-import { Ajustes, Soporte, Tipo, activar, buildEstado, cambiar, desactivar, permiso, probar, soporte, useAvisos } from '@/lib/avisos';
+import { CandleIcon, CardsIcon, ChevronRightIcon, CommentIcon, FlameIcon, type IconProps, MoonIcon, OpenBookIcon, PlusSquareIcon, ShareIcon, SunIcon } from '@/components/icons';
+import { Soporte, Tipo, activar, buildEstado, cambiar, desactivar, permiso, probar, soporte, useAvisos } from '@/lib/avisos';
 import { dailyMessage, horaLabel } from '@/lib/avisosTexto';
 import { diasLabel } from '@/lib/despertarTexto';
 import { useAccount } from '@/lib/comunidad';
@@ -34,6 +34,11 @@ const TIPOS: { tipo: Tipo; icon: (p: IconProps) => ReactNode; title: string; det
 ];
 
 /** Notificaciones: recordatorio diario a la hora elegida y avisos de la comunidad (web instalada). */
+const horaCorta = (m: number) => {
+  const { hora, parte } = horaLabel(m);
+  return `${hora} ${parte}`;
+};
+
 export default function NotificationsScreen() {
   const colors = useColors();
   const avisos = useAvisos();
@@ -57,7 +62,7 @@ export default function NotificationsScreen() {
   };
 
   const enable = () => turnOn.run(activar).then((ok) => (ok ? say('¡Listo! Ya están activas en este dispositivo.') : setPerm(permiso())));
-  const update = (patch: Partial<Pick<Ajustes, 'hora' | 'avisos'>>) => change.run(() => cambiar(patch));
+  const update = (patch: Parameters<typeof cambiar>[0]) => change.run(() => cambiar(patch));
   const step = (delta: number) => update({ hora: (avisos.hora + delta + 1440) % 1440 });
   const { hora, parte } = horaLabel(avisos.hora);
 
@@ -111,7 +116,7 @@ export default function NotificationsScreen() {
                   key={p.hora}
                   onPress={() => update({ hora: p.hora })}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: sel }}
+                  aria-checked={sel}
                   style={({ pressed }) => [
                     styles.preset,
                     { borderColor: sel ? colors.accent : colors.border, backgroundColor: sel ? colors.accentSoft : 'transparent' },
@@ -168,6 +173,59 @@ export default function NotificationsScreen() {
           })}
         </View>
         <ErrorText>{change.error}</ErrorText>
+      </Appear>
+
+      <Appear delay={148}>
+        <SectionTitle>Horario de silencio</SectionTitle>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 4 }]}>
+          <View style={styles.toggle}>
+            <View style={[styles.toggleIcon, { backgroundColor: colors.accentSoft }]}>
+              <MoonIcon color={colors.accent} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>No molestar</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
+                {avisos.silencio.activo
+                  ? `De ${horaCorta(avisos.silencio.desde)} a ${horaCorta(avisos.silencio.hasta)} no llegan avisos de la comunidad ni el de la racha.`
+                  : 'Elige unas horas sin avisos de la comunidad ni de la racha. El recordatorio y el despertador siguen a su hora.'}
+              </Text>
+            </View>
+            <Switch
+              value={avisos.silencio.activo}
+              onValueChange={(v) => void update({ silencio: { activo: v } })}
+              trackColor={{ false: colors.border, true: colors.accent }}
+              thumbColor={colors.surface}
+              {...(Platform.OS === 'web' ? ({ activeThumbColor: colors.surface } as object) : {})}
+              accessibilityLabel="Horario de silencio"
+            />
+          </View>
+          {avisos.silencio.activo && (
+            <View style={[styles.silencio, { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
+              {(['desde', 'hasta'] as const).map((k) => (
+                <View key={k} style={styles.silencioLado}>
+                  <Text style={{ color: colors.muted, fontSize: 12, fontWeight: '700', letterSpacing: 1 }}>{k === 'desde' ? 'DESDE' : 'HASTA'}</Text>
+                  <View style={styles.silencioHora}>
+                    <RoundButton
+                      label="−"
+                      a11y={`${k === 'desde' ? 'Empezar' : 'Terminar'} media hora antes`}
+                      colors={colors}
+                      onPress={() => update({ silencio: { [k]: (avisos.silencio[k] - 30 + 1440) % 1440 } })}
+                    />
+                    <Text style={[styles.silencioTexto, { color: colors.text }]} testID={`silencio-${k}`}>
+                      {horaCorta(avisos.silencio[k])}
+                    </Text>
+                    <RoundButton
+                      label="+"
+                      a11y={`${k === 'desde' ? 'Empezar' : 'Terminar'} media hora después`}
+                      colors={colors}
+                      onPress={() => update({ silencio: { [k]: (avisos.silencio[k] + 30) % 1440 } })}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       </Appear>
 
       <Appear delay={155}>
@@ -460,6 +518,10 @@ function Bell({ colors, active }: { colors: Colors; active: boolean }) {
 
 const styles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 80, maxWidth: 640, width: '100%', alignSelf: 'center' },
+  silencio: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', gap: 12, paddingVertical: 14 },
+  silencioLado: { alignItems: 'center', gap: 6 },
+  silencioHora: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  silencioTexto: { fontSize: 18, fontWeight: '700', minWidth: 92, textAlign: 'center' },
   hero: { alignItems: 'center', paddingTop: 8, paddingBottom: 20 },
   bellWrap: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: serif, fontSize: 28, marginTop: 14, textAlign: 'center' },

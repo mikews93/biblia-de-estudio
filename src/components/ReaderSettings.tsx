@@ -20,7 +20,7 @@ export default function ReaderSettings({ onClose }: { onClose: () => void }) {
             onPress={() => update({ [key]: value } as Partial<Settings>)}
             style={[styles.segmentItem, on && { backgroundColor: colors.surface }]}
             accessibilityRole="button"
-            accessibilityState={{ selected: on }}
+            aria-selected={on}
           >
             <Text style={{ color: on ? colors.text : colors.muted, fontWeight: '600' }}>{label}</Text>
           </Pressable>
@@ -98,6 +98,12 @@ export default function ReaderSettings({ onClose }: { onClose: () => void }) {
         {segment('layout', [
           ['parrafo', 'Párrafo'],
           ['versiculo', 'Un versículo por línea'],
+        ])}
+
+        <Text style={[styles.label, { color: colors.muted }]}>Pantalla al leer</Text>
+        {segment('pantallaEncendida', [
+          [true, 'Siempre encendida'],
+          [false, 'Se apaga sola'],
         ])}
 
         <Pressable

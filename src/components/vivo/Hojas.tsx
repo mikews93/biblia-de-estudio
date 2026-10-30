@@ -209,7 +209,7 @@ export function PantallaSheet({
                 <Pressable
                   key={label}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
+                  aria-selected={on}
                   onPress={() => setRonda(value)}
                   style={[styles.mode, { borderColor: on ? colors.warm : colors.border, backgroundColor: on ? colors.warmSoft : colors.surface }]}
                 >

@@ -282,7 +282,7 @@ function Casilla({
     <Pressable
       onPress={onPress}
       accessibilityRole="checkbox"
-      accessibilityState={{ checked: on }}
+      aria-checked={on}
       accessibilityLabel={label}
       style={styles.casilla}
     >

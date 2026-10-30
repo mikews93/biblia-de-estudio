@@ -111,7 +111,6 @@ export default function Ocasiones() {
                   onPress={() => elegir(o)}
                   style={({ pressed }) => [styles.card, { borderColor: on ? colors.warm : colors.border, backgroundColor: f.background }, pressed && styles.pressed]}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
                   aria-checked={on}
                   accessibilityLabel={`${o.nombre}. ${o.para}`}
                 >

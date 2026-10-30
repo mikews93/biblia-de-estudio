@@ -252,7 +252,7 @@ function Pregunta({
                 pressed && styles.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityState={{ selected: correcta, disabled: ok || fuera }}
+              aria-selected={correcta} aria-disabled={ok || fuera}
               accessibilityLabel={item.t}
             >
               <Text style={styles.emoji} aria-hidden>
@@ -318,7 +318,7 @@ function Fin({ historia, colors }: { historia: Historia; colors: Colors }) {
           onPress={() => conversada(historia.id, !reg?.familia)}
           style={({ pressed }) => [styles.check, { borderColor: reg?.familia ? colors.warm : colors.border, backgroundColor: reg?.familia ? colors.warmSoft : 'transparent' }, pressed && styles.pressed]}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: !!reg?.familia }}
+          aria-checked={!!reg?.familia}
           testID="lo-hablamos"
         >
           <View style={[styles.caja, { borderColor: colors.warm, backgroundColor: reg?.familia ? colors.warm : 'transparent' }]}>

@@ -69,6 +69,16 @@ export function dailyMessage(estado: EstadoAvisos, prefs: Preferencias, hoy: str
   return null;
 }
 
+/** El horario de silencio: de «desde» a «hasta» (minutos del día), que puede cruzar la medianoche (22:00 a 7:00). */
+export type Silencio = { activo: boolean; desde: number; hasta: number };
+export const SILENCIO_POR_DEFECTO: Silencio = { activo: false, desde: 22 * 60, hasta: 7 * 60 };
+
+/** ¿Cae este minuto del día dentro del horario de silencio? */
+export function enSilencio(minutos: number, desde: number | null | undefined, hasta: number | null | undefined) {
+  if (desde == null || hasta == null || desde === hasta) return false;
+  return desde < hasta ? minutos >= desde && minutos < hasta : minutos >= desde || minutos < hasta;
+}
+
 /** Fecha y minuto del día en una zona horaria («America/Bogota»). Zona desconocida: UTC. */
 export function localNow(zona: string, now = new Date()) {
   let parts: Intl.DateTimeFormatPart[];

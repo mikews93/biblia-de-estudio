@@ -59,7 +59,7 @@ export function HablarConAlguien({ colors }: { colors: Colors }) {
   const [abierto, setAbierto] = useState(false);
   return (
     <View style={[styles.hablar, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-      <Pressable onPress={() => setAbierto(!abierto)} accessibilityRole="button" accessibilityState={{ expanded: abierto }} style={styles.fila}>
+      <Pressable onPress={() => setAbierto(!abierto)} accessibilityRole="button" aria-expanded={abierto} style={styles.fila}>
         <View style={[styles.icono, { backgroundColor: colors.accentSoft }]}>
           <HeartIcon color={colors.accent} size={16} strokeWidth={2} />
         </View>
