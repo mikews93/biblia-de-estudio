@@ -133,7 +133,7 @@ function Chip({ label, on, color, colors, onPress }: { label: string; on: boolea
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityState={{ selected: on }}
+      aria-selected={on}
       style={({ pressed }) => [
         styles.chip,
         { borderColor: on ? color : colors.border, backgroundColor: on ? colors.surface : 'transparent' },

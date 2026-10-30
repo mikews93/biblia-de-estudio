@@ -123,7 +123,7 @@ export function NivelToggle({ nivel, onChange, colors }: { nivel: Nivel; onChang
             key={id}
             onPress={() => onChange(id)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
+            aria-selected={on}
             style={[styles.toggleItem, on && { backgroundColor: colors.warm }]}
           >
             <Text style={{ color: on ? colors.background : colors.muted, fontWeight: on ? '700' : '600', fontSize: 13 }}>{label}</Text>
@@ -150,7 +150,7 @@ export function Preparadas({ colors, onPick }: { colors: Colors; onPick: (texto:
               key={c.label}
               onPress={() => setCat(c.id)}
               accessibilityRole="button"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               style={({ pressed }) => [
                 styles.chip,
                 { backgroundColor: on ? colors.accent : colors.surface, borderColor: on ? colors.accent : colors.border },

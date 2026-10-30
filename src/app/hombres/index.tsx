@@ -68,7 +68,7 @@ export default function HombresScreen() {
                     onPress={() => go(`/hombres/${s.n}`)}
                     disabled={!abierta}
                     accessibilityRole="link"
-                    accessibilityState={{ disabled: !abierta }}
+                    aria-disabled={!abierta}
                     style={({ pressed }) => [
                       styles.fila,
                       actual && shadow(colors),

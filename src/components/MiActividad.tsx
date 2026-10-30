@@ -190,7 +190,7 @@ function Paso({
         pressed && { opacity: 0.7 },
       ]}
       accessibilityRole={hecho ? undefined : 'button'}
-      accessibilityState={{ checked: hecho }}
+      aria-checked={hecho}
       accessibilityLabel={`${titulo}: ${hecho ? 'hecho hoy' : 'pendiente'}`}
     >
       <View style={[styles.pasoIcono, { backgroundColor: hecho ? colors.warmSoft : colors.accentSoft }]}>

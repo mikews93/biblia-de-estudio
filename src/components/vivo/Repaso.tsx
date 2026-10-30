@@ -112,7 +112,7 @@ export function LanzarRepaso({
             <Pressable
               key={j.id}
               accessibilityRole="radio"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               accessibilityLabel={j.nombre}
               onPress={() => setJuego(j.id)}
               style={[styles.game, { backgroundColor: on ? colors.text : colors.surface, borderColor: on ? colors.text : colors.border }]}
@@ -129,7 +129,7 @@ export function LanzarRepaso({
             <Pressable
               key={m}
               accessibilityRole="radio"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               accessibilityLabel={label}
               onPress={() => setModo(m)}
               style={[styles.mode, { backgroundColor: on ? colors.surface : 'transparent', borderColor: on ? colors.warm : 'transparent' }]}
@@ -319,7 +319,7 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
                 key={i}
                 accessibilityRole="button"
                 accessibilityLabel={`${LETRAS[i]}: ${o}${correct ? (mentira ? ', la mentira' : ', la correcta') : ''}${picked ? ', tu respuesta' : ''}`}
-                accessibilityState={{ selected: picked, disabled: !me || answered || revealed }}
+                aria-selected={picked} aria-disabled={!me || answered || revealed}
                 onPress={() => choose(i)}
                 style={({ pressed }) => [
                   styles.option,
@@ -476,7 +476,7 @@ function Ordena({ q, revealed, propia, answered, disabled, busy, onSend }: Juego
                   key={i}
                   accessibilityRole="button"
                   accessibilityLabel={w}
-                  accessibilityState={{ disabled: usada || disabled }}
+                  aria-disabled={usada || disabled}
                   disabled={usada || disabled}
                   onPress={() => setOrden((o) => [...o, i])}
                   style={({ pressed }) => [

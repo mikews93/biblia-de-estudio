@@ -70,7 +70,7 @@ export default function Diario() {
                 router.setParams({ vista: key === 'actividad' ? undefined : key, hoy: undefined });
               }}
               accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               style={[styles.tab, on && [styles.tabOn, { backgroundColor: colors.surface }]]}
             >
               {!angosto && <Icon color={on ? colors.text : colors.muted} size={16} strokeWidth={on ? 2.1 : 1.8} />}
@@ -255,7 +255,7 @@ function EntryCard({ entrada: e, colors, onOrar }: { entrada: Entrada; colors: C
           onPress={() => toggleHecho(e.id)}
           style={[styles.step, { backgroundColor: e.hecho ? colors.accentSoft : colors.background }]}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: !!e.hecho }}
+          aria-checked={!!e.hecho}
         >
           <View style={[styles.check, { borderColor: colors.accent, backgroundColor: e.hecho ? colors.accent : 'transparent' }]}>
             {e.hecho && <CheckIcon color={colors.surface} size={14} strokeWidth={2.6} />}

@@ -180,7 +180,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                       setPeek(null);
                     }}
                     accessibilityRole="tab"
-                    accessibilityState={{ selected: on }}
+                    aria-selected={on}
                     accessibilityHint={m.hint}
                     style={[styles.mode, { borderColor: on ? colors.accent : colors.border }, on && { backgroundColor: colors.accentSoft }]}
                   >

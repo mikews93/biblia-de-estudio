@@ -170,11 +170,11 @@ export default function DespertarScreen() {
             onPress={toggleMusica}
             style={({ pressed }) => [styles.chip, chipBg(dark), pressed && styles.pressed]}
             accessibilityRole="switch"
-            accessibilityState={{ checked: sonando }}
+            aria-checked={sonando}
             accessibilityLabel="Música de amanecer"
             testID="musica"
           >
-            <Barras color={sonando ? (dark ? '#E2A868' : '#A8641F') : soft} activo={sonando} />
+            <Barras color={sonando ? (dark ? '#E2A868' : '#94561A') : soft} activo={sonando} />
             <Text style={{ color: ink, fontWeight: '600', fontSize: 14 }}>{sonando ? 'Amanecer' : 'Música'}</Text>
           </Pressable>
         </View>
@@ -202,7 +202,7 @@ export default function DespertarScreen() {
         <Appear delay={220}>
           <View style={[styles.card, cardBg(dark)]} testID="versiculo-despertar">
             <View style={styles.cardHead}>
-              <Text style={[styles.kicker, { color: dark ? '#E2A868' : '#A8641F' }]}>Versículo del día</Text>
+              <Text style={[styles.kicker, { color: dark ? '#E2A868' : '#94561A' }]}>Versículo del día</Text>
               {leyendo && <Text style={[styles.reading, { color: soft }]}>Leyendo…</Text>}
             </View>
             <Text style={[styles.verse, { color: ink }]}>{verseText ? `«${verseText}»` : ' '}</Text>

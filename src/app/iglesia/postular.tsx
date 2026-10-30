@@ -174,7 +174,7 @@ export default function PostularIglesia() {
             <Pressable
               onPress={() => setFe((v) => !v)}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: fe }}
+              aria-checked={fe}
               style={[styles.fe, { backgroundColor: colors.surface, borderColor: fe ? colors.accent : colors.border }]}
               testID="declaracion-fe"
             >

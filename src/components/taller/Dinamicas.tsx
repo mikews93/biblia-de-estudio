@@ -12,7 +12,7 @@ export function DinamicaCard({ d, compact, action }: { d: Dinamica; compact?: bo
   const [open, setOpen] = useState(!compact);
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+      <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" aria-expanded={open}>
         <View style={styles.cardHead}>
           <Text style={[styles.name, { color: colors.text }]}>{d.nombre}</Text>
           <Text style={{ color: colors.muted }}>{open ? '−' : '+'}</Text>

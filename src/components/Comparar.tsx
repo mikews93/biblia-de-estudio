@@ -83,7 +83,7 @@ export function VersionChips({
               onPress={() => onToggle(v.id)}
               disabled={base}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: active, disabled: base }}
+ aria-disabled={base}
               aria-checked={active}
               accessibilityLabel={`${v.name}${base ? ', la que estás leyendo' : ''}`}
               style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
@@ -143,7 +143,7 @@ export function MarksToggle({ on, colors, onPress }: { on: boolean; colors: Colo
     <Pressable
       onPress={onPress}
       accessibilityRole="switch"
-      accessibilityState={{ checked: on }}
+      aria-checked={on}
       accessibilityLabel="Marcar diferencias"
       hitSlop={6}
       style={({ pressed }) => [styles.toggle, pressed && { opacity: 0.7 }]}

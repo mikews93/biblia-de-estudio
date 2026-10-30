@@ -284,7 +284,7 @@ function Libro({ book, libro, books, resumen, filas, inicio, cap, refs, ancho, c
               onPress={() => onCap(k + 1)}
               accessibilityRole="button"
               accessibilityLabel={`${book.name} ${k + 1}: ${n} conexiones`}
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               style={({ pressed }) => [
                 styles.capChip,
                 { borderColor: on ? colors.warm : colors.border },

@@ -367,7 +367,7 @@ function Entrar({ estado, colors, onDone }: { estado: EstadoCirculo; colors: Col
           <Pressable
             onPress={() => setAcepto(!acepto)}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: acepto }}
+            aria-checked={acepto}
             style={[styles.check, { marginTop: 10 }]}
           >
             <View style={[styles.box, { borderColor: acepto ? colors.accent : colors.border, backgroundColor: acepto ? colors.accent : 'transparent' }]}>
@@ -420,7 +420,7 @@ function OpcionCirculo({ c, on, onPress, colors }: { c: CirculoOpcion; on: boole
       onPress={onPress}
       disabled={c.lleno}
       accessibilityRole="radio"
-      accessibilityState={{ checked: on, disabled: c.lleno }}
+      aria-checked={on} aria-disabled={c.lleno}
       style={[
         styles.opcion,
         { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accentSoft : colors.surface },
@@ -705,7 +705,7 @@ function FilaPersona({ p, estado, colors, onDone }: { p: PersonaCirculo; estado:
 
   return (
     <View style={[styles.persona, { backgroundColor: colors.surface, borderColor: p.marcada ? colors.warm : colors.border }]}>
-      <Pressable onPress={() => setAbierta(!abierta)} accessibilityRole="button" accessibilityState={{ expanded: abierta }} style={styles.personaHead}>
+      <Pressable onPress={() => setAbierta(!abierta)} accessibilityRole="button" aria-expanded={abierta} style={styles.personaHead}>
         <Avatar name={p.nombre} foto={p.foto} size={46} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }} numberOfLines={1}>

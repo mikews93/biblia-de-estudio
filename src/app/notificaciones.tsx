@@ -111,7 +111,7 @@ export default function NotificationsScreen() {
                   key={p.hora}
                   onPress={() => update({ hora: p.hora })}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: sel }}
+                  aria-checked={sel}
                   style={({ pressed }) => [
                     styles.preset,
                     { borderColor: sel ? colors.accent : colors.border, backgroundColor: sel ? colors.accentSoft : 'transparent' },

@@ -647,7 +647,7 @@ export function EstudioTab({
 export function AnonimaSwitch({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   const colors = useColors();
   return (
-    <Pressable accessibilityRole="switch" accessibilityState={{ checked: value }} onPress={() => onChange(!value)} style={styles.switchRow}>
+    <Pressable accessibilityRole="switch" aria-checked={value} onPress={() => onChange(!value)} style={styles.switchRow}>
       <View style={[styles.switch, { backgroundColor: value ? colors.warm : colors.border }]}>
         <View
           style={[
@@ -785,7 +785,7 @@ export function PreguntasSheet({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Yo también, ${p.apoyos.length + 1} ${p.apoyos.length === 0 ? 'persona' : 'personas'}`}
-                accessibilityState={{ selected: supported }}
+                aria-selected={supported}
                 disabled={!me || mine}
                 onPress={() => onSupport(p)}
                 style={[

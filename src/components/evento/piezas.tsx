@@ -149,7 +149,7 @@ export function CitaDesplegable({ label, books, size = 16, version = 'rv1909' }:
       <Pressable
         onPress={() => setOpen(!open)}
         accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         accessibilityLabel={`${label}${open ? ', cerrar' : ', leer'}`}
         style={styles.citaHead}
       >

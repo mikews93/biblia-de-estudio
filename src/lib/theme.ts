@@ -5,16 +5,17 @@ import { Platform, useColorScheme } from 'react-native';
 import { PARA_TI_INICIAL, type AjustesParaTi } from './paraTi';
 import { cambio, registrar } from './sincronia';
 
+// Los colores de texto cumplen el contraste AA (4,5:1) sobre el fondo, las tarjetas y los fondos suaves de cada tema.
 const light = {
   background: '#F9F8F6',
   surface: '#FFFFFF',
   text: '#1C1B19',
-  muted: '#6A6660',
+  muted: '#625E58',
   border: '#E3E0DB',
   accent: '#2A2826',
   accentSoft: '#ECEAE6',
   /** El toque cálido: solo en lo destacado (versículo del día, el día de hoy, el aviso de la campana). */
-  warm: '#A8641F',
+  warm: '#94561A',
   warmSoft: '#F5E9D8',
   highlight: '#FFF1C7',
   greek: '#2F4A6B',
@@ -26,11 +27,11 @@ const sepia: Colors = {
   background: '#F4ECD8',
   surface: '#FBF5E6',
   text: '#3B2F22',
-  muted: '#7A6A55',
+  muted: '#66573F',
   border: '#E0D3B8',
   accent: '#3E362E',
   accentSoft: '#E6DAC2',
-  warm: '#9A5A1E',
+  warm: '#874D16',
   warmSoft: '#EED9B8',
   highlight: '#F2DFA6',
   greek: '#3D5470',

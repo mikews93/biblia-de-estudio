@@ -219,7 +219,7 @@ export default function GroupScreen() {
             key={key}
             onPress={() => setTab(key)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: tab === key }}
+            aria-selected={tab === key}
             style={[styles.tab, tab === key && { borderBottomColor: colors.accent }]}
           >
             <Text style={{ color: tab === key ? colors.text : colors.muted, fontWeight: '700' }}>{label}</Text>
@@ -300,7 +300,7 @@ export default function GroupScreen() {
         }
         disabled={alertsAction.busy}
         accessibilityRole="switch"
-        accessibilityState={{ checked: group.avisos !== false }}
+        aria-checked={group.avisos !== false}
         style={({ pressed }) => [styles.alerts, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.8 }]}
       >
         <View style={[styles.alertsIcon, { backgroundColor: group.avisos === false ? colors.accentSoft : colors.warmSoft }]}>

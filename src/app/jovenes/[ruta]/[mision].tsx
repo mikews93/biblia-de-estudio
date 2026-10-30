@@ -201,7 +201,7 @@ export default function MisionScreen() {
               onPress={() => marcarReto(ruta.id, mision.id, !reg.hecho)}
               style={({ pressed }) => [styles.check, { borderColor: reg.hecho ? t.accent : colors.border, backgroundColor: reg.hecho ? t.soft : 'transparent' }, pressed && styles.pressed]}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: !!reg.hecho }}
+              aria-checked={!!reg.hecho}
               testID="reto-hecho"
             >
               <View style={[styles.caja, { borderColor: t.accent, backgroundColor: reg.hecho ? t.accent : 'transparent' }]}>
@@ -292,7 +292,7 @@ function Entiende({ ruta, mision, verses, colors, t, onListo }: { ruta: Ruta; mi
                       pressed && styles.pressed,
                     ]}
                     accessibilityRole="radio"
-                    accessibilityState={{ checked: marcada, disabled: ok && !marcada }}
+                    aria-checked={marcada} aria-disabled={ok && !marcada}
                   >
                     <Text style={{ color: colors.text, fontSize: 15, flex: 1, lineHeight: 21, textDecorationLine: descartada ? 'line-through' : 'none' }}>{item}</Text>
                     {marcada && original === 0 && <CheckIcon color={t.accent} size={18} strokeWidth={2.4} />}
@@ -424,7 +424,7 @@ function Boton({ label, t, onPress, disabled }: { label: string; t: Tinte; onPre
       disabled={disabled}
       style={({ pressed }) => [styles.boton, { backgroundColor: t.accent, opacity: disabled ? 0.4 : 1 }, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      aria-disabled={disabled}
     >
       <Text style={{ color: t.soft, fontWeight: '800', fontSize: 16 }}>{label}</Text>
     </Pressable>

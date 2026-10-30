@@ -411,7 +411,7 @@ export function LanzarInteraccion({ evento, books, onCambio, onClose }: { evento
                 <Pressable
                   key={m}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
+                  aria-selected={on}
                   accessibilityLabel={label}
                   onPress={() => setModo(m)}
                   style={[styles.mode, { backgroundColor: on ? colors.surface : 'transparent', borderColor: on ? colors.warm : 'transparent' }]}
@@ -451,7 +451,7 @@ export function LanzarInteraccion({ evento, books, onCambio, onClose }: { evento
                   <Pressable
                     key={n}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: on }}
+                    aria-checked={on}
                     onPress={() => setFuera((f) => (on ? [...f, n] : f.filter((x) => x !== n)))}
                     style={[styles.q, { backgroundColor: colors.surface, borderColor: on ? colors.warm : colors.border, opacity: on ? 1 : 0.55 }]}
                   >
@@ -542,7 +542,7 @@ function DinamicasParaLanzar({ evento, onLanzar, busy }: { evento: Evento; onLan
       <View style={{ gap: 8 }}>
         {delMensaje.map(({ n, d }) => fila(d, `${n === evento.punto ? 'Punto de ahora' : 'Punto'} ${n + 1} · ${d.minutos} min`, n === evento.punto))}
       </View>
-      <Pressable onPress={() => setTodas(!todas)} accessibilityRole="button" accessibilityState={{ expanded: todas }} style={styles.verTodas} hitSlop={6}>
+      <Pressable onPress={() => setTodas(!todas)} accessibilityRole="button" aria-expanded={todas} style={styles.verTodas} hitSlop={6}>
         <PeopleIcon color={colors.accent} size={15} />
         <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13.5 }}>
           {delMensaje.length ? 'Otra dinámica del catálogo' : `Elegir entre las ${DINAMICAS.length} dinámicas`}
@@ -558,7 +558,7 @@ function DinamicasParaLanzar({ evento, onLanzar, busy }: { evento: Evento; onLan
                 <Pressable
                   key={m.momento}
                   accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
+                  aria-selected={on}
                   onPress={() => setMomento(m.momento)}
                   style={[styles.idea, { borderColor: on ? colors.warm : colors.border, backgroundColor: on ? colors.warmSoft : 'transparent' }]}
                 >

@@ -290,7 +290,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
                     pressed && { opacity: 0.75 },
                   ]}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
+                  aria-checked={on}
                 >
                   <View style={[styles.radio, { borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accent : 'transparent' }]}>
                     {on && <CheckIcon color={colors.surface} size={13} strokeWidth={2.6} />}

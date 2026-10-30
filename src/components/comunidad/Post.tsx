@@ -155,7 +155,7 @@ export default function Post({ post, detail, onRemoved }: Props) {
           hitSlop={8}
           style={styles.footItem}
           accessibilityRole="button"
-          accessibilityState={{ selected: liked }}
+          aria-selected={liked}
           accessibilityLabel={liked ? 'Ya no me gusta' : 'Me gusta'}
         >
           <HeartIcon color={liked ? '#C2410C' : colors.muted} size={20} filled={liked} />

@@ -131,7 +131,7 @@ export default function DiccionarioCard({
                     onPress={() => setAbierta((a) => !a)}
                     hitSlop={6}
                     accessibilityRole="button"
-                    accessibilityState={{ expanded: abierta }}
+                    aria-expanded={abierta}
                     style={styles.mas}
                   >
                     <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>{abierta ? 'Leer menos' : 'Leer más'}</Text>

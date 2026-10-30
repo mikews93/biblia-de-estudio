@@ -145,7 +145,7 @@ function GroupRow({
         onPress={onToggle}
         onLongPress={onToggle}
         accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         accessibilityLabel={`${g.nombre}, ${meta}`}
         style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
       >

@@ -3,31 +3,23 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import Bienvenida from '@/components/Bienvenida';
 import PlanIcon from '@/components/PlanIcon';
 import Sello from '@/components/Sello';
 import {
   BellIcon,
   BooksIcon,
-  RouteIcon,
-  SunriseIcon,
-  ShareIcon,
-  DownloadIcon,
+  GridIcon,
   HeartIcon,
   LecternIcon,
   InviteIcon,
-  RingsIcon,
-  HammerIcon,
   MicIcon,
   PencilIcon,
   PeopleIcon,
   PersonIcon,
   PlansIcon,
-  PromiseIcon,
   SearchIcon,
   SparkIcon,
-  WordJourneyIcon,
-  StarIcon,
-  SunIcon,
   FlameIcon,
   type IconProps,
 } from '@/components/icons';
@@ -39,12 +31,13 @@ import { Avatar } from '@/components/comunidad/ui';
 import { InvitacionCuenta, NubeEstado, useEstadoNube } from '@/components/Sincronia';
 import StudyPanel from '@/components/StudyPanel';
 import VerseImage from '@/components/VerseImage';
+import { debeVerBienvenida } from '@/lib/bienvenida';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
 import { cerrarInvitacion, soporte, useAvisos } from '@/lib/avisos';
 import { greeting, greetingName, questionOfTheDay, verseOfTheDay } from '@/lib/daily';
 import { Ruta } from '@/components/SemanaSermon';
-import { palabraDeLaSemana, palabraHref, palabrasHref } from '@/lib/palabras';
+import { palabraDeLaSemana, palabraHref } from '@/lib/palabras';
 import { PLANS, dateKey, nextSeason, usePlans, useWords } from '@/lib/planes';
 import { WEEKLY_GOAL, useProgress, weekDays } from '@/lib/progress';
 import { useRacha } from '@/lib/racha';
@@ -66,7 +59,20 @@ import { voiceSupported } from '@/lib/voz';
  */
 export default function Hoy() {
   const { settings } = useSettings();
-  return settings.modo === 'jovenes' ? <HoyJovenes /> : settings.modo === 'ninos' ? <HoyNinos /> : <Today />;
+  const { ready, llave } = useAccount();
+  const [bienvenida, setBienvenida] = useState(false);
+  // La primera vez que se abre Zarza (sin nada leído ni cuenta) sale la bienvenida de tres pasos.
+  useEffect(() => {
+    if (ready && settings.modo === 'general') debeVerBienvenida(!!llave).then(setBienvenida);
+  }, [ready, llave, settings.modo]);
+  if (settings.modo === 'jovenes') return <HoyJovenes />;
+  if (settings.modo === 'ninos') return <HoyNinos />;
+  return (
+    <>
+      <Today />
+      {bienvenida && <Bienvenida onDone={() => setBienvenida(false)} />}
+    </>
+  );
 }
 
 /** Inicio para todos: seguir leyendo, el versículo del día, la semana y accesos. */
@@ -383,7 +389,6 @@ function Today() {
         />
         <Tile icon={PencilIcon} label="Mis notas" colors={colors} onPress={() => navigate(() => router.push('/notas'), 'forward')} />
         <Tile icon={HeartIcon} label="Mi diario" colors={colors} onPress={() => navigate(() => router.push('/diario' as never), 'forward')} />
-        <Tile icon={SunIcon} label="Despertador" colors={colors} onPress={() => navigate(() => router.push('/despertador' as never), 'forward')} />
         <Tile
           icon={SparkIcon}
           label="Estudiar con IA"
@@ -391,32 +396,20 @@ function Today() {
           onPress={() => navigate(() => router.push(chapterHref(continueTo.book, continueTo.chapter)), 'forward')}
         />
         <Tile
-          icon={PromiseIcon}
-          label="Promesas"
-          colors={colors}
-          onPress={() => navigate(() => router.push('/promesas' as never), 'forward')}
-        />
-        <Tile
           icon={PeopleIcon}
           label="Comunidad"
           colors={colors}
           onPress={() => navigate(() => router.push('/comunidades' as never), 'forward')}
         />
-        <Tile icon={InviteIcon} label="Invitar amigos" colors={colors} onPress={() => navigate(() => router.push('/invitar' as never), 'forward')} />
-        <Tile icon={RingsIcon} label="En pareja" colors={colors} onPress={() => navigate(() => router.push('/pareja' as never), 'forward')} />
-        <Tile icon={HammerIcon} label="Hombres de pie" colors={colors} onPress={() => navigate(() => router.push('/hombres' as never), 'forward')} />
         <Tile
           icon={LecternIcon}
           label="Del sermón"
           colors={colors}
           onPress={() => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward')}
         />
-        <Tile icon={ShareIcon} label="Para alguien" colors={colors} onPress={() => navigate(() => router.push('/ocasiones' as never), 'forward')} />
-        <Tile icon={SunriseIcon} label="Mi año" colors={colors} onPress={() => navigate(() => router.push('/mi-ano' as never), 'forward')} />
-        <Tile icon={RouteIcon} label="Recorridos" colors={colors} onPress={() => navigate(() => router.push('/recorridos' as never), 'forward')} />
-        <Tile icon={DownloadIcon} label="Sin conexión" colors={colors} onPress={() => navigate(() => router.push('/descargas' as never), 'forward')} />
-        <Tile icon={WordJourneyIcon} label="Palabras" colors={colors} onPress={() => navigate(() => router.push(palabrasHref() as never), 'forward')} />
-        <Tile icon={(p) => <StarIcon {...p} />} label="Niños y jóvenes" colors={colors} onPress={() => navigate(() => router.push('/modo' as never), 'forward')} />
+        <Tile icon={InviteIcon} label="Invitar amigos" colors={colors} onPress={() => navigate(() => router.push('/invitar' as never), 'forward')} />
+        {/* Lo demás (mapas, palabras, pareja, despertador, sin conexión…) vive en «Todo en Zarza», por grupos. */}
+        <Tile icon={GridIcon} label="Todo en Zarza" colors={colors} onPress={() => navigate(() => router.push('/todo' as never), 'forward')} />
       </Appear>
 
       <Pressable

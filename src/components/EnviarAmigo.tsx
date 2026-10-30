@@ -114,7 +114,6 @@ export default function EnviarAmigo({ verse, format, look, onClose }: Props) {
                 onPress={() => alternar(a.id)}
                 accessibilityRole="checkbox"
                 accessibilityLabel={a.nombre}
-                accessibilityState={{ checked: on }}
                 aria-checked={on}
                 style={styles.person}
               >

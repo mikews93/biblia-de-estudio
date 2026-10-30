@@ -69,7 +69,7 @@ export default function ElegirVoz({ papel, muestra, ritmo, automatica, sinNota, 
         <Pressable
           onPress={() => elegirVoz(papel, v?.id ?? null)}
           accessibilityRole="radio"
-          accessibilityState={{ checked: sel }}
+          aria-checked={sel}
           style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }, pressed && { opacity: 0.8 }]}
           testID={v ? undefined : `${testID ?? 'voz'}-automatica`}
         >

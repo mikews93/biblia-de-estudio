@@ -117,7 +117,7 @@ export default function PublicarEvento({ m, books }: { m: Mensaje; books: Book[]
           )}
 
           {evento && (
-            <Pressable onPress={() => setEditar(!editar)} style={styles.toggleRow} accessibilityRole="button" accessibilityState={{ expanded: editar }}>
+            <Pressable onPress={() => setEditar(!editar)} style={styles.toggleRow} accessibilityRole="button" aria-expanded={editar}>
               <Text style={{ color: colors.accent, fontWeight: '700' }}>Qué ve la congregación</Text>
               {editar ? <ChevronUpIcon color={colors.accent} size={16} /> : <ChevronDownIcon color={colors.accent} size={16} />}
             </Pressable>
@@ -181,7 +181,7 @@ export default function PublicarEvento({ m, books }: { m: Mensaje; books: Book[]
 
 function Opcion({ label, detalle, value, onChange, colors }: { label: string; detalle: string; value: boolean; onChange: (v: boolean) => void; colors: Colors }) {
   return (
-    <Pressable onPress={() => onChange(!value)} style={styles.option} accessibilityRole="switch" accessibilityState={{ checked: value }}>
+    <Pressable onPress={() => onChange(!value)} style={styles.option} accessibilityRole="switch" aria-checked={value}>
       <View style={{ flex: 1 }}>
         <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{label}</Text>
         <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 2 }}>{detalle}</Text>

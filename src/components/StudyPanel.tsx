@@ -569,7 +569,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
                   onPress={() => update({ compartirPreguntas: !settings.compartirPreguntas })}
                   hitSlop={8}
                   accessibilityRole="switch"
-                  accessibilityState={{ checked: settings.compartirPreguntas }}
+                  aria-checked={settings.compartirPreguntas}
                 >
                   <Text style={[styles.shareText, { color: colors.accent, fontWeight: '700' }]}>
                     {settings.compartirPreguntas ? 'No compartir' : 'Compartir'}
@@ -628,7 +628,7 @@ function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: E
               onPress={() => onChange(m.value)}
               style={({ pressed }) => [styles.mode, on && { backgroundColor: colors.accent }, pressed && !on && { opacity: 0.6 }]}
               accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               accessibilityLabel={`${m.label}: ${m.hint}`}
             >
               <IconText icon={m.icon} color={on ? colors.surface : colors.text} size={15}>

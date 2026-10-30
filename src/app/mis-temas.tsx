@@ -105,7 +105,7 @@ export default function MisTemas() {
                     pressed && styles.pressed,
                   ]}
                   accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on }}
+                  aria-checked={on}
                 >
                   {on && <CheckIcon color={colors.accent} size={15} strokeWidth={2.4} />}
                   <Text style={{ color: on ? colors.accent : colors.text, fontWeight: on ? '700' : '500', fontSize: 14 }}>{t.nombre}</Text>

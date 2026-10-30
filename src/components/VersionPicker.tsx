@@ -44,7 +44,7 @@ export default function VersionPicker({ versions, onClose, estudio }: Props) {
                   pressed && { opacity: 0.7 },
                 ]}
                 accessibilityRole="button"
-                accessibilityState={{ selected: on }}
+                aria-selected={on}
               >
                 <Text style={[styles.abbr, { color: colors.accent, fontFamily: serif }]}>{v.abbr}</Text>
                 <View style={{ flex: 1 }}>

@@ -205,7 +205,7 @@ export function Chips<T extends string | number>({
             key={String(o.value)}
             onPress={() => onChange(o.value)}
             accessibilityRole="radio"
-            accessibilityState={{ checked: on }}
+            aria-checked={on}
             style={[styles.chip, { borderColor: on ? colors.accent : colors.border }, on && { backgroundColor: colors.accentSoft }]}
           >
             <Text style={{ color: on ? colors.accent : colors.text, fontWeight: on ? '700' : '500' }}>{o.label}</Text>

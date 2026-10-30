@@ -173,7 +173,6 @@ function Opcion({ on, label, icon, colors, onPress }: { on: boolean; label: stri
     <Pressable
       onPress={onPress}
       accessibilityRole="radio"
-      accessibilityState={{ checked: on }}
       aria-checked={on}
       style={({ pressed }) => [
         styles.opcion,

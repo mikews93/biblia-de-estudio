@@ -135,7 +135,7 @@ export default function SemanaHombresScreen() {
             onPress={() => marcarReto(semana.n, !reto)}
             disabled={!diario}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: reto }}
+            aria-checked={reto}
             style={[styles.fila, { marginTop: 14 }]}
           >
             <View style={[styles.box, { borderColor: reto ? colors.accent : colors.warm, backgroundColor: reto ? colors.accent : 'transparent' }]}>

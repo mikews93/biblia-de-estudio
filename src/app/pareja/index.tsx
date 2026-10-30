@@ -424,7 +424,7 @@ function PlanItem({ plan, actual, hechos, colors }: { plan: PlanPareja; actual: 
     <Pressable
       onPress={elegir}
       accessibilityRole="button"
-      accessibilityState={{ selected: actual }}
+      aria-selected={actual}
       style={({ pressed }) => [
         styles.plan,
         { backgroundColor: colors.surface, borderColor: actual ? colors.accent : colors.border },

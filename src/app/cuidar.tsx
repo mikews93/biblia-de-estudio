@@ -131,7 +131,7 @@ export default function Cuidar() {
               key={t.value}
               onPress={() => setTab(t.value)}
               accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
+              aria-selected={on}
               style={({ pressed }) => [styles.tab, on && { backgroundColor: colors.accent }, pressed && !on && { opacity: 0.6 }]}
             >
               <t.icon color={on ? colors.surface : colors.text} size={15} />
@@ -266,7 +266,7 @@ function PasajeCard({ pasaje, name, colors, onDone }: { pasaje: PasajePendiente;
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: open ? colors.accent : colors.border }, shadow(colors)]}>
-      <Pressable onPress={toggle} accessibilityRole="button" accessibilityState={{ expanded: open }} style={styles.cardHead}>
+      <Pressable onPress={toggle} accessibilityRole="button" aria-expanded={open} style={styles.cardHead}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>{titulo}</Text>
           <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
@@ -587,7 +587,7 @@ function Fallo({ fallo, colors, onDone }: { fallo: FalloApp; colors: Colors; onD
         shadow(colors),
       ]}
     >
-      <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityState={{ expanded: open }} style={styles.cardHead}>
+      <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" aria-expanded={open} style={styles.cardHead}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.kicker, { color: colors.accent }]}>
             {`${PLATAFORMA[fallo.plataforma]} · ${ORIGEN[fallo.origen]}${fallo.fatal ? ' · cerró la app' : ''}`.toUpperCase()}

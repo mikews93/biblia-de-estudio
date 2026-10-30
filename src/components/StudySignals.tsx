@@ -103,7 +103,7 @@ function FaqItem({ item, pasaje, colors, onOpen, onCite }: { item: Frecuente; pa
       <Pressable
         onPress={toggle}
         accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         style={({ pressed }) => [styles.itemHead, pressed && { opacity: 0.7 }]}
       >
         <Text style={[styles.itemText, { color: colors.text }]}>
@@ -186,7 +186,7 @@ function Feedback({ data, setData, pasaje, colors }: { data: Senales; setData: (
         <Pressable
           onPress={ayudo}
           accessibilityRole="button"
-          accessibilityState={{ selected: helped }}
+          aria-selected={helped}
           accessibilityLabel={helped ? 'Quitar «Me ayudó»' : 'Me ayudó'}
           style={({ pressed }) => [
             styles.pill,
@@ -240,7 +240,7 @@ function Feedback({ data, setData, pasaje, colors }: { data: Senales; setData: (
                   key={m.value}
                   onPress={() => setMotivo(m.value)}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
+                  aria-checked={on}
                   style={[styles.motivo, { borderColor: on ? colors.accent : colors.border }, on && { backgroundColor: colors.accentSoft }]}
                 >
                   <Text style={{ color: on ? colors.accent : colors.text, fontSize: 13, fontWeight: on ? '700' : '500' }}>{m.label}</Text>

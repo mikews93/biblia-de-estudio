@@ -31,7 +31,7 @@ const TABS_NINOS: Tab[] = [
 ];
 
 function current(path: string): Tab['key'] {
-  if (path === '/' || path === '/modo' || path === '/sellos' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas' || path.startsWith('/semana') || path.startsWith('/pareja')) return 'hoy';
+  if (path === '/' || path === '/todo' || path === '/modo' || path === '/sellos' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas' || path.startsWith('/semana') || path.startsWith('/pareja')) return 'hoy';
   if (/^\/(planes|grupos|unirse|vivo)(\/|$)/.test(path)) return 'planes';
   if (/^\/(comunidades|amigo|cuenta|eventos?)(\/|$)/.test(path)) return 'comunidad';
   if (path.startsWith('/taller')) return 'taller';
@@ -119,7 +119,7 @@ function TabButton({ tab, on, colors, onPress }: { tab: Tab; on: boolean; colors
       onPress={onPress}
       style={({ pressed }) => [styles.tab, pressed && { opacity: 0.6 }]}
       accessibilityRole="tab"
-      accessibilityState={{ selected: on }}
+      aria-selected={on}
       accessibilityLabel={tab.label}
     >
       <View style={styles.iconSlot}>

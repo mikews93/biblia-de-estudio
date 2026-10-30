@@ -32,13 +32,15 @@ const fixedHeader = {
 // En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
 const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|circulo|iglesia|cuidar)(\/|$)/;
 
+// Los fallos se escuchan desde que carga el código, antes de la primera pantalla.
+instalarAvisosDeErrores();
+
 // Si una pantalla se rompe, se ve PantallaRota (con reintentar y volver a Hoy) y llega el aviso a /cuidar.
 export const ErrorBoundary = PantallaRota;
 
-/** Escucha los fallos fuera de React y recuerda la pantalla abierta para decir dónde pasaron (src/lib/errores.ts). */
-function AvisosDeErrores() {
+/** Recuerda la pantalla abierta para decir dónde pasó un fallo (src/lib/errores.ts). */
+function RutaDeErrores() {
   const path = usePathname();
-  useEffect(() => instalarAvisosDeErrores(), []);
   useEffect(() => seguirRuta(path), [path]);
   return null;
 }
@@ -146,6 +148,7 @@ function AppStack() {
           <Stack.Screen name="privacidad" options={{ title: 'Privacidad' }} />
           <Stack.Screen name="terminos" options={{ title: 'Términos' }} />
           <Stack.Screen name="acerca" options={{ title: 'Acerca de Zarza' }} />
+          <Stack.Screen name="todo" options={{ title: '' }} />
           <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
           <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
           <Stack.Screen name="iglesia/postular" options={{ title: 'Postular mi iglesia' }} />
@@ -195,7 +198,7 @@ function AppStack() {
       <LuceroNuevo />
       <Confeti />
       <GuardaNinos />
-      <AvisosDeErrores />
+      <RutaDeErrores />
       {Platform.OS !== 'web' && <LlamaArranque />}
       {Platform.OS === 'web' && (
         <>

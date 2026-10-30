@@ -43,7 +43,7 @@ export default function PantallaRota({ error, retry }: ErrorBoundaryProps) {
       <Text
         onPress={() => setDetalle(!detalle)}
         accessibilityRole="button"
-        accessibilityState={{ expanded: detalle }}
+        aria-expanded={detalle}
         style={[styles.toggle, { color: colors.muted }]}
       >
         {detalle ? 'Ocultar el detalle' : 'Ver el detalle'}
