@@ -4,6 +4,12 @@
     "slug": "zarza-biblia-de-estudio",
     "owner": "mb-technology-solucions",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5609d0ef-509f-4651-9151-3e4dfbf8835e"
+    },
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
