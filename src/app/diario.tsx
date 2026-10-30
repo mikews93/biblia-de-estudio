@@ -17,6 +17,7 @@ import { useRacha } from '@/lib/racha';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import EnlaceExportar from '@/components/EnlaceExportar';
 
 type Vista = 'actividad' | 'devocionales' | 'oraciones' | 'camino';
 const VISTAS: { key: Vista; label: string; icon: typeof HeartIcon }[] = [
@@ -132,6 +133,7 @@ export default function Diario() {
           <IconText icon={LockIcon} color={colors.muted} size={13} style={{ marginTop: 8, justifyContent: 'center' }}>
             <Text style={[text.small, { color: colors.muted, flexShrink: 1 }]}>Tu diario es privado: solo tú lo ves.</Text>
           </IconText>
+          <EnlaceExportar texto="Guardar tu diario y oraciones en un documento" />
         </>
       )}
 

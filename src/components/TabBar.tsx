@@ -31,7 +31,7 @@ const TABS_NINOS: Tab[] = [
 ];
 
 function current(path: string): Tab['key'] {
-  if (path === '/' || path === '/todo' || path === '/modo' || path === '/sellos' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas' || path.startsWith('/semana') || path.startsWith('/pareja')) return 'hoy';
+  if (path === '/' || path === '/todo' || path === '/exportar' || path === '/modo' || path === '/sellos' || path === '/notas' || path === '/diario' || path === '/repaso' || path === '/descargas' || path.startsWith('/semana') || path.startsWith('/pareja')) return 'hoy';
   if (/^\/(planes|grupos|unirse|vivo)(\/|$)/.test(path)) return 'planes';
   if (/^\/(comunidades|amigo|cuenta|eventos?)(\/|$)/.test(path)) return 'comunidad';
   if (path.startsWith('/taller')) return 'taller';

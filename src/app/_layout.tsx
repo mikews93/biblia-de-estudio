@@ -149,6 +149,7 @@ function AppStack() {
           <Stack.Screen name="terminos" options={{ title: 'Términos' }} />
           <Stack.Screen name="acerca" options={{ title: 'Acerca de Zarza' }} />
           <Stack.Screen name="todo" options={{ title: '' }} />
+          <Stack.Screen name="exportar" options={{ title: '' }} />
           <Stack.Screen name="sostener" options={{ title: 'Sostén Zarza' }} />
           <Stack.Screen name="iglesia/index" options={{ title: 'Iglesia anfitriona' }} />
           <Stack.Screen name="iglesia/postular" options={{ title: 'Postular mi iglesia' }} />

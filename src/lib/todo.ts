@@ -10,7 +10,7 @@ export type Icono =
   | 'books' | 'plans' | 'compare' | 'listen' | 'download' | 'sun' | 'spark' | 'search' | 'word' | 'arcs' | 'promise'
   | 'clock' | 'tree' | 'route' | 'pin' | 'mindmap' | 'cards' | 'heart' | 'pencil' | 'star' | 'sunrise' | 'topic'
   | 'lectern' | 'scroll' | 'calendar' | 'live' | 'people' | 'invite' | 'share' | 'gift' | 'rings' | 'candle' | 'hammer'
-  | 'church' | 'bell' | 'person' | 'lamp' | 'flame' | 'shield' | 'dictionary';
+  | 'church' | 'bell' | 'person' | 'lamp' | 'flame' | 'shield' | 'dictionary' | 'document';
 
 export type Funcion = { id: string; titulo: string; detalle: string; icono: Icono; href: string; palabras?: string; soloAdultos?: boolean };
 export type Grupo = { id: string; titulo: string; detalle: string; funciones: Funcion[] };
@@ -56,6 +56,7 @@ export function catalogo(ultimo: { book: string; chapter: number }): Grupo[] {
       funciones: [
         { id: 'diario', titulo: 'Mi diario', detalle: 'Escribe lo que Dios te habla y lo que oras.', icono: 'heart', href: '/diario', palabras: 'oración oraciones' },
         { id: 'notas', titulo: 'Mis resaltados y notas', detalle: 'Todo lo que marcaste mientras leías.', icono: 'pencil', href: '/notas' },
+        { id: 'exportar', titulo: 'Llévate lo tuyo', detalle: 'Notas, diario, oraciones y sermones en Word, PDF o texto.', icono: 'document', href: '/exportar', palabras: 'exportar descargar copia respaldo pdf word' },
         { id: 'sellos', titulo: 'Mis sellos', detalle: 'Los pasos que vas dando, sin competir con nadie.', icono: 'star', href: '/sellos', palabras: 'logros racha' },
         { id: 'mi-ano', titulo: 'Mi año', detalle: 'Tu año con la Palabra en una imagen.', icono: 'sunrise', href: '/mi-ano' },
         { id: 'mis-temas', titulo: 'Mis temas', detalle: 'Lo que «Para ti» tiene en cuenta en Hoy.', icono: 'topic', href: '/mis-temas', palabras: 'para ti' },
