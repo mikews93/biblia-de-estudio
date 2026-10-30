@@ -30,7 +30,7 @@ const fixedHeader = {
 };
 
 // En el Espacio Niños no hay comunidad, cuentas, Taller ni lecturas en vivo: si un enlace lleva ahí, vuelve a Hoy.
-const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|circulo|iglesia|cuidar)(\/|$)/;
+const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|recuperar|taller|vivo|eventos?|semana|notificaciones|jovenes|pareja|circulo|iglesia|cuidar)(\/|$)/;
 
 // Los fallos se escuchan desde que carga el código, antes de la primera pantalla.
 instalarAvisosDeErrores();
@@ -137,6 +137,8 @@ function AppStack() {
           <Stack.Screen name="despertar" options={{ headerShown: false }} />
           <Stack.Screen name="entrar" options={{ title: '' }} />
           <Stack.Screen name="registro" options={{ title: '' }} />
+          <Stack.Screen name="recuperar/index" options={{ title: '' }} />
+          <Stack.Screen name="recuperar/[enlace]" options={{ title: '' }} />
           <Stack.Screen name="unirse/[codigo]" options={{ title: 'Invitación' }} />
           <Stack.Screen name="vivo/index" options={{ title: 'Lectura en vivo' }} />
           <Stack.Screen name="vivo/[codigo]" options={{ headerShown: false }} />

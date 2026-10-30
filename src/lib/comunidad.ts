@@ -231,6 +231,12 @@ export const signUp = async (nombre: string, correo?: string, clave?: string) =>
   startSession(await api('registrarse', { nombre, correo: correo?.trim() || undefined, clave }));
 export const signIn = async (correo: string, clave: string) => startSession(await api('entrar', { correo, clave }));
 
+// «¿Olvidaste tu contraseña?» (api/_recuperar.ts): el enlace llega por correo y abre /recuperar/<enlace>.
+export const forgotPassword = (correo: string) => api('olvideClave', { correo: correo.trim() });
+export const resetLinkEmail = (enlace: string) => api<{ correo: string }>('enlaceClave', { enlace });
+export const resetPassword = async (enlace: string, clave: string) =>
+  startSession(await api('cambiarClave', { enlace, clave }));
+
 export async function signOut() {
   await api('salirCuenta').catch(() => {});
   set({ llave: null, usuario: null, grupos: null, iglesia: null, cuidador: false });
