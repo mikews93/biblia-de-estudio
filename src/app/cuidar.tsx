@@ -22,6 +22,8 @@ import {
 import { useAccount } from '@/lib/comunidad';
 import {
   FalloApp,
+  marcarReporte,
+  type ReporteApp,
   FrecuenteCuidada,
   IglesiaCuidada,
   PasajePendiente,
@@ -66,15 +68,23 @@ export default function Cuidar() {
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>(TABS.find((t) => t === params.tab) ?? 'avisos');
   const [errores, setErrores] = useState<FalloApp[]>([]);
+  const [reportes, setReportes] = useState<ReporteApp[]>([]);
   const load = useAction();
 
   const refresh = () =>
     load.run(async () => {
-      const [r, f] = await Promise.all([resumen(), fallos().catch(() => ({ errores: [] }))]);
+      const [r, f] = await Promise.all([resumen(), fallos().catch(() => ({ errores: [], reportes: [] }))]);
       setData(r);
       setErrores(f.errores);
+      setReportes(f.reportes ?? []);
     });
-  const refreshFallos = () => fallos().then((f) => setErrores(f.errores)).catch(() => {});
+  const refreshFallos = () =>
+    fallos()
+      .then((f) => {
+        setErrores(f.errores);
+        setReportes(f.reportes ?? []);
+      })
+      .catch(() => {});
   useEffect(() => {
     getBooks().then((b) => setBooks(new Map(b.map((x) => [x.id, x]))));
   }, []);
@@ -110,7 +120,7 @@ export default function Cuidar() {
     { value: 'preguntas', label: 'Preguntas', icon: PeopleIcon, n: data.pasajes.length },
     // Lo que espera a alguien: postulaciones nuevas e iglesias que se pausaron solas.
     { value: 'iglesias', label: 'Iglesias', icon: ChurchIcon, n: data.postulaciones.length + data.iglesias.filter((i) => i.pausa).length },
-    { value: 'fallos', label: 'Fallos', icon: FlameIcon, n: errores.filter((e) => !e.resuelto).length },
+    { value: 'fallos', label: 'Fallos', icon: FlameIcon, n: errores.filter((e) => !e.resuelto).length + reportes.filter((r) => !r.resuelto).length },
   ];
 
   return (
@@ -180,7 +190,7 @@ export default function Cuidar() {
         </>
       )}
 
-      {tab === 'fallos' && <Fallos errores={errores} colors={colors} onDone={refreshFallos} />}
+      {tab === 'fallos' && <Fallos errores={errores} reportes={reportes} colors={colors} onDone={refreshFallos} />}
 
       {tab === 'iglesias' && <Iglesias iglesias={data.iglesias} postulaciones={data.postulaciones} colors={colors} onDone={refresh} />}
     </ScrollView>
@@ -545,11 +555,23 @@ function hace(iso: string) {
 }
 
 /** Los fallos que mandó la app (src/lib/errores.ts), los más recientes primero; los resueltos van al final. */
-function Fallos({ errores, colors, onDone }: { errores: FalloApp[]; colors: Colors; onDone: () => void }) {
+function Fallos({ errores, reportes, colors, onDone }: { errores: FalloApp[]; reportes: ReporteApp[]; colors: Colors; onDone: () => void }) {
   const abiertos = errores.filter((e) => !e.resuelto);
   const resueltos = errores.filter((e) => e.resuelto);
+  const porLeer = reportes.filter((r) => !r.resuelto);
   return (
     <>
+      {reportes.length > 0 && (
+        <>
+          <Text style={[styles.kicker, { color: colors.muted }]}>LO QUE NOS CONTARON</Text>
+          {[...porLeer, ...reportes.filter((r) => r.resuelto)].map((r, i) => (
+            <Appear key={r.id} delay={i * 30}>
+              <Reporte reporte={r} colors={colors} onDone={onDone} />
+            </Appear>
+          ))}
+          <Text style={[styles.kicker, { color: colors.muted, marginTop: 12 }]}>FALLOS AUTOMÁTICOS</Text>
+        </>
+      )}
       <Text style={[text.small, { color: colors.muted }]}>
         Lo que se rompió en los teléfonos y en la web, sin datos de nadie. Los avisos iguales se juntan; si un fallo resuelto vuelve en otra versión, se abre otra
         vez.
@@ -624,6 +646,42 @@ function Fallo({ fallo, colors, onDone }: { fallo: FalloApp; colors: Colors; onD
       )}
       <View style={styles.actions}>
         <Button label={fallo.resuelto ? 'Abrir otra vez' : 'Ya lo arreglé'} kind={fallo.resuelto ? 'quiet' : 'outline'} onPress={cambiar} busy={act.busy} />
+      </View>
+      <ErrorText>{act.error}</ErrorText>
+    </View>
+  );
+}
+
+function Reporte({ reporte, colors, onDone }: { reporte: ReporteApp; colors: Colors; onDone: () => void }) {
+  const act = useAction();
+  const cambiar = () => act.run(() => marcarReporte(reporte.id, !reporte.resuelto)).then((ok) => ok && onDone());
+  return (
+    <View
+      testID="reporte"
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, opacity: reporte.resuelto ? 0.7 : 1 }, shadow(colors)]}
+    >
+      <Text style={[styles.kicker, { color: colors.accent }]}>{`${PLATAFORMA[reporte.plataforma]} · ${hace(reporte.creado)}`.toUpperCase()}</Text>
+      <Text selectable style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>
+        {reporte.texto}
+      </Text>
+      <View style={styles.chips}>
+        {[reporte.ruta, reporte.version].filter(Boolean).map((x) => (
+          <View key={x} style={[styles.chip, { borderColor: colors.border }]}>
+            <Text style={{ color: colors.text, fontSize: 12.5 }}>{x}</Text>
+          </View>
+        ))}
+        {!!reporte.contacto && (
+          <Pressable
+            onPress={() => Linking.openURL(`mailto:${reporte.contacto}?subject=${encodeURIComponent('Tu reporte en Zarza')}`)}
+            accessibilityRole="link"
+            style={[styles.chip, { borderColor: colors.accent }]}
+          >
+            <Text style={{ color: colors.accent, fontSize: 12.5, fontWeight: '700' }}>Responder a {reporte.contacto}</Text>
+          </Pressable>
+        )}
+      </View>
+      <View style={styles.actions}>
+        <Button label={reporte.resuelto ? 'Marcar sin atender' : 'Ya lo atendí'} kind={reporte.resuelto ? 'quiet' : 'outline'} onPress={cambiar} busy={act.busy} />
       </View>
       <ErrorText>{act.error}</ErrorText>
     </View>

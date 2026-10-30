@@ -1,11 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
-import { Button, text } from '@/components/comunidad/ui';
-import { CheckIcon, CloudCheckIcon, CommentIcon, CopyIcon, DevicesIcon, type IconProps, RefreshIcon } from '@/components/icons';
+import { Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
+import { ArrowUpIcon, CheckIcon, CloudCheckIcon, CommentIcon, CopyIcon, DevicesIcon, FlagIcon, type IconProps, RefreshIcon } from '@/components/icons';
+import { reportarProblema } from '@/lib/errores';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import {
   commitCorto,
@@ -32,6 +33,17 @@ export default function AcercaScreen() {
   const c = useMemo(() => compilacion(), []);
   const [publicada, setPublicada] = useState<Publicada | null | undefined>(undefined);
   const [copiado, setCopiado] = useState(false);
+  const { desde } = useLocalSearchParams<{ desde?: string }>();
+  const [problema, setProblema] = useState('');
+  const [contacto, setContacto] = useState('');
+  const envio = useAction();
+  const [enviado, setEnviado] = useState(false);
+  const enviar = () =>
+    envio.run(() => reportarProblema(problema.trim(), contacto.trim(), desde)).then((ok) => {
+      if (!ok) return;
+      setEnviado(true);
+      setProblema('');
+    });
 
   useEffect(() => {
     ultimaPublicada().then(setPublicada);
@@ -100,14 +112,52 @@ export default function AcercaScreen() {
 
       <Appear delay={100}>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, shadow(colors)]}>
-          <CardHead colors={colors} Icon={CommentIcon} titulo="¿Encontraste un fallo?" />
-          <Text style={[text.body, { color: colors.muted, marginTop: 8 }]}>
-            Copia estos datos y pégalos al contarnos qué pasó. Así sabemos en qué versión ocurrió y si ya está corregido.
-          </Text>
-          <View style={styles.botones}>
-            <Button label={copiado ? 'Copiado' : 'Copiar datos'} icon={copiado ? CheckIcon : CopyIcon} onPress={copiar} />
-            <Button label="Escribirnos" kind="outline" onPress={reportar} />
-          </View>
+          <CardHead colors={colors} Icon={FlagIcon} titulo="Reportar un problema" />
+          {enviado ? (
+            <View style={styles.gracias} role="status">
+              <View style={[styles.graciasIcon, { backgroundColor: colors.accentSoft }]}>
+                <CheckIcon color={colors.accent} size={18} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[styles.graciasTitulo, { color: colors.text }]}>Gracias, ya nos llegó</Text>
+                <Text style={[text.small, { color: colors.muted, lineHeight: 18 }]}>
+                  {contacto.trim() ? `Si hace falta, te escribimos a ${contacto.trim()}.` : 'Lo revisamos con la versión y la pantalla donde estabas.'}
+                </Text>
+              </View>
+              <Button label="Contar otro" kind="quiet" onPress={() => setEnviado(false)} />
+            </View>
+          ) : (
+            <View style={{ gap: 12, marginTop: 10 }}>
+              <Text style={[text.body, { color: colors.muted }]}>
+                ¿Algo no funciona, se ve raro o te gustaría que fuera distinto? Cuéntanos con tus palabras. Mandamos también la
+                versión y la pantalla, nada más.
+              </Text>
+              <Field
+                value={problema}
+                onChangeText={setProblema}
+                multiline
+                placeholder="Qué pasó, dónde estabas y qué esperabas que pasara"
+                accessibilityLabel="Qué pasó"
+                maxLength={2000}
+                style={{ minHeight: 110, textAlignVertical: 'top' }}
+              />
+              <Field
+                value={contacto}
+                onChangeText={setContacto}
+                placeholder="Tu correo (opcional)"
+                accessibilityLabel="Tu correo, si quieres respuesta"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+              <ErrorText>{envio.error}</ErrorText>
+              <View style={styles.botones}>
+                <Button label="Enviar" icon={ArrowUpIcon} onPress={enviar} busy={envio.busy} disabled={problema.trim().length < 10} />
+                <Button label={copiado ? 'Copiado' : 'Copiar datos'} icon={copiado ? CheckIcon : CopyIcon} kind="quiet" onPress={copiar} />
+                <Button label="Por correo" icon={CommentIcon} kind="quiet" onPress={reportar} />
+              </View>
+            </View>
+          )}
         </View>
       </Appear>
 
@@ -211,6 +261,9 @@ const shadow = (colors: Colors) =>
   isDark(colors) ? null : { boxShadow: '0 1px 2px rgba(60, 40, 20, 0.05), 0 6px 20px rgba(60, 40, 20, 0.05)' };
 
 const styles = StyleSheet.create({
+  gracias: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
+  graciasIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  graciasTitulo: { fontSize: 15.5, fontWeight: '700' },
   content: { padding: 20, paddingBottom: 64, gap: 12, maxWidth: 600, width: '100%', alignSelf: 'center' },
   hero: { alignItems: 'center', gap: 4, borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, padding: 24 },
   logo: { width: 76, height: 76, borderRadius: 20, marginBottom: 8 },

@@ -177,6 +177,7 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
       hora: 21 * 60,
       avisos: { lectura: true, tarjetas: false, reto: true, racha: true, comunidad: true },
       despertar: null,
+      silencio: null,
     });
     await call('guardar', { suscripcion: sub, hora: 21 * 60, despertar: { activo: true, hora: 330, dias: 0b0111110 } });
     expect((await call('leer', { endpoint: sub.endpoint })).json.despertar).toEqual({ hora: 330, dias: 0b0111110 });
@@ -400,6 +401,25 @@ describe.skipIf(!DB_URL || !HAS_DATA)('avisos de la comunidad', () => {
     await com()('borrarCuenta', {}, ana.llave);
     const [row] = await sql`select usuario_id from suscripciones where endpoint = ${sub.endpoint}`;
     expect(row.usuario_id).toBeNull();
+  });
+
+  it('en el horario de silencio no llegan, y se recuerda en el servidor', async () => {
+    const ana = await persona('Ana');
+    const beto = await persona('Beto');
+    const sub = nuevaSuscripcion(base);
+    // Un silencio que cubre ahora mismo: desde hace una hora hasta dentro de una hora
+    const ahora = localNow('UTC').minutos;
+    const silencio = { activo: true, desde: (ahora + 1440 - 60) % 1440, hasta: (ahora + 60) % 1440 };
+    await call('guardar', { suscripcion: sub, zona: 'UTC', silencio }, ana.llave);
+    await com()('pedirAmistad', { usuario: ana.id }, beto.llave);
+    expect(deliveredTo(sub.id)).toHaveLength(0);
+    expect((await call('leer', { endpoint: sub.endpoint })).json.silencio).toEqual({ desde: silencio.desde, hasta: silencio.hasta });
+
+    // Fuera del silencio, sí
+    await call('guardar', { suscripcion: sub, zona: 'UTC', silencio: { ...silencio, activo: false } }, ana.llave);
+    const cata = await persona('Cata');
+    await com()('pedirAmistad', { usuario: ana.id }, cata.llave);
+    expect(deliveredTo(sub.id)).toHaveLength(1);
   });
 
   it('quien administra un grupo sabe cuándo alguien se une', async () => {

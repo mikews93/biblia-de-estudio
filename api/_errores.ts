@@ -47,7 +47,24 @@ create table if not exists errores_app (
   resuelto boolean not null default false
 );
 create index if not exists errores_app_ultima on errores_app (resuelto, ultima desc);
+create table if not exists reportes_app (
+  id bigserial primary key,
+  texto text not null,
+  contacto text,
+  plataforma text not null,
+  ruta text,
+  version text,
+  creado timestamptz not null default now(),
+  resuelto boolean not null default false
+);
+create index if not exists reportes_app_creado on reportes_app (resuelto, creado desc);
 `;
+
+/** «Reportar un problema» (Acerca de Zarza): lo que escribe la persona, sin cuenta. Como mucho estos al día, entre todos. */
+const REPORTES_DIA = 60;
+const MAX_REPORTES = 500;
+const MAX_TEXTO = 2000;
+const CORREO = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,20}$/;
 
 /** Quita lo que podría decir quién es la persona: correos, teléfonos, números largos y códigos de enlaces. */
 export function limpiar(texto: string) {
@@ -118,7 +135,7 @@ export function erroresActions({
             delete from errores_app where firma in (
               select firma from errores_app order by resuelto desc, ultima asc limit ${total - MAX_FILAS})`;
         }
-        await avisarCuidadores(sql, plataforma, mensaje);
+        await avisarCuidadores(sql, plataforma, mensaje, 'fallo');
       }
       return { ok: true };
     },
@@ -129,7 +146,41 @@ export function erroresActions({
         select firma, plataforma, origen, mensaje, pila, ruta, version, fatal, veces,
           primera::text, ultima::text, resuelto
         from errores_app order by resuelto, ultima desc limit 100`;
-      return { errores };
+      const reportes = await sql<Json[]>`
+        select id::text, texto, contacto, plataforma, ruta, version, creado::text, resuelto
+        from reportes_app order by resuelto, creado desc limit 100`;
+      return { errores, reportes };
+    },
+
+    /**
+     * Lo que alguien cuenta desde «Reportar un problema». No pide cuenta. El correo, solo si la persona quiere que le
+     * respondan. Avisa a quienes cuidan Zarza.
+     */
+    async reportarProblema({ sql, body }) {
+      const plataforma = PLATAFORMAS.find((p) => p === body.plataforma) ?? 'web';
+      const texto = typeof body.texto === 'string' ? body.texto.trim().slice(0, MAX_TEXTO) : '';
+      if (texto.length < 10) throw fail('Cuéntanos un poco más (al menos 10 letras).');
+      const contacto = typeof body.contacto === 'string' ? body.contacto.trim().slice(0, 200) : '';
+      if (contacto && !CORREO.test(contacto)) throw fail('Ese correo no parece válido.');
+      const [{ hoy }] = await sql<{ hoy: number }[]>`select count(*)::int as hoy from reportes_app where creado > now() - interval '1 day'`;
+      if (hoy >= REPORTES_DIA) throw fail('Hoy llegaron muchos reportes. Inténtalo mañana, por favor.', 429);
+      const ruta = rutaLimpia(corto(body.ruta, MAX_RUTA * 2));
+      const version = corto(body.version, MAX_VERSION);
+      await sql`
+        insert into reportes_app (texto, contacto, plataforma, ruta, version)
+        values (${texto}, ${contacto || null}, ${plataforma}, ${ruta || null}, ${version || null})`;
+      await sql`
+        delete from reportes_app where id in (
+          select id from reportes_app order by resuelto desc, creado desc offset ${MAX_REPORTES})`;
+      await avisarCuidadores(sql, plataforma, texto, 'reporte');
+      return { ok: true };
+    },
+
+    async cuidarReporteResuelto({ sql, body, request }) {
+      await cuidador(sql, request);
+      if (typeof body.id !== 'string' || !/^\d+$/.test(body.id)) throw fail('Reporte no válido');
+      await sql`update reportes_app set resuelto = ${body.resuelto !== false} where id = ${body.id}`;
+      return { ok: true };
     },
 
     async cuidarErrorResuelto({ sql, body, request }) {
@@ -144,17 +195,20 @@ export function erroresActions({
 const NOMBRE = { web: 'la web', android: 'Android', ios: 'iPhone' } as Record<string, string>;
 
 /** Un aviso a quienes cuidan Zarza por cada fallo nuevo, sin pasar de AVISOS_DIA al día. Nunca hace fallar el aviso. */
-async function avisarCuidadores(sql: Sql, plataforma: string, mensaje: string) {
+async function avisarCuidadores(sql: Sql, plataforma: string, mensaje: string, tipo: 'fallo' | 'reporte') {
   const correos = cuidadores();
   if (!correos.length) return;
   try {
-    const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from errores_app where primera > now() - interval '1 day'`;
-    if (n > AVISOS_DIA) return;
+    const [{ n }] =
+      tipo === 'fallo'
+        ? await sql<{ n: number }[]>`select count(*)::int as n from errores_app where primera > now() - interval '1 day'`
+        : await sql<{ n: number }[]>`select count(*)::int as n from reportes_app where creado > now() - interval '1 day'`;
+    if (n > AVISOS_DIA * (tipo === 'reporte' ? 2 : 1)) return;
     const ids = await sql<{ id: string }[]>`select id from usuarios where lower(correo) = any(${correos})`;
     await Promise.all(
       ids.map(({ id }) =>
         notifyUser(sql, id, {
-          title: `Un fallo nuevo en ${NOMBRE[plataforma] ?? plataforma}`,
+          title: tipo === 'fallo' ? `Un fallo nuevo en ${NOMBRE[plataforma] ?? plataforma}` : `Alguien reportó un problema en ${NOMBRE[plataforma] ?? plataforma}`,
           body: mensaje.slice(0, 140),
           url: '/cuidar?tab=fallos',
           tag: 'cuidar-fallos',

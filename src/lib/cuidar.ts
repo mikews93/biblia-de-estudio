@@ -89,5 +89,17 @@ export type FalloApp = {
   ultima: string;
   resuelto: boolean;
 };
-export const fallos = () => api<{ errores: FalloApp[] }>('cuidarErrores');
+/** Lo que alguien contó desde «Reportar un problema» (Acerca de Zarza). */
+export type ReporteApp = {
+  id: string;
+  texto: string;
+  contacto: string | null;
+  plataforma: 'web' | 'android' | 'ios';
+  ruta: string | null;
+  version: string | null;
+  creado: string;
+  resuelto: boolean;
+};
+export const fallos = () => api<{ errores: FalloApp[]; reportes?: ReporteApp[] }>('cuidarErrores');
+export const marcarReporte = (id: string, resuelto: boolean) => api('cuidarReporteResuelto', { id, resuelto });
 export const marcarFallo = (firma: string, resuelto: boolean) => api('cuidarErrorResuelto', { firma, resuelto });

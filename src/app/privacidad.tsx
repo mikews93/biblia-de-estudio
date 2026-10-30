@@ -25,6 +25,7 @@ const PARTES: Parte[] = [
       'Lo que haces sin cuenta (notas, subrayados, progreso, ajustes) se queda solo en tu dispositivo.',
       'No hay anuncios, no vendemos datos y no usamos herramientas de analítica ni de seguimiento de terceros.',
       'Si algo se rompe en la app, nos llega un aviso con el error, la pantalla y la versión, para arreglarlo. No lleva tu cuenta, tu nombre ni lo que escribiste, y se borran correos y teléfonos antes de guardarlo.',
+      'Si usas «Reportar un problema» en Acerca de Zarza, guardamos lo que escribes, la pantalla y la versión. Tu correo, solo si lo pones para que te respondamos.',
     ],
   },
   {

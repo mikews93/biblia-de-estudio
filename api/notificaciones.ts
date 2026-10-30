@@ -16,7 +16,7 @@
 import { createHash } from 'node:crypto';
 import postgres from 'postgres';
 
-import { dailyMessage, DiaReto, EstadoAvisos, HORA_POR_DEFECTO, horaLabel, isDue, localNow, validZone } from '../src/lib/avisosTexto';
+import { dailyMessage, DiaReto, enSilencio, EstadoAvisos, HORA_POR_DEFECTO, horaLabel, isDue, localNow, validZone } from '../src/lib/avisosTexto';
 import { despertarDue, despertarMessage, POSPONER_MINUTOS, validDias } from '../src/lib/despertarTexto';
 import { rachaDue, rachaMessage } from '../src/lib/rachaTexto';
 import { isExpoToken, PUSH_SCHEMA, sendMany, sendPush, Suscripcion, validEndpoint, vapid } from './_push';
@@ -39,6 +39,8 @@ type Fila = Suscripcion & {
   despertar_dias: number;
   despertar_enviado: string | null;
   pospuesto: Date | null;
+  silencio_desde: number | null;
+  silencio_hasta: number | null;
 };
 
 class Fail extends Error {
@@ -97,6 +99,13 @@ function keysOf(value: unknown) {
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 const isMinute = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) < 1440;
 
+/** El horario de silencio que manda el dispositivo: {desde, hasta}, o null si está apagado. */
+function silencioOf(v: unknown): { desde: number; hasta: number } | null {
+  const s = (v ?? {}) as Json;
+  if (s.activo !== true || !isMinute(s.desde) || !isMinute(s.hasta) || s.desde === s.hasta) return null;
+  return { desde: s.desde, hasta: s.hasta };
+}
+
 /** El despertador que manda el dispositivo: {hora, dias}, o null si está apagado. */
 function despertarOf(v: unknown): { hora: number; dias: number } | null {
   const d = (v && typeof v === 'object' ? v : {}) as Json;
@@ -150,6 +159,7 @@ const actions: Record<string, Action> = {
     const zona = validZone(body.zona) ? body.zona : 'UTC';
     const hora = isMinute(body.hora) ? body.hora : HORA_POR_DEFECTO;
     const despertar = despertarOf(body.despertar);
+    const silencio = silencioOf(body.silencio);
     const avisos = (body.avisos ?? {}) as Json;
     const flag = (k: string) => avisos[k] !== false;
     const estado = cleanEstado(body.estado);
@@ -170,14 +180,15 @@ const actions: Record<string, Action> = {
           : null;
     await sql`
       insert into suscripciones (endpoint, p256dh, auth, usuario_id, zona, hora, lectura, tarjetas, reto, racha, comunidad, estado, enviado,
-        despertar, despertar_dias, despertar_enviado)
+        despertar, despertar_dias, despertar_enviado, silencio_desde, silencio_hasta)
       values (${endpoint}, ${p256dh}, ${auth}, ${usuario}, ${zona}, ${hora}, ${flag('lectura')}, ${flag('tarjetas')},
         ${flag('reto')}, ${flag('racha')}, ${flag('comunidad')}, ${sql.json(estado as postgres.JSONValue)}, ${enviado},
-        ${despertar?.hora ?? null}, ${despertar?.dias ?? 127}, ${despertarEnviado})
+        ${despertar?.hora ?? null}, ${despertar?.dias ?? 127}, ${despertarEnviado}, ${silencio?.desde ?? null}, ${silencio?.hasta ?? null})
       on conflict (endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth, usuario_id = excluded.usuario_id,
         zona = excluded.zona, hora = excluded.hora, lectura = excluded.lectura, tarjetas = excluded.tarjetas,
         reto = excluded.reto, racha = excluded.racha, comunidad = excluded.comunidad, estado = excluded.estado, enviado = excluded.enviado,
         despertar = excluded.despertar, despertar_dias = excluded.despertar_dias, despertar_enviado = excluded.despertar_enviado,
+        silencio_desde = excluded.silencio_desde, silencio_hasta = excluded.silencio_hasta,
         pospuesto = case when excluded.despertar is null then null else suscripciones.pospuesto end,
         actualizado = now()`;
     return { cuenta: Boolean(usuario) };
@@ -195,12 +206,21 @@ const actions: Record<string, Action> = {
         comunidad: boolean;
         despertar: number | null;
         despertar_dias: number;
+        silencio_desde: number | null;
+        silencio_hasta: number | null;
       }[]
     >`
-      select hora, lectura, tarjetas, reto, racha, comunidad, despertar, despertar_dias from suscripciones where endpoint = ${endpointOf(body.endpoint)}`;
+      select hora, lectura, tarjetas, reto, racha, comunidad, despertar, despertar_dias, silencio_desde, silencio_hasta
+      from suscripciones where endpoint = ${endpointOf(body.endpoint)}`;
     if (!s) return { existe: false };
-    const { hora, despertar, despertar_dias, ...avisos } = s;
-    return { existe: true, hora, avisos, despertar: despertar == null ? null : { hora: despertar, dias: despertar_dias } };
+    const { hora, despertar, despertar_dias, silencio_desde, silencio_hasta, ...avisos } = s;
+    return {
+      existe: true,
+      hora,
+      avisos,
+      despertar: despertar == null ? null : { hora: despertar, dias: despertar_dias },
+      silencio: silencio_desde == null || silencio_hasta == null ? null : { desde: silencio_desde, hasta: silencio_hasta },
+    };
   },
 
   /** Al leer, repasar o cambiar de plan, el dispositivo pone al día lo que sabe el servidor. */
@@ -255,7 +275,8 @@ const actions: Record<string, Action> = {
     // «enviado» como texto: es una fecha local y no debe moverse con la zona del servidor.
     const subs = await sql<Fila[]>`
       select endpoint, p256dh, auth, zona, hora, lectura, tarjetas, reto, racha, estado, enviado::text as enviado,
-        racha_enviado::text as racha_enviado, despertar, despertar_dias, despertar_enviado::text as despertar_enviado, pospuesto
+        racha_enviado::text as racha_enviado, despertar, despertar_dias, despertar_enviado::text as despertar_enviado, pospuesto,
+        silencio_desde, silencio_hasta
       from suscripciones where lectura or tarjetas or reto or racha or despertar is not null or pospuesto is not null`;
     const now = new Date();
     const keys = await vapid(sql);
@@ -280,7 +301,8 @@ const actions: Record<string, Action> = {
           }
           // La noche del último día de la racha devocional, si aún no hizo el devocional.
           const local = localNow(s.zona, now);
-          if (s.racha && rachaDue(s.estado?.racha, local, s.racha_enviado)) {
+          // El aviso de la racha no suena en el horario de silencio (el recordatorio y el despertador van a la hora elegida).
+          if (s.racha && !enSilencio(local.minutos, s.silencio_desde, s.silencio_hasta) && rachaDue(s.estado?.racha, local, s.racha_enviado)) {
             await sql`update suscripciones set racha_enviado = ${local.fecha} where endpoint = ${s.endpoint}`;
             const [r] = await sendMany(sql, [s], rachaMessage(s.estado!.racha!.dias));
             if (r === 'ok') rachas++;

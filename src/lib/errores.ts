@@ -59,6 +59,21 @@ async function enviar(aviso: Aviso) {
   if (!res.ok && res.status >= 500) throw new Error(String(res.status));
 }
 
+/**
+ * «Reportar un problema» (Acerca de Zarza): lo que la persona cuenta, con la pantalla de antes, la versión y la
+ * plataforma. El correo va solo si quiere que le respondan. Llega a /cuidar, como los fallos.
+ */
+export async function reportarProblema(texto: string, contacto: string, desde?: string) {
+  const c = compilacion();
+  const res = await fetch(`${API}/api/comunidades`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accion: 'reportarProblema', texto, contacto, plataforma: c.plataforma, ruta: desde ?? ruta, version: etiqueta(c) }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) throw new Error(json.error ?? 'No se pudo enviar. Revisa la conexión e inténtalo otra vez.');
+}
+
 async function guardarPendiente(aviso: Aviso) {
   try {
     const antes = JSON.parse((await AsyncStorage.getItem(PENDIENTES)) ?? '[]') as Aviso[];

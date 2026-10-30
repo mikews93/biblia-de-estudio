@@ -73,3 +73,24 @@ test('un fallo de la app llega a «Cuidar Zarza» sin datos de la persona', asyn
     })
     .toMatchObject({ mensaje: `Fallo e2e ${marca} de [correo]`, ruta: '/todo', plataforma: 'web' });
 });
+
+test('«Reportar un problema» llega a «Cuidar Zarza» con el correo para responder', async ({ page, request }) => {
+  const marca = Math.random().toString(36).replace(/[\d.]/g, '').slice(0, 8);
+  await page.goto('/acerca');
+  const enviar = page.getByRole('button', { name: 'Enviar' });
+  await expect(enviar).toBeDisabled();
+  await page.getByLabel('Qué pasó', { exact: true }).fill(`El botón de compartir no responde ${marca}`);
+  await page.getByLabel('Tu correo, si quieres respuesta').fill('no-es-correo');
+  await enviar.click();
+  await expect(page.getByText('Ese correo no parece válido.')).toBeVisible();
+  await page.getByLabel('Tu correo, si quieres respuesta').fill('ana@correo.test');
+  await enviar.click();
+  await expect(page.getByText('Gracias, ya nos llegó')).toBeVisible();
+
+  const correo = 'cuidar-e2e@prueba.test';
+  let llave = (await (await request.post('/api/comunidades', { data: { accion: 'entrar', correo, clave: 'clave-segura-1' } })).json()).llave;
+  llave ??= (await (await request.post('/api/comunidades', { data: { accion: 'registrarse', nombre: 'Cuida', correo, clave: 'clave-segura-1' } })).json()).llave;
+  const r = await request.post('/api/comunidades', { data: { accion: 'cuidarErrores' }, headers: { Authorization: `Bearer ${llave}` } });
+  const { reportes } = (await r.json()) as { reportes: { texto: string; contacto: string; plataforma: string; resuelto: boolean }[] };
+  expect(reportes.find((x) => x.texto.includes(marca))).toMatchObject({ contacto: 'ana@correo.test', plataforma: 'web', resuelto: false });
+});
