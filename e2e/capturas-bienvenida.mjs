@@ -16,7 +16,7 @@ async function api(accion, body = {}, llave) {
 }
 
 const correo = 'cuidar-e2e@prueba.test';
-const cuida = await api('entrar', { correo, clave: 'una clave larga' }).catch(() => api('registrarse', { nombre: 'Mike', correo, clave: 'una clave larga' }));
+const cuida = await api('entrar', { correo, clave: 'clave-segura-1' }).catch(() => api('registrarse', { nombre: 'Mike', correo, clave: 'clave-segura-1' }));
 const fallos = [
   { plataforma: 'android', origen: 'pantalla', mensaje: "TypeError: Cannot read property 'versiculos' of undefined", pila: "TypeError: Cannot read property 'versiculos' of undefined\n    at Comparar (index.android.bundle:1:48211)\n    at renderWithHooks (index.android.bundle:1:91822)", ruta: '/comparar/jhn/3', version: '1.0.0 (3) · a2149a2', fatal: true },
   { plataforma: 'web', origen: 'promesa', mensaje: 'NotAllowedError: play() failed because the user didn\'t interact with the document first.', pila: 'NotAllowedError: play() failed\n    at Ambiente.tocar (https://zarzabiblia.com/_expo/static/js/web/entry.js:2:1931)', ruta: '/taller/…/presentar', version: '1.0.0 · a2149a2' },

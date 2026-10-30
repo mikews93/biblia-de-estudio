@@ -62,8 +62,8 @@ test('un fallo de la app llega a «Cuidar Zarza» sin datos de la persona', asyn
   }, marca);
 
   const correo = 'cuidar-e2e@prueba.test';
-  let llave = (await (await request.post('/api/comunidades', { data: { accion: 'entrar', correo, clave: 'una clave larga' } })).json()).llave;
-  llave ??= (await (await request.post('/api/comunidades', { data: { accion: 'registrarse', nombre: 'Cuida', correo, clave: 'una clave larga' } })).json()).llave;
+  let llave = (await (await request.post('/api/comunidades', { data: { accion: 'entrar', correo, clave: 'clave-segura-1' } })).json()).llave;
+  llave ??= (await (await request.post('/api/comunidades', { data: { accion: 'registrarse', nombre: 'Cuida', correo, clave: 'clave-segura-1' } })).json()).llave;
 
   await expect
     .poll(async () => {
