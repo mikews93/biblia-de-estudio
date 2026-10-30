@@ -31,6 +31,13 @@ export const SOBRE_VERSION: Record<string, string> = {
   blm: 'Traducción libre, en español actual.',
 };
 
+/** En la bienvenida, las versiones libres van de la más actual a la más antigua (Mike, 2026-10-30). */
+export const ORDEN_VERSIONES = ['pdt', 'bes', 'blm', 'rvg', 'rv1909', 'rv1865'];
+export const ordenBienvenida = <T extends { id: string }>(versiones: T[]) => {
+  const pos = (id: string) => (ORDEN_VERSIONES.includes(id) ? ORDEN_VERSIONES.indexOf(id) : ORDEN_VERSIONES.length);
+  return [...versiones].sort((a, b) => pos(a.id) - pos(b.id));
+};
+
 /** En las pruebas automáticas (Playwright) no sale, salvo que la URL lleve ?bienvenida=1. */
 function enPruebas() {
   if (Platform.OS !== 'web' || typeof navigator === 'undefined') return false;

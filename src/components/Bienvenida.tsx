@@ -5,7 +5,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import Appear from '@/components/Appear';
 import { Button } from '@/components/comunidad/ui';
 import { BooksIcon, CheckIcon, ContrastIcon, FlameIcon, HeartIcon, type IconProps, LecternIcon, MoonIcon, PeopleIcon, PlansIcon, SparkIcon, SunIcon } from '@/components/icons';
-import { METAS, type Meta, SOBRE_VERSION, bienvenidaVista } from '@/lib/bienvenida';
+import { METAS, type Meta, SOBRE_VERSION, bienvenidaVista, ordenBienvenida } from '@/lib/bienvenida';
 import { type Version, getVersions } from '@/lib/data';
 import { type ThemeName, isDark, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -52,7 +52,7 @@ export default function Bienvenida({ onDone }: { onDone: () => void }) {
   };
   const siguiente = () => (paso < PASOS - 1 ? setPaso(paso + 1) : terminar(true));
 
-  const libres = versiones.filter((v) => !v.licensed);
+  const libres = ordenBienvenida(versiones.filter((v) => !v.licensed));
   const conDerechos = versiones.filter((v) => v.licensed);
 
   return (
