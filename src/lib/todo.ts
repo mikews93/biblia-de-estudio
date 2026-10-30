@@ -10,9 +10,9 @@ export type Icono =
   | 'books' | 'plans' | 'compare' | 'listen' | 'download' | 'sun' | 'spark' | 'search' | 'word' | 'arcs' | 'promise'
   | 'clock' | 'tree' | 'route' | 'pin' | 'mindmap' | 'cards' | 'heart' | 'pencil' | 'star' | 'sunrise' | 'topic'
   | 'lectern' | 'scroll' | 'calendar' | 'live' | 'people' | 'invite' | 'share' | 'gift' | 'rings' | 'candle' | 'hammer'
-  | 'church' | 'bell' | 'person' | 'lamp' | 'flame' | 'shield' | 'dictionary' | 'document' | 'flag';
+  | 'church' | 'bell' | 'person' | 'lamp' | 'flame' | 'shield' | 'dictionary' | 'document' | 'flag' | 'phone';
 
-export type Funcion = { id: string; titulo: string; detalle: string; icono: Icono; href: string; palabras?: string; soloAdultos?: boolean };
+export type Funcion = { id: string; titulo: string; detalle: string; icono: Icono; href: string; palabras?: string; soloAdultos?: boolean; soloWeb?: boolean };
 export type Grupo = { id: string; titulo: string; detalle: string; funciones: Funcion[] };
 
 export function catalogo(ultimo: { book: string; chapter: number }): Grupo[] {
@@ -98,6 +98,7 @@ export function catalogo(ultimo: { book: string; chapter: number }): Grupo[] {
         { id: 'modo', titulo: 'Niños y jóvenes', detalle: 'La app para adolescentes, con misiones.', icono: 'star', href: '/modo', palabras: 'modo jóvenes niños' },
         { id: 'notificaciones', titulo: 'Notificaciones', detalle: 'Recordatorios y avisos de tus grupos.', icono: 'bell', href: '/notificaciones', palabras: 'recordatorio' },
         { id: 'cuenta', titulo: 'Tu cuenta', detalle: 'Tu perfil y lo que se guarda en tus dispositivos.', icono: 'person', href: '/cuenta', palabras: 'perfil entrar' },
+        { id: 'instalar', titulo: 'Zarza en tu Android', detalle: 'Descarga la app para tu teléfono.', icono: 'phone', href: '/instalar', palabras: 'apk descargar instalar app android celular', soloWeb: true },
         { id: 'sostener', titulo: 'Sostén Zarza', detalle: 'Zarza es gratis; así se mantiene.', icono: 'lamp', href: '/sostener', palabras: 'donar donación' },
         { id: 'reportar', titulo: 'Reportar un problema', detalle: 'Cuéntanos qué no funciona o qué cambiarías.', icono: 'flag', href: '/acerca', palabras: 'fallo error sugerencia ayuda soporte' },
         { id: 'acerca', titulo: 'Acerca de Zarza', detalle: 'La versión que tienes y si hay una nueva.', icono: 'flame', href: '/acerca', palabras: 'versión' },

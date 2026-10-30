@@ -22,6 +22,7 @@ import {
   SparkIcon,
   FlameIcon,
   type IconProps,
+  PhoneDownloadIcon,
 } from '@/components/icons';
 import InvitacionSembrar from '@/components/InvitacionSembrar';
 import ParaTiHoy from '@/components/ParaTi';
@@ -32,6 +33,7 @@ import { Avatar } from '@/components/comunidad/ui';
 import { InvitacionCuenta, NubeEstado, useEstadoNube } from '@/components/Sincronia';
 import StudyPanel from '@/components/StudyPanel';
 import VerseImage from '@/components/VerseImage';
+import { dispositivo, OFRECER_APK } from '@/lib/apk';
 import { debeVerBienvenida } from '@/lib/bienvenida';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Version, getBooks, getChapter, getVersions } from '@/lib/data';
@@ -417,6 +419,17 @@ function Today() {
         <Tile icon={GridIcon} label="Todo en Zarza" colors={colors} onPress={() => navigate(() => router.push('/todo' as never), 'forward')} />
       </Appear>
 
+      {OFRECER_APK && dispositivo() !== 'iphone' && (
+        <Pressable
+          onPress={() => navigate(() => router.push('/instalar' as never), 'forward')}
+          accessibilityRole="link"
+          testID="hoy-instalar"
+          style={({ pressed }) => [styles.instalar, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}
+        >
+          <PhoneDownloadIcon color={colors.accent} size={16} />
+          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>Descarga la app de Android</Text>
+        </Pressable>
+      )}
       <Pressable
         onPress={() => navigate(() => router.push('/acerca' as never), 'forward')}
         accessibilityRole="link"
@@ -623,5 +636,6 @@ const styles = StyleSheet.create({
   devotionalLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   tile: { flexGrow: 1, flexBasis: '28%', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 20, alignItems: 'center' },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
+  instalar: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'center', marginTop: 16, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth },
   version: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', marginTop: 8, paddingVertical: 6, paddingHorizontal: 12 },
 });

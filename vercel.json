@@ -46,6 +46,13 @@
       "excludeFiles": "dist/**"
     }
   },
+  "redirects": [
+    {
+      "source": "/zarza.apk",
+      "destination": "https://github.com/mikews93/biblia-de-estudio/releases/download/apk/zarza.apk",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/auth/(.*)",
