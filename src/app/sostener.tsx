@@ -3,8 +3,19 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 
 import Appear from '@/components/Appear';
 import { text } from '@/components/comunidad/ui';
-import { ChurchIcon, ExternalIcon, HeartIcon, LampIcon, ListenIcon, SparkIcon, type IconProps } from '@/components/icons';
-import { ENLACE_GITHUB, ENLACE_IGLESIAS, FONDO, HAY_SOSTENER, STRIPE_MENSUAL, STRIPE_UNA_VEZ, cubierta } from '@/lib/sostener';
+import { ChurchIcon, ExternalIcon, FlagIcon, HeartIcon, InviteIcon, LampIcon, ListenIcon, PrayIcon, SparkIcon, type IconProps } from '@/components/icons';
+import {
+  CORREO_SOSTENER,
+  ENLACE_CANCELAR,
+  ENLACE_GITHUB,
+  ENLACE_IGLESIAS,
+  FONDO,
+  HAY_SOSTENER,
+  STRIPE_MENSUAL,
+  STRIPE_UNA_VEZ,
+  cubierta,
+  mesCubierto,
+} from '@/lib/sostener';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 
 type Forma = {
@@ -23,6 +34,14 @@ type Forma = {
 };
 
 type Pago = { boton: string; nota: string; enlace: string | null };
+
+/** Formas de sostener sin dinero: para que nadie sienta que vale menos por no poder dar (Marcos 12:42-44). */
+const SIN_DINERO: { icon: (p: IconProps) => React.ReactNode; titulo: string; detalle: string; ruta?: string }[] = [
+  { icon: PrayIcon, titulo: 'Ora por Zarza', detalle: 'Por quienes la usan, por sabiduría al hacerla y por quien la necesita y aún no la conoce.' },
+  { icon: InviteIcon, titulo: 'Invita a un amigo', detalle: 'Con tu enlace, para que estudie contigo.', ruta: '/invitar' },
+  { icon: FlagIcon, titulo: 'Cuéntanos qué falla o qué falta', detalle: 'Cada reporte hace la app mejor para todos.', ruta: '/acerca' },
+  { icon: ChurchIcon, titulo: 'Cuéntale a tu pastor', detalle: 'Si a tu iglesia le sirve, puede ser anfitriona.', ruta: '/iglesia/postular' },
+];
 
 const FORMAS: Forma[] = [
   {
@@ -67,6 +86,7 @@ export default function Sostener() {
   const colors = useColors();
   if (!HAY_SOSTENER) return <Redirect href="/" />;
   const parte = FONDO ? cubierta(FONDO) : null;
+  const cubierto = mesCubierto();
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
@@ -91,6 +111,32 @@ export default function Sostener() {
               </Text>
               <Text style={[text.small, { color: colors.muted }]}>
                 {usd(FONDO.cubierto)} de {usd(FONDO.gasto)} entre IA, voces y servidores
+                {FONDO.sembradores ? ` · ${FONDO.sembradores} ${FONDO.sembradores === 1 ? 'sembrador' : 'sembradores'}` : ''}
+              </Text>
+              {!!FONDO.partidas?.length && (
+                <View style={[styles.partidas, { borderColor: colors.border }]} testID="partidas">
+                  {FONDO.partidas.map((p) => (
+                    <View key={p.concepto} style={styles.partida}>
+                      <Text style={[text.small, { color: colors.muted, flex: 1 }]}>{p.concepto}</Text>
+                      <Text style={[text.small, { color: colors.text, fontWeight: '600' }]}>{usd(p.monto)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {FONDO.logro && (
+                <Text style={[text.small, { color: colors.text, textAlign: 'center' }]}>
+                  <Text style={{ fontWeight: '700' }}>Lo que hizo posible: </Text>
+                  {FONDO.logro}
+                </Text>
+              )}
+            </View>
+          )}
+          {cubierto && (
+            <View style={[styles.cubierto, { backgroundColor: colors.accentSoft }]} testID="mes-cubierto">
+              <Text style={[text.body, { color: colors.text, textAlign: 'center', fontWeight: '700' }]}>Este mes ya está cubierto</Text>
+              <Text style={[text.small, { color: colors.text, textAlign: 'center', lineHeight: 19 }]}>
+                Gracias{FONDO?.sembradores ? ` a ${FONDO.sembradores} sembradores` : ''}: Zarza sigue gratis para todos. Como en Éxodo 36, ya
+                hay lo suficiente, así que no hace falta dar más este mes.
               </Text>
             </View>
           )}
@@ -117,6 +163,11 @@ export default function Sostener() {
             </View>
             {f.pagos ? (
               <View style={styles.pagos}>
+                {cubierto && (
+                  <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>
+                    Este mes no hace falta. Si quieres sembrar para los meses que vienen, aquí está.
+                  </Text>
+                )}
                 <Mensual colors={colors} />
                 {f.pagos.map((p) => (
                   <BotonPago key={p.boton} pago={p} colors={colors} />
@@ -149,7 +200,47 @@ export default function Sostener() {
         </Appear>
       ))}
 
-      <Appear delay={200}>
+      <Appear delay={190}>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, shadow(colors)]} testID="sin-dinero">
+          <Text style={[styles.cardTitle, { color: colors.text }]}>No todo se sostiene con dinero</Text>
+          <Text style={[text.body, { color: colors.muted, marginTop: 6 }]}>
+            Zarza también se sostiene con oración, con amigos que llegan y con quien avisa cuando algo falla. Todo cuenta igual.
+          </Text>
+          <View style={{ marginTop: 12 }}>
+            {SIN_DINERO.map((f, i) => {
+              const contenido = (
+                <>
+                  <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
+                    <f.icon color={colors.accent} size={18} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{f.titulo}</Text>
+                    <Text style={[text.small, { color: colors.muted, marginTop: 2, lineHeight: 18 }]}>{f.detalle}</Text>
+                  </View>
+                  {f.ruta && <Text style={{ color: colors.accent, fontSize: 18 }}>›</Text>}
+                </>
+              );
+              const borde = i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border };
+              return f.ruta ? (
+                <Pressable
+                  key={f.titulo}
+                  onPress={() => router.push(f.ruta as never)}
+                  accessibilityRole="link"
+                  style={({ pressed }) => [styles.sinDinero, borde, pressed && { opacity: 0.7 }]}
+                >
+                  {contenido}
+                </Pressable>
+              ) : (
+                <View key={f.titulo} style={[styles.sinDinero, borde]}>
+                  {contenido}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </Appear>
+
+      <Appear delay={210}>
         <View style={[styles.note, { borderColor: colors.border }]}>
           <SparkIcon color={colors.muted} size={16} />
           <Text style={[text.small, { color: colors.muted, flex: 1 }]}>
@@ -190,7 +281,18 @@ function Mensual({ colors }: { colors: Colors }) {
           );
         })}
       </View>
-      <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>Cancelas cuando quieras · tarjeta o billetera digital</Text>
+      <Text style={[text.small, { color: colors.muted, textAlign: 'center' }]}>
+        Tarjeta o billetera digital · cancelas cuando quieras, sin explicar nada.{' '}
+        <Text
+          onPress={() =>
+            Linking.openURL(ENLACE_CANCELAR ?? `mailto:${CORREO_SOSTENER}?subject=${encodeURIComponent('Cambiar mi aporte a Zarza')}`)
+          }
+          accessibilityRole="link"
+          style={{ color: colors.accent, fontWeight: '600' }}
+        >
+          {ENLACE_CANCELAR ? 'Cambiar mi aporte' : 'Escríbenos'}
+        </Text>
+      </Text>
     </View>
   );
 }
@@ -255,5 +357,9 @@ const styles = StyleSheet.create({
   montoMes: { fontSize: 12, fontWeight: '600', marginTop: 1 },
   pago: { marginTop: 0, flexDirection: 'row', justifyContent: 'center', gap: 8 },
   pronto: { fontSize: 11, fontWeight: '600', borderWidth: 1, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1, overflow: 'hidden' },
+  partidas: { alignSelf: 'stretch', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 8, marginTop: 4, gap: 4 },
+  partida: { flexDirection: 'row', gap: 10 },
+  cubierto: { alignSelf: 'stretch', borderRadius: 16, padding: 14, gap: 4, marginTop: 6 },
+  sinDinero: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   note: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14 },
 });
