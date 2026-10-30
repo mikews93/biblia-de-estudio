@@ -73,3 +73,21 @@ export const cambiarIglesia = (id: string, cambio: { activa?: boolean; lampara?:
 export const aprobarPostulacion = (id: string, lampara: number) =>
   api<{ estado: 'aprobada'; iglesia: IglesiaCuidada }>('cuidarPostulacion', { id, aprobar: true, lampara });
 export const rechazarPostulacion = (id: string, motivo: string) => api('cuidarPostulacion', { id, aprobar: false, motivo });
+
+/** Un fallo de la app (api/_errores.ts): los avisos iguales se juntan y cuentan las veces. */
+export type FalloApp = {
+  firma: string;
+  plataforma: 'web' | 'android' | 'ios';
+  origen: 'pantalla' | 'global' | 'promesa';
+  mensaje: string;
+  pila: string | null;
+  ruta: string | null;
+  version: string | null;
+  fatal: boolean;
+  veces: number;
+  primera: string;
+  ultima: string;
+  resuelto: boolean;
+};
+export const fallos = () => api<{ errores: FalloApp[] }>('cuidarErrores');
+export const marcarFallo = (firma: string, resuelto: boolean) => api('cuidarErrorResuelto', { firma, resuelto });

@@ -219,4 +219,29 @@ describe.skipIf(!DB_URL || !HAS_DATA)('Señales y Cuidar Zarza', () => {
     expect((await call()('cuidarIglesia', { id: pausada.id, reanudar: true }, llave)).status).toBe(200);
     expect((await call()('iglesiaUnirme', { codigo }, tarde)).json.iglesia).toMatchObject({ miembros: 4 });
   });
+
+  it('los fallos de la app llegan sin cuenta, se juntan y quien cuida los marca como resueltos', async () => {
+    const marca = Math.random().toString(36).replace(/[\d.]/g, '').slice(0, 8);
+    const msg = `Fallo de prueba ${marca} con ana@correo.com`;
+    const aviso = { plataforma: 'android', origen: 'pantalla', mensaje: msg, pila: 'at f (a.js:1:2)', ruta: '/amigo/AB12', version: '1.0.0 (3) · abc1234' };
+    expect((await call()('errorApp', aviso)).status).toBe(200);
+    expect((await call()('errorApp', { ...aviso, fatal: true })).status).toBe(200);
+    expect((await call()('errorApp', { mensaje: 'x' })).status).toBe(400);
+
+    const ana = await cuenta('Ana');
+    expect((await call()('cuidarErrores', {}, ana)).status).toBe(403);
+    const llave = (await call()('entrar', { correo: cuidadora.correo, clave: 'una clave larga' })).json.llave as string;
+    const lista = (await call()('cuidarErrores', {}, llave)).json.errores as Record<string, any>[];
+    const f = lista.find((e) => e.mensaje.includes(marca))!;
+    expect(f).toMatchObject({ plataforma: 'android', veces: 2, fatal: true, ruta: '/amigo/…', resuelto: false });
+    expect(f.mensaje).toContain('[correo]');
+
+    expect((await call()('cuidarErrorResuelto', { firma: f.firma }, llave)).status).toBe(200);
+    // Si vuelve en la misma versión sigue resuelto; en otra versión se abre otra vez.
+    await call()('errorApp', aviso);
+    const estado = async () => ((await call()('cuidarErrores', {}, llave)).json.errores as Record<string, any>[]).find((e) => e.firma === f.firma)!.resuelto;
+    expect(await estado()).toBe(true);
+    await call()('errorApp', { ...aviso, version: '1.0.1 (4) · def5678' });
+    expect(await estado()).toBe(false);
+  });
 });
