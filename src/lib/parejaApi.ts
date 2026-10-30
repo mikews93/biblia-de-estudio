@@ -7,6 +7,7 @@ import { api, useAccount } from './comunidad';
 import type { Cordon, Progreso } from './pareja';
 import type { Etapa } from './parejaPlanes';
 import { huella, huellasDe } from './sellos';
+import { origenCompartir } from './sitio';
 
 export type Pareja = {
   id: string;
@@ -89,7 +90,7 @@ export async function marcarAcierto(plan: string, dia: number, valor: Acierto) {
 
 /** El enlace de invitación que se comparte fuera de la app. */
 export function enlacePareja(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : (process.env.EXPO_PUBLIC_API_URL || 'https://zarzabiblia.com');
+  const origin = origenCompartir();
   return `${origin}/pareja/unirse/${codigo}`;
 }
 

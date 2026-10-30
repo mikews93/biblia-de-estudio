@@ -9,6 +9,7 @@ import type { Etapa } from './circulo';
 import { requireConnection } from './conexion';
 import { pedirPermisoIa } from './permisoIa';
 import { chapterHref as routeToChapter, verseHref } from './routes';
+import { origenCompartir } from './sitio';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
@@ -127,7 +128,7 @@ export const chapterHref = (book: string, chapter: number, verse?: number) =>
 
 /** Enlace de invitación que se comparte fuera de la app. */
 export function inviteUrl(codigo: string) {
-  const origin = typeof location !== 'undefined' ? location.origin : (API || 'https://zarzabiblia.com');
+  const origin = origenCompartir();
   return `${origin}/unirse/${codigo}`;
 }
 
@@ -229,6 +230,12 @@ export async function startSession(r: { usuario: Usuario; llave: string }) {
 export const signUp = async (nombre: string, correo?: string, clave?: string) =>
   startSession(await api('registrarse', { nombre, correo: correo?.trim() || undefined, clave }));
 export const signIn = async (correo: string, clave: string) => startSession(await api('entrar', { correo, clave }));
+
+// «¿Olvidaste tu contraseña?» (api/_recuperar.ts): el enlace llega por correo y abre /recuperar/<enlace>.
+export const forgotPassword = (correo: string) => api('olvideClave', { correo: correo.trim() });
+export const resetLinkEmail = (enlace: string) => api<{ correo: string }>('enlaceClave', { enlace });
+export const resetPassword = async (enlace: string, clave: string) =>
+  startSession(await api('cambiarClave', { enlace, clave }));
 
 export async function signOut() {
   await api('salirCuenta').catch(() => {});

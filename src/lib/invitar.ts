@@ -5,10 +5,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { api } from './comunidad';
+import { SITIO } from './sitio';
 import type { Relacion } from './social';
 
 /** El dominio de Zarza para los enlaces que se comparten, sea cual sea la dirección donde se abrió la app. */
-export const SITIO_INVITAR = 'https://zarzabiblia.com';
+export const SITIO_INVITAR = SITIO;
 
 export const inviteUrl = (codigo?: string | null) => (codigo ? `${SITIO_INVITAR}/i/${codigo}` : SITIO_INVITAR);
 

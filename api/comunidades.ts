@@ -30,6 +30,7 @@ import { ERRORES_SCHEMA, erroresActions } from './_errores';
 import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
 import { type Aviso, notifyUser, PUSH_SCHEMA } from './_push';
+import { RECUPERAR_SCHEMA, recuperarActions } from './_recuperar';
 import { esCuidador } from './_senales';
 import { DIAS_VISIBLE, MAX_ANIMO, PETICIONES_DIA } from '../src/lib/pedirOracion';
 import { planById } from '../src/lib/planesCatalogo';
@@ -354,7 +355,7 @@ let versionsCache: Promise<Version[]> | null = null;
 async function db() {
   if (!DB_URL) throw new Fail('Falta conectar la base de datos de las comunidades en el servidor.', 503);
   sql ??= postgres(DB_URL, { max: 3, idle_timeout: 20, onnotice: () => {} });
-  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA + ERRORES_SCHEMA).catch((err) => {
+  ready ??= sql.unsafe(SCHEMA + PUSH_SCHEMA + PAREJA_SCHEMA + CUIDAR_SCHEMA + CIRCULO_SCHEMA + ERRORES_SCHEMA + RECUPERAR_SCHEMA).catch((err) => {
     ready = null;
     throw err;
   });
@@ -1668,6 +1669,11 @@ Object.assign(
     },
     fail: (message, status) => new Fail(message, status),
   }),
+);
+// «¿Olvidaste tu contraseña?» (api/_recuperar.ts): un enlace por correo para elegir una nueva, sin cuenta abierta.
+Object.assign(
+  actions,
+  recuperarActions({ email, password, hashPassword, newSession, profile, fail: (message, status) => new Fail(message, status) }),
 );
 // «Círculo de solteros» (api/_circulo.ts): sus acciones empiezan por «circulo» (y las de /cuidar, por «cuidar»).
 Object.assign(actions, circuloActions({ auth, fail: (message, status) => new Fail(message, status) }));

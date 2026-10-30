@@ -21,7 +21,7 @@ import {
   ultimaPublicada,
 } from '@/lib/version';
 
-const CORREO = 'hola@zarzabiblia.com';
+const CORREO = 'soporte@zarzabiblia.com';
 const mono = Platform.select({ web: 'ui-monospace, SFMono-Regular, Menlo, monospace', ios: 'Menlo', default: 'monospace' });
 
 /**
