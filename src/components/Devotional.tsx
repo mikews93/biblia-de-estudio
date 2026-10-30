@@ -22,6 +22,7 @@ import { Source } from '@/lib/estudio';
 import { studyKeep, useKept } from '@/lib/recordado';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { useTranquila } from '@/lib/tranquila';
 
 type Props = {
   book: Book;
@@ -797,7 +798,11 @@ const styles = StyleSheet.create({
 });
 
 /** Al terminar: cuántos días seguidos lleva la racha y cuánto falta para la próxima insignia. */
-function RachaAmen({ colors }: { colors: Colors }) {
+function RachaAmen(p: { colors: Colors }) {
+  return useTranquila() ? null : <RachaDeHoy {...p} />;
+}
+
+function RachaDeHoy({ colors }: { colors: Colors }) {
   const racha = useRacha();
   // El día en que la racha llega a una meta, la luz sale sola (una vez).
   const nueva = racha.hoyHecho ? resplandorNuevo(racha.actual) : null;

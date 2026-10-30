@@ -72,11 +72,13 @@ export type Settings = {
   paraTi: AjustesParaTi;
   /** Que la pantalla no se apague mientras se lee (src/lib/pantalla.ts). Al escuchar y presentar no se apaga nunca. */
   pantallaEncendida: boolean;
+  /** «Lectura tranquila»: sin rachas, insignias ni porcentajes (src/lib/tranquila.ts). */
+  tranquila: boolean;
 };
 
 export type Modo = 'general' | 'jovenes' | 'ninos';
 
-const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general', compartirPreguntas: true, paraTi: PARA_TI_INICIAL, pantallaEncendida: true };
+const DEFAULTS: Settings = { theme: 'auto', fontSize: 19, font: 'serif', layout: 'parrafo', study: false, version: 'rv1909', enfoque: 'devocional', comparar: [], modo: 'general', compartirPreguntas: true, paraTi: PARA_TI_INICIAL, pantallaEncendida: true, tranquila: false };
 const KEY = 'ajustes';
 
 type Ctx = { settings: Settings; update: (patch: Partial<Settings>) => void };

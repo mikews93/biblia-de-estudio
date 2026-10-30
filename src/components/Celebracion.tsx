@@ -25,6 +25,7 @@ import { useServicio } from '@/lib/servicioUso';
 import { leerAlmacen } from '@/lib/sincronia';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { useTranquila } from '@/lib/tranquila';
 
 /** Cuánto se queda a la vista (ms). */
 const DURA = 7000;
@@ -33,6 +34,10 @@ const DURA = 7000;
 export const SIN_FIESTA = [/^\/vivo\/./, /\/proyectar$/, /\/presentar$/, /^\/evento\//, /^\/pareja\/ayuda/];
 
 export default function Celebracion() {
+  return useTranquila() ? null : <Fiesta />;
+}
+
+function Fiesta() {
   const colors = useColors();
   const estado = useSellos();
   const pathname = usePathname();

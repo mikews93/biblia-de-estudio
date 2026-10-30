@@ -9,6 +9,7 @@ import { useCrecer } from '@/lib/crecer';
 import { resplandorDe } from '@/lib/resplandor';
 import { nivelDe } from '@/lib/servicio';
 import { Colors, sans, serif, useColors } from '@/lib/theme';
+import { useTranquila } from '@/lib/tranquila';
 
 /** Un ícono de línea delante de un texto corto (títulos pequeños, enlaces): mismo color, centrados. */
 export function IconText({
@@ -247,6 +248,8 @@ export function useAction() {
 
 /** Barra de la meta compartida. */
 export function Meter({ value, max, colors }: { value: number; max: number; colors: Colors }) {
+  // En «Lectura tranquila» no hay barras de avance
+  if (useTranquila()) return null;
   return (
     <View style={[styles.bar, { backgroundColor: colors.accentSoft }]}>
       <View style={[styles.barFill, { backgroundColor: colors.accent, width: `${max ? Math.min(100, (value / max) * 100) : 0}%` }]} />

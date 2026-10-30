@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 
 import { useAvisos } from './avisos';
 import { HORA_RACHA, Racha, rachaMessage, rachaParaAvisos } from './rachaTexto';
+import { useTranquila } from './tranquila';
 
 const TIPO = 'racha';
 
@@ -31,7 +32,7 @@ async function programar(racha: Racha, activo: boolean) {
 
 export function useAvisoRacha(racha: Racha) {
   const { avisos, ready } = useAvisos();
-  const activo = avisos.racha !== false;
+  const activo = avisos.racha !== false && !useTranquila();
   useEffect(() => {
     if (ready) programar(racha, activo).catch(() => {});
   }, [racha.actual, racha.vence, activo, ready]); // eslint-disable-line react-hooks/exhaustive-deps

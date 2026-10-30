@@ -168,7 +168,7 @@ function Today() {
             accessibilityRole="button"
             accessibilityLabel={nube ? `Tu perfil · ${nube}` : 'Tu perfil'}
           >
-            {usuario ? <Avatar name={usuario.nombre} foto={usuario.foto} racha={racha.actual} servicio={servicio.total} size={38} /> : <PersonIcon color={colors.accent} />}
+            {usuario ? <Avatar name={usuario.nombre} foto={usuario.foto} racha={settings.tranquila ? 0 : racha.actual} servicio={settings.tranquila ? 0 : servicio.total} size={38} /> : <PersonIcon color={colors.accent} />}
             <NubeEstado />
           </Pressable>
         </View>
