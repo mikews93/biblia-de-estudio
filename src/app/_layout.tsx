@@ -190,6 +190,7 @@ function AppStack() {
           <Stack.Screen name="hombres/[n]" options={{ title: 'Semana' }} />
           <Stack.Screen name="evento/[codigo]/index" options={{ title: '' }} />
           <Stack.Screen name="evento/[codigo]/proyectar" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" options={{ title: '' }} />
         </Stack>
       </View>
       <AudioBar />

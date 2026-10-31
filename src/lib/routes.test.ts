@@ -21,7 +21,7 @@ describe('rutas en español', () => {
     expect(bookIdFromParam('juan')).toBe('jhn');
     expect(bookIdFromParam('1-corintios')).toBe('1co');
     expect(bookIdFromParam('JHN')).toBe('jhn');
-    expect(bookIdFromParam('G%C3%A9nesis')).toBe('génesis'); // con acento no es un slug: queda tal cual
+    expect(bookIdFromParam('G%C3%A9nesis')).toBe('gen'); // con acento, como se escribe a mano
     expect(bookIdFromParam('Genesis')).toBe('gen');
   });
 
