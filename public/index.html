@@ -14,6 +14,17 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Zarza" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Un enlace copiado de una frase trae a veces la puntuación pegada («zarzabiblia.com/instalar.»): se quita
+         antes de cargar la app y se abre la pantalla correcta (la misma regla que limpiarRuta en src/lib/noEncontrada.ts). -->
+    <script>
+      (function () {
+        var p = location.pathname;
+        try { p = decodeURIComponent(p); } catch (e) {}
+        var sin = p.replace(/\/+$/, '');
+        var limpia = sin.replace(/[.,;:!?¡¿)\]}»”’"'…]+$/, '').replace(/\/+$/, '') || '/';
+        if (limpia !== sin && limpia !== p) location.replace(limpia + location.search + location.hash);
+      })();
+    </script>
     <!-- Antes de pintar nada: el fondo con el tema guardado (src/lib/theme.ts) y la portada de carga. La página
          para Google (pipeline/seo_pages.py) queda en el HTML pero no se ve mientras carga la app. -->
     <script>
