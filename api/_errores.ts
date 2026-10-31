@@ -91,7 +91,10 @@ export function firmaDe(plataforma: string, mensaje: string, pila: string) {
     .split('\n')
     .map((l) => l.trim())
     .find((l) => l && !l.startsWith(mensaje.slice(0, 20)) && /\bat\b|@|\.js|\.tsx?/.test(l));
-  const base = `${plataforma}|${mensaje.replace(/\d+/g, '#')}|${(linea ?? '').replace(/:\d+(:\d+)?/g, '')}`;
+  // Los archivos de la web llevan la huella de cada publicación (index-8b13….js): sin quitarla, cada publicación haría
+  // una fila y un aviso nuevos del mismo fallo.
+  const sinHuella = (t: string) => t.replace(/-[0-9a-f]{16,}(?=\.js)/gi, '');
+  const base = `${plataforma}|${sinHuella(mensaje).replace(/\d+/g, '#')}|${sinHuella(linea ?? '').replace(/:\d+(:\d+)?/g, '')}`;
   return createHash('sha256').update(base).digest('hex').slice(0, 32);
 }
 
