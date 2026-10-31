@@ -2,19 +2,33 @@
 # Lo deja en la release «apk» de este repo, siempre con el mismo nombre (zarza.apk), así el enlace nunca cambia:
 #   https://github.com/mikews93/biblia-de-estudio/releases/download/apk/zarza.apk
 # La página /instalar lee el nombre, el tamaño y la fecha de esa release (src/lib/apk.ts).
-# A mano (Actions → «APK para la web» → Run workflow): sin marcar «compilar» toma el último APK que ya terminó en EAS
-# (perfil preview) y no gasta compilaciones; marcándolo compila uno nuevo y espera a que termine (unos 15 minutos).
-# Con una etiqueta v* compila siempre. Solo hace falta cuando cambia algo nativo: lo demás le llega a las apps ya
-# instaladas con app-actualizar.yml. Usa el secreto EXPO_TOKEN, el mismo de app-tiendas.yml.
+#
+# Corre sola en cada publicación de main que toque la app, como app-actualizar.yml. Calcula la huella nativa
+# (runtimeVersion «fingerprint») y busca en EAS un APK terminado con esa misma huella:
+#   - si existe, publica ese (si la release ya lo tiene, no hace nada) y no gasta compilaciones;
+#   - si no existe, cambió algo nativo: compila uno nuevo y espera a que termine (unos 15 minutos).
+# Cuando solo cambia JS, la huella es la misma y el APK publicado sigue sirviendo: lo nuevo le llega con EAS Update.
+# A mano (Actions → «APK para la web» → Run workflow) hace lo mismo; «compilar» fuerza una compilación nueva.
+# Con una etiqueta v* compila siempre. Usa el secreto EXPO_TOKEN, el mismo de app-tiendas.yml.
 name: APK para la web
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'app.json'
+      - 'app.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'fingerprint.config.js'
+      - 'eas.json'
   workflow_dispatch:
     inputs:
       compilar:
-        description: Compilar un APK nuevo (si no, publica el último que ya está en EAS)
+        description: Compilar un APK nuevo aunque ya haya uno con la misma huella
         type: boolean
         default: false
 
@@ -31,6 +45,8 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       GH_TOKEN: ${{ github.token }}
+      # Compila sí o sí con una etiqueta v* o con «compilar»; si no, solo cuando no hay APK con la misma huella.
+      FORZAR: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.compilar == true }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,17 +58,41 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
+      # La huella cuenta el google-services.json que EAS entrega al compilar el perfil preview (ver app-tiendas.yml).
+      - name: Bajar google-services.json de EAS
+        run: |
+          eas env:pull --environment preview --non-interactive --path "$RUNNER_TEMP/eas.env"
+          if [ -f .eas/.env/GOOGLE_SERVICES_JSON ]; then
+            echo "ZARZA_GOOGLE_SERVICES=$PWD/.eas/.env/GOOGLE_SERVICES_JSON" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No llegó GOOGLE_SERVICES_JSON de expo.dev; la huella no coincidirá con la de los APK."
+          fi
+      - name: Calcular la huella nativa
+        run: |
+          huella=$(npx expo-updates runtimeversion:resolve --platform android | jq -r '.runtimeVersion')
+          echo "Huella nativa: $huella"
+          echo "HUELLA=$huella" >> "$GITHUB_ENV"
+      - name: Buscar un APK con la misma huella
+        if: env.FORZAR != 'true'
+        run: |
+          eas build:list --platform android --build-profile preview --distribution internal --status finished \
+            --runtime-version "$HUELLA" --limit 1 --json --non-interactive > "$RUNNER_TEMP/build.json"
+          if [ "$(jq 'length' "$RUNNER_TEMP/build.json")" = "0" ]; then
+            echo "No hay APK con esta huella: cambió algo nativo, se compila uno nuevo."
+            echo "COMPILAR=true" >> "$GITHUB_ENV"
+          fi
       - name: Compilar el APK
-        if: github.event_name == 'push' || inputs.compilar
+        if: env.FORZAR == 'true' || env.COMPILAR == 'true'
         run: eas build --platform android --profile preview --non-interactive --wait --json > "$RUNNER_TEMP/build.json"
-      - name: Buscar el último APK de EAS
-        if: github.event_name != 'push' && !inputs.compilar
-        run: >
-          eas build:list --platform android --build-profile preview --distribution internal --status finished
-          --limit 1 --json --non-interactive > "$RUNNER_TEMP/build.json"
       - name: Bajar el APK
         run: |
           b="$RUNNER_TEMP/build.json"
+          id=$(jq -r '.[0].id // empty' "$b")
+          if [ -n "$id" ] && gh release view apk --json body -q .body 2>/dev/null | grep -q "$id"; then
+            echo "La release ya tiene el APK $id; no hay nada que publicar." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "SIN_CAMBIOS=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
           url=$(jq -r '.[0].artifacts.buildUrl // empty' "$b")
           case "$url" in
             *.apk) ;;
@@ -60,17 +100,19 @@ jobs:
           esac
           curl -fsSL "$url" -o zarza.apk
           {
+            echo "BUILD_ID=$id"
             echo "VERSION=$(jq -r '.[0].appVersion // "1.0.0"' "$b")"
             echo "BUILD=$(jq -r '.[0].appBuildVersion // empty' "$b")"
             echo "COMMIT=$(jq -r '.[0].gitCommitHash // empty' "$b")"
           } >> "$GITHUB_ENV"
           ls -l zarza.apk
       - name: Publicar en la release «apk»
+        if: env.SIN_CAMBIOS != 'true'
         run: |
           titulo="Zarza $VERSION${BUILD:+ ($BUILD)} para Android"
-          notas="APK de Zarza para instalar en Android sin pasar por Google Play. Se descarga desde https://zarzabiblia.com/instalar.${COMMIT:+
+          notas="APK de Zarza para instalar en Android sin pasar por Google Play. Se descarga desde https://zarzabiblia.com/instalar.
 
-          Compilado del commit $COMMIT.}"
+          Compilación EAS: $BUILD_ID · huella nativa: $HUELLA${COMMIT:+ · commit $COMMIT}"
           if ! gh release view apk >/dev/null 2>&1; then
             gh release create apk --title "$titulo" --notes "$notas" --latest=false --target "$GITHUB_SHA"
           fi
