@@ -1,0 +1,79 @@
+# Publica el APK de Android que se descarga desde la web (zarzabiblia.com/instalar y zarzabiblia.com/zarza.apk).
+# Lo deja en la release «apk» de este repo, siempre con el mismo nombre (zarza.apk), así el enlace nunca cambia:
+#   https://github.com/mikews93/biblia-de-estudio/releases/download/apk/zarza.apk
+# La página /instalar lee el nombre, el tamaño y la fecha de esa release (src/lib/apk.ts).
+# A mano (Actions → «APK para la web» → Run workflow): sin marcar «compilar» toma el último APK que ya terminó en EAS
+# (perfil preview) y no gasta compilaciones; marcándolo compila uno nuevo y espera a que termine (unos 15 minutos).
+# Con una etiqueta v* compila siempre. Solo hace falta cuando cambia algo nativo: lo demás le llega a las apps ya
+# instaladas con app-actualizar.yml. Usa el secreto EXPO_TOKEN, el mismo de app-tiendas.yml.
+name: APK para la web
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      compilar:
+        description: Compilar un APK nuevo (si no, publica el último que ya está en EAS)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-web
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Compilar el APK
+        if: github.event_name == 'push' || inputs.compilar
+        run: eas build --platform android --profile preview --non-interactive --wait --json > "$RUNNER_TEMP/build.json"
+      - name: Buscar el último APK de EAS
+        if: github.event_name != 'push' && !inputs.compilar
+        run: >
+          eas build:list --platform android --build-profile preview --distribution internal --status finished
+          --limit 1 --json --non-interactive > "$RUNNER_TEMP/build.json"
+      - name: Bajar el APK
+        run: |
+          b="$RUNNER_TEMP/build.json"
+          url=$(jq -r '.[0].artifacts.buildUrl // empty' "$b")
+          case "$url" in
+            *.apk) ;;
+            *) echo "::error::EAS no devolvió un APK terminado ($url)"; exit 1 ;;
+          esac
+          curl -fsSL "$url" -o zarza.apk
+          {
+            echo "VERSION=$(jq -r '.[0].appVersion // "1.0.0"' "$b")"
+            echo "BUILD=$(jq -r '.[0].appBuildVersion // empty' "$b")"
+            echo "COMMIT=$(jq -r '.[0].gitCommitHash // empty' "$b")"
+          } >> "$GITHUB_ENV"
+          ls -l zarza.apk
+      - name: Publicar en la release «apk»
+        run: |
+          titulo="Zarza $VERSION${BUILD:+ ($BUILD)} para Android"
+          notas="APK de Zarza para instalar en Android sin pasar por Google Play. Se descarga desde https://zarzabiblia.com/instalar.${COMMIT:+
+
+          Compilado del commit $COMMIT.}"
+          if ! gh release view apk >/dev/null 2>&1; then
+            gh release create apk --title "$titulo" --notes "$notas" --latest=false --target "$GITHUB_SHA"
+          fi
+          gh release upload apk zarza.apk --clobber
+          gh release edit apk --title "$titulo" --notes "$notas"
+          echo "Publicado: $titulo · https://github.com/$GITHUB_REPOSITORY/releases/download/apk/zarza.apk" >> "$GITHUB_STEP_SUMMARY"

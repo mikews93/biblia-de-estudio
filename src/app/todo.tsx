@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router';
 import { ReactNode, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import {
@@ -31,6 +31,7 @@ import {
   PeopleIcon,
   PencilIcon,
   PersonIcon,
+  PhoneDownloadIcon,
   PinIcon,
   PlansIcon,
   PromiseIcon,
@@ -96,6 +97,7 @@ const ICONOS: Record<Icono, (p: IconProps) => ReactNode> = {
   flame: FlameIcon,
   shield: ShieldIcon,
   dictionary: DictionaryIcon,
+  phone: PhoneDownloadIcon,
 };
 
 /** «Todo en Zarza»: cada función en un solo lugar, por grupos, con un buscador (src/lib/todo.ts). */
@@ -110,7 +112,7 @@ export default function Todo() {
   const grupos = useMemo(() => {
     const todos = catalogo(last ?? { book: 'jhn', chapter: 1 }).map((g) => ({
       ...g,
-      funciones: g.funciones.filter((f) => !(f.soloAdultos && settings.modo === 'jovenes')),
+      funciones: g.funciones.filter((f) => !(f.soloAdultos && settings.modo === 'jovenes') && !(f.soloWeb && Platform.OS !== 'web')),
     }));
     return filtrar(todos, q);
   }, [last, q, settings.modo]);
