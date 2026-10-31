@@ -42,6 +42,7 @@ import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
 import { CapituloRow, fichaHref, fichasDelVersiculo, getFichasCapitulo, marcarNombres } from '@/lib/fichas';
 import FichaChips from '@/components/FichaChips';
+import NoEncontrada from '@/components/NoEncontrada';
 import { usePageSwipe } from '@/lib/pageSwipe';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import ReaderHeader, { HEADER_HEIGHT, TOOLBAR_HEIGHT } from '@/components/ReaderHeader';
@@ -466,6 +467,14 @@ export default function Reader() {
           },
         ];
 
+  // Un libro que no existe («/jaun/3») o un capítulo de más («/juan/30»): la página de no encontrada, con la sugerencia.
+  const fueraDeLaBiblia =
+    !BOOK_SLUGS[bookId] || !Number.isInteger(chapter) || chapter < 1 || (book != null && chapter > book.chapters);
+  if (fueraDeLaBiblia) {
+    // Con el libro bien escrito y el capítulo de más, se propone el último capítulo del libro.
+    const ultimo = book && chapter > book.chapters ? { href: chapterHref(book.id, book.chapters), nombre: String(book.chapters), libro: book.id } : undefined;
+    return <NoEncontrada sugerencia={ultimo} />;
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

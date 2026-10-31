@@ -72,9 +72,13 @@ export const BOOK_SLUGS: Record<string, string> = {
 
 const SLUG_TO_ID = Object.fromEntries(Object.entries(BOOK_SLUGS).map(([id, slug]) => [slug, id]));
 
-/** Acepta el nombre en la URL («juan», «1-corintios») o el código («jhn»). */
+/** Acepta el nombre en la URL («juan», «1-corintios», también «Génesis» con acento) o el código («jhn»). */
 export function bookIdFromParam(param: string): string {
-  const p = decodeURIComponent(param).toLowerCase();
+  let p = param;
+  try {
+    p = decodeURIComponent(param);
+  } catch {}
+  p = p.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   return SLUG_TO_ID[p] ?? p;
 }
 
