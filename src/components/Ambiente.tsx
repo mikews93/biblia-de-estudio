@@ -91,9 +91,20 @@ export function Barras({ color, size = 16 }: { color: string; size?: number }) {
   );
 }
 
+type HojaProps = {
+  colors: Colors;
+  onClose: () => void;
+  /** Para otra pantalla (el pódcast): qué hacer al elegir o apagar, y el texto de la hoja. */
+  onElegir?: (id: string) => void;
+  onApagar?: () => void;
+  titulo?: string;
+  nota?: string;
+};
+
 /** La elección de pista y el volumen. */
-function AmbienteHoja({ colors, onClose }: { colors: Colors; onClose: () => void }) {
+export function AmbienteHoja({ colors, onClose, onElegir, onApagar, titulo = 'Para estudiar en calma', nota }: HojaProps) {
   const { sonando, elegida, volumen } = useAmbiente();
+  const apagar = onApagar ?? stopAmbiente;
 
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onClose}>
@@ -102,7 +113,7 @@ function AmbienteHoja({ colors, onClose }: { colors: Colors; onClose: () => void
         <View style={styles.head}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.kicker, { color: colors.muted }]}>Música de ambiente</Text>
-            <Text style={[styles.title, { color: colors.text }]}>Para estudiar en calma</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{titulo}</Text>
           </View>
           <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar">
             <CloseIcon color={colors.muted} size={20} />
@@ -116,7 +127,7 @@ function AmbienteHoja({ colors, onClose }: { colors: Colors; onClose: () => void
             return (
               <Pressable
                 key={p.id}
-                onPress={() => (on ? stopAmbiente() : playAmbiente(p.id))}
+                onPress={() => (on ? apagar() : onElegir ? onElegir(p.id) : playAmbiente(p.id))}
                 accessibilityRole="button"
                 aria-selected={on}
                 accessibilityLabel={`${p.nombre}: ${p.detalle}${on ? '. Sonando, toca para apagar' : ''}`}
@@ -148,11 +159,11 @@ function AmbienteHoja({ colors, onClose }: { colors: Colors; onClose: () => void
 
         <View style={styles.foot}>
           <Text style={[styles.note, { color: colors.muted }]}>
-            Pads suaves hechos para la app. Siguen mientras estudias, bajan solos si escuchas la lectura y se apagan al salir.
+            {nota ?? 'Pads suaves hechos para la app. Siguen mientras estudias, bajan solos si escuchas la lectura y se apagan al salir.'}
           </Text>
           {sonando && (
             <Pressable
-              onPress={stopAmbiente}
+              onPress={apagar}
               accessibilityRole="button"
               style={({ pressed }) => [styles.off, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}
             >

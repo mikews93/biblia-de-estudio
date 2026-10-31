@@ -438,6 +438,8 @@ export const speakerNow = (speech: SpeechAudio) => SPEAKERS[speech.lines[speech.
 /** Pausa lo que esté sonando (por ejemplo, al grabar una nota de voz). */
 /** Si suena algo del reproductor (para que la música de ambiente se aparte). No crea el reproductor. */
 export const mainPlaying = () => !!player?.playing || !!state.speech?.playing;
+/** Si el reproductor tiene abierto un pódcast (para su música de fondo, src/lib/musicaPodcast.ts). */
+export const podcastAbierto = () => state.open && state.kind === 'podcast';
 
 export function pauseAudio() {
   if (player?.playing) player.pause();
