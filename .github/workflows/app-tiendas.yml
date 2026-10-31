@@ -44,6 +44,17 @@ jobs:
         run: |
           eas init --non-interactive --force
           echo "projectId: $(node -p "require('./app.json').expo.extra?.eas?.projectId")"
+      # La huella nativa (runtimeVersion «fingerprint») cuenta el google-services.json que EAS entrega al compilar.
+      # EAS la calcula también aquí antes de subir; sin el archivo no coinciden y la compilación falla con
+      # «Runtime version mismatch». Se baja igual que en app-actualizar.yml.
+      - name: Bajar google-services.json de EAS
+        run: |
+          eas env:pull --environment ${{ inputs.perfil || 'production' }} --non-interactive --path "$RUNNER_TEMP/eas.env"
+          if [ -f .eas/.env/GOOGLE_SERVICES_JSON ]; then
+            echo "ZARZA_GOOGLE_SERVICES=$PWD/.eas/.env/GOOGLE_SERVICES_JSON" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No llegó GOOGLE_SERVICES_JSON de expo.dev."
+          fi
       - name: Compilar
         run: >
           eas build --non-interactive --no-wait
