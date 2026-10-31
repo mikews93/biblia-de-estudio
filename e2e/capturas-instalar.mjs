@@ -32,6 +32,12 @@ for (const [pref, opts] of casos) {
     await p.screenshot({ path: `${out}/${pref}-2-pasos.png` });
   }
   if (pref === 'm') {
+    // Tocar «Descargar» sin salir de la página: aparece la ayuda por si Chrome deja la descarga al 100 %.
+    await p.route('https://github.com/**', (r) => r.fulfill({ status: 204 }));
+    await p.getByTestId('descargar-apk').click();
+    await p.getByTestId('descarga-trabada').waitFor();
+    await p.waitForTimeout(500);
+    await p.screenshot({ path: `${out}/m-7-descarga-trabada.png` });
     await p.unroute('https://api.github.com/**');
     await p.route('https://api.github.com/**', (r) => r.fulfill({ status: 404, json: { message: 'Not Found' } }));
     await p.reload();
