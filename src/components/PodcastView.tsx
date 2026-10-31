@@ -8,6 +8,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { BackIcon, ForwardIcon, PauseIcon, PlayIcon } from '@/components/audioIcons';
 
 import { TalkIcon } from '@/components/icons';
+import MusicaPodcast from '@/components/MusicaPodcast';
 import { PodcastGrabado } from '@/components/PodcastGrabado';
 import { Sources } from '@/components/StudyPanel';
 import { ToolFooter, ToolState } from '@/components/ToolState';
@@ -139,6 +140,7 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
             {player.index + 1} de {lines.length} · {natural ? 'voces naturales' : 'voz del dispositivo'}
           </Text>
         )}
+        {ready && <MusicaPodcast colors={colors} />}
         {!natural && <VocesPodcast />}
 
         <ToolState
