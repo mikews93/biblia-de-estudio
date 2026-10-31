@@ -57,6 +57,7 @@ export default function MusicaPodcast({ colors }: { colors: Colors }) {
           onElegir={musica.cambiar}
           onApagar={() => musica.encendida && musica.alternar()}
           titulo="Debajo de Ana y Tomás"
+          marcada={musica.encendida ? musica.pista : undefined}
           nota="Suena bajita mientras escuchas el pódcast y se va cuando lo pausas. La pista que elijas queda para los próximos."
         />
       )}

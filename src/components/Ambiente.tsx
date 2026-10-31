@@ -11,6 +11,7 @@ const ICONOS: Record<string, (p: IconProps) => ReactNode> = {
   amanecer: SunriseIcon,
   noche: MoonIcon,
   presencia: CandleIcon,
+  piano: MusicIcon,
 };
 
 /**
@@ -99,11 +100,14 @@ type HojaProps = {
   onApagar?: () => void;
   titulo?: string;
   nota?: string;
+  /** La pista que se marca como elegida cuando no suena nada (por defecto, la última de la música de ambiente). */
+  marcada?: string;
 };
 
 /** La elección de pista y el volumen. */
-export function AmbienteHoja({ colors, onClose, onElegir, onApagar, titulo = 'Para estudiar en calma', nota }: HojaProps) {
-  const { sonando, elegida, volumen } = useAmbiente();
+export function AmbienteHoja({ colors, onClose, onElegir, onApagar, titulo = 'Para estudiar en calma', nota, marcada }: HojaProps) {
+  const { sonando, elegida: ultima, volumen } = useAmbiente();
+  const elegida = marcada ?? ultima;
   const apagar = onApagar ?? stopAmbiente;
 
   return (
@@ -159,7 +163,7 @@ export function AmbienteHoja({ colors, onClose, onElegir, onApagar, titulo = 'Pa
 
         <View style={styles.foot}>
           <Text style={[styles.note, { color: colors.muted }]}>
-            {nota ?? 'Pads suaves hechos para la app. Siguen mientras estudias, bajan solos si escuchas la lectura y se apagan al salir.'}
+            {nota ?? 'Pads suaves hechos para la app y un piano lento. Siguen mientras estudias, bajan solos si escuchas la lectura y se apagan al salir.'}
           </Text>
           {sonando && (
             <Pressable
