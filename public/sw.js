@@ -11,11 +11,15 @@ self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim(
 
 function networkFirst(event, request) {
   return fetch(request)
-    .then((res) => {
+    .then(async (res) => {
       if (res.ok) {
         const copy = res.clone();
         event.waitUntil(caches.open(CACHE).then((c) => c.put(request, copy)));
+        return res;
       }
+      // Un trozo de código de una publicación anterior (lo pide una pestaña abierta desde antes) ya no está en el
+      // servidor; si quedó guardado, sirve igual: su nombre lleva la huella, así que nunca cambia.
+      if (res.status === 404 && new URL(request.url).pathname.startsWith('/_expo/static/')) return (await caches.match(request)) ?? res;
       return res;
     })
     .catch(async () => {

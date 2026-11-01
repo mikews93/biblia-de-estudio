@@ -11,6 +11,7 @@ import { compilacion, etiqueta } from './version';
  * - Lo que se rompe fuera de React: en la web, los eventos «error» y «unhandledrejection»; en el teléfono, el manejador
  *   global de React Native. Si el fallo cierra la app, el aviso queda guardado y se manda al abrirla otra vez.
  * - Como mucho MAX_SESION avisos por sesión, y cada fallo una sola vez.
+ * - En la web, si falta código de una publicación anterior (esCodigoViejo), la app recarga sola y no avisa.
  */
 
 export type Origen = 'pantalla' | 'global' | 'promesa';
@@ -37,6 +38,46 @@ export function ignorar(mensaje: string, pila: string) {
   if (/ResizeObserver loop/i.test(mensaje)) return true;
   if (/AbortError|The user aborted a request|cancelled|canceled/i.test(mensaje)) return true;
   return /chrome-extension:|moz-extension:|safari-extension:/.test(pila);
+}
+
+/**
+ * Un trozo del código de la web que no se pudo traer. Casi siempre es una pestaña (o la app instalada) que quedó abierta
+ * con la versión de antes: al publicar, los archivos viejos dejan de existir. También pasa si se corta la red justo ahí.
+ */
+export function esCodigoViejo(error: unknown) {
+  const e = error as { name?: unknown; message?: unknown } | null;
+  const texto = e && typeof e === 'object' ? `${String(e.name ?? '')} ${String(e.message ?? '')}` : String(error ?? '');
+  return /AsyncRequireError|Loading module \S+ failed|did not finish registering its modules|ChunkLoadError|Failed to fetch dynamically imported module/i.test(
+    texto,
+  );
+}
+
+const RECARGA = 'zarza-recarga-version';
+const ESPERA_RECARGA = 60_000;
+
+/**
+ * En la web, recarga una vez para traer la versión nueva. Devuelve false si no hay conexión o si ya se recargó hace
+ * menos de un minuto (así nunca queda recargando sin parar).
+ */
+export function recargarVersionNueva() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  try {
+    if (Date.now() - Number(sessionStorage.getItem(RECARGA) ?? 0) < ESPERA_RECARGA) return false;
+    sessionStorage.setItem(RECARGA, String(Date.now()));
+  } catch {
+    return false;
+  }
+  window.location.reload();
+  return true;
+}
+
+function recargadoHacePoco() {
+  try {
+    return Date.now() - Number(sessionStorage.getItem(RECARGA) ?? 0) < ESPERA_RECARGA;
+  } catch {
+    return false;
+  }
 }
 
 export function armarAviso(error: unknown, origen: Origen, fatal = false): Aviso | null {
@@ -85,6 +126,13 @@ async function guardarPendiente(aviso: Aviso) {
 export async function reportarError(error: unknown, origen: Origen, fatal = false) {
   try {
     if (__DEV__) return;
+    // Código viejo tras publicar: no es un fallo de Zarza. La pantalla rota recarga sola (src/components/PantallaRota.tsx);
+    // solo se avisa si sigue fallando con conexión después de recargar.
+    if (esCodigoViejo(error)) {
+      if (origen !== 'pantalla') return;
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      if (!recargadoHacePoco()) return;
+    }
     const aviso = armarAviso(error, origen, fatal);
     if (!aviso) return;
     const clave = `${aviso.mensaje}|${aviso.pila.split('\n')[1] ?? ''}`;

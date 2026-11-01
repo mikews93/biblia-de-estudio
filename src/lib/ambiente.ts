@@ -23,6 +23,9 @@ export const PISTAS: Pista[] = [
   { id: 'amanecer', nombre: 'Amanecer', detalle: 'Claro, con campanas', bucle: 60 },
   { id: 'noche', nombre: 'Noche', detalle: 'Grave, para concentrarse', bucle: 72 },
   { id: 'presencia', nombre: 'Presencia', detalle: 'Casi quieto, bajo la voz', bucle: 64 },
+  // La única que no es sintetizada: un loop de piano CC0 de Freesound (pipeline/ambiente/piano.json). La que suena
+  // por defecto debajo del pódcast (src/lib/musicaPodcast.ts).
+  { id: 'piano', nombre: 'Piano', detalle: 'Piano lento, para el pódcast', bucle: 109 },
 ];
 
 /** Segundos que se cruzan dos vueltas, y lo que tarda en entrar o salir. */

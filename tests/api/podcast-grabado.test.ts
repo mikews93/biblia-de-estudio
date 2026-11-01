@@ -12,10 +12,13 @@ import { codificarMp3, decodificarMp3 } from '../../api/_mp3';
 import { muestrasA16, volumenHabla } from '../../src/lib/nivelarVoces';
 import { client, DB_URL, ensureSchema, Post, prepareEnv, request } from './helpers';
 
+type Parte = { muestras: Float32Array; segmentos: { start_time_seconds: number; end_time_seconds: number; dialogue_input_index: number }[] };
 type Handler = {
   GET: (r: Request) => Promise<Response>;
   POST: Post;
   scriptLines: (t: string) => { voice: string; text: string }[];
+  mudas: (p: Parte, n: number) => number[];
+  reemplazar: (p: Parte, k: number, nuevo: Float32Array) => Parte;
   renivelar: (s: ReturnType<typeof postgres>, where: { book: string; chapter: number }, url: string) => Promise<void>;
 };
 
@@ -34,6 +37,8 @@ const amplitud = (voice: string) => (voice === ANA ? 0.08 : 0.4);
 const calls: { inputs: { text: string; voice_id: string }[]; model_id: string }[] = [];
 const paths: string[] = [];
 let failNext = false;
+/** Como pasó en producción: ElevenLabs entrega muda la última intervención de cada tramo de varias. */
+let mudaUltima = false;
 const eleven = createServer((req, res) => {
   let raw = '';
   req.on('data', (c) => (raw += c));
@@ -48,7 +53,9 @@ const eleven = createServer((req, res) => {
     paths.push(req.url ?? '');
     // Un segundo por tramo, repartido entre las intervenciones, en PCM de 16 bits con dónde suena cada una.
     const n = body.inputs.length;
-    const partes = body.inputs.map((x: { voice_id: string }) => voz(amplitud(x.voice_id), 1 / n));
+    const partes = body.inputs.map((x: { voice_id: string }, i: number) =>
+      voz(mudaUltima && n > 1 && i === n - 1 ? 0 : amplitud(x.voice_id), 1 / n),
+    );
     const pcm = muestrasA16(Float32Array.from(partes.flatMap((p: Float32Array) => [...p])));
     let at = 0;
     const voice_segments = partes.map((p: Float32Array, i: number) => {
@@ -123,6 +130,19 @@ describe('guion', () => {
     expect(lines.map((l) => l.text)).toEqual(['¿Por qué de noche?', 'Juan no lo dice. sigue aquí']);
     expect(lines[0].voice).not.toBe(lines[1].voice);
   });
+
+  it('encuentra la intervención muda y la cambia por otra, corriendo lo que viene después', () => {
+    const muestras = Float32Array.from([...voz(0.3, 1, 0), ...voz(0, 1, 0), ...voz(0.3, 1, 0)]);
+    const seg = (k: number, a: number, b: number) => ({ start_time_seconds: a, end_time_seconds: b, dialogue_input_index: k });
+    const parte = { muestras, segmentos: [seg(0, 0, 1), seg(1, 1, 2), seg(2, 2, 3)] };
+    expect(api.mudas(parte, 3)).toEqual([1]);
+    // Una que ElevenLabs ni ubicó también falta.
+    expect(api.mudas({ muestras, segmentos: [seg(0, 0, 1)] }, 2)).toEqual([1]);
+    const nueva = api.reemplazar(parte, 1, voz(0.3, 0.5, 0));
+    expect(nueva.muestras.length).toBe(Math.round(2.5 * RATE));
+    expect(nueva.segmentos.map((x) => [x.start_time_seconds, x.end_time_seconds])).toEqual([[0, 1], [1, 1.5], [1.5, 2.5]]);
+    expect(api.mudas(nueva, 3)).toEqual([]);
+  });
 });
 
 describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
@@ -191,6 +211,61 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     // Ya nivelada no se vuelve a tocar.
     await api.renivelar(sql, { book: '3jn', chapter: 1 }, listo.url);
     expect((await get('3jn', 1)).url).toBe(listo.url);
+  });
+
+  it('si ElevenLabs entrega muda la última intervención (la pregunta a quien escucha), se graba otra vez sola', async () => {
+    await sql`delete from podcast_grabado where libro = 'jud' and capitulo = 2`;
+    await sql`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes)
+      values ('podcast', 'jud', 2, ${SCRIPT}, '[]') on conflict do nothing`;
+    mudaUltima = true;
+    const antes = calls.length;
+    try {
+      const listo = await (await post({ book: 'jud', chapter: 2 }, llaves[0])).json();
+      // Dos tramos (8 y 2) y, después de cada uno, su última intervención sola.
+      const nuevas = calls.slice(antes);
+      expect(nuevas.map((c) => c.inputs.length)).toEqual(expect.arrayContaining([8, 2, 1, 1]));
+      expect(nuevas.filter((c) => c.inputs.length === 1).map((c) => c.inputs[0].text).sort()).toEqual(['Respuesta 7.', 'Respuesta 9.']);
+      // La última suena: desde su inicio hasta el final del MP3 hay voz.
+      const { muestras, rate } = await decodificarMp3(new Uint8Array(await readFile(new URL(listo.url))));
+      const ultima = listo.tiempos.at(-1);
+      expect(volumenHabla(muestras, rate, { desde: Math.round(ultima * rate), hasta: muestras.length })).not.toBeNull();
+      expect(listo.tiempos.length).toBe(10);
+    } finally {
+      mudaUltima = false;
+      await sql`delete from podcast_grabado where libro = 'jud' and capitulo = 2`;
+      await sql`delete from herramientas_ia where herramienta = 'podcast' and libro = 'jud' and capitulo = 2`;
+    }
+  });
+
+  it('una grabación de antes con la última intervención muda se repara una vez al abrirla', async () => {
+    const guion = 'ANA: Pregunta?\nTOMÁS: Respuesta.\nANA: ¿Y tú qué piensas?';
+    const viejo = Float32Array.from([...voz(0.3, 1, 0.2), ...voz(0.3, 1, 0.2), ...voz(0, 1, 0)]);
+    const archivo = path.join(process.env.PODCAST_STORE_DIR!, '2jn-2-muda.mp3');
+    await writeFile(archivo, await codificarMp3(muestrasA16(viejo), RATE, 64));
+    const url = `file://${archivo}`;
+    await sql`delete from podcast_grabado where libro = '2jn' and capitulo = 2`;
+    await sql`insert into podcast_grabado (libro, capitulo, estado, url, duracion, credito, guion, tiempos, nivelado)
+      values ('2jn', 2, 'listo', ${url}, 3, 'Voces', ${guion}, ${sql.json([0, 1, 2])}, true)`;
+    const antes = calls.length;
+    try {
+      expect((await get('2jn', 2)).url).toBe(url);
+      let listo = await get('2jn', 2);
+      for (let i = 0; i < 100 && listo.url === url; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        listo = await get('2jn', 2);
+      }
+      expect(path.basename(new URL(listo.url).pathname)).toBe('2jn-2-muda-r.mp3');
+      expect(calls.slice(antes).map((c) => c.inputs.map((x) => x.text))).toEqual([['¿Y tú qué piensas?']]);
+      expect(listo.tiempos).toEqual([0, 1, 2]);
+      const { muestras, rate } = await decodificarMp3(new Uint8Array(await readFile(new URL(listo.url))));
+      expect(volumenHabla(muestras, rate, { desde: 2 * rate, hasta: muestras.length })).not.toBeNull();
+      // Revisada una vez, no se vuelve a pedir nada.
+      await get('2jn', 2);
+      await new Promise((r) => setTimeout(r, 300));
+      expect(calls.length).toBe(antes + 1);
+    } finally {
+      await sql`delete from podcast_grabado where libro = '2jn' and capitulo = 2`;
+    }
   });
 
   it('si ElevenLabs falla se puede volver a intentar', async () => {
