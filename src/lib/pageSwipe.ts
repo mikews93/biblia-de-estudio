@@ -28,7 +28,7 @@ let installed = false;
 
 /**
  * Deslizar a la izquierda o la derecha con el dedo pasa la hoja siguiéndolo (solo web; en el teléfono
- * nativo el lector cambia de capítulo con sus botones). Con el ratón arrastrar es para seleccionar
+ * nativo la hoja la pasa HojaNativa). Con el ratón arrastrar es para seleccionar
  * texto, así que en el computador la hoja pasa con las flechas ← → del teclado o los botones. hrefFor(1) es el capítulo siguiente y
  * hrefFor(-1) el anterior, o null si no hay. Al soltar, la hoja termina de pasar si se arrastró lo
  * bastante o se lanzó rápido; si no, vuelve a su sitio. Con swap el gesto cambia de capítulo en el mismo
