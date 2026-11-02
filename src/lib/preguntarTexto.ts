@@ -17,14 +17,12 @@ export function preparadaDe(texto: string): Preparada | undefined {
   return PREPARADAS.find((p) => sinAcentos(p.texto) === t);
 }
 
-// Palabras con que suele empezar una pregunta, ya sin tildes. Puede ir detrás de «y», «pero» y, las que preguntan,
-// detrás de una preposición: «a qué le tenía miedo Caín», «de quién huía», «y con quién se casó».
+// Palabras con que suele empezar una pregunta, ya sin tildes, también detrás de «y», «pero». Las que preguntan
+// («qué», «cuándo», «de quién») van aparte y con su tilde (INTERROGATIVA): sin ella son otra cosa («cuando tengo miedo»,
+// «para que todo aquel que en él cree»), y lo dudoso lo decide el servidor (api/_tipo.ts).
 const INICIOS = new RegExp(
   '^(?:(?:y|e|pero|entonces|o sea|oye|bueno)\\s+)?(?:' +
-    // Detrás de una preposición, solo las palabras que preguntan: «para Dios no hay nada imposible» no es pregunta.
-    '(?:(?:a|de|del|con|en|por|para|contra|hacia|desde|hasta|sobre|segun|entre)\\s+)?' +
-    '(?:que|quien|quienes|como|cual|cuales|cuando|donde|adonde|cuanto|cuanta|cuantos|cuantas)|' +
-    'por que|para que|acaso|es|son|esta|estan|existe|existen|hay|puedo|puede|pueden|podemos|podria|debo|debe|deben|' +
+    'por que|acaso|es|son|esta|estan|existe|existen|hay|puedo|puede|pueden|podemos|podria|debo|debe|deben|' +
     'debemos|deberia|tengo|tiene|se puede|dios|jesus|la biblia|explicame|explica|dime|cuentame|hablame|' +
     'ayudame a entender|quiero saber|quisiera saber|quiero entender|me puedes|me podrias|podrias|sabes|significado de|y si' +
     ')\\b',
@@ -36,7 +34,7 @@ const INTERROGATIVA = /(^|[\s,(«"])(qué|quién|quiénes|cuál|cuáles|cómo|d�
 
 /**
  * ¿Lo escrito es una pregunta y no unas palabras que se buscan? Con signos de pregunta, siempre; sin ellos (dictado),
- * si empieza como una pregunta o lleva una palabra que pregunta con su tilde, y tiene al menos cuatro palabras
+ * si empieza como una pregunta o lleva una palabra que pregunta con su tilde («a qué», «de quién»), y tiene al menos cuatro palabras
  * («qué dice la biblia del perdón», «de quién huía Caín después de matar a Abel»).
  */
 export function esPregunta(texto: string): boolean {

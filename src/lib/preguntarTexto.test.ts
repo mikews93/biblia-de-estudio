@@ -16,7 +16,7 @@ describe('esPregunta', () => {
       esPregunta('A qué le huía Caín, o de quién huía más bien, a qué le tenía miedo después de matar a Abel, si no había nadie más excepto sus papás, Adán y Eva'),
     ).toBe(true);
     expect(esPregunta('de quién huía Caín después de matar a Abel')).toBe(true);
-    expect(esPregunta('y con quien se casó Caín')).toBe(true);
+    expect(esPregunta('y con quién se casó Caín')).toBe(true);
     expect(esPregunta('Caín de quién tenía miedo')).toBe(true);
     expect(esPregunta('explícame el modalismo y por qué es herejía')).toBe(true);
     expect(esPregunta('quiero saber qué es el arrianismo')).toBe(true);
@@ -33,6 +33,8 @@ describe('esPregunta', () => {
     expect(esPregunta('Era un hombre de los fariseos')).toBe(false);
     expect(esPregunta('porque de tal manera amó Dios al mundo')).toBe(false);
     expect(esPregunta('el que cree en mí tiene vida')).toBe(false);
+    expect(esPregunta('cuando tengo miedo de noche')).toBe(false);
+    expect(esPregunta('para que todo aquel que en él cree')).toBe(false);
   });
 });
 

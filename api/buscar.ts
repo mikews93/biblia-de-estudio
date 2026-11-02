@@ -7,7 +7,8 @@
 // Respuesta: { results: [{ ref, label, text, reason, version }], note? } | { error }. «version» es la versión del texto.
 // Con «modo: "rapido"» no hay IA ni hace falta cuenta: semántica + palabras (api/_semantica.ts), en un momento y sin
 // coste; «reason» va vacío, «semantica» dice si se usó el modelo o solo las palabras y «floja» si conviene que la IA
-// la afine (ver esFloja en api/_semantica.ts).
+// la afine (ver esFloja en api/_semantica.ts). «tipo» dice si lo escrito es una pregunta, un versículo recordado o una
+// búsqueda (api/_tipo.ts), para que la app responda la pregunta arriba.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
@@ -16,6 +17,7 @@ import path from 'node:path';
 import { needsAccount } from './_cuenta';
 import { Biblia, type Lectura, lectura } from './_investigar';
 import { quickSearch, warm } from './_semantica';
+import { tipoDe } from './_tipo';
 import { formatRef, parseRef } from '../src/lib/refs';
 
 // Buscar es una tarea corta y frecuente: Sonnet cuesta la mitad que Opus y aquí rinde igual.
@@ -121,10 +123,14 @@ export async function POST(request: Request) {
 
   if (rapido) {
     try {
-      const { refs, semantica, floja } = await quickSearch(query, books, MAX_QUICK, undefined, version.licensed ? undefined : version.id);
-      const found = (await Promise.all(refs.map((r) => verify(r, books, biblia, rv)))).filter((x) => x !== null);
+      const { refs, semantica, floja, senales } = await quickSearch(query, books, MAX_QUICK, undefined, version.licensed ? undefined : version.id);
+      // Lo que no es un versículo recordado ni una pregunta clara lo clasifica un modelo pequeño, a la vez que se leen los textos.
+      const [found, tipo] = await Promise.all([
+        Promise.all(refs.map((r) => verify(r, books, biblia, rv))).then((fs) => fs.filter((x) => x !== null)),
+        tipoDe(query, senales.recordado),
+      ]);
       return Response.json(
-        { results: found.filter((f) => f.text.trim()).map((f) => ({ ...f, reason: '' })), semantica, floja },
+        { results: found.filter((f) => f.text.trim()).map((f) => ({ ...f, reason: '' })), semantica, floja, tipo },
         { headers: { 'Cache-Control': 'public, max-age=3600' } },
       );
     } catch (err) {

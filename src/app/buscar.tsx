@@ -16,6 +16,7 @@ import {
   IdeaResult,
   NOTHING_DOWNLOADED,
   type QuickMode,
+  type TipoBusqueda,
   addRecent,
   clearRecent,
   getRecent,
@@ -64,6 +65,8 @@ export default function Search() {
   const [showAll, setShowAll] = useState(false);
   // Búsqueda rápida floja (api/_semantica.ts esFloja): con cuenta la IA la afina sola («auto»); sin cuenta, se invita.
   const [weak, setWeak] = useState(false);
+  // Lo que el servidor dice de lo buscado: una pregunta, un versículo recordado o una búsqueda (api/_tipo.ts).
+  const [tipo, setTipo] = useState<TipoBusqueda | undefined>(undefined);
   const [refining, setRefining] = useState(false);
   const [auto, setAuto] = useState(false);
   const { llave } = useAccount();
@@ -173,7 +176,10 @@ export default function Search() {
     setWeak(false);
     setRefining(false);
     setAuto(false);
-    if (!ai) setResults(null);
+    if (!ai) {
+      setResults(null);
+      setTipo(undefined);
+    }
     setShowAll(false);
     router.setParams({ q: text });
     // Se busca en la versión que se lee ahora; con una con derechos, su texto se pide aparte (nunca va a la IA).
@@ -189,7 +195,11 @@ export default function Search() {
       setNote('note' in r ? r.note : undefined);
       const floja = r.mode !== 'ia' && r.mode !== 'sin-conexion' && !!r.floja;
       setWeak(floja);
-      if (floja && llave && (await permisoIaDado())) refine(text, version, controller);
+      const t = 'tipo' in r ? r.tipo : undefined;
+      if (!ai) setTipo(t);
+      // Si es una pregunta, la responde la tarjeta de arriba: no hace falta que la IA afine además los pasajes.
+      const esLaPregunta = t === 'pregunta' || (t !== 'versiculo' && esPregunta(text));
+      if (floja && !esLaPregunta && llave && (await permisoIaDado())) refine(text, version, controller);
     } catch (e) {
       if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'No se pudo hacer la búsqueda.');
     } finally {
@@ -286,13 +296,15 @@ export default function Search() {
   const shownLicensed = !!searchedLicensed && !!results?.some((r) => r.version === searchedIn);
   const bookName = cita ? (books.find((b) => b.id === cita.book)?.name ?? '') : '';
   // Lo buscado es una pregunta: arriba va su respuesta y debajo los pasajes de la búsqueda rápida.
-  const pregunta = !!asked && !cita && esPregunta(asked);
+  // Las reglas la reconocen al momento; el servidor confirma o corrige al llegar los pasajes (un versículo recordado
+  // como «¿qué es el hombre para que de él tengas memoria?» no es pregunta; «los animales van al cielo» sí).
+  const pregunta = !!asked && !cita && (tipo === 'pregunta' || (tipo !== 'versiculo' && esPregunta(asked)));
   // Una palabra de la Biblia (Getsemaní, el efod, la gracia), sola o en una pregunta corta: su explicación del diccionario.
   const palabra = !cita ? palabraDe(pregunta ? asked : settled) : undefined;
   // Lo buscado no salió como pregunta pero quizá lo era: se ofrece preguntarlo. Arriba si es una o dos palabras («modalismo»)
   // o si la búsqueda salió floja; si no, al final de los pasajes, para no estorbar a quien busca un versículo.
-  const otraPregunta = asked && !cita && !pregunta && !palabra ? comoPregunta(asked) : undefined;
-  const arriba = weak || asked.trim().split(/\s+/).length <= 2;
+  const otraPregunta = asked && !cita && !pregunta && !palabra && tipo !== 'versiculo' ? comoPregunta(asked) : undefined;
+  const arriba = (weak && tipo !== 'busqueda') || asked.trim().split(/\s+/).length <= 2;
 
   return (
     <ScrollView

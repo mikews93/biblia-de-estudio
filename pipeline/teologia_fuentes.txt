@@ -22,3 +22,5 @@ hcc4.xml https://ccel.org/ccel/s/schaff/hcc4.xml
 credos1.xml https://ccel.org/ccel/s/schaff/creeds1.xml
 anf01.xml https://ccel.org/ccel/s/schaff/anf01.xml
 anf03.xml https://ccel.org/ccel/s/schaff/anf03.xml
+hcc7.xml https://ccel.org/ccel/s/schaff/hcc7.xml
+hcc8.xml https://ccel.org/ccel/s/schaff/hcc8.xml

@@ -651,6 +651,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     res.writeHead(200, { 'content-type': 'application/json' });
     return res.end(JSON.stringify(message([{ type: 'tool_use', id: 'toolu_explicar', name: 'explicar', input: explicar(body) }])));
   }
+  // ¿Pregunta o búsqueda? (api/_tipo.ts): las que hablan de Caín, del cielo o de una herejía son preguntas.
+  if (systemText(body.system).startsWith('Clasificas lo que alguien escribió')) {
+    const q = JSON.stringify(body.messages[0]?.content ?? '').toLowerCase();
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify(message([{ type: 'text', text: /ca[ií]n|cielo|modalismo|herej/.test(q) ? 'pregunta' : 'busqueda' }])));
+  }
   const content =
     body.output_config?.format?.type === 'json_schema'
       ? [{ type: 'text', text: JSON.stringify(structured(body)) }]
