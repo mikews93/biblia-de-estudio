@@ -37,7 +37,9 @@ export async function modoProfundo(page: Page) {
 export async function peticionesIA(request: APIRequestContext, marca: string) {
   const res = await request.get(`${AI}/__requests`);
   const all = (await res.json()) as { system?: unknown; messages: { role: string; content: unknown }[] }[];
-  return all.filter((r) => JSON.stringify(r.messages).includes(marca));
+  // Sin contar la clasificación de 5 tokens «¿pregunta o búsqueda?» del buscador (api/_tipo.ts; la prueba
+  // tests/api/buscar.test.ts): no es la IA que responde ni afina.
+  return all.filter((r) => JSON.stringify(r.messages).includes(marca) && !JSON.stringify(r.system ?? '').includes('Clasificas lo que alguien escribió'));
 }
 
 /** Abre una hoja de la barra del capítulo: la de escuchar (lectura, dramatizado, original) o la de «Más». */
