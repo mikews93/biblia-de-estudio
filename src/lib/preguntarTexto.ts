@@ -17,23 +17,58 @@ export function preparadaDe(texto: string): Preparada | undefined {
   return PREPARADAS.find((p) => sinAcentos(p.texto) === t);
 }
 
-// Palabras con que suele empezar una pregunta, ya sin tildes.
-const INICIOS =
-  /^(que|quien|quienes|como|cual|cuales|cuando|donde|cuanto|cuantos|cuantas|por que|para que|es|son|esta|estan|existe|existen|hay|puedo|puede|pueden|podemos|debo|debe|deben|debemos|tengo|tiene|dios|jesus|la biblia|explicame|explica|dime|ayudame a entender)\b/;
+// Palabras con que suele empezar una pregunta, ya sin tildes. Puede ir detrás de «y», «pero» y, las que preguntan,
+// detrás de una preposición: «a qué le tenía miedo Caín», «de quién huía», «y con quién se casó».
+const INICIOS = new RegExp(
+  '^(?:(?:y|e|pero|entonces|o sea|oye|bueno)\\s+)?(?:' +
+    // Detrás de una preposición, solo las palabras que preguntan: «para Dios no hay nada imposible» no es pregunta.
+    '(?:(?:a|de|del|con|en|por|para|contra|hacia|desde|hasta|sobre|segun|entre)\\s+)?' +
+    '(?:que|quien|quienes|como|cual|cuales|cuando|donde|adonde|cuanto|cuanta|cuantos|cuantas)|' +
+    'por que|para que|acaso|es|son|esta|estan|existe|existen|hay|puedo|puede|pueden|podemos|podria|debo|debe|deben|' +
+    'debemos|deberia|tengo|tiene|se puede|dios|jesus|la biblia|explicame|explica|dime|cuentame|hablame|' +
+    'ayudame a entender|quiero saber|quisiera saber|quiero entender|me puedes|me podrias|podrias|sabes|significado de|y si' +
+    ')\\b',
+);
+
+// En español la tilde marca la palabra que pregunta («de quién huía», «Caín a qué le temía»): con ella, en cualquier
+// parte de la frase, es una pregunta aunque el dictado no ponga los signos.
+const INTERROGATIVA = /(^|[\s,(«"])(qué|quién|quiénes|cuál|cuáles|cómo|dónde|adónde|cuándo|cuánto|cuánta|cuántos|cuántas)(?=$|[\s,.;:)»"?])/i;
 
 /**
  * ¿Lo escrito es una pregunta y no unas palabras que se buscan? Con signos de pregunta, siempre; sin ellos (dictado),
- * si empieza como una pregunta y tiene al menos cuatro palabras («qué dice la biblia del perdón»).
+ * si empieza como una pregunta o lleva una palabra que pregunta con su tilde, y tiene al menos cuatro palabras
+ * («qué dice la biblia del perdón», «de quién huía Caín después de matar a Abel»).
  */
 export function esPregunta(texto: string): boolean {
   const t = texto.trim();
   if (t.length < 8 || t.length > MAX_PREGUNTA) return false;
-  if (/^¿|\?$/.test(t)) return true;
+  if (/[¿?]/.test(t)) return true;
   const limpio = sinAcentos(t);
-  return limpio.split(' ').length >= 4 && INICIOS.test(limpio);
+  if (limpio.split(' ').length < 4) return false;
+  return INICIOS.test(limpio) || INTERROGATIVA.test(t);
 }
 
 export const MAX_PREGUNTA = 300;
+
+// Doctrinas y herejías que se buscan con una o dos palabras («modalismo», «los nestorianos»): se ofrecen como pregunta.
+const ISMO = /^(?:el |los |la |las )?([a-záéíóúñü]+(?:ismo|ianos|istas))$/i;
+
+/**
+ * Lo buscado dicho como pregunta, para ofrecer «¿Era una pregunta?» cuando no se reconoció como tal: «modalismo» →
+ * «¿Qué es el modalismo?»; unas palabras de idea («caín tenía miedo de los demás») → «¿Caín tenía miedo de los demás?».
+ * Nada para lo corto o lo que ya es pregunta.
+ */
+export function comoPregunta(texto: string): string | undefined {
+  const t = texto.trim().replace(/[.!¡]+$/, '');
+  if (!t || esPregunta(t) || t.length > MAX_PREGUNTA - 2) return undefined;
+  const ismo = t.match(ISMO);
+  if (ismo) {
+    const w = ismo[1].toLowerCase();
+    return /(ianos|istas)$/.test(w) ? `¿Quiénes eran los ${w}?` : `¿Qué es el ${w}?`;
+  }
+  if (t.split(/\s+/).length < 4) return undefined;
+  return `¿${t.charAt(0).toUpperCase()}${t.slice(1)}?`;
+}
 
 /** Las preguntas que la IA propone para seguir, en la última línea: «Sigue: ¿…? | ¿…?». */
 const SIGUE = /\n*\s*Sigue:\s*([^\n]*)\s*$/i;

@@ -99,7 +99,7 @@ def nice_title(t):
 
 # ------------------------------------------------------------------------------------------------- Las obras
 
-# area: sistematicas | canon | credos. Cada «parte» es un archivo de la caché.
+# area: sistematicas | canon | credos | herejias. Cada «parte» es un archivo de la caché.
 OBRAS = [
     {"id": "hodge", "autor": "Charles Hodge", "titulo": "Systematic Theology", "corto": "Hodge, Teología sistemática",
      "año": 1872, "tradicion": "presbiteriana (Princeton)", "area": "sistematicas",
@@ -162,6 +162,34 @@ OBRAS = [
      "corto": "Catecismo Mayor de Westminster", "año": 1647, "tradicion": "reformada (presbiteriana)", "area": "credos",
      "url": "https://archive.org/details/humbleadviceofas200west/page/108/mode/2up",
      "partes": [{"catecismo": "westminster_larger_catechism.json"}]},
+    # Herejías y concilios: qué se enseñó, quién lo refutó y cómo lo definieron los credos antiguos. Solo los capítulos
+    # de controversias de doctrina; nada de las obras de la Iglesia romana (Trento, Vaticano) del volumen I de los credos.
+    {"id": "schaff-historia", "autor": "Philip Schaff", "titulo": "History of the Christian Church",
+     "corto": "Schaff, Historia de la Iglesia", "año": 1884, "tradicion": "reformada (historiador protestante)",
+     "area": "herejias", "url": "https://ccel.org/ccel/schaff/hcc2",
+     "partes": [{"thml": "hcc2.xml", "ccel": "schaff/hcc2", "vol": "II", "roots": ["v.xii", "v.xiii", "v.xiv"]},
+                {"thml": "hcc3.xml", "ccel": "schaff/hcc3", "vol": "III", "roots": ["iii.ix", "iii.xii"]},
+                {"thml": "hcc4.xml", "ccel": "schaff/hcc4", "vol": "IV", "roots": ["i.xi", "i.xii"]}]},
+    {"id": "schaff-credos-historia", "autor": "Philip Schaff", "titulo": "The Creeds of Christendom, vol. I: History of Creeds",
+     "corto": "Schaff, Historia de los credos", "año": 1877, "tradicion": "reformada (historiador protestante)",
+     "area": "herejias", "url": "https://ccel.org/ccel/schaff/creeds1",
+     "partes": [{"thml": "credos1.xml", "ccel": "schaff/creeds1", "roots": ["iii", "iv", "v.i", "v.xi", "x.xviii", "x.xix"]}]},
+    {"id": "ireneo", "autor": "Ireneo de Lyon", "titulo": "Against Heresies (trad. Roberts y Rambaut, 1885)",
+     "corto": "Ireneo, Contra las herejías", "año": 180, "tradicion": "Padres de la Iglesia", "area": "herejias",
+     "url": "https://ccel.org/ccel/schaff/anf01.ix.html",
+     "partes": [{"thml": "anf01.xml", "ccel": "schaff/anf01", "roots": ["ix.ii", "ix.iii", "ix.iv", "ix.vi", "ix.vii"]}]},
+    {"id": "tertuliano-praxeas", "autor": "Tertuliano", "titulo": "Against Praxeas (trad. Holmes, 1885)",
+     "corto": "Tertuliano, Contra Práxeas", "año": 213, "tradicion": "Padres de la Iglesia", "area": "herejias",
+     "url": "https://ccel.org/ccel/schaff/anf03.v.ix.html",
+     "partes": [{"thml": "anf03.xml", "ccel": "schaff/anf03", "roots": ["v.ix"], "titulo": "Against Praxeas"}]},
+    {"id": "hipolito-noeto", "autor": "Hipólito de Roma", "titulo": "Against the Heresy of One Noetus (trad. Salmond, 1886)",
+     "corto": "Hipólito, Contra Noeto", "año": 220, "tradicion": "Padres de la Iglesia", "area": "herejias",
+     "url": "https://ccel.org/ccel/schaff/anf05.iii.iv.ii.iv.html",
+     "partes": [{"thml": "anf05.xml", "ccel": "schaff/anf05", "roots": ["iii.iv.ii.iv", "iii.iii.viii.xxiv"]}]},
+    {"id": "atanasio-arrianos", "autor": "Atanasio de Alejandría", "titulo": "Four Discourses against the Arians; De Decretis (trad. Newman y Robertson, 1892)",
+     "corto": "Atanasio, Contra los arrianos", "año": 358, "tradicion": "Padres de la Iglesia", "area": "herejias",
+     "url": "https://ccel.org/ccel/schaff/npnf204.xxi.ii.html",
+     "partes": [{"thml": "atanasio.xml", "ccel": "schaff/npnf204", "roots": ["xxi.ii", "xiv"]}]},
 ]
 
 

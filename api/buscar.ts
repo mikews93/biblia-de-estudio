@@ -21,7 +21,7 @@ import { formatRef, parseRef } from '../src/lib/refs';
 // Buscar es una tarea corta y frecuente: Sonnet cuesta la mitad que Opus y aquí rinde igual.
 const MODEL = process.env.BUSCAR_MODEL ?? 'claude-sonnet-5-5';
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
-const MAX_QUERY = 200;
+const MAX_QUERY = 300;
 const MAX_CANDIDATES = 24;
 const MAX_RESULTS = 12;
 const MAX_QUICK = 20;

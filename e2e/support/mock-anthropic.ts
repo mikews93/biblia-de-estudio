@@ -400,6 +400,31 @@ const PREGUNTA: { text: string; tool?: number }[] = [
   { text: '\n\n## Para pensar\n¿Qué preocupación de hoy podrías poner en palabras delante de Dios, como pide Filipenses 4:6?\n\nSigue: ¿Y si oro y la ansiedad no se va? | ¿Jesús sintió angustia?' },
 ];
 
+// Una pregunta sobre una herejía antigua («modalismo»): consulta la historia de la Iglesia y los Padres que la
+// refutaron (área «herejias»), lee un pasaje y un credo, y responde citando cada herramienta.
+const HEREJIA_CALLS = [
+  { name: 'teologia', input: { tema: 'el modalismo', busqueda: 'Sabellius modalism Praxeas Patripassian Monarchian', area: 'herejias' } },
+  { name: 'leer_pasaje', input: { cita: 'Mateo 3:16-17' } },
+  { name: 'teologia', input: { tema: 'la Trinidad en los credos', busqueda: 'Trinity three persons one substance Nicene Creed', area: 'credos' } },
+];
+
+const HEREJIA: { text: string; tool?: number }[] = [
+  { text: '## En corto\n' },
+  {
+    text: 'El modalismo enseñaba que Padre, Hijo y Espíritu son un solo Dios con tres «máscaras» o modos, uno tras otro. La Iglesia lo rechazó porque la Biblia muestra a los tres a la vez, hablándose y amándose.',
+    tool: 0,
+  },
+  {
+    text: '\n\n⟪Mateo 3:16-17⟫\n\n⟪Juan 17:5⟫\n\n## Qué enseñaba\nA finales del siglo II, maestros como Noeto y Práxeas, y luego Sabelio, quisieron defender que Dios es uno y concluyeron que el Padre mismo nació y sufrió en la cruz.',
+  },
+  { text: ' Por eso sus críticos los llamaron «patripasianos»: los que hacen sufrir al Padre.', tool: 0 },
+  { text: '\n\n## Por qué se rechazó\nEn el bautismo de Jesús el Hijo sale del agua, el Espíritu desciende y el Padre habla desde el cielo, todo en el mismo momento.', tool: 1 },
+  { text: ' Un credo antiguo lo resume así: un solo Dios en tres personas, sin confundir las personas ni dividir la sustancia.', tool: 2 },
+  { text: '\n\n## Para pensar\n¿Qué cambia en tu oración saber que el Hijo ora al Padre y que el Espíritu ora por ti?\n\nSigue: ¿Qué decidió el concilio de Nicea? | ¿La Trinidad está en la Biblia?' },
+];
+
+const esHerejia = (body: Body) => /modalismo|sabeli|arri[ao]/i.test(JSON.stringify(body.messages[0]));
+
 function preguntaTools(body: Body): 'pedir' | 'responder' | null {
   if (!body.tools?.length || !systemText(body.system).includes('te hace una pregunta sobre la Biblia o la fe desde el buscador')) return null;
   const last = body.messages[body.messages.length - 1];
@@ -468,8 +493,8 @@ async function sse(res: ServerResponse, body: Body) {
   const send = (event: Record<string, unknown>) => res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
   send({ type: 'message_start', message: { ...message([]), stop_reason: null } });
   const pregunta = preguntaTools(body);
-  if (pregunta === 'pedir') return sendTools(res, send, PREGUNTA_CALLS);
-  if (pregunta === 'responder') return sendTema(res, send, body, PREGUNTA);
+  if (pregunta === 'pedir') return sendTools(res, send, esHerejia(body) ? HEREJIA_CALLS : PREGUNTA_CALLS);
+  if (pregunta === 'responder') return sendTema(res, send, body, esHerejia(body) ? HEREJIA : PREGUNTA);
   const tema = temaTools(body);
   // «SATURADA» en el tema: la IA piensa y deja un texto vacío antes de pedir las herramientas, y la primera vez que
   // recibe los resultados responde que está saturada, como la API real en producción.
