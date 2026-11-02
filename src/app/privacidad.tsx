@@ -4,6 +4,7 @@ import {
   BooksIcon,
   ChurchIcon,
   HeartIcon,
+  MicIcon,
   ListenIcon,
   LockIcon,
   PeopleIcon,
@@ -91,6 +92,14 @@ const PARTES: Parte[] = [
     titulo: 'Notificaciones',
     puntos: [
       'Solo si las activas. Guardamos la dirección del dispositivo para enviarte el recordatorio diario y los avisos de tus amigos.',
+    ],
+  },
+  {
+    icon: MicIcon,
+    titulo: 'Micrófono',
+    puntos: [
+      'Solo escucha cuando tocas el micrófono para dictar una búsqueda o una pregunta, y se apaga al terminar la frase.',
+      'Lo convierte en texto el reconocimiento de voz de tu teléfono o de tu navegador (Google en Android y Chrome, Apple en iPhone y Safari). Zarza no graba ni guarda tu voz: solo recibe el texto, que puedes revisar antes de enviarlo.',
     ],
   },
   {

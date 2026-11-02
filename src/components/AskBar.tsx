@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, TextInputKeyPressEvent, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text, TextInput, TextInputKeyPressEvent, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 
+import { MicIcon } from '@/components/icons';
 import { Colors } from '@/lib/theme';
+import { listen, voiceSupported } from '@/lib/voz';
 
 const MIN = 48;
 const MAX = 148;
@@ -28,6 +30,8 @@ type Props = {
   /** Si todavía no se puede preguntar (el estudio no ha llegado). */
   disabled?: boolean;
   sendLabel?: string;
+  /** Botón de micrófono para dictar la pregunta (sale solo donde el teléfono o el navegador saben escuchar). */
+  dictar?: boolean;
   colors: Colors;
 };
 
@@ -51,15 +55,95 @@ function StopIcon({ color }: { color: string }) {
   );
 }
 
+/** Lo dictado va detrás de lo ya escrito; si la caja estaba vacía, empieza con mayúscula. */
+function unir(antes: string, dicho: string) {
+  const a = antes.replace(/\s+$/, '');
+  return a ? `${a} ${dicho}` : dicho.charAt(0).toUpperCase() + dicho.slice(1);
+}
+
+/** Dos ondas que salen del micrófono mientras escucha. */
+function Ondas({ color }: { color: string }) {
+  const [wave] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(wave, { toValue: 1, duration: 1400, useNativeDriver: Platform.OS !== 'web' }));
+    loop.start();
+    return () => loop.stop();
+  }, [wave]);
+  const ring = (offset: number) => {
+    const t = Animated.modulo(Animated.add(wave, offset), 1);
+    return {
+      opacity: t.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] }),
+      transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] }) }],
+    };
+  };
+  return (
+    <>
+      <Animated.View pointerEvents="none" style={[styles.ring, { backgroundColor: color }, ring(0)]} />
+      <Animated.View pointerEvents="none" style={[styles.ring, { backgroundColor: color }, ring(0.5)]} />
+    </>
+  );
+}
+
 /**
  * Caja para preguntarle a la IA: crece con el texto hasta unas cinco líneas, envía con Intro (Mayús+Intro
- * hace salto de línea en el ordenador) y, mientras responde, deja detener la respuesta.
+ * hace salto de línea en el ordenador) y, mientras responde, deja detener la respuesta. Con el micrófono se dicta
+ * la pregunta: lo que se oye va saliendo en la caja y queda escrito para revisarlo antes de enviar.
  */
-export default function AskBar({ value, onChange, onSend, placeholder, busy, onStop, disabled, sendLabel = 'Enviar pregunta', colors }: Props) {
+export default function AskBar({
+  value,
+  onChange,
+  onSend,
+  placeholder,
+  busy,
+  onStop,
+  disabled,
+  sendLabel = 'Enviar pregunta',
+  dictar = true,
+  colors,
+}: Props) {
   const [height, setHeight] = useState(MIN);
   const [focus, setFocus] = useState(false);
-  const canSend = !busy && !disabled && !!value.trim();
+  const [oyendo, setOyendo] = useState<string | null>(null);
+  const [problema, setProblema] = useState<string | null>(null);
+  const parar = useRef<(() => void) | null>(null);
+  const valor = useRef(value);
+  useEffect(() => {
+    valor.current = value;
+  }, [value]);
+  const puedeDictar = useMemo(() => dictar && voiceSupported(), [dictar]);
+  const escuchando = oyendo !== null;
+  const canSend = !busy && !disabled && !!value.trim() && !escuchando;
+  // Mientras se dicta, la caja enseña lo escrito más lo que se va oyendo.
+  const mostrado = escuchando && oyendo ? unir(value, oyendo) : value;
   const stopping = busy && !!onStop;
+
+  useEffect(() => () => parar.current?.(), []);
+  useEffect(() => {
+    if (!problema) return;
+    const t = setTimeout(() => setProblema(null), 5000);
+    return () => clearTimeout(t);
+  }, [problema]);
+
+  const alternarDictado = () => {
+    if (escuchando) {
+      parar.current?.();
+      return;
+    }
+    setProblema(null);
+    setOyendo('');
+    parar.current = listen({
+      onPartial: setOyendo,
+      onFinal: (options) => {
+        if (options[0]) onChange(unir(valor.current, options[0]).slice(0, 600));
+        setOyendo('');
+      },
+      onError: setProblema,
+      onEnd: () => {
+        setOyendo(null);
+        parar.current = null;
+      },
+    });
+  };
 
   const send = () => {
     if (!canSend) return;
@@ -85,7 +169,7 @@ export default function AskBar({ value, onChange, onSend, placeholder, busy, onS
         ]}
       >
         <TextInput
-          value={value}
+          value={mostrado}
           onChangeText={onChange}
           onKeyPress={onKeyPress}
           onSubmitEditing={send}
@@ -96,12 +180,12 @@ export default function AskBar({ value, onChange, onSend, placeholder, busy, onS
           onContentSizeChange={
             Platform.OS === 'web' ? undefined : (e) => setHeight(Math.min(MAX, Math.max(MIN, Math.ceil(e.nativeEvent.contentSize.height))))
           }
-          placeholder={placeholder}
+          placeholder={escuchando ? 'Te escucho…' : placeholder}
           {...({ dataSet: { askbar: '' } } as object)}
           placeholderTextColor={colors.muted}
           maxLength={600}
           multiline
-          editable={!disabled}
+          editable={!disabled && !escuchando}
           returnKeyType="send"
           style={[
             styles.input,
@@ -110,12 +194,32 @@ export default function AskBar({ value, onChange, onSend, placeholder, busy, onS
               ? ({
                   outlineStyle: 'none',
                   // Vacía mide una línea; con texto crece hasta MAX.
-                  ...(value ? { fieldSizing: 'content', minHeight: MIN, maxHeight: MAX } : { fieldSizing: 'fixed', height: MIN }),
+                  ...(mostrado ? { fieldSizing: 'content', minHeight: MIN, maxHeight: MAX } : { fieldSizing: 'fixed', height: MIN }),
                   resize: 'none',
                 } as object)
               : { height },
           ]}
         />
+        {puedeDictar && !stopping && (
+          <View style={styles.micWrap}>
+            {escuchando && <Ondas color={colors.accent} />}
+            <Pressable
+              onPress={alternarDictado}
+              disabled={disabled}
+              accessibilityRole="button"
+              accessibilityLabel={escuchando ? 'Dejar de escuchar' : 'Dictar la pregunta'}
+              aria-selected={escuchando}
+              hitSlop={4}
+              style={({ pressed }) => [
+                styles.mic,
+                { backgroundColor: escuchando ? colors.accent : value.trim() ? 'transparent' : colors.accentSoft },
+                pressed && styles.pressed,
+              ]}
+            >
+              <MicIcon color={escuchando ? colors.surface : colors.accent} size={20} />
+            </Pressable>
+          </View>
+        )}
         <Pressable
           onPress={stopping ? onStop : send}
           disabled={!stopping && !canSend}
@@ -131,6 +235,15 @@ export default function AskBar({ value, onChange, onSend, placeholder, busy, onS
           {stopping ? <StopIcon color={colors.surface} /> : <SendIcon color={canSend ? colors.surface : colors.muted} />}
         </Pressable>
       </View>
+      {(escuchando || problema) && (
+        <Text
+          style={[styles.aviso, { color: problema ? colors.warm : colors.muted }]}
+          accessibilityLiveRegion="polite"
+          numberOfLines={2}
+        >
+          {problema ?? 'Habla con calma. Toca el micrófono otra vez cuando termines.'}
+        </Text>
+      )}
     </View>
   );
 }
@@ -150,6 +263,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   input: { flex: 1, fontSize: 16, lineHeight: 22, paddingHorizontal: 12, paddingTop: 13, paddingBottom: 13, textAlignVertical: 'top' },
+  micWrap: { width: 44, height: 44, marginBottom: 2, marginRight: 4, alignItems: 'center', justifyContent: 'center' },
+  mic: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  ring: { position: 'absolute', width: 44, height: 44, borderRadius: 22 },
+  aviso: { fontSize: 13, lineHeight: 18, textAlign: 'center', marginTop: 8, paddingHorizontal: 12, maxWidth: 720, alignSelf: 'center' },
   send: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   pressed: { opacity: 0.75, transform: [{ scale: 0.94 }] },
 });
