@@ -16,6 +16,7 @@ import {
   IdeaResult,
   NOTHING_DOWNLOADED,
   type QuickMode,
+  type TipoBusqueda,
   addRecent,
   clearRecent,
   getRecent,
@@ -33,7 +34,7 @@ import { IndiceRow, buscarFichas, fichaHref, getIndice } from '@/lib/fichas';
 import { type Licensed, licensedById } from '@/lib/licenciadas';
 import { palabraDe } from '@/lib/diccionario';
 import { permisoIaDado } from '@/lib/permisoIa';
-import { esPregunta } from '@/lib/preguntar';
+import { MAX_PREGUNTA, comoPregunta, esPregunta } from '@/lib/preguntar';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -64,6 +65,8 @@ export default function Search() {
   const [showAll, setShowAll] = useState(false);
   // Búsqueda rápida floja (api/_semantica.ts esFloja): con cuenta la IA la afina sola («auto»); sin cuenta, se invita.
   const [weak, setWeak] = useState(false);
+  // Lo que el servidor dice de lo buscado: una pregunta, un versículo recordado o una búsqueda (api/_tipo.ts).
+  const [tipo, setTipo] = useState<TipoBusqueda | undefined>(undefined);
   const [refining, setRefining] = useState(false);
   const [auto, setAuto] = useState(false);
   const { llave } = useAccount();
@@ -173,7 +176,10 @@ export default function Search() {
     setWeak(false);
     setRefining(false);
     setAuto(false);
-    if (!ai) setResults(null);
+    if (!ai) {
+      setResults(null);
+      setTipo(undefined);
+    }
     setShowAll(false);
     router.setParams({ q: text });
     // Se busca en la versión que se lee ahora; con una con derechos, su texto se pide aparte (nunca va a la IA).
@@ -189,7 +195,11 @@ export default function Search() {
       setNote('note' in r ? r.note : undefined);
       const floja = r.mode !== 'ia' && r.mode !== 'sin-conexion' && !!r.floja;
       setWeak(floja);
-      if (floja && llave && (await permisoIaDado())) refine(text, version, controller);
+      const t = 'tipo' in r ? r.tipo : undefined;
+      if (!ai) setTipo(t);
+      // Si es una pregunta, la responde la tarjeta de arriba: no hace falta que la IA afine además los pasajes.
+      const esLaPregunta = t === 'pregunta' || (t !== 'versiculo' && esPregunta(text));
+      if (floja && !esLaPregunta && llave && (await permisoIaDado())) refine(text, version, controller);
     } catch (e) {
       if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'No se pudo hacer la búsqueda.');
     } finally {
@@ -286,9 +296,15 @@ export default function Search() {
   const shownLicensed = !!searchedLicensed && !!results?.some((r) => r.version === searchedIn);
   const bookName = cita ? (books.find((b) => b.id === cita.book)?.name ?? '') : '';
   // Lo buscado es una pregunta: arriba va su respuesta y debajo los pasajes de la búsqueda rápida.
-  const pregunta = !!asked && !cita && esPregunta(asked);
+  // Las reglas la reconocen al momento; el servidor confirma o corrige al llegar los pasajes (un versículo recordado
+  // como «¿qué es el hombre para que de él tengas memoria?» no es pregunta; «los animales van al cielo» sí).
+  const pregunta = !!asked && !cita && (tipo === 'pregunta' || (tipo !== 'versiculo' && esPregunta(asked)));
   // Una palabra de la Biblia (Getsemaní, el efod, la gracia), sola o en una pregunta corta: su explicación del diccionario.
   const palabra = !cita ? palabraDe(pregunta ? asked : settled) : undefined;
+  // Lo buscado no salió como pregunta pero quizá lo era: se ofrece preguntarlo. Arriba si es una o dos palabras («modalismo»)
+  // o si la búsqueda salió floja; si no, al final de los pasajes, para no estorbar a quien busca un versículo.
+  const otraPregunta = asked && !cita && !pregunta && !palabra && tipo !== 'versiculo' ? comoPregunta(asked) : undefined;
+  const arriba = (weak && tipo !== 'busqueda') || asked.trim().split(/\s+/).length <= 2;
 
   return (
     <ScrollView
@@ -320,7 +336,7 @@ export default function Search() {
             placeholderTextColor={colors.muted}
             returnKeyType="search"
             autoCorrect={false}
-            maxLength={200}
+            maxLength={MAX_PREGUNTA}
             autoFocus={!params.q && !params.voz}
             style={[styles.input, { color: colors.text }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as object)]}
             accessibilityLabel="Buscar una cita, unas palabras o una idea, o hacer una pregunta"
@@ -577,6 +593,10 @@ export default function Search() {
         </Appear>
       )}
 
+      {!listening && !busy && results && otraPregunta && (arriba || !results.length) && (
+        <EraPregunta colors={colors} pregunta={otraPregunta} onAsk={(q) => runIdea(q)} />
+      )}
+
       {!listening && !busy && results && results.length > 0 && (
         <>
           <View style={styles.resultsHead}>
@@ -586,7 +606,7 @@ export default function Search() {
             </Text>
             <ModeBadge mode={mode} colors={colors} abbr={abbrOf(searchedIn)} />
           </View>
-          <AiHint colors={colors} refining={refining} weak={weak && online} account={!!llave} auto={auto && mode === 'ia'} onRefine={() => runIdea(asked, true)} />
+          <AiHint colors={colors} refining={refining} weak={weak && online && !pregunta} account={!!llave} auto={auto && mode === 'ia'} onRefine={() => runIdea(asked, true)} />
           {note ? (
             <View style={[styles.notice, { backgroundColor: colors.accentSoft, borderColor: colors.accent, marginTop: 0 }]}>
               <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{note}</Text>
@@ -644,6 +664,7 @@ export default function Search() {
                     : 'Búsqueda rápida por el sentido y las palabras, sin IA: encuentra pasajes que dicen lo mismo con otras palabras.'}
             </Text>
           )}
+          {otraPregunta && !arriba && <EraPregunta colors={colors} pregunta={otraPregunta} onAsk={(q) => runIdea(q)} />}
         </>
       )}
     </ScrollView>
@@ -662,6 +683,31 @@ function ModeBadge({ mode, colors, abbr }: { mode: QuickMode | 'ia' | null; colo
       {mode === 'ia' && <SparkIcon color={colors.accent} size={12} />}
       <Text style={{ color: mode === 'ia' ? colors.accent : colors.muted, fontSize: 12, fontWeight: '700' }}>{label}</Text>
     </View>
+  );
+}
+
+/** Cuando lo buscado no salió como pregunta pero podría serlo: un toque y se responde arriba. */
+function EraPregunta({ colors, pregunta, onAsk }: { colors: Colors; pregunta: string; onAsk: (q: string) => void }) {
+  return (
+    <Appear>
+      <Pressable
+        onPress={() => onAsk(pregunta)}
+        style={({ pressed }) => [styles.eraPregunta, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`Preguntarlo: ${pregunta}`}
+      >
+        <View style={[styles.eraIcon, { backgroundColor: colors.accentSoft }]}>
+          <SparkIcon color={colors.accent} size={16} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>¿Era una pregunta?</Text>
+          <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }} numberOfLines={2}>
+            Pregúntale a la Biblia: <Text style={{ color: colors.text, fontFamily: serif, fontStyle: 'italic' }}>{pregunta}</Text>
+          </Text>
+        </View>
+        <ChevronRightIcon color={colors.accent} size={18} />
+      </Pressable>
+    </Appear>
   );
 }
 
@@ -906,6 +952,18 @@ const styles = StyleSheet.create({
   pill: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 3 },
   citaTitle: { fontSize: 30, lineHeight: 36, marginTop: 6 },
   notice: { borderLeftWidth: 3, borderRadius: 10, padding: 12, marginTop: 14 },
+  eraPregunta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  eraIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   problem: { fontSize: 15, lineHeight: 22, marginTop: 10 },
   passage: { fontSize: 20, lineHeight: 31, marginTop: 14 },
   verseNum: { fontSize: 13, fontWeight: '700' },

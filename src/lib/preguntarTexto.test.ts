@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { PREPARADAS } from './preguntasPreparadas';
-import { enCorto, esPregunta, preparadaDe, separar } from './preguntarTexto';
+import { comoPregunta, enCorto, esPregunta, preparadaDe, separar } from './preguntarTexto';
 
 describe('esPregunta', () => {
   it('reconoce preguntas con signos o dictadas sin ellos', () => {
@@ -11,12 +11,44 @@ describe('esPregunta', () => {
     expect(esPregunta('Jesús es Dios?')).toBe(true);
   });
 
+  it('reconoce preguntas dictadas que empiezan con una preposición o llevan la palabra que pregunta en medio', () => {
+    expect(
+      esPregunta('A qué le huía Caín, o de quién huía más bien, a qué le tenía miedo después de matar a Abel, si no había nadie más excepto sus papás, Adán y Eva'),
+    ).toBe(true);
+    expect(esPregunta('de quién huía Caín después de matar a Abel')).toBe(true);
+    expect(esPregunta('y con quién se casó Caín')).toBe(true);
+    expect(esPregunta('Caín de quién tenía miedo')).toBe(true);
+    expect(esPregunta('explícame el modalismo y por qué es herejía')).toBe(true);
+    expect(esPregunta('quiero saber qué es el arrianismo')).toBe(true);
+    expect(esPregunta('Caín tenía miedo de quién?')).toBe(true);
+  });
+
   it('deja como búsqueda las palabras, los temas y las citas', () => {
     expect(esPregunta('Todo lo puedo en Cristo')).toBe(false);
     expect(esPregunta('La ansiedad')).toBe(false);
     expect(esPregunta('Perdonar a quien me hirió')).toBe(false);
     expect(esPregunta('Juan 3:16')).toBe(false);
     expect(esPregunta('que amor')).toBe(false);
+    expect(esPregunta('Para Dios no hay nada imposible')).toBe(false);
+    expect(esPregunta('Era un hombre de los fariseos')).toBe(false);
+    expect(esPregunta('porque de tal manera amó Dios al mundo')).toBe(false);
+    expect(esPregunta('el que cree en mí tiene vida')).toBe(false);
+    expect(esPregunta('cuando tengo miedo de noche')).toBe(false);
+    expect(esPregunta('para que todo aquel que en él cree')).toBe(false);
+  });
+});
+
+describe('comoPregunta', () => {
+  it('ofrece las doctrinas como «¿Qué es…?» y las ideas largas con signos', () => {
+    expect(comoPregunta('modalismo')).toBe('¿Qué es el modalismo?');
+    expect(comoPregunta('el Arrianismo')).toBe('¿Qué es el arrianismo?');
+    expect(comoPregunta('los nestorianos')).toBe('¿Quiénes eran los nestorianos?');
+    expect(comoPregunta('caín tenía miedo de los demás')).toBe('¿Caín tenía miedo de los demás?');
+  });
+
+  it('nada para lo que ya es pregunta o es corto', () => {
+    expect(comoPregunta('¿Qué es la gracia?')).toBeUndefined();
+    expect(comoPregunta('la ansiedad')).toBeUndefined();
   });
 });
 

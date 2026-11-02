@@ -41,6 +41,7 @@ export function catalogo(ultimo: { book: string; chapter: number }): Grupo[] {
         { id: 'palabras', titulo: 'La historia de una palabra', detalle: 'Hesed, ágape y otras palabras del hebreo y el griego.', icono: 'word', href: '/palabras', palabras: 'griego hebreo original' },
         { id: 'conexiones', titulo: 'Conexiones', detalle: 'Todas las referencias cruzadas como arcos.', icono: 'arcs', href: '/conexiones', palabras: 'referencias cruzadas' },
         { id: 'promesas', titulo: 'Promesa y cumplimiento', detalle: 'Lo que se anunció y dónde se cumplió.', icono: 'promise', href: '/promesas', palabras: 'profecía' },
+        { id: 'herejias', titulo: 'Herejías y concilios', detalle: 'Lo que la Iglesia rechazó y cómo respondió con la Escritura.', icono: 'shield', href: '/herejias', palabras: 'historia iglesia modalismo arrianismo nicea credos' },
         { id: 'historia', titulo: 'Línea de tiempo', detalle: 'Los hechos de la Biblia en orden.', icono: 'clock', href: '/historia', palabras: 'cronología' },
         { id: 'genealogia', titulo: 'Genealogías', detalle: 'Los árboles familiares, de Adán a Jesús.', icono: 'tree', href: '/genealogia', palabras: 'familia árbol' },
         { id: 'recorridos', titulo: 'Recorridos', detalle: 'Los viajes de Abraham, Israel, Pablo y más en el mapa.', icono: 'route', href: '/recorridos', palabras: 'viajes mapa' },

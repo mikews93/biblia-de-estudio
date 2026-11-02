@@ -36,6 +36,7 @@ export async function searchByIdea(
  * pero el servidor no pudo usar el modelo) o «sin-conexion» (en el dispositivo, por palabras, en una versión descargada).
  */
 export type QuickMode = 'semantica' | 'palabras' | 'sin-conexion';
+export type TipoBusqueda = 'pregunta' | 'versiculo' | 'busqueda';
 
 /** Sin conexión y sin ninguna versión descargada: no hay dónde buscar. */
 export const NOTHING_DOWNLOADED = 'Sin conexión y sin versiones descargadas.';
@@ -54,13 +55,14 @@ export function warmSearch() {
  * Búsqueda rápida por idea o por palabras recordadas, sin IA ni cuenta. Con internet la hace el servidor (semántica +
  * palabras); sin conexión, o si el servidor no responde, el dispositivo busca por palabras en una versión descargada.
  * «floja»: el servidor no encontró nada claro y conviene que la IA la afine (api/_semantica.ts esFloja).
+ * «tipo»: si lo escrito es una pregunta, un versículo recordado o una búsqueda (api/_tipo.ts); sin conexión no hay.
  */
 export async function quickSearch(
   query: string,
   version: string,
   books: Book[],
   signal?: AbortSignal,
-): Promise<{ results: IdeaResult[]; mode: QuickMode; floja?: boolean }> {
+): Promise<{ results: IdeaResult[]; mode: QuickMode; floja?: boolean; tipo?: TipoBusqueda }> {
   const online = isOnline();
   if (online) {
     try {
@@ -71,7 +73,10 @@ export async function quickSearch(
         signal,
       });
       const body = await res.json().catch(() => null);
-      if (res.ok && body) return { results: body.results, mode: body.semantica ? 'semantica' : 'palabras', floja: body.floja === true };
+      if (res.ok && body) {
+        const tipo = ['pregunta', 'versiculo', 'busqueda'].includes(body.tipo) ? (body.tipo as TipoBusqueda) : undefined;
+        return { results: body.results, mode: body.semantica ? 'semantica' : 'palabras', floja: body.floja === true, tipo };
+      }
       if (res.status === 400 && body?.error) throw new Error(body.error);
     } catch (e) {
       if (signal?.aborted || (e instanceof Error && !(e instanceof TypeError))) throw e;
