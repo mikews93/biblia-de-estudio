@@ -11,7 +11,7 @@ import { getSettings } from './theme';
 
 export type Nivel = 'sencillo' | 'fondo';
 export { CATEGORIAS, PREPARADAS, type Categoria, type Preparada } from './preguntasPreparadas';
-export { MAX_PREGUNTA, enCorto, esPregunta, preparadaDe, separar } from './preguntarTexto';
+export { MAX_PREGUNTA, comoPregunta, enCorto, esPregunta, preparadaDe, separar } from './preguntarTexto';
 export type Estado = { turns: Turn[]; working: boolean; error: string | null };
 
 /**

@@ -58,6 +58,21 @@ describe('/api/buscar', () => {
       }
     });
 
+    it('dice si es un versículo recordado, una pregunta o una búsqueda; solo lo dudoso pasa por el modelo pequeño', async () => {
+      const before = aiRequests.length;
+      expect((await (await quick({ query: 'todo lo puedo en Cristo' })).json()).tipo).toBe('versiculo');
+      expect((await (await quick({ query: '¿Qué dice la Biblia sobre la ansiedad?' })).json()).tipo).toBe('pregunta');
+      expect((await (await quick({ query: 'la ansiedad' })).json()).tipo).toBe('busqueda');
+      expect(aiRequests.length).toBe(before);
+      // Dudosas: las decide el modelo pequeño (la IA simulada responde «pregunta» si hablan del cielo)
+      expect((await (await quick({ query: 'los animales van al cielo' })).json()).tipo).toBe('pregunta');
+      expect((await (await quick({ query: 'cuando tengo miedo de noche' })).json()).tipo).toBe('busqueda');
+      const nuevas = aiRequests.slice(before);
+      expect(nuevas).toHaveLength(2);
+      expect(nuevas[0].model).toMatch(/haiku/);
+      expect(nuevas[0].max_tokens).toBeLessThanOrEqual(5);
+    });
+
     it('valida igual que la búsqueda con IA', async () => {
       expect((await (await quick({ query: 'a' })).json()).error).toBe('Escribe un poco más lo que buscas');
       expect((await (await quick({ query: 'ansiedad', version: 'inventada' })).json()).error).toBe('Versión no válida');
@@ -81,7 +96,7 @@ describe('/api/buscar', () => {
       expect(await err('{roto')).toBe('JSON no válido');
       expect(await err({ query: '  a  ' })).toBe('Escribe un poco más lo que buscas');
       expect(await err({})).toBe('Escribe un poco más lo que buscas');
-      expect(await err({ query: 'x'.repeat(201) })).toBe('La búsqueda es demasiado larga');
+      expect(await err({ query: 'x'.repeat(301) })).toBe('La búsqueda es demasiado larga');
       expect(aiRequests.length).toBe(before);
     });
 
