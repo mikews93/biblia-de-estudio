@@ -217,11 +217,12 @@ export default function Reader() {
   usePageSwipe(neighbor, swap);
 
   // En el teléfono no hay View Transitions: la hoja es una foto del lector que gira sobre el lomo (HojaNativa).
-  const pagina = useRef<ComponentRef<typeof View>>(null);
   const actionBarTop = useRef(Infinity);
   const hoja = useHojaNativa({
-    pagina,
+    pagina: scroll,
     swap,
+    pintado: verses ? `${bookId}/${chapter}` : '',
+    papel: colors.background,
     // Ni en la cabecera (su barra de herramientas se desliza de lado) ni en la barra del versículo elegido.
     puedeEmpezar: (_x, y) => y > insets.top + HEADER_HEIGHT + TOOLBAR_HEIGHT && (selected === null || y < actionBarTop.current),
   });
@@ -491,7 +492,7 @@ export default function Reader() {
   }
 
   return (
-    <View ref={pagina} style={{ flex: 1, backgroundColor: colors.background }} {...hoja.props}>
+    <View style={{ flex: 1, backgroundColor: colors.background }} {...hoja.props}>
       <Stack.Screen options={{ title, headerShown: false }} />
       <ReaderHeader
         title={title}
@@ -503,7 +504,9 @@ export default function Reader() {
       <ScrollView
         ref={scroll}
         // En la web el gesto horizontal es para pasar la hoja (usePageSwipe): el navegador solo desplaza en vertical.
-        style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : undefined}
+        // En el teléfono el texto tiene fondo propio: es la foto de la hoja al pasarla (HojaNativa).
+        style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : { backgroundColor: colors.background }}
+        onLayout={hoja.medir}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + TOOLBAR_HEIGHT + 10 }]}
         scrollEventThrottle={16}
         onContentSizeChange={(_, height) => {
@@ -715,6 +718,7 @@ export default function Reader() {
           </View>
         )}
       </ScrollView>
+      {hoja.capa}
 
       {selected !== null && book && verses ? (
         <Appear
@@ -857,7 +861,6 @@ export default function Reader() {
       )}
       {showSettings && <ReaderSettings onClose={() => setShowSettings(false)} />}
       {showVersions && <VersionPicker versions={versions} onClose={() => setShowVersions(false)} />}
-      {hoja.capa}
     </View>
   );
 }
