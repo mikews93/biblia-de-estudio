@@ -179,6 +179,17 @@ export function Preparadas({ colors, onPick }: { colors: Colors; onPick: (texto:
           </Pressable>
         ))}
       </View>
+      {cat === 'herejias' && (
+        <Pressable
+          onPress={() => navigate(() => router.push('/herejias'), 'forward')}
+          hitSlop={6}
+          accessibilityRole="link"
+          style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 2 }, pressed && { opacity: 0.7 }]}
+        >
+          <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>Verlas por época, con quién las refutó</Text>
+          <ChevronRightIcon color={colors.accent} size={15} />
+        </Pressable>
+      )}
       {!todas && !cat && (
         <Pressable onPress={() => setTodas(true)} hitSlop={6} accessibilityRole="button">
           <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 14 }}>Ver las {PREPARADAS.length} preguntas</Text>

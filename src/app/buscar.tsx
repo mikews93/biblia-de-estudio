@@ -606,7 +606,7 @@ export default function Search() {
             </Text>
             <ModeBadge mode={mode} colors={colors} abbr={abbrOf(searchedIn)} />
           </View>
-          <AiHint colors={colors} refining={refining} weak={weak && online} account={!!llave} auto={auto && mode === 'ia'} onRefine={() => runIdea(asked, true)} />
+          <AiHint colors={colors} refining={refining} weak={weak && online && !pregunta} account={!!llave} auto={auto && mode === 'ia'} onRefine={() => runIdea(asked, true)} />
           {note ? (
             <View style={[styles.notice, { backgroundColor: colors.accentSoft, borderColor: colors.accent, marginTop: 0 }]}>
               <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{note}</Text>

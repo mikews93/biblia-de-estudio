@@ -1,5 +1,7 @@
 // Las preguntas que muchos hacen (src/lib/preguntar.ts): su respuesta se prepara una vez y se guarda para todos.
-// Datos solos, sin dependencias: también los lee el servidor (api/estudiar.ts).
+// Datos solos, sin dependencias de la app: también los lee el servidor (api/estudiar.ts).
+
+import { HEREJIAS } from './herejias';
 
 export type Categoria = 'dios' | 'jesus' | 'biblia' | 'herejias' | 'vida';
 export type Preparada = { id: string; cat: Categoria; texto: string };
@@ -35,10 +37,8 @@ export const PREPARADAS: Preparada[] = [
   { id: 'duda', cat: 'vida', texto: '¿Está mal tener dudas sobre la fe?' },
   { id: 'iglesia', cat: 'vida', texto: '¿Por qué ir a una iglesia?' },
   { id: 'cielo', cat: 'vida', texto: '¿Qué pasa cuando morimos?' },
-  { id: 'modalismo', cat: 'herejias', texto: '¿Qué es el modalismo y por qué se rechazó?' },
-  { id: 'arrianismo', cat: 'herejias', texto: '¿Qué enseñaba Arrio y qué decidió el concilio de Nicea?' },
-  { id: 'gnosticismo', cat: 'herejias', texto: '¿Qué era el gnosticismo?' },
+  // Herejías y concilios: las de src/lib/herejias.ts (también en /herejias) y dos más generales.
+  ...HEREJIAS.map((h) => ({ id: h.id, cat: 'herejias' as const, texto: h.pregunta })),
   { id: 'calcedonia', cat: 'herejias', texto: '¿Cómo puede Jesús ser Dios y hombre a la vez?' },
-  { id: 'pelagianismo', cat: 'herejias', texto: '¿Qué es el pelagianismo?' },
   { id: 'que-es-herejia', cat: 'herejias', texto: '¿Qué es una herejía y quién decide qué lo es?' },
 ];

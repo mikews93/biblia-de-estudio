@@ -169,7 +169,10 @@ OBRAS = [
      "area": "herejias", "url": "https://ccel.org/ccel/schaff/hcc2",
      "partes": [{"thml": "hcc2.xml", "ccel": "schaff/hcc2", "vol": "II", "roots": ["v.xii", "v.xiii", "v.xiv"]},
                 {"thml": "hcc3.xml", "ccel": "schaff/hcc3", "vol": "III", "roots": ["iii.ix", "iii.xii"]},
-                {"thml": "hcc4.xml", "ccel": "schaff/hcc4", "vol": "IV", "roots": ["i.xi", "i.xii"]}]},
+                {"thml": "hcc4.xml", "ccel": "schaff/hcc4", "vol": "IV", "roots": ["i.xi", "i.xii"]},
+                # La Reforma: anabaptistas, antitrinitarios italianos, Socino y Servet
+                {"thml": "hcc7.xml", "ccel": "schaff/hcc7", "vol": "VII", "roots": ["ii.vii.ii"]},
+                {"thml": "hcc8.xml", "ccel": "schaff/hcc8", "vol": "VIII", "roots": ["iv.iii.xvii", "iv.xv", "iv.xvi"]}]},
     {"id": "schaff-credos-historia", "autor": "Philip Schaff", "titulo": "The Creeds of Christendom, vol. I: History of Creeds",
      "corto": "Schaff, Historia de los credos", "año": 1877, "tradicion": "reformada (historiador protestante)",
      "area": "herejias", "url": "https://ccel.org/ccel/schaff/creeds1",
