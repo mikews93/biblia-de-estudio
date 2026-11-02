@@ -1,10 +1,10 @@
 import { type PropsWithChildren, useEffect, useRef } from 'react';
-import { AccessibilityInfo, Animated, Platform, type StyleProp, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, Animated, type LayoutChangeEvent, Platform, type StyleProp, type ViewStyle } from 'react-native';
 
-type Props = PropsWithChildren<{ from?: number; delay?: number; style?: StyleProp<ViewStyle> }>;
+type Props = PropsWithChildren<{ from?: number; delay?: number; style?: StyleProp<ViewStyle>; onLayout?: (e: LayoutChangeEvent) => void }>;
 
 /** Entrada sutil: aparece y sube unos píxeles. Respeta «reducir movimiento». */
-export default function Appear({ from = 8, delay = 0, style, children }: Props) {
+export default function Appear({ from = 8, delay = 0, style, onLayout, children }: Props) {
   const t = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -22,5 +22,5 @@ export default function Appear({ from = 8, delay = 0, style, children }: Props) 
   }, [t, delay]);
 
   const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [from, 0] });
-  return <Animated.View style={[style, { opacity: t, transform: [{ translateY }] }]}>{children}</Animated.View>;
+  return <Animated.View onLayout={onLayout} style={[style, { opacity: t, transform: [{ translateY }] }]}>{children}</Animated.View>;
 }

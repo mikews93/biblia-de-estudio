@@ -43,7 +43,8 @@ import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
 import { CapituloRow, fichaHref, fichasDelVersiculo, getFichasCapitulo, marcarNombres } from '@/lib/fichas';
 import FichaChips from '@/components/FichaChips';
 import NoEncontrada from '@/components/NoEncontrada';
-import { usePageSwipe } from '@/lib/pageSwipe';
+import { usePageSwipe, type Swap } from '@/lib/pageSwipe';
+import { useHojaNativa } from '@/components/HojaNativa';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import ReaderHeader, { HEADER_HEIGHT, TOOLBAR_HEIGHT } from '@/components/ReaderHeader';
 import ToolButton from '@/components/ToolButton';
@@ -194,12 +195,8 @@ export default function Reader() {
     return chapterHref(books[i].id, ch);
   };
 
-  const go = (delta: 1 | -1) => {
-    const href = neighbor(delta);
-    if (href) navigate(() => router.replace(href), delta > 0 ? 'turn-forward' : 'turn-back');
-  };
-
-  usePageSwipe(neighbor, (delta) => {
+  /** Cambiar de capítulo en el mismo lector, para pasar la hoja sin volver a montarlo (web y teléfono). */
+  const swap: Swap = (delta) => {
     const href = neighbor(delta);
     // En /juan/3/16 el versículo es parte de la ruta y setParams no lo puede quitar: ahí se navega como siempre.
     if (!href || params.verse || params.v) return null;
@@ -216,7 +213,24 @@ export default function Reader() {
         router.setParams(from);
       },
     };
+  };
+  usePageSwipe(neighbor, swap);
+
+  // En el teléfono no hay View Transitions: la hoja es una foto del lector que gira sobre el lomo (HojaNativa).
+  const pagina = useRef<ComponentRef<typeof View>>(null);
+  const actionBarTop = useRef(Infinity);
+  const hoja = useHojaNativa({
+    pagina,
+    swap,
+    // Ni en la cabecera (su barra de herramientas se desliza de lado) ni en la barra del versículo elegido.
+    puedeEmpezar: (_x, y) => y > insets.top + HEADER_HEIGHT + TOOLBAR_HEIGHT && (selected === null || y < actionBarTop.current),
   });
+
+  const go = (delta: 1 | -1) => {
+    const href = neighbor(delta);
+    if (!href || hoja.pasar(delta)) return;
+    navigate(() => router.replace(href), delta > 0 ? 'turn-forward' : 'turn-back');
+  };
 
   const select = (n: number) => setSelected(selected === n ? null : n);
   const openFicha = (f: { id: string; nombre: string }) => navigate(() => router.push(fichaHref(f) as never), 'forward');
@@ -477,7 +491,7 @@ export default function Reader() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View ref={pagina} style={{ flex: 1, backgroundColor: colors.background }} {...hoja.props}>
       <Stack.Screen options={{ title, headerShown: false }} />
       <ReaderHeader
         title={title}
@@ -703,7 +717,11 @@ export default function Reader() {
       </ScrollView>
 
       {selected !== null && book && verses ? (
-        <Appear key="actions" style={[styles.actionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Appear
+          key="actions"
+          onLayout={(e) => (actionBarTop.current = e.nativeEvent.layout.y)}
+          style={[styles.actionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
           <View style={styles.actionHead}>
             <Text style={{ color: colors.accent, fontWeight: '700' }}>
               {book.name} {chapter}:{selected}
@@ -839,6 +857,7 @@ export default function Reader() {
       )}
       {showSettings && <ReaderSettings onClose={() => setShowSettings(false)} />}
       {showVersions && <VersionPicker versions={versions} onClose={() => setShowVersions(false)} />}
+      {hoja.capa}
     </View>
   );
 }
