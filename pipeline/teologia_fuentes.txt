@@ -16,3 +16,9 @@ shedd2.txt https://archive.org/download/dogmatictheology02sheduoft/dogmatictheol
 strong1.html https://www.gutenberg.org/cache/epub/44035/pg44035-images.html
 strong2.html https://www.gutenberg.org/cache/epub/44555/pg44555-images.html
 strong3.html https://www.gutenberg.org/cache/epub/45283/pg45283-images.html
+hcc2.xml https://ccel.org/ccel/s/schaff/hcc2.xml
+hcc3.xml https://ccel.org/ccel/s/schaff/hcc3.xml
+hcc4.xml https://ccel.org/ccel/s/schaff/hcc4.xml
+credos1.xml https://ccel.org/ccel/s/schaff/creeds1.xml
+anf01.xml https://ccel.org/ccel/s/schaff/anf01.xml
+anf03.xml https://ccel.org/ccel/s/schaff/anf03.xml
