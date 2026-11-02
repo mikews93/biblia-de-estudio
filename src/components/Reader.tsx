@@ -506,7 +506,7 @@ export default function Reader() {
         // En la web el gesto horizontal es para pasar la hoja (usePageSwipe): el navegador solo desplaza en vertical.
         // En el teléfono el texto tiene fondo propio: es la foto de la hoja al pasarla (HojaNativa).
         style={Platform.OS === 'web' ? ({ touchAction: 'pan-y pinch-zoom' } as object) : { backgroundColor: colors.background }}
-        onLayout={hoja.medir}
+        onLayout={Platform.OS === 'web' ? undefined : hoja.medir}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + HEADER_HEIGHT + TOOLBAR_HEIGHT + 10 }]}
         scrollEventThrottle={16}
         onContentSizeChange={(_, height) => {
