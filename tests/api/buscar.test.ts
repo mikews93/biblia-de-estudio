@@ -81,7 +81,7 @@ describe('/api/buscar', () => {
       expect(await err('{roto')).toBe('JSON no válido');
       expect(await err({ query: '  a  ' })).toBe('Escribe un poco más lo que buscas');
       expect(await err({})).toBe('Escribe un poco más lo que buscas');
-      expect(await err({ query: 'x'.repeat(201) })).toBe('La búsqueda es demasiado larga');
+      expect(await err({ query: 'x'.repeat(301) })).toBe('La búsqueda es demasiado larga');
       expect(aiRequests.length).toBe(before);
     });
 
