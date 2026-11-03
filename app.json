@@ -46,14 +46,25 @@
         {
           "photosPermission": "La app usa tus fotos para que elijas la foto de tu perfil.",
           "cameraPermission": false,
-          "microphonePermission": false
+          "microphonePermission": "Zarza usa el micrófono solo cuando tocas el botón para dictar una búsqueda o una pregunta."
         }
       ],
       [
         "expo-audio",
         {
-          "microphonePermission": false,
+          "microphonePermission": "Zarza usa el micrófono solo cuando tocas el botón para dictar una búsqueda o una pregunta.",
           "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Zarza usa el micrófono solo cuando tocas el botón para dictar una búsqueda o una pregunta.",
+          "speechRecognitionPermission": "Zarza convierte en texto lo que dices cuando dictas una búsqueda o una pregunta.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.tts"
+          ]
         }
       ],
       [
