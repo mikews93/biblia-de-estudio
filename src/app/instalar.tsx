@@ -7,7 +7,7 @@ import Appear from '@/components/Appear';
 import { text } from '@/components/comunidad/ui';
 import { CheckIcon, CopyIcon, type IconProps, PhoneDownloadIcon, PlusSquareIcon, QrIcon, ShareIcon, ShieldIcon } from '@/components/icons';
 import Qr from '@/components/Qr';
-import { type Apk, dispositivo, ENLACE_APK, fechaCorta, megas, OFRECER_APK, PAGINA_INSTALAR, ultimoApk } from '@/lib/apk';
+import { type Apk, dispositivo, ENLACE_APK, megas, OFRECER_APK, PAGINA_INSTALAR, ultimoApk } from '@/lib/apk';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 
 const PASOS: { titulo: string; detalle: string }[] = [
@@ -193,7 +193,8 @@ function Descargar({
   const detalle = buscando
     ? 'Buscando la última versión…'
     : apk
-      ? [`Versión ${apk.version}${apk.build ? ` (${apk.build})` : ''}`, megas(apk.bytes), fechaCorta(apk.fecha)].filter(Boolean).join(' · ')
+      ? // El APK solo cambia cuando cambia algo nativo; lo demás le llega con EAS Update, así que su fecha no dice qué tan nueva es la app.
+        [`Versión ${apk.version}`, megas(apk.bytes), 'siempre al día'].join(' · ')
       : apk === null
         ? 'Estamos preparando la primera versión para descargar.'
         : 'Para Android 7 o más nuevo';
