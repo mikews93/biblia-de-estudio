@@ -27,6 +27,7 @@ async function caso(nombre, { desktop = false, theme } = {}) {
   await p.addInitScript((cu) => {
     localStorage.setItem('cuenta', cu);
     localStorage.setItem('permiso-ia', 'si');
+    localStorage.setItem('ajustes', JSON.stringify({ enfoque: 'profundo' }));
   }, JSON.stringify(cuenta));
   await p.goto(`${BASE}/juan/3/16`);
   await p.getByRole('button', { name: 'Estudiar', exact: true }).click();
