@@ -7,6 +7,7 @@ import { HeartIcon, HomeIcon, LecternIcon, OpenBookIcon, PeopleIcon, PlansIcon, 
 import { chrome, setChromeHidden } from '@/lib/chrome';
 import { chapterHref } from '@/lib/routes';
 import { Colors, getLastRead, useColors, useSettings } from '@/lib/theme';
+import { useTecladoAbierto } from '@/lib/teclado';
 import { fixedInTransition, navigate } from '@/lib/transition';
 
 type Tab = { key: 'hoy' | 'leer' | 'planes' | 'taller' | 'misiones' | 'comunidad' | 'historias' | 'memoria'; label: string; icon: typeof HomeIcon };
@@ -49,6 +50,7 @@ export default function TabBar() {
   const { modo } = useSettings().settings;
   const active = current(path);
   const [height, setHeight] = useState(0);
+  const teclado = useTecladoAbierto();
 
   // Las barras ocultas al leer vuelven en cuanto se cambia de pantalla.
   useEffect(() => setChromeHidden(false), [path]);
@@ -83,6 +85,8 @@ export default function TabBar() {
         styles.clip,
         height > 0 && { height: chrome.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) },
         fixedInTransition('pestanas'),
+        // Mientras se escribe, el sitio es para la caja de texto y no para las pestañas.
+        teclado && styles.oculta,
       ]}
     >
       <Animated.View
@@ -143,6 +147,7 @@ const styles = StyleSheet.create({
   clip: { overflow: 'hidden' },
   bar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 2 },
+  oculta: { display: 'none' },
   iconSlot: { width: 56, height: 30, alignItems: 'center', justifyContent: 'center' },
   indicator: { borderRadius: 15 },
   // Por encima de la píldora: en la web lo posicionado se pinta sobre lo que no lo está.
