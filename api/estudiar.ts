@@ -410,6 +410,14 @@ Reglas:
   return `${head}${draft}\n\n${ask}`;
 }
 
+/**
+ * El idioma original de un libro para las herramientas: el hebreo en el Antiguo Testamento (con el arameo de Daniel 2-7,
+ * Esdras 4-7 y Jeremías 10:11) y el griego en el Nuevo. Antes se pedía siempre «del griego», también en el AT.
+ */
+function lenguaOriginal(book: Book) {
+  return ['dan', 'ezr', 'jer'].includes(book.id) ? 'hebreo (o del arameo, si el pasaje está en arameo)' : original(book).name;
+}
+
 // Herramientas inspiradas en NotebookLM. Cada una pide un formato de texto simple que la app convierte
 // en audio, tarjetas o mapa; las citas ⟦n⟧ llegan igual que en el estudio.
 const HERRAMIENTAS: Record<Herramienta, (book: Book, chapter: number, hasGreek: boolean) => string> = {
@@ -420,7 +428,7 @@ Formato estricto: cada intervención en su propia línea, empezando por «ANA:»
 Contenido:
 - Abran con una frase que despierte interés por el capítulo; no se presenten ni saluden a la audiencia con fórmulas de radio.
 - Recorran el capítulo en orden: qué pasa, quién habla y a quién, qué se repite, qué sorprende.${
-    hasGreek ? '\n- Detengan la conversación en 1 o 2 palabras del griego que aclaren algo, dichas de forma que se entiendan al oído.' : ''
+    hasGreek ? `\n- Detengan la conversación en 1 o 2 palabras del ${lenguaOriginal(book)} que aclaren algo, dichas de forma que se entiendan al oído.` : ''
   }
 - Relacionen el capítulo con 2 o 3 pasajes de las referencias cruzadas.
 - Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
@@ -440,7 +448,7 @@ R: la respuesta, corta (de 1 a 25 palabras), con su cita
 Reglas:
 - Cada tarjeta prueba una sola idea y se puede responder de memoria después de leer el capítulo.
 - Mezcla: qué pasa y quién lo dice; ideas centrales del capítulo; ${
-    hasGreek ? 'palabras clave del griego y lo que significan; ' : ''
+    hasGreek ? `palabras clave del ${lenguaOriginal(book)} y lo que significan; ` : ''
   }cómo se relaciona con alguno de los pasajes de las referencias cruzadas; y 2 o 3 tarjetas de completar un versículo importante, con la pregunta «Completa: …» y la parte que falta como respuesta, copiada exacta de la RV1909.
 - Ordénalas como aparecen en el capítulo.
 - Nada de preguntas de opinión ni de sí o no.`,
@@ -452,7 +460,7 @@ ${REPASO_FORMATO}
 
 Reglas:
 - Cada pregunta se responde con lo que dice el capítulo; una sola opción es correcta y las otras son creíbles pero el texto las descarta.
-- Mezcla: qué pasa y quién lo dice; ideas centrales; ${hasGreek ? 'una palabra clave del griego; ' : ''}y una de completar un versículo importante, copiado exacto de la RV1909.
+- Mezcla: qué pasa y quién lo dice; ideas centrales; ${hasGreek ? `una palabra clave del ${lenguaOriginal(book)}; ` : ''}y una de completar un versículo importante, copiado exacto de la RV1909.
 - Opciones cortas (de 1 a 12 palabras) y parecidas en largo; que la correcta no sea siempre la misma letra.
 - Nada de preguntas de opinión, de sí o no, ni de «todas las anteriores».
 - Ordénalas como aparecen en el capítulo.`,
