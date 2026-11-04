@@ -21,7 +21,12 @@ export type CitaEncontrada = {
   problema?: string;
   /** El número de la fuente ⟦n⟧ de donde sale, si sale de una. */
   fuente?: number;
+  /** Dónde está en la respuesta (cada vez que aparece): la referencia y, si la hay, la frase con sus comillas. */
+  en?: Donde[];
 };
+
+/** Un sitio de la respuesta donde está una cita. «marca»: es una fuente ⟦n⟧, no una referencia escrita. */
+export type Donde = { at: number; fin: number; comillas?: [number, number]; marca?: boolean };
 
 /**
  * ¿Es la fuente un pasaje de la Biblia («Romanos 11:28»)? Los comentarios («Scofield, Romanos 11:1»), las
@@ -59,11 +64,15 @@ export function pasajeDeFuente(ref: string): Pasaje | null {
  */
 export function buscarCitas(text: string, books: Libro[], sources: Source[] = []): CitaEncontrada[] {
   const citas: CitaEncontrada[] = [];
-  const vistas = new Set<string>();
+  const vistas = new Map<string, CitaEncontrada>();
+  let base = -1;
   for (const linea of text.replace(/⟪[^⟪⟫\n]*⟫/g, (m) => ' '.repeat(m.length)).split('\n')) {
+    base += 1;
+    const inicio = base;
+    base += linea.length;
     // «otra»: una fuente que no es un pasaje (un comentario). Se queda con las comillas que tiene al lado para que no
     // se las lleve otra cita, pero no se revisa.
-    type Lugar = { at: number; fin: number; cita: CitaEncontrada; otra?: boolean };
+    type Lugar = { at: number; fin: number; cita: CitaEncontrada; otra?: boolean; comillas?: [number, number] };
     const lugares: Lugar[] = [];
     for (const m of linea.matchAll(REF)) {
       let texto = m[0];
@@ -103,14 +112,21 @@ export function buscarCitas(text: string, books: Libro[], sources: Source[] = []
       if (!cerca) continue;
       usadas.add(cerca);
       cerca.cita.frase = frase;
+      cerca.comillas = [inicio + ini, inicio + fin];
     }
-    for (const { cita, otra } of lugares) {
+    for (const { cita, otra, at, fin, comillas } of lugares) {
       if (otra) continue;
       const p = cita.pasaje;
       const clave = `${p.book}.${p.chapter}.${p.verse}-${p.verseEnd}|${cita.frase ?? ''}`;
-      // La misma fuente sin frase, repetida en varias líneas, se cuenta una vez.
-      if (vistas.has(clave)) continue;
-      vistas.add(clave);
+      const donde: Donde = { at: inicio + at, fin: inicio + fin, ...(comillas && { comillas }), ...(cita.fuente && { marca: true }) };
+      // La misma cita, repetida en varias líneas, se cuenta una vez (pero se recuerda dónde está cada vez).
+      const vista = vistas.get(clave);
+      if (vista) {
+        vista.en!.push(donde);
+        continue;
+      }
+      cita.en = [donde];
+      vistas.set(clave, cita);
       citas.push(cita);
     }
   }
@@ -201,6 +217,12 @@ export async function revisarCitas(
 }
 
 export const esProblema = (r: Revision) => r.estado === 'no-existe' || r.estado === 'no-coincide' || r.estado === 'otro-versiculo';
+
+/**
+ * Lo que se enseña como aviso: un problema con una referencia escrita en la respuesta. Las comillas junto a una
+ * fuente ⟦n⟧ solo se revisan (el servidor intenta arreglarlas): lo citado ahí puede ser otra cosa que el versículo.
+ */
+export const esAviso = (r: Revision) => esProblema(r) && (r.cita.en ?? []).some((d) => !d.marca);
 
 export const mismoPasaje = (a: Pasaje, b: Pasaje) =>
   a.book === b.book && a.chapter === b.chapter && a.verse === b.verse && a.verseEnd === b.verseEnd;

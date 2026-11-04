@@ -9,6 +9,7 @@ import { Colors, sans, serif, useSettings } from '@/lib/theme';
 import {
   buscarCitas,
   esPasaje,
+  esAviso,
   esProblema,
   mismoPasaje,
   pasajeDeFuente,
@@ -53,7 +54,8 @@ export default function Fuentes({
       if (!citas.length) return [];
       const versiones = [...new Set([settings.version, 'rv1909'])];
       const nombre = (id: string) => books.find((b) => b.id === id)?.name ?? id;
-      return revisarCitas(citas, getChapter, versiones, nombre);
+      // Las comillas junto a una fuente ⟦n⟧ que no cuadran no se enseñan: lo citado puede ser otra cosa.
+      return (await revisarCitas(citas, getChapter, versiones, nombre)).filter((r) => !esProblema(r) || esAviso(r));
     })()
       .catch(() => [])
       .then((r) => vivo && setRevision(r));

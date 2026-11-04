@@ -48,7 +48,7 @@ export async function load<T>(rel: string, fallback?: T): Promise<T> {
 /** La versión con la que trabaja la IA. `licensed`: la que lee la persona, si es una con derechos que la IA no recibe. */
 export type Lectura = { id: string; abbr: string; name: string; licensed?: { id: string; abbr: string; name: string } };
 
-const RV1909: Lectura = { id: 'rv1909', abbr: 'RV1909', name: 'Reina-Valera 1909' };
+export const RV1909: Lectura = { id: 'rv1909', abbr: 'RV1909', name: 'Reina-Valera 1909' };
 
 /** La versión pedida, o null si no existe. Sin versión, la RV1909. */
 export async function lectura(version: unknown): Promise<Lectura | null> {

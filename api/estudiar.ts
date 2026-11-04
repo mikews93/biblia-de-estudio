@@ -44,6 +44,7 @@ import {
   pasoDe,
   versionSystem,
 } from './_investigar';
+import { corregirRespuesta } from './_corregir';
 import { guardarPregunta } from './_preguntas';
 import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
 import { waitUntil } from './_seguir';
@@ -142,6 +143,7 @@ Reglas:
 - Los comentarios ayudan a entender el texto (contexto, historia, costumbres, el sentido de una frase), pero son opiniones humanas, no tienen la autoridad de la Biblia. Cuando uses uno, no nombres al autor ni la obra en el texto: la cita ya dice de quién es y la persona la puede tocar. Preséntalo como una ayuda («un comentario señala…», «las notas de estudio explican…», «otro comentarista lo lee distinto…») o di la idea y cítala; dilo con tus palabras en español sin copiar párrafos. Nombra al autor solo si la persona pregunta quién lo dice. Si los comentaristas no coinciden, muéstralo sin tomar partido. Nunca atribuyas a un comentario algo que no dice.
 - Si algo no está en los documentos (autoría, fechas, historia, costumbres), dilo así: «esto no está en las fuentes de la app». Solo si de verdad ayuda, añade contexto general ampliamente aceptado, breve y marcado como «contexto general», sin inventar datos, fechas ni citas de autores.
 - Para el hebreo y el griego usa la glosa, el lema y la gramática del documento; no inventes significados ni etimologías.
+- Cada versículo que nombres o copies tiene que ser exacto. Copia entre comillas solo palabras que tengas delante en los documentos o en lo que leíste con las herramientas, tal cual están, con su libro, capítulo y versículo; nunca de memoria. Si no estás seguro del versículo exacto, léelo antes (si tienes herramientas) o di la idea con tus palabras y cita solo el capítulo. La app revisa cada cita con el texto de la Biblia y quita las que no cuadran.
 - Responde desde la lectura evangélica del texto. Cuando las tradiciones evangélicas y protestantes lo entienden distinto (el bautismo, la elección, los últimos tiempos), muestra cada postura con respeto y sin tomar partido. No presentes las posturas católica u ortodoxa como opciones; si la persona pregunta por ellas, explícalas con respeto y di con honestidad cuando no se apoyan con claridad en el texto bíblico.
 - No uses ni presentes como interpretación cristiana las enseñanzas de grupos que niegan doctrinas centrales del cristianismo histórico, como la Trinidad o la divinidad de Cristo (por ejemplo, Testigos de Jehová o mormones).
 - Escribe en español claro y cálido para alguien sin formación teológica: párrafos cortos, títulos con "## ", listas con "- " y **negritas** solo para palabras clave. Sin tablas.
@@ -157,7 +159,8 @@ Herramientas: puedes investigar más allá del pasaje abierto: leer otros pasaje
 - Para doctrina o historia de la Iglesia (el canon, los concilios, la Trinidad, la justificación) consulta «teologia» y presenta cada postura como la de su tradición («la tradición reformada», «una teología metodista», «un credo antiguo»), sin nombrar al autor en el texto: la cita dice quién es. Si las obras difieren (sobre la elección, sobre el bautismo), muestra las dos posturas sin tomar partido. La Escritura va primero: apoya lo que digas en pasajes leídos con las otras herramientas.
 - Para herejías y controversias antiguas (el modalismo o sabelianismo, el arrianismo, el gnosticismo, el nestorianismo, el pelagianismo) y lo que decidieron los concilios (Nicea, Constantinopla, Éfeso, Calcedonia), consulta «teologia» con el área «herejias» y, si sirve, también «credos» y «sistematicas». Explica con justicia qué enseñaban, por qué la Iglesia lo rechazó, con qué pasajes, en qué concilio o credo, y qué afirma la fe que se confesó en su lugar. Aquí no hay dos posturas que equilibrar: la Trinidad y la persona de Cristo tal como las confiesan los credos antiguos son la fe que comparten todas las tradiciones evangélicas. Si hoy algún grupo enseña algo parecido, puedes decirlo con respeto y sin burla, sin usar sus materiales.
 - Para explicar algo concreto de la Biblia (un lugar como Getsemaní, un objeto como el efod, un grupo como los fariseos, una costumbre o una palabra como «propiciación») consulta «diccionario». Para reunir lo que la Biblia dice de un tema (la oración, el perdón, el matrimonio) consulta «temas_biblicos» y lee los pasajes más fuertes antes de usarlos.
-- Lo que encuentres con ellas se cita igual que los documentos. Si algo no está en ninguna fuente de la app, márcalo como «contexto general», breve y sin inventar fechas ni citas.`;
+- Lo que encuentres con ellas se cita igual que los documentos. Si algo no está en ninguna fuente de la app, márcalo como «contexto general», breve y sin inventar fechas ni citas.
+- Antes de nombrar o copiar un versículo que no está en los documentos, léelo con «leer_pasaje» (o encuéntralo con «buscar_en_la_biblia»): nunca des una referencia de memoria.`;
 
 const TALLER_SYSTEM = `
 
@@ -1078,7 +1081,8 @@ async function palabraPost(request: Request, body: Body) {
   if (denied) return denied;
 
   const books = await load<Book[]>('books.json');
-  const docs = await palabraSources(palabra, new Biblia(request, version, books));
+  const lector = new Biblia(request, version, books);
+  const docs = await palabraSources(palabra, lector);
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     {
       role: 'user',
@@ -1089,7 +1093,7 @@ async function palabraPost(request: Request, body: Body) {
     },
   ];
   const system = SYSTEM + PALABRA_SYSTEM + versionSystem(version);
-  return streamAnswer(request, docs, messages, system, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true);
+  return streamAnswer(request, docs, messages, system, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true, lector);
 }
 
 /** La conversación después del primer mensaje: respuestas de la IA y preguntas de la persona, alternadas. */
@@ -1376,6 +1380,7 @@ export async function POST(request: Request) {
     },
     investiga ? biblia : undefined,
     compartido,
+    biblia,
   );
 }
 
@@ -1464,6 +1469,8 @@ function streamAnswer(
   save: (saved: Saved) => Promise<void>,
   biblia?: Biblia,
   compartido = false,
+  /** Para revisar las citas al final cuando la IA no tiene herramientas (si no, es «biblia»). */
+  lector?: Biblia,
 ) {
   const encoder = new TextEncoder();
   // Si la persona cierra la conexión, lo que queda por enviar se descarta.
@@ -1596,6 +1603,13 @@ function streamAnswer(
         } else {
           // Solo se guarda una respuesta completa
           if (final.stop_reason === 'end_turn' && texto.trim()) {
+            // Las citas que no cuadran con la Biblia se corrigen antes de guardar; la persona recibe el texto nuevo.
+            const leer = lector ?? biblia;
+            const corregido = leer ? await corregirRespuesta(request, texto, fuentes, leer) : texto;
+            if (corregido !== texto) {
+              texto = corregido;
+              send({ type: 'correccion', text: texto });
+            }
             await save({ texto, fuentes });
           }
           send({ type: 'done' });
