@@ -7,6 +7,7 @@
 import path from 'node:path';
 
 import { leerJson } from './_teologia';
+import { type Articulo, type FilaDiccionario, buscarArticulos } from '../src/lib/fuentesAbiertas';
 import { formatRef } from '../src/lib/refs';
 
 const DIR = process.env.DICCIONARIO_DIR ?? path.join(process.cwd(), 'dist', 'diccionario');
@@ -153,4 +154,50 @@ export async function tema(request: Request, k: string): Promise<Tema | null | u
   const shard = await json<Record<string, LineaTema[]>>(request, `n/${letra(k)}.json.gz`);
   if (!shard) return null;
   return shard[k] ? { clave: k, lineas: shard[k] } : undefined;
+}
+
+// ---------------------------------------------------------------- diccionario bíblico Tyndale, ya en español
+// Lo genera pipeline/build_fuentes_abiertas.py en /data/diccionario-es/ (CC BY-SA 4.0). Es moderno y evangélico:
+// para la IA va primero, y Easton y Smith quedan como apoyo histórico.
+
+const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'dist', 'data');
+
+export const TYNDALE = {
+  corto: 'Diccionario bíblico Tyndale',
+  nota: 'Tyndale Open Bible Dictionary · Tyndale House Publishers · 2023 · edición en español de Mission Mutual, CC BY-SA 4.0',
+  url: 'https://github.com/BibleAquifer/AquiferOpenBibleDictionary',
+};
+
+let indiceEs: Promise<FilaDiccionario[] | null> | null = null;
+
+/** Los artículos de Tyndale cuyo título responde a la palabra en español («Getsemaní», «efod»), como mucho «max». */
+export async function buscarTyndale(request: Request, tema: string, max = 1): Promise<Articulo[] | null> {
+  indiceEs ??= leerJson<FilaDiccionario[]>(request, 'data', 'diccionario-es/indice.json', DATA_DIR).then((i) => {
+    if (!i) indiceEs = null;
+    return i;
+  });
+  const ix = await indiceEs;
+  if (!ix) return null;
+  const filas = buscarArticulos(ix, tema, max);
+  const out: Articulo[] = [];
+  for (const [id] of filas) {
+    const a = await leerJson<{ t: string; x: string; tipo: string }>(request, 'data', `diccionario-es/a/${id}.json`, DATA_DIR);
+    if (a) out.push({ id, t: a.t, x: a.x, tipo: a.tipo });
+  }
+  return out;
+}
+
+/** El texto del artículo para la IA: las referencias ⟦jhn.3.16⟧ como «Juan 3:16» y los enlaces como su texto. */
+export function textoTyndale(x: string, books: NamedBook[]): string[] {
+  return partes(
+    x
+      .replace(/⟦d:\d+\|([^⟧]*)⟧/g, '$1')
+      .replace(/⟦([^⟧]+)⟧/g, (_, r: string) => {
+        try {
+          return etiqueta(r, books);
+        } catch {
+          return r;
+        }
+      }),
+  );
 }

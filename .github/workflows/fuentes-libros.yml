@@ -1,0 +1,57 @@
+name: Fuentes de libros
+
+# Descarga obras de dominio público (módulos SWORD de CrossWire y libros de CCEL) y las deja como archivos de la
+# versión «fuentes-libros-v1» de este repositorio, para que pipeline/build_fuentes_libros.py las lea aunque esos
+# sitios no se abran desde el entorno de desarrollo. También busca en los repositorios SWORD los comentarios que
+# todavía no tenemos y lo imprime en el registro. Se lanza al cambiar la lista o a mano.
+
+on:
+  push:
+    paths:
+      - pipeline/fuentes_libros.txt
+      - .github/workflows/fuentes-libros.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  descargar:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: fuentes-libros-v1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar comentarios en los repositorios SWORD
+        continue-on-error: true
+        run: |
+          for repo in https://crosswire.org/ftpmirror/pub/sword/raw https://crosswire.org/ftpmirror/pub/sword/betaraw \
+                      https://crosswire.org/ftpmirror/pub/sword/atticraw https://ftp.xiphos.org/sword/raw \
+                      https://ebible.org/sword/raw https://ibtrussia.org/sword/raw; do
+            echo "=== $repo"
+            rm -rf mods && mkdir mods
+            curl -sL --max-time 60 "$repo/mods.d.tar.gz" | tar xz -C mods 2>/dev/null || { echo "  no se pudo"; continue; }
+            grep -il -E 'gill|ellicott|pulpit|bengel|cambridge|vincent|edersheim|josephus|treasury|torrey|isbe|lange|expositor|robertson' mods/mods.d/*.conf | while read -r f; do
+              echo "  $(basename "$f" .conf) | $(grep -m1 '^Description=' "$f" | cut -c13-) | $(grep -m1 '^DataPath=' "$f" | cut -c10-) | $(grep -m1 -i '^DistributionLicense=' "$f" | cut -c21-)"
+            done
+          done
+          for a in edersheim josephus vincent bengel gill ellicott smith_ga lange; do
+            echo "=== ccel $a"
+            curl -sL --max-time 30 "https://ccel.org/ccel/$a" | grep -o 'href="/ccel/[^"]*"' | sort -u | head -20
+          done
+      - name: Descargar
+        run: |
+          mkdir -p fuentes
+          grep -v '^#' pipeline/fuentes_libros.txt | while read -r name url; do
+            [ -z "$name" ] && continue
+            code=$(curl -sL --retry 3 --retry-all-errors -A 'Mozilla/5.0 (biblia-de-estudio)' -o "fuentes/$name" -w '%{http_code}' "$url")
+            echo "$code $(stat -c %s "fuentes/$name") $name $url"
+            [ "$code" = 200 ] || rm -f "fuentes/$name"
+          done
+          cd fuentes && sha256sum * | tee ../sha256.txt
+      - name: Publicar los archivos
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Fuentes de libros (dominio público)" \
+            --notes "Copias de obras de dominio público para pipeline/build_fuentes_libros.py." --prerelease
+          gh release upload "$TAG" fuentes/* sha256.txt --clobber

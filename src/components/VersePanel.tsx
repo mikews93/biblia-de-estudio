@@ -18,6 +18,8 @@ import {
 import Commentary from '@/components/Commentary';
 import { CompareVerse } from '@/components/Comparar';
 import GroupNotes from '@/components/comunidad/GroupNotes';
+import DiccionarioVersiculo from '@/components/DiccionarioVersiculo';
+import LexicoUBS from '@/components/LexicoUBS';
 import { ChevronRightIcon, CloseIcon, PromiseIcon } from '@/components/icons';
 import PlaceMap from '@/components/PlaceMap';
 import { PromesasDelPasaje, abrirHilo } from '@/components/Promesas';
@@ -30,7 +32,7 @@ import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
-export type Tab = 'interlineal' | 'versiones' | 'referencias' | 'mapa' | 'comentario' | 'grupo';
+export type Tab = 'interlineal' | 'versiones' | 'referencias' | 'diccionario' | 'mapa' | 'comentario' | 'grupo';
 
 type Props = {
   book: Book;
@@ -55,6 +57,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
     ['interlineal', 'Interlineal'],
     ['versiones', 'Versiones'],
     ['referencias', 'Referencias'],
+    ['diccionario', 'Diccionario'],
     ['mapa', 'Mapa'],
     ['comentario', 'Comentario'],
     ['grupo', 'Grupo'],
@@ -134,6 +137,9 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
             {tab === 'referencias' && (
               <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
             )}
+            {tab === 'diccionario' && (
+              <DiccionarioVersiculo book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+            )}
             {tab === 'mapa' && <Places book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />}
             {tab === 'comentario' && (
               <Commentary book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
@@ -173,6 +179,7 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
           <Text style={{ color: colors.muted, marginTop: 4, fontSize: 13 }}>
             {describeMorph(w[7])} · Strong {w[6]}
           </Text>
+          <LexicoUBS strong={w[6]} en={{ book: book.id, chapter, verse }} colors={colors} />
           <ConcordanceButton strong={w[6]} from={`${book.id}.${chapter}.${verse}`} />
           <PalabraButton strong={w[6]} />
           <WhyButton onPress={() => setWhy(true)} />

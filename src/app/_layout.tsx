@@ -106,6 +106,9 @@ function AppStack() {
           <Stack.Screen name="podcast/[book]/[chapter]" options={{ title: 'Resumen en audio' }} />
           <Stack.Screen name="comparar/[book]/[chapter]" options={{ title: 'Comparar versiones' }} />
           <Stack.Screen name="concordancia/[strong]" options={{ title: 'Concordancia' }} />
+          <Stack.Screen name="diccionario/index" options={{ title: 'Diccionario bíblico' }} />
+          <Stack.Screen name="diccionario/[id]" options={{ title: 'Diccionario bíblico' }} />
+          <Stack.Screen name="fuentes" options={{ title: 'Fuentes y créditos' }} />
           <Stack.Screen name="palabras/index" options={{ title: 'La historia de una palabra' }} />
           <Stack.Screen name="palabras/[id]/index" options={{ title: 'La historia de una palabra' }} />
           <Stack.Screen name="palabras/[id]/podcast" options={{ title: 'Pódcast de la palabra' }} />

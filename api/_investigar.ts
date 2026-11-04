@@ -14,7 +14,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Section, sections } from './_comentarios';
-import { OBRAS, buscarEntradas, buscarTema, etiqueta, partes } from './_diccionario';
+import { OBRAS, TYNDALE, buscarEntradas, buscarTema, buscarTyndale, etiqueta, partes, textoTyndale } from './_diccionario';
 import { Area, buscarTeologia } from './_teologia';
 import { parseCita } from '../src/lib/cita';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
@@ -369,11 +369,11 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
   {
     name: 'diccionario',
     description:
-      'Busca una palabra en dos diccionarios bíblicos clásicos de dominio público, en su inglés original: el de Easton (1897) y el de Smith (1863). Explican personas, lugares, objetos, costumbres y palabras de la Biblia (Getsemaní, el maná, los fariseos, el efod, la gracia) con su trasfondo histórico y sus pasajes. Úsalo cuando la pregunta trate de algo concreto de la Biblia que convenga explicar.',
+      'Busca una palabra en diccionarios bíblicos: el diccionario bíblico Tyndale (moderno, evangélico, ya en español, por el «tema») y dos clásicos de dominio público en su inglés original, el de Easton (1897) y el de Smith (1863), por el «termino». Explican personas, lugares, objetos, costumbres y palabras de la Biblia (Getsemaní, el maná, los fariseos, el efod, la gracia) con su trasfondo histórico y sus pasajes. Úsalo cuando la pregunta trate de algo concreto de la Biblia que convenga explicar.',
     input_schema: {
       type: 'object',
       properties: {
-        tema: { type: 'string', description: 'La palabra en español, para enseñársela a la persona: «Getsemaní».' },
+        tema: { type: 'string', description: 'La palabra en español como entrada de diccionario, en singular: «Getsemaní», «Maná», «Fariseos», «Efod», «Gracia».' },
         termino: { type: 'string', description: 'La palabra en inglés, como entrada de diccionario: «Gethsemane», «Manna», «Pharisees», «Ephod», «Grace».' },
       },
       required: ['tema', 'termino'],
@@ -509,10 +509,15 @@ export async function investigar(name: string, input: Record<string, unknown>, b
     if (name === 'diccionario') {
       const termino = String(input.termino ?? '').slice(0, 80);
       const tema = String(input.tema ?? termino).slice(0, 80);
-      const found = await buscarEntradas(biblia.request, termino);
-      if (!found) return fail(paso, 'Los diccionarios bíblicos no están disponibles ahora. Sigue con lo que tienes.');
-      if (!found.length) return { content: `Los diccionarios no tienen «${termino}». Prueba con otra palabra en inglés (singular, o el nombre como en la KJV).`, results: [], paso };
-      const rs = found.flatMap((e) =>
+      const [found, tyndale] = await Promise.all([buscarEntradas(biblia.request, termino), buscarTyndale(biblia.request, tema)]);
+      if (!found && !tyndale) return fail(paso, 'Los diccionarios bíblicos no están disponibles ahora. Sigue con lo que tienes.');
+      if (!found?.length && !tyndale?.length)
+        return { content: `Los diccionarios no tienen «${tema}» ni «${termino}». Prueba con otra palabra (singular, o el nombre como en la RV1909 y la KJV).`, results: [], paso };
+      const ts = (tyndale ?? []).map((a) => {
+        const meta = { label: `${TYNDALE.corto}, «${a.t}»`, url: TYNDALE.url, nota: TYNDALE.nota };
+        return result(`${TYNDALE.corto} (en español) · ${a.t}`, `diccionario:tyndale:${a.id}`, firstWords(textoTyndale(a.x, books), DICCIONARIO_WORDS).map((t) => ({ text: t, meta })));
+      });
+      const rs = [...ts, ...(found ?? []).flatMap((e) =>
         (['easton', 'smith'] as const).flatMap((id) => {
           const texto = id === 'easton' ? e.easton : e.smith;
           if (!texto) return [];
@@ -520,9 +525,9 @@ export async function investigar(name: string, input: Record<string, unknown>, b
           const meta = { label: `${obra.corto}, «${tema}»`, url: obra.url, nota: obra.nota };
           return [result(`${obra.corto} (en inglés) · ${e.clave}`, `diccionario:${id}:${e.clave}`, firstWords(partes(texto), DICCIONARIO_WORDS).map((t) => ({ text: t, meta })))];
         }),
-      );
+      )];
       const aviso =
-        'Diccionarios del siglo XIX, en inglés: explícalos en español con tus palabras y sin traducir párrafos enteros. Sus datos de arqueología y geografía pueden estar superados: no los afirmes como seguros. No los pongas al nivel de la Escritura.';
+        'El diccionario Tyndale es moderno y ya está en español: puedes apoyarte primero en él. Easton y Smith son del siglo XIX, en inglés: explícalos en español con tus palabras y sin traducir párrafos enteros; sus datos de arqueología y geografía pueden estar superados. No pongas ningún diccionario al nivel de la Escritura.';
       return { content: [{ type: 'text', text: aviso }, ...rs.map((r) => r.param)], results: rs.map((r) => r.metas), paso };
     }
 
