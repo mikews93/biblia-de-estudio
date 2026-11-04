@@ -35,11 +35,13 @@ function voz(amplitud: number, seg: number, pausa = seg / 5, hz = 220): Float32A
 /** Ana muy baja y Tomás fuerte, como las entrega ElevenLabs. */
 const amplitud = (voice: string) => (voice === ANA ? 0.08 : 0.4);
 
-const calls: { inputs: { text: string; voice_id: string }[]; model_id: string }[] = [];
+const calls: { inputs: { text: string; voice_id: string }[]; model_id: string; language_code?: string }[] = [];
 const paths: string[] = [];
 let failNext = false;
 /** Como pasó en producción: ElevenLabs entrega muda la última intervención de cada tramo de varias. */
 let mudaUltima = false;
+/** La voz sola falla (como si ElevenLabs rechazara el pedido). */
+let ttsFalla = false;
 const eleven = createServer((req, res) => {
   let raw = '';
   req.on('data', (c) => (raw += c));
@@ -53,8 +55,12 @@ const eleven = createServer((req, res) => {
     paths.push(req.url ?? '');
     // La voz sola (text-to-speech): PCM sin más, con un poco de silencio en los bordes.
     const tts = req.url?.match(/^\/v1\/text-to-speech\/([^?]+)/);
+    if (tts && ttsFalla) {
+      res.writeHead(400).end('{"detail":{"status":"invalid_request"}}');
+      return;
+    }
     if (tts) {
-      calls.push({ inputs: [{ text: body.text, voice_id: tts[1] }], model_id: body.model_id });
+      calls.push({ inputs: [{ text: body.text, voice_id: tts[1] }], model_id: body.model_id, language_code: body.language_code });
       const m = Float32Array.from([...voz(0, 0.1, 0), ...voz(amplitud(tts[1]), 0.6, 0.1)]);
       const pcm = muestrasA16(m);
       res.writeHead(200, { 'Content-Type': 'application/octet-stream' }).end(Buffer.from(pcm.buffer, pcm.byteOffset, pcm.byteLength));
@@ -100,7 +106,7 @@ beforeAll(async () => {
   ({ POST: comunidades } = await import('../../api/comunidades'));
   await ensureSchema(comunidades);
   const call = client(comunidades, '2026-10-18');
-  for (const nombre of ['Ana', 'Tomás', 'Rut']) llaves.push((await call('registrarse', { nombre })).json.llave);
+  for (const nombre of ['Ana', 'Tomás', 'Rut', 'Lea']) llaves.push((await call('registrarse', { nombre })).json.llave);
   sql = postgres(DB_URL, { max: 1, onnotice: () => {} });
   await sql`create table if not exists herramientas_ia (
     herramienta text not null, libro text not null, capitulo int not null, texto text not null,
@@ -262,6 +268,8 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
       const solas = nuevas.filter((c) => c.inputs.length === 1);
       expect(solas.map((c) => c.inputs[0].text).sort()).toEqual(['Respuesta 7.', 'Respuesta 9.']);
       expect(solas.every((c) => c.model_id === 'eleven_multilingual_v2')).toBe(true);
+      // Sin language_code: no todos los modelos lo aceptan, y si lo rechazan no se regraba nada (1 Reyes 21).
+      expect(solas.every((c) => c.language_code === undefined)).toBe(true);
       expect(paths.filter((p) => p.startsWith('/v1/text-to-speech/')).length).toBeGreaterThanOrEqual(2);
       // La última suena: desde su inicio hasta el final del MP3 hay voz.
       const { muestras, rate } = await decodificarMp3(new Uint8Array(await readFile(new URL(listo.url))));
@@ -270,6 +278,47 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
       expect(listo.tiempos.length).toBe(10);
     } finally {
       mudaUltima = false;
+      await sql`delete from podcast_grabado where libro = 'jud' and capitulo = 2`;
+      await sql`delete from herramientas_ia where herramienta = 'podcast' and libro = 'jud' and capitulo = 2`;
+    }
+  });
+
+  it('si regrabar la intervención muda falla, la grabación se termina igual', async () => {
+    await sql`delete from podcast_grabado where libro = 'jud' and capitulo = 2`;
+    await sql`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes)
+      values ('podcast', 'jud', 2, ${SCRIPT}, '[]') on conflict do nothing`;
+    mudaUltima = true;
+    ttsFalla = true;
+    try {
+      const res = await post({ book: 'jud', chapter: 2 }, llaves[0]);
+      expect(res.status).toBe(200);
+      expect((await res.json()).estado).toBe('listo');
+    } finally {
+      mudaUltima = false;
+      ttsFalla = false;
+      await sql`delete from podcast_grabado where libro = 'jud' and capitulo = 2`;
+      await sql`delete from herramientas_ia where herramienta = 'podcast' and libro = 'jud' and capitulo = 2`;
+    }
+  });
+
+  it('con un guion nuevo («Preparar otra versión»), la grabación de antes deja de servirse y se graba el nuevo', async () => {
+    await sql`delete from podcast_grabado where libro = 'jud' and capitulo = 2`;
+    await sql`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes)
+      values ('podcast', 'jud', 2, ${SCRIPT}, '[]') on conflict (herramienta, libro, capitulo) do update set texto = excluded.texto`;
+    try {
+      const primera = await (await post({ book: 'jud', chapter: 2 }, llaves[3])).json();
+      expect(primera.estado).toBe('listo');
+      expect(await get('jud', 2)).toEqual(primera);
+      const nuevo = SCRIPT.replace('Pregunta 0', 'Palabras del hebreo');
+      await sql`update herramientas_ia set texto = ${nuevo} where herramienta = 'podcast' and libro = 'jud' and capitulo = 2`;
+      expect(await get('jud', 2)).toEqual({ estado: 'ninguno' });
+      const antes = calls.length;
+      const segunda = await (await post({ book: 'jud', chapter: 2 }, llaves[3])).json();
+      expect(segunda.estado).toBe('listo');
+      expect(segunda.url).not.toBe(primera.url);
+      expect(calls.slice(antes).some((c) => c.inputs.some((x) => x.text === 'Palabras del hebreo?'))).toBe(true);
+      expect(await get('jud', 2)).toEqual(segunda);
+    } finally {
       await sql`delete from podcast_grabado where libro = 'jud' and capitulo = 2`;
       await sql`delete from herramientas_ia where herramienta = 'podcast' and libro = 'jud' and capitulo = 2`;
     }

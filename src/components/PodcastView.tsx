@@ -61,7 +61,7 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
   const positions = useRef<Record<number, number>>({});
   const listY = useRef(0);
 
-  const grabado = usePodcastGrabado(bookId, chapter, palabra, version.id);
+  const grabado = usePodcastGrabado(bookId, chapter, palabra, version.id, tool.done ? tool.text : undefined);
   // Ya grabado con voces naturales (en la app o bajo demanda): el reproductor suena con esas voces y no con las del
   // dispositivo. Mientras se pregunta al servidor, el botón espera para no cambiar de voz a mitad.
   const natural = recorded ? {} : grabado.estado === 'listo' ? { remote: grabado } : null;
