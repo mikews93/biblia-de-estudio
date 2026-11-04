@@ -18,6 +18,10 @@
 // Después (Romanos 11, 4-11) se vio que la última intervención también puede llegar casi muda o cortada, o sin dónde
 // suena: se compara lo que dura con lo que debería durar su texto, y la que falta se graba con la voz sola
 // (text-to-speech), que no la pierde, en vez de otra vez como diálogo.
+// En 1 Reyes 21 (4-11) la pregunta final seguía muda (7 s de silencio absoluto al final): la voz sola se pedía con
+// language_code, y si ElevenLabs lo rechaza no se regraba nada. Ya no se manda, un fallo al regrabar no tumba la
+// grabación, y REVISION 3 vuelve a revisar las hechas. Y si el guion cambia («Preparar otra versión»), la grabación del
+// guion de antes deja de servirse y se puede grabar el nuevo.
 
 import { put } from '@vercel/blob';
 import { createHash } from 'node:crypto';
@@ -65,7 +69,7 @@ const COLA_MUDA_S = 2;
 /** Modelo de la voz sola para regrabar lo que falta. */
 const MODELO_SOLA = process.env.PODCAST_MODELO_SOLA ?? 'eleven_multilingual_v2';
 /** Sube cuando cambia cómo se buscan las intervenciones mudas: las grabaciones con una revisión menor se revisan otra vez. */
-const REVISION = 2;
+const REVISION = 3;
 // Para las pruebas: guarda los MP3 en una carpeta en vez de Vercel Blob.
 const STORE_DIR = process.env.PODCAST_STORE_DIR;
 // Vercel nombra el token del almacén Blob según el prefijo que se elija al conectarlo: se acepta cualquiera.
@@ -157,9 +161,14 @@ export async function GET(request: Request) {
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const s = await db().catch(() => null);
   if (!s) return json({ estado: 'ninguno' });
-  const [row] = await s<(Row & { nivelado: boolean; revision: number })[]>`select estado, url, duracion, credito, tiempos,
-      nivelado, revision
-    from podcast_grabado where libro = ${where.book} and capitulo = ${where.chapter}`;
+  const [row] = await s<(Row & { nivelado: boolean; revision: number; vieja: boolean })[]>`select g.estado, g.url, g.duracion,
+      g.credito, g.tiempos, g.nivelado, g.revision, (h.texto is not null and g.guion is not null and g.guion <> h.texto) as vieja
+    from podcast_grabado g
+    left join herramientas_ia h on h.herramienta = ${where.guion.herramienta} and h.libro = ${where.guion.libro}
+      and h.capitulo = ${where.guion.capitulo}
+    where g.libro = ${where.book} and g.capitulo = ${where.chapter}`;
+  // Con «Preparar otra versión» el guion cambió: la grabación de antes ya no es la suya y se puede grabar el nuevo.
+  if (row?.estado === 'listo' && row.vieja) return json({ estado: 'ninguno' });
   if (row?.estado === 'listo' && !row.nivelado && row.url) waitUntil(renivelar(s, where, row.url));
   else if (row?.estado === 'listo' && row.revision < REVISION && row.url && row.tiempos && process.env.ELEVENLABS_API_KEY) {
     waitUntil(revisar(s, where, row.url));
@@ -351,7 +360,8 @@ async function sola(line: Line): Promise<Float32Array> {
   const res = await fetch(`${ELEVEN_URL}/v1/text-to-speech/${line.voice}?output_format=pcm_${PCM_HZ}`, {
     method: 'POST',
     headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY ?? '', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: line.text, model_id: MODELO_SOLA, language_code: 'es', seed: 7 }),
+    // Sin language_code: no todos los modelos lo aceptan (si no, la regrabación falla entera) y el idioma sale del texto.
+    body: JSON.stringify({ text: line.text, model_id: MODELO_SOLA, seed: 7 }),
   });
   if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const m = pcmAMuestras(new Uint8Array(await res.arrayBuffer()));
@@ -436,7 +446,11 @@ async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: numb
     while (next < groups.length) {
       const i = next++;
       const parte = await dialogue(groups[i]);
-      parts[i] = (await repararMudas(parte, groups[i])) ?? parte;
+      // Si regrabar falla, se queda el tramo como vino: mejor una intervención muda que perder toda la grabación.
+      parts[i] = (await repararMudas(parte, groups[i]).catch((err) => {
+        console.error('podcast-grabado: regrabar', err);
+        return null;
+      })) ?? parte;
     }
   };
   await Promise.all(Array.from({ length: Math.min(PARALLEL, groups.length) }, worker));
@@ -499,19 +513,19 @@ export async function POST(request: Request) {
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const { book, chapter } = where;
 
-  const [current] = await s<(Row & { viejo: boolean })[]>`select estado, url, duracion, credito, tiempos,
-      actualizado < now() - make_interval(mins => ${STALE_MINUTES}) as viejo
-    from podcast_grabado where libro = ${book} and capitulo = ${chapter}`;
-  if (current?.estado === 'listo' || (current?.estado === 'grabando' && !current.viejo)) return json(answer(current));
-
-  if (!process.env.ELEVENLABS_API_KEY || (!STORE_DIR && !BLOB_TOKEN)) {
-    return json({ error: 'Las voces naturales todavía no están activadas en el servidor.' }, 503);
-  }
-
   const [guion] = await s<{ texto: string }[]>`select texto from herramientas_ia
     where herramienta = ${where.guion.herramienta} and libro = ${where.guion.libro} and capitulo = ${where.guion.capitulo}`.catch(
     () => [],
   );
+  const [current] = await s<(Row & { viejo: boolean; guion: string | null })[]>`select estado, url, duracion, credito, tiempos,
+      guion, actualizado < now() - make_interval(mins => ${STALE_MINUTES}) as viejo
+    from podcast_grabado where libro = ${book} and capitulo = ${chapter}`;
+  const vieja = current?.estado === 'listo' && !!guion && current.guion !== null && current.guion !== guion.texto;
+  if ((current?.estado === 'listo' && !vieja) || (current?.estado === 'grabando' && !current.viejo)) return json(answer(current));
+
+  if (!process.env.ELEVENLABS_API_KEY || (!STORE_DIR && !BLOB_TOKEN)) {
+    return json({ error: 'Las voces naturales todavía no están activadas en el servidor.' }, 503);
+  }
   const lines = guion ? scriptLines(guion.texto) : [];
   if (!lines.length) return json({ error: 'Primero hay que preparar el guion del pódcast.' }, 409);
 
@@ -531,6 +545,7 @@ export async function POST(request: Request) {
     on conflict (libro, capitulo) do update
       set estado = 'grabando', guion = excluded.guion, pedido_por = excluded.pedido_por, creado = now(), actualizado = now()
       where podcast_grabado.estado = 'error'
+        or (podcast_grabado.estado = 'listo' and podcast_grabado.guion is not null and podcast_grabado.guion <> excluded.guion)
         or (podcast_grabado.estado = 'grabando' and podcast_grabado.actualizado < now() - make_interval(mins => ${STALE_MINUTES}))
     returning 1`;
   if (!mine) return json({ estado: 'grabando' });
