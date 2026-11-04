@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / ".cache" / "teologia"
 OUT = ROOT / "teologia"
 RELEASE = "https://github.com/mikews93/biblia-de-estudio/releases/download/teologia-fuentes-v1/"
+LIBROS = "https://github.com/mikews93/biblia-de-estudio/releases/download/fuentes-libros-v1/"
 # Catecismos en JSON de Creeds.json (NonlinearFruit, dominio público), fijados a una versión
 CREEDS_JSON = "https://raw.githubusercontent.com/NonlinearFruit/Creeds.json/2ae21a4c5387ecc91f474c9d3d67c826d2a6b9d5/creeds/"
 
@@ -99,7 +100,7 @@ def nice_title(t):
 
 # ------------------------------------------------------------------------------------------------- Las obras
 
-# area: sistematicas | canon | credos | herejias. Cada «parte» es un archivo de la caché.
+# area: sistematicas | canon | credos | herejias | historia. Cada «parte» es un archivo de la caché.
 OBRAS = [
     {"id": "hodge", "autor": "Charles Hodge", "titulo": "Systematic Theology", "corto": "Hodge, Teología sistemática",
      "año": 1872, "tradicion": "presbiteriana (Princeton)", "area": "sistematicas",
@@ -193,6 +194,24 @@ OBRAS = [
      "corto": "Atanasio, Contra los arrianos", "año": 358, "tradicion": "Padres de la Iglesia", "area": "herejias",
      "url": "https://ccel.org/ccel/schaff/npnf204.xxi.ii.html",
      "partes": [{"thml": "atanasio.xml", "ccel": "schaff/npnf204", "roots": ["xxi.ii", "xiv"]}]},
+    # Historia y costumbres del tiempo de la Biblia: Edersheim (judío convertido, anglicano) y Josefo, de la versión
+    # «fuentes-libros-v1» (pipeline/fuentes_libros.txt).
+    {"id": "edersheim-vida", "autor": "Alfred Edersheim", "titulo": "The Life and Times of Jesus the Messiah",
+     "corto": "Edersheim, Vida y tiempos de Jesús el Mesías", "año": 1883, "tradicion": "anglicana (historia judía del siglo I)",
+     "area": "historia", "url": "https://ccel.org/ccel/edersheim/lifetimes",
+     "partes": [{"thml": "edersheim-vida.xml", "ccel": "edersheim/lifetimes", "base": "libros", "skip": ["iv", "v"]}]},
+    {"id": "edersheim-templo", "autor": "Alfred Edersheim", "titulo": "The Temple: Its Ministry and Services",
+     "corto": "Edersheim, El templo", "año": 1874, "tradicion": "anglicana (historia judía del siglo I)",
+     "area": "historia", "url": "https://ccel.org/ccel/edersheim/temple",
+     "partes": [{"thml": "edersheim-templo.xml", "ccel": "edersheim/temple", "base": "libros"}]},
+    {"id": "edersheim-social", "autor": "Alfred Edersheim", "titulo": "Sketches of Jewish Social Life in the Days of Christ",
+     "corto": "Edersheim, La vida social judía", "año": 1876, "tradicion": "anglicana (historia judía del siglo I)",
+     "area": "historia", "url": "https://ccel.org/ccel/edersheim/sketches",
+     "partes": [{"thml": "edersheim-social.xml", "ccel": "edersheim/sketches", "base": "libros"}]},
+    {"id": "josefo", "autor": "Flavio Josefo", "titulo": "Antiquities, The Wars of the Jews, Against Apion, Life (trad. Whiston, 1737)",
+     "corto": "Josefo, Antigüedades y Guerras de los judíos", "año": 94, "tradicion": "historiador judío del siglo I",
+     "area": "historia", "url": "https://ccel.org/ccel/josephus/complete",
+     "partes": [{"thml": "josefo.xml", "ccel": "josephus/complete", "base": "libros", "roots": ["i", "ii", "iii", "iv"]}]},
 ]
 
 
@@ -236,7 +255,7 @@ def thml_sections(parte):
     from lxml import etree  # solo para generar: el despliegue solo copia
 
     parser = etree.XMLParser(recover=True, huge_tree=True, resolve_entities=False)
-    tree = etree.parse(str(fetch(parte["thml"])), parser)
+    tree = etree.parse(str(fetch(parte["thml"], LIBROS if parte.get("base") == "libros" else RELEASE)), parser)
     body = tree.find(".//ThML.body")
     divs = {d.get("id"): d for d in body.iter() if isinstance(d.tag, str) and re.fullmatch(r"div\d", d.tag)}
     roots = [divs[r] for r in parte["roots"]] if parte.get("roots") else [d for d in body if isinstance(d.tag, str)]
@@ -250,6 +269,11 @@ def thml_sections(parte):
             return
         title = parte.get("titulo") if div in roots and parte.get("titulo") else \
             nice_title(div.get("shorttitle") if len(div.get("title", "")) > 160 and div.get("shorttitle") else div.get("title", ""))
+        if re.fullmatch(r"chapter \d+", title, re.I):
+            h = next((c for c in div if isinstance(c.tag, str) and re.fullmatch(r"h[1-4]", c.tag) and
+                      not re.fullmatch(r"chapter \d+", text_of(c).strip(), re.I)), None)
+            if h is not None:
+                title = f"{title}. {nice_title(text_of(h))}"
         here = path + [title] if title else path
         paras = []
         for child in div:

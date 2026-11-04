@@ -29,6 +29,8 @@ async function recorrido(prefix, opts) {
   // El versículo: pestaña Interlineal con una palabra tocada, y pestaña Diccionario
   await p.goto(`${BASE}/juan/3/16`);
   await p.getByRole('button', { name: 'Referencias' }).last().click();
+  await p.getByTestId('tsk-toggle').first().click();
+  await shot(p, `${prefix}-0-referencias-treasury`);
   await p.getByRole('tab', { name: 'Diccionario' }).click();
   await p.getByText('Unigénito', { exact: true }).first().waitFor();
   await shot(p, `${prefix}-1-versiculo-diccionario`);

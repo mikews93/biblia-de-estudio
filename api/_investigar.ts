@@ -14,7 +14,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Section, sections } from './_comentarios';
-import { OBRAS, TYNDALE, buscarEntradas, buscarTema, buscarTyndale, etiqueta, partes, textoTyndale } from './_diccionario';
+import { ISBE, OBRAS, TORREY, TYNDALE, buscarEntradas, buscarLD, buscarTema, buscarTyndale, etiqueta, partes, textoTyndale } from './_diccionario';
 import { Area, buscarTeologia } from './_teologia';
 import { parseCita } from '../src/lib/cita';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
@@ -345,20 +345,20 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
   {
     name: 'teologia',
     description:
-      'Busca en obras clásicas de teología y de historia de la Iglesia, de dominio público y en su inglés original: las teologías sistemáticas de Charles Hodge (presbiteriano, 1872), A. H. Strong (bautista, 1907), W. G. T. Shedd (presbiteriano, 1888) y John Miley (metodista arminiano, 1892), la Institución de Calvino, los credos y confesiones (Apostólico, Calcedonia, la Confesión y los catecismos Mayor y Menor de Westminster, Heidelberg, Belga, Treinta y Nueve Artículos, Dort, confesiones bautistas y metodistas), para la historia del canon la Historia eclesiástica de Eusebio, la Carta festal 39 de Atanasio, el fragmento de Muratori y la historia del canon del NT de Westcott, y para las herejías y los concilios la Historia de la Iglesia de Philip Schaff (capítulos de controversias: gnósticos, montanistas, monarquianos y modalistas, arrianos, apolinaristas, nestorianos, eutiquianos, pelagianos, monotelitas, adopcionistas; y en la Reforma anabaptistas, antitrinitarios, Socino y Servet), su historia de los credos y los concilios ecuménicos, y las refutaciones de los Padres: Ireneo (Contra las herejías), Tertuliano (Contra Práxeas), Hipólito (Contra Noeto) y Atanasio (Contra los arrianos). Úsala para preguntas de doctrina o de historia (cómo se definió el canon, qué es la justificación, cómo se entiende la Trinidad, qué es el modalismo, qué decidió Nicea). Devuelve hasta tres secciones, como mucho una por obra.',
+      'Busca en obras clásicas de teología y de historia de la Iglesia, de dominio público y en su inglés original: las teologías sistemáticas de Charles Hodge (presbiteriano, 1872), A. H. Strong (bautista, 1907), W. G. T. Shedd (presbiteriano, 1888) y John Miley (metodista arminiano, 1892), la Institución de Calvino, los credos y confesiones (Apostólico, Calcedonia, la Confesión y los catecismos Mayor y Menor de Westminster, Heidelberg, Belga, Treinta y Nueve Artículos, Dort, confesiones bautistas y metodistas), para la historia del canon la Historia eclesiástica de Eusebio, la Carta festal 39 de Atanasio, el fragmento de Muratori y la historia del canon del NT de Westcott, y para las herejías y los concilios la Historia de la Iglesia de Philip Schaff (capítulos de controversias: gnósticos, montanistas, monarquianos y modalistas, arrianos, apolinaristas, nestorianos, eutiquianos, pelagianos, monotelitas, adopcionistas; y en la Reforma anabaptistas, antitrinitarios, Socino y Servet), su historia de los credos y los concilios ecuménicos, y las refutaciones de los Padres: Ireneo (Contra las herejías), Tertuliano (Contra Práxeas), Hipólito (Contra Noeto) y Atanasio (Contra los arrianos), y para el trasfondo histórico y las costumbres del tiempo de la Biblia Alfred Edersheim (Vida y tiempos de Jesús el Mesías, El templo y sus servicios, La vida social judía en tiempos de Cristo) y Flavio Josefo (Antigüedades y Guerras de los judíos, historiador judío del siglo I; no es Escritura y a veces exagera cifras). Úsala para preguntas de doctrina o de historia (cómo se definió el canon, qué es la justificación, cómo se entiende la Trinidad, qué es el modalismo, qué decidió Nicea) y para el contexto de un pasaje (cómo era una boda judía, qué pasaba en el templo en la Pascua, quiénes eran los fariseos, quién fue Herodes). Devuelve hasta tres secciones, como mucho una por obra.',
     input_schema: {
       type: 'object',
       properties: {
         tema: { type: 'string', description: 'El tema en español, corto, para enseñárselo a la persona: «el canon del Nuevo Testamento».' },
         busqueda: {
           type: 'string',
-          description: 'Palabras clave en inglés, como las escribirían esos autores: «canon New Testament disputed books», «justification imputation righteousness», «Trinity eternal generation Son», «Sabellius modalism Praxeas Patripassian».',
+          description: 'Palabras clave en inglés, como las escribirían esos autores: «canon New Testament disputed books», «justification imputation righteousness», «Trinity eternal generation Son», «Sabellius modalism Praxeas Patripassian», «marriage betrothal bridegroom wedding feast», «Herod Antipas Galilee».',
         },
         area: {
           type: 'string',
-          enum: ['sistematicas', 'canon', 'credos', 'herejias', 'todo'],
+          enum: ['sistematicas', 'canon', 'credos', 'herejias', 'historia', 'todo'],
           description:
-            'sistematicas: las teologías y Calvino; canon: Eusebio, Atanasio, Muratori y Westcott; credos: credos y confesiones; herejias: herejías, controversias y concilios (Schaff y los Padres que las refutaron); todo: todas.',
+            'sistematicas: las teologías y Calvino; canon: Eusebio, Atanasio, Muratori y Westcott; credos: credos y confesiones; herejias: herejías, controversias y concilios (Schaff y los Padres que las refutaron); historia: trasfondo histórico y costumbres judías (Edersheim y Josefo); todo: todas.',
         },
       },
       required: ['tema', 'busqueda', 'area'],
@@ -369,7 +369,7 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
   {
     name: 'diccionario',
     description:
-      'Busca una palabra en diccionarios bíblicos: el diccionario bíblico Tyndale (moderno, evangélico, ya en español, por el «tema») y dos clásicos de dominio público en su inglés original, el de Easton (1897) y el de Smith (1863), por el «termino». Explican personas, lugares, objetos, costumbres y palabras de la Biblia (Getsemaní, el maná, los fariseos, el efod, la gracia) con su trasfondo histórico y sus pasajes. Úsalo cuando la pregunta trate de algo concreto de la Biblia que convenga explicar.',
+      'Busca una palabra en diccionarios bíblicos: el diccionario bíblico Tyndale (moderno, evangélico, ya en español, por el «tema») y tres clásicos de dominio público en su inglés original, la International Standard Bible Encyclopedia (ISBE, 1915), el de Easton (1897) y el de Smith (1863), por el «termino». Explican personas, lugares, objetos, costumbres y palabras de la Biblia (Getsemaní, el maná, los fariseos, el efod, la gracia) con su trasfondo histórico y sus pasajes. Úsalo cuando la pregunta trate de algo concreto de la Biblia que convenga explicar.',
     input_schema: {
       type: 'object',
       properties: {
@@ -384,7 +384,7 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
   {
     name: 'temas_biblicos',
     description:
-      'El índice por temas de Nave (1896, dominio público): para un tema, sus aspectos en inglés y los pasajes de toda la Biblia que tratan cada uno, con el texto de una muestra. Sirve para responder «¿qué dice la Biblia sobre…?» reuniendo los pasajes de un tema (la oración, el perdón, la ansiedad, el matrimonio).',
+      'Los índices por temas de Nave (1896) y de Torrey (1897), de dominio público: para un tema, sus aspectos en inglés y los pasajes de toda la Biblia que tratan cada uno, con el texto de una muestra. Sirve para responder «¿qué dice la Biblia sobre…?» reuniendo los pasajes de un tema (la oración, el perdón, la ansiedad, el matrimonio).',
     input_schema: {
       type: 'object',
       properties: {
@@ -487,7 +487,7 @@ export async function investigar(name: string, input: Record<string, unknown>, b
 
     if (name === 'teologia') {
       const busqueda = String(input.busqueda ?? '').slice(0, 200);
-      const area = (['sistematicas', 'canon', 'credos', 'herejias'].includes(String(input.area)) ? input.area : 'todo') as Area | 'todo';
+      const area = (['sistematicas', 'canon', 'credos', 'herejias', 'historia'].includes(String(input.area)) ? input.area : 'todo') as Area | 'todo';
       const found = await buscarTeologia(biblia.request, busqueda, area);
       if (!found) return fail(paso, 'Las obras de teología no están disponibles ahora. Sigue con lo que tienes.');
       if (!found.length) return { content: `Nada en esas obras sobre «${busqueda}». Prueba con otras palabras en inglés o con otra área.`, results: [], paso };
@@ -509,15 +509,23 @@ export async function investigar(name: string, input: Record<string, unknown>, b
     if (name === 'diccionario') {
       const termino = String(input.termino ?? '').slice(0, 80);
       const tema = String(input.tema ?? termino).slice(0, 80);
-      const [found, tyndale] = await Promise.all([buscarEntradas(biblia.request, termino), buscarTyndale(biblia.request, tema)]);
-      if (!found && !tyndale) return fail(paso, 'Los diccionarios bíblicos no están disponibles ahora. Sigue con lo que tienes.');
-      if (!found?.length && !tyndale?.length)
+      const [found, tyndale, isbe] = await Promise.all([
+        buscarEntradas(biblia.request, termino),
+        buscarTyndale(biblia.request, tema),
+        buscarLD(biblia.request, 'isbe', termino),
+      ]);
+      if (!found && !tyndale && !isbe) return fail(paso, 'Los diccionarios bíblicos no están disponibles ahora. Sigue con lo que tienes.');
+      if (!found?.length && !tyndale?.length && !isbe?.length)
         return { content: `Los diccionarios no tienen «${tema}» ni «${termino}». Prueba con otra palabra (singular, o el nombre como en la RV1909 y la KJV).`, results: [], paso };
       const ts = (tyndale ?? []).map((a) => {
         const meta = { label: `${TYNDALE.corto}, «${a.t}»`, url: TYNDALE.url, nota: TYNDALE.nota };
         return result(`${TYNDALE.corto} (en español) · ${a.t}`, `diccionario:tyndale:${a.id}`, firstWords(textoTyndale(a.x, books), DICCIONARIO_WORDS).map((t) => ({ text: t, meta })));
       });
-      const rs = [...ts, ...(found ?? []).flatMap((e) =>
+      const is = (isbe ?? []).map((e) => {
+        const meta = { label: `${ISBE.corto}, «${tema}»`, url: ISBE.url, nota: ISBE.nota };
+        return result(`${ISBE.corto} (en inglés) · ${e.clave}`, `diccionario:isbe:${e.clave}`, firstWords(partes(e.texto), DICCIONARIO_WORDS).map((t) => ({ text: t, meta })));
+      });
+      const rs = [...ts, ...is, ...(found ?? []).flatMap((e) =>
         (['easton', 'smith'] as const).flatMap((id) => {
           const texto = id === 'easton' ? e.easton : e.smith;
           if (!texto) return [];
@@ -527,16 +535,22 @@ export async function investigar(name: string, input: Record<string, unknown>, b
         }),
       )];
       const aviso =
-        'El diccionario Tyndale es moderno y ya está en español: puedes apoyarte primero en él. Easton y Smith son del siglo XIX, en inglés: explícalos en español con tus palabras y sin traducir párrafos enteros; sus datos de arqueología y geografía pueden estar superados. No pongas ningún diccionario al nivel de la Escritura.';
+        'El diccionario Tyndale es moderno y ya está en español: puedes apoyarte primero en él. La ISBE (1915) es más amplia y académica. La ISBE, Easton y Smith son antiguos y en inglés: explícalos en español con tus palabras y sin traducir párrafos enteros; sus datos de arqueología y geografía pueden estar superados. No pongas ningún diccionario al nivel de la Escritura.';
       return { content: [{ type: 'text', text: aviso }, ...rs.map((r) => r.param)], results: rs.map((r) => r.metas), paso };
     }
 
     if (name === 'temas_biblicos') {
       const termino = String(input.termino ?? '').slice(0, 80);
       const tema = String(input.tema ?? termino).slice(0, 80);
-      const found = await buscarTema(biblia.request, termino);
-      if (found === null) return fail(paso, 'El índice por temas no está disponible ahora. Sigue con lo que tienes.');
-      if (!found) return { content: `El índice de Nave no tiene «${termino}». Prueba con otra palabra en inglés, en singular.`, results: [], paso };
+      const [found, torrey] = await Promise.all([buscarTema(biblia.request, termino), buscarLD(biblia.request, 'torrey', termino)]);
+      if (found === null && !torrey) return fail(paso, 'El índice por temas no está disponible ahora. Sigue con lo que tienes.');
+      // Torrey: sus aspectos y pasajes en inglés, tal como vienen («- Is by Christ / Joh 10:7,9; 14:6»).
+      const t = torrey?.[0];
+      const rt = t && result(`${TORREY.corto}: ${tema} (${t.clave})`, `torrey:${t.clave}`, firstWords(partes(t.texto), 400).map((x) => ({ text: x, meta: { label: `${TORREY.corto}, «${tema}»`, url: TORREY.url, nota: TORREY.nota } })));
+      if (!found) {
+        if (rt) return { content: [{ type: 'text', text: `El índice de Nave no tiene «${termino}»; este es el tema de Torrey, en inglés. Antes de citar un pasaje, léelo con leer_pasaje.` }, rt.param], results: [rt.metas], paso };
+        return { content: `Los índices de Nave y Torrey no tienen «${termino}». Prueba con otra palabra en inglés, en singular.`, results: [], paso };
+      }
       const lineas = found.lineas.slice(0, 60);
       const resumen = lineas
         .map(([nivel, t, refs]) => `${'  '.repeat(nivel)}- ${t}${refs.length ? `: ${refs.slice(0, 8).map((r) => etiqueta(r, books)).join('; ')}${refs.length > 8 ? '…' : ''}` : ''}`)
@@ -548,8 +562,8 @@ export async function investigar(name: string, input: Record<string, unknown>, b
       );
       const r = result(`${OBRAS.nave.corto}: ${tema} (${found.clave}) · muestra de pasajes`, `nave:${found.clave}`, blocks);
       return {
-        content: [{ type: 'text', text: `Índice de Nave, tema ${found.clave}, en inglés (los aspectos con sus pasajes):\n${resumen}${found.lineas.length > lineas.length ? '\n…' : ''}\n\nAntes de citar un pasaje que no esté en la muestra, léelo con leer_pasaje.` }, r.param],
-        results: [r.metas],
+        content: [{ type: 'text', text: `Índice de Nave, tema ${found.clave}, en inglés (los aspectos con sus pasajes):\n${resumen}${found.lineas.length > lineas.length ? '\n…' : ''}\n\nAntes de citar un pasaje que no esté en la muestra, léelo con leer_pasaje.` }, r.param, ...(rt ? [rt.param] : [])],
+        results: rt ? [r.metas, rt.metas] : [r.metas],
         paso,
       };
     }

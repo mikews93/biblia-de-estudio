@@ -201,3 +201,40 @@ export function textoTyndale(x: string, books: NamedBook[]): string[] {
       }),
   );
 }
+
+// ---------------------------------------------------------------- ISBE (1915) y Torrey, de los módulos SWORD
+// pipeline/build_fuentes_libros.py los deja en /data/isbe/ y /data/torrey/: [[título, archivo]] y {título: texto}.
+
+export const ISBE = {
+  corto: 'Enciclopedia bíblica ISBE',
+  nota: 'International Standard Bible Encyclopedia · James Orr (ed.) · 1915 · dominio público',
+  url: 'https://www.crosswire.org/sword/modules/ModInfo.jsp?modName=ISBE',
+};
+
+export const TORREY = {
+  corto: 'Temas de la Biblia de Torrey',
+  nota: "Torrey's New Topical Textbook · R. A. Torrey · 1897 · dominio público",
+  url: 'https://www.crosswire.org/sword/modules/ModInfo.jsp?modName=Torrey',
+};
+
+type IndiceLD = [string, number][];
+const indicesLD: Record<string, Promise<IndiceLD | null> | undefined> = {};
+
+/** Las entradas de la ISBE o de Torrey que responden a una palabra en inglés, como mucho «max». Null si no se pudo leer. */
+export async function buscarLD(request: Request, obra: 'isbe' | 'torrey', termino: string, max = 1): Promise<{ clave: string; texto: string }[] | null> {
+  indicesLD[obra] ??= leerJson<IndiceLD>(request, 'data', `${obra}/indice.json`, DATA_DIR).then((i) => {
+    if (!i) indicesLD[obra] = undefined;
+    return i;
+  });
+  const ix = await indicesLD[obra];
+  if (!ix) return null;
+  const porClave = new Map(ix.map(([t, n]) => [clave(t.replace(/\s*\(\d+\)$/, '')), [t, n] as const]));
+  const elegidas = candidatas(clave(termino), [...porClave.keys()], max);
+  const out: { clave: string; texto: string }[] = [];
+  for (const k of elegidas) {
+    const [t, n] = porClave.get(k)!;
+    const archivo = await leerJson<Record<string, string>>(request, 'data', `${obra}/${n}.json`, DATA_DIR);
+    if (archivo?.[t]) out.push({ clave: t, texto: archivo[t] });
+  }
+  return out;
+}

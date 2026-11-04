@@ -208,6 +208,8 @@ export const getVariants = (book: string, chapter: number) =>
   load<Record<string, VerseVariants>>(`variantes/${book}/${chapter}.json`, true);
 export const getCrossRefs = (book: string, chapter: number) =>
   load<Record<string, CrossRef[]>>(`xrefs/${book}/${chapter}.json`, true);
+/** Las referencias del Treasury of Scripture Knowledge de cada versículo (pipeline/build_fuentes_libros.py). */
+export const getTsk = (book: string, chapter: number) => load<Record<string, string[]>>(`tsk/${book}/${chapter}.json`, true);
 
 /** Todas las apariciones de un número de Strong (src/lib/concordancia.ts); null si no existe. */
 export const getConcordance = (strong: string) =>
