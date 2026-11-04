@@ -657,6 +657,15 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     res.writeHead(200, { 'content-type': 'application/json' });
     return res.end(JSON.stringify(message([{ type: 'text', text: /ca[ií]n|cielo|modalismo|herej/.test(q) ? 'pregunta' : 'busqueda' }])));
   }
+  // La revisión de citas (api/_corregir.ts): el Salmo 23 citado como si fuera Juan 3:17 vuelve a su sitio.
+  if (systemText(body.system).startsWith('Revisas las citas bíblicas')) {
+    const pedido = JSON.stringify(body.messages[0]?.content ?? '');
+    const de = '«el Señor es mi pastor, nada me faltará» (Juan 3:17)';
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(
+      JSON.stringify(message([{ type: 'text', text: JSON.stringify(pedido.includes('pastor') ? [{ de, a: '«Jehová es mi pastor; nada me faltará» (Salmos 23:1)' }] : []) }])),
+    );
+  }
   const content =
     body.output_config?.format?.type === 'json_schema'
       ? [{ type: 'text', text: JSON.stringify(structured(body)) }]

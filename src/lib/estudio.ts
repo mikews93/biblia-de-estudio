@@ -25,6 +25,8 @@ export type Turn = {
 
 type Event =
   | { type: 'text'; text: string }
+  /** El texto entero otra vez, con sus citas corregidas (api/_corregir.ts): sustituye a lo que llegó. */
+  | { type: 'correccion'; text: string }
   | ({ type: 'source' } & Source)
   | ({ type: 'paso' } & Paso)
   | { type: 'done' }
@@ -122,6 +124,7 @@ export async function askStudy(
     if (!line.trim()) return;
     const event = JSON.parse(line) as Event;
     if (event.type === 'text') text += event.text;
+    else if (event.type === 'correccion') text = event.text;
     else if (event.type === 'source') sources.push({ n: event.n, label: event.label, ref: event.ref, url: event.url, nota: event.nota });
     else if (event.type === 'paso') pasos.push({ tipo: event.tipo, texto: event.texto });
     else if (event.type === 'error') failure = event.message;

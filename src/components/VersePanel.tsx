@@ -10,6 +10,7 @@ import {
   formatRef,
   getChapter,
   getCrossRefs,
+  getTsk,
   getInterlinear,
   getPlaces,
   original,
@@ -18,7 +19,9 @@ import {
 import Commentary from '@/components/Commentary';
 import { CompareVerse } from '@/components/Comparar';
 import GroupNotes from '@/components/comunidad/GroupNotes';
-import { ChevronRightIcon, CloseIcon, PromiseIcon } from '@/components/icons';
+import DiccionarioVersiculo from '@/components/DiccionarioVersiculo';
+import LexicoUBS from '@/components/LexicoUBS';
+import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, CloseIcon, PromiseIcon } from '@/components/icons';
 import PlaceMap from '@/components/PlaceMap';
 import { PromesasDelPasaje, abrirHilo } from '@/components/Promesas';
 import StudyPanel from '@/components/StudyPanel';
@@ -30,7 +33,7 @@ import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 
-export type Tab = 'interlineal' | 'versiones' | 'referencias' | 'mapa' | 'comentario' | 'grupo';
+export type Tab = 'interlineal' | 'versiones' | 'referencias' | 'diccionario' | 'mapa' | 'comentario' | 'grupo';
 
 type Props = {
   book: Book;
@@ -55,6 +58,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
     ['interlineal', 'Interlineal'],
     ['versiones', 'Versiones'],
     ['referencias', 'Referencias'],
+    ['diccionario', 'Diccionario'],
     ['mapa', 'Mapa'],
     ['comentario', 'Comentario'],
     ['grupo', 'Grupo'],
@@ -134,6 +138,9 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
             {tab === 'referencias' && (
               <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
             )}
+            {tab === 'diccionario' && (
+              <DiccionarioVersiculo book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+            )}
             {tab === 'mapa' && <Places book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />}
             {tab === 'comentario' && (
               <Commentary book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
@@ -173,6 +180,7 @@ function Interlinear({ book, chapter, verse, colors }: { book: Book; chapter: nu
           <Text style={{ color: colors.muted, marginTop: 4, fontSize: 13 }}>
             {describeMorph(w[7])} · Strong {w[6]}
           </Text>
+          <LexicoUBS strong={w[6]} en={{ book: book.id, chapter, verse }} colors={colors} />
           <ConcordanceButton strong={w[6]} from={`${book.id}.${chapter}.${verse}`} />
           <PalabraButton strong={w[6]} />
           <WhyButton onPress={() => setWhy(true)} />
@@ -225,10 +233,24 @@ function CrossRefs({
   onNavigate: () => void;
 }) {
   const [refs, setRefs] = useState<CrossRef[] | null>(null);
+  const [tsk, setTsk] = useState<string[]>([]);
+  const [verTsk, setVerTsk] = useState(false);
   const promesas = useMemo(() => hilosEn(book.id, chapter, verse), [book, chapter, verse]);
 
   useEffect(() => {
-    getCrossRefs(book.id, chapter).then((c) => setRefs(c[String(verse)] ?? []));
+    let vivo = true;
+    Promise.all([getCrossRefs(book.id, chapter), getTsk(book.id, chapter).catch(() => ({}) as Record<string, string[]>)]).then(([c, t]) => {
+      if (!vivo) return;
+      const propias = c[String(verse)] ?? [];
+      // Del Treasury, las que OpenBible no trae ya (ni empiezan en el mismo versículo).
+      const ya = new Set(propias.map(([r]) => r.split('-')[0]));
+      setRefs(propias);
+      setTsk((t[String(verse)] ?? []).filter((r) => !ya.has(r.split('-')[0])));
+      setVerTsk(false);
+    });
+    return () => {
+      vivo = false;
+    };
   }, [book, chapter, verse]);
 
   const arriba = promesas.length > 0 && (
@@ -237,11 +259,44 @@ function CrossRefs({
     </View>
   );
   if (!refs) return <ActivityIndicator color={colors.accent} />;
+  const tesoro = tsk.length > 0 && (
+    <View style={[styles.tesoro, { borderColor: colors.border }]}>
+      <Pressable onPress={() => setVerTsk(!verTsk)} accessibilityRole="button" style={styles.tesoroToggle} testID="tsk-toggle">
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14.5 }}>
+            {refs.length ? `${tsk.length} ${tsk.length === 1 ? 'referencia más' : 'referencias más'}` : `${tsk.length} ${tsk.length === 1 ? 'referencia' : 'referencias'}`}
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 1 }}>Del Treasury of Scripture Knowledge (siglo XIX)</Text>
+        </View>
+        {verTsk ? <ChevronUpIcon color={colors.accent} size={18} /> : <ChevronDownIcon color={colors.accent} size={18} />}
+      </Pressable>
+      {verTsk && (
+        <View style={styles.tsk}>
+          {tsk.map((r) => {
+            const { start } = parseRef(r);
+            return (
+              <Pressable
+                key={r}
+                onPress={() => {
+                  onNavigate();
+                  navigate(() => router.push(verseHref(start.book, start.chapter, start.verse)), 'forward');
+                }}
+                accessibilityRole="link"
+                style={({ pressed }) => [styles.tskChip, { backgroundColor: colors.accentSoft }, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 13 }}>{formatRef(r, books)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
   if (!refs.length)
     return (
       <View>
         {arriba}
-        <Text style={{ color: colors.muted }}>No hay referencias cruzadas para este versículo.</Text>
+        {tesoro || <Text style={{ color: colors.muted }}>No hay referencias cruzadas para este versículo.</Text>}
       </View>
     );
 
@@ -251,8 +306,9 @@ function CrossRefs({
       {refs.map(([ref]) => (
         <RefRow key={ref} refId={ref} books={books} colors={colors} onNavigate={onNavigate} promesa={pasoEnRef(promesas, ref)} />
       ))}
+      {tesoro}
       <Text style={[styles.credit, { color: colors.muted }]}>
-        Referencias: OpenBible.info (CC BY), ordenadas por relevancia
+        Referencias: OpenBible.info (CC BY), ordenadas por relevancia{tsk.length ? ', y Treasury of Scripture Knowledge (dominio público)' : ''}
       </Text>
     </View>
   );
@@ -402,6 +458,10 @@ const styles = StyleSheet.create({
   detail: { borderRadius: 8, padding: 12, marginBottom: 12 },
   hint: { fontSize: 13, marginBottom: 12 },
   credit: { fontSize: 11, marginTop: 16 },
+  tesoro: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 6, paddingTop: 4 },
+  tesoroToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  tsk: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 4 },
+  tskChip: { borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 },
   refRow: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   promesaChip: {
     flexDirection: 'row',

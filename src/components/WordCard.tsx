@@ -1,9 +1,10 @@
 import { router, useIsFocused } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { IconText } from '@/components/comunidad/ui';
 import { ChevronRightIcon, ConcordanceIcon, SparkIcon, WordJourneyIcon } from '@/components/icons';
+import LexicoUBS from '@/components/LexicoUBS';
 import StudyPanel from '@/components/StudyPanel';
 import { concordanceHref, normalizeStrong } from '@/lib/concordancia';
 import { Book, Word, getConcordance } from '@/lib/data';
@@ -37,6 +38,7 @@ export default function WordCard({ word, reference, study, onClose }: Props) {
     <Modal transparent animationType="fade" visible={focused} onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar">
         <Pressable style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
           <Text style={[styles.ref, { color: colors.muted }]}>{reference}</Text>
           <Text style={[styles.greek, { color: colors.greek, writingDirection: HEBREW.test(greek) ? 'rtl' : 'ltr' }]}>{greek}</Text>
           <Text style={[styles.translit, { color: colors.muted }]}>{translit}</Text>
@@ -56,9 +58,16 @@ export default function WordCard({ word, reference, study, onClose }: Props) {
           <Text style={[styles.codes, { color: colors.muted }]}>
             Strong {strong} · {morph}
           </Text>
+          <LexicoUBS
+            strong={strong}
+            en={study && { book: study.book.id, chapter: study.chapter, verse: study.verse }}
+            colors={colors}
+            onNavigate={onClose}
+          />
           <ConcordanceButton strong={strong} from={study && `${study.book.id}.${study.chapter}.${study.verse}`} />
           <PalabraButton strong={strong} />
           {study && <WhyButton onPress={() => setWhy(true)} />}
+          </ScrollView>
         </Pressable>
       </Pressable>
       {why && study && (
@@ -163,7 +172,9 @@ function Row({ label, colors, children }: { label: string; colors: ReturnType<ty
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { width: '100%', maxWidth: 380, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, padding: 22, alignItems: 'center' },
+  card: { width: '100%', maxWidth: 380, maxHeight: '88%', borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  scroll: { flexGrow: 0 },
+  inner: { padding: 22, alignItems: 'center' },
   ref: { fontSize: 12, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
   greek: { fontFamily: serif, fontSize: 40, marginTop: 8 },
   translit: { fontStyle: 'italic', fontSize: 15, marginTop: 2 },

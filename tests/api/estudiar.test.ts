@@ -561,6 +561,15 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(lastAiText()).toContain('tarjetas de repaso de Juan 3');
     expect(parseCards(tarjetas, [], 'jhn', 3)).toHaveLength(3);
 
+    // El pódcast pide las palabras en el idioma original del libro: griego en el NT, hebreo en el AT (Mike, 4-11).
+    await events(await ask({ book: 'jhn', chapter: 3, herramienta: 'podcast', nueva: true }));
+    expect(lastAiText()).toContain('palabras del griego');
+    await events(await ask({ book: 'psa', chapter: 23, herramienta: 'podcast', nueva: true }));
+    expect(lastAiText()).toContain('palabras del hebreo');
+    expect(lastAiText()).not.toContain('del griego');
+    await events(await ask({ book: 'dan', chapter: 2, herramienta: 'tarjetas', nueva: true }));
+    expect(lastAiText()).toContain('del hebreo (o del arameo');
+
     const mapa = textOf(await events(await ask({ book: 'jhn', chapter: 3, herramienta: 'mapa' })));
     const m = parseMindMap(mapa);
     expect(m.title).toBe('El nuevo nacimiento y el amor de Dios');

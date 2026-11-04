@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import { readDownloaded, refreshDownloaded } from './almacen';
 import { parseConcordance } from './concordancia';
+import { type Articulo, type EntradaLexico, type FilaDiccionario, claveLexico } from './fuentesAbiertas';
 import { isOnline } from './conexion';
 import type { VerseVariants } from './diferencias';
 import { reportView } from './fums';
@@ -44,6 +45,8 @@ export type Word = [string, string, string, string, string, string, string, stri
 export { original } from './original';
 
 export type CrossRef = [string, number];
+
+export type { Articulo, EntradaLexico, FilaDiccionario } from './fuentesAbiertas';
 
 /** Dirección de un archivo de datos (books.json, text/rv1909/jhn/3.json…). */
 export const dataUrl = (path: string) => `${BASE}/${path}`;
@@ -205,11 +208,34 @@ export const getVariants = (book: string, chapter: number) =>
   load<Record<string, VerseVariants>>(`variantes/${book}/${chapter}.json`, true);
 export const getCrossRefs = (book: string, chapter: number) =>
   load<Record<string, CrossRef[]>>(`xrefs/${book}/${chapter}.json`, true);
+/** Las referencias del Treasury of Scripture Knowledge de cada versículo (pipeline/build_fuentes_libros.py). */
+export const getTsk = (book: string, chapter: number) => load<Record<string, string[]>>(`tsk/${book}/${chapter}.json`, true);
 
 /** Todas las apariciones de un número de Strong (src/lib/concordancia.ts); null si no existe. */
 export const getConcordance = (strong: string) =>
   load<unknown>(`concordance/${strong}.json`, true).then((d) =>
     d && !Array.isArray(d) && !Object.keys(d as object).length ? null : parseConcordance(d),
+  );
+
+/** El léxico de UBS de un número de Strong (src/lib/fuentesAbiertas.ts); [] si no tiene. */
+export const getLexico = (strong: string) => {
+  const k = claveLexico(strong);
+  return k
+    ? load<EntradaLexico[] | Record<string, never>>(`lexico/${k}.json`, true).then((d) => (Array.isArray(d) ? d : []))
+    : Promise.resolve([] as EntradaLexico[]);
+};
+
+/** Los artículos del diccionario bíblico de Tyndale de cada versículo de un capítulo. */
+export const getDiccionarioCap = (book: string, chapter: number) =>
+  load<Record<string, FilaDiccionario[]>>(`diccionario-es/cap/${book}/${chapter}.json`, true);
+
+/** Todos los artículos del diccionario: [id, título, tipo]. */
+export const getDiccionarioIndice = () => load<FilaDiccionario[]>('diccionario-es/indice.json');
+
+/** Un artículo del diccionario; null si no existe. */
+export const getArticulo = (id: string) =>
+  load<{ t?: string; x?: string; tipo?: string }>(`diccionario-es/a/${id}.json`, true).then((a): Articulo | null =>
+    a.t ? { id, t: a.t, x: a.x ?? '', tipo: a.tipo ?? '' } : null,
   );
 
 /** Cuántas veces aparece cada palabra de «La historia de una palabra»: [total, AT, NT] (pipeline/build_data.py). */

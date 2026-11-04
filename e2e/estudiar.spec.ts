@@ -395,23 +395,25 @@ test('el «Estudiar» de arriba estudia todo el capítulo aunque haya un versíc
   await expect(panel(page).getByText('Juan 3', { exact: true })).toBeVisible();
 });
 
-test('las citas de la IA se revisan con el texto: avisa de la que no dice eso y de la que no existe', async ({ page, request }) => {
+test('las citas de la IA se corrigen antes de enseñarlas: la que no dice eso y la que no existe', async ({ page, request }) => {
   await conSesion(page, await cuentaNueva(request, 'Lectora de citas'));
   await page.goto('/juan/3/16');
   await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
   const estudio = panel(page);
   await expect(estudio.getByText(ESTUDIO)).toBeVisible();
 
+  // La IA escribe el Salmo 23 como si fuera Juan 3:17 y un Juan 3:99 que no existe (e2e/support/mock-anthropic.ts)
   await estudio.getByPlaceholder('Pregunta sobre Juan 3:16').fill('¿Qué citas lo apoyan?');
   await estudio.getByLabel('Enviar pregunta').click();
-  const revision = estudio.getByTestId('citas-revisadas').last();
-  await expect(revision).toContainText('2 citas para mirar de 3');
-  await expect(revision).toContainText('El versículo no dice eso. En la RV1909 dice:');
-  await expect(revision).toContainText('«Porque no envió Dios á su Hijo al mundo');
-  await expect(revision).toContainText('Este pasaje no existe: Juan 3 tiene 36 versículos.');
-  await expect(revision).toContainText('Dice eso en la RV1909.');
+  await expect(estudio.getByText('«Jehová es mi pastor; nada me faltará» (Salmos 23:1), y lo repite en Juan 3.', { exact: false })).toBeVisible();
+  await expect(estudio.getByText('Juan 3:17', { exact: false })).toHaveCount(0);
+  await expect(estudio.getByText('Juan 3:99', { exact: false })).toHaveCount(0);
 
-  // La que no coincide abre su versículo en el lector
-  await revision.getByRole('link', { name: 'Juan 3:17: leer en su capítulo' }).click();
-  await expect(page).toHaveURL(/\/juan\/3\/17/);
+  // Ningún aviso: todas las citas quedan bien y cada una con su marca
+  const fuentes = estudio.getByTestId('fuentes').last();
+  await expect(fuentes).toContainText('Revisamos las 2 citas con el texto de la Biblia');
+  await expect(fuentes).not.toContainText('para mirar');
+  await expect(fuentes.getByRole('link', { name: 'Juan 3:16, dice eso en la RV1909: leer en su capítulo' })).toBeVisible();
+  await fuentes.getByRole('link', { name: 'Salmos 23:1, dice eso en la RV1909: leer en su capítulo' }).click();
+  await expect(page).toHaveURL(/\/salmos\/23\/1/);
 });
