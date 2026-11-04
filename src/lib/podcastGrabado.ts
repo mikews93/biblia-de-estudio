@@ -39,7 +39,9 @@ async function request({ book, chapter, palabra, version }: Target): Promise<Ans
   return body;
 }
 
-export function usePodcastGrabado(book: string, chapter: number, palabra?: string, version?: string) {
+/** `guion`: el texto del guion ya terminado. Si cambia («Preparar otra versión»), se vuelve a preguntar: la grabación del
+ * guion de antes ya no vale y el servidor deja grabar el nuevo. */
+export function usePodcastGrabado(book: string, chapter: number, palabra?: string, version?: string, guion?: string) {
   const [state, setState] = useState<EstadoGrabacion>({ estado: 'cargando' });
   const alive = useRef(true);
 
@@ -55,7 +57,7 @@ export function usePodcastGrabado(book: string, chapter: number, palabra?: strin
       alive.current = false;
       controller.abort();
     };
-  }, [book, chapter, palabra, version]);
+  }, [book, chapter, palabra, version, guion]);
 
   // Mientras otra persona (o esta, en otra pantalla) lo graba, se pregunta cada pocos segundos.
   useEffect(() => {
