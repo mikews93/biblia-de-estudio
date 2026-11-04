@@ -44,6 +44,7 @@ import { navigate } from '@/lib/transition';
 import StudyBackground from '@/components/StudyBackground';
 import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
 import CitasRevisadas from '@/components/CitasRevisadas';
+import { useTecladoWeb } from '@/lib/teclado';
 
 export { Markdown, Sources };
 
@@ -70,6 +71,7 @@ const FOLLOW_PAUSE = 1200;
  * reaparece donde estaba.
  */
 export default function StudyPanel({ book, chapter, verse: given, word, onClose, enfoque: initial }: Props) {
+  const teclado = useTecladoWeb();
   const colors = useColors();
   // Abierto en un versículo, se puede pasar al estudio de todo el capítulo (y volver): es otro estudio guardado.
   const [whole, setWhole] = useState(false);
@@ -357,10 +359,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTop} onPress={onClose} accessibilityLabel="Cerrar estudio" />
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1, minHeight: 0 }}
-          >
+          <KeyboardAvoidingView behavior="padding" style={{ flex: 1, minHeight: 0, paddingBottom: teclado }}>
             {/* La cabecera va encima del texto y se aparta deslizándose: así no cambia el alto de lo que se desplaza.
                 Antes encogía su alto, el área de lectura crecía o menguaba bajo el dedo y en Android eso contaba como
                 desplazamiento: se apartaba, volvía y la pantalla subía y bajaba sin parar. */}
