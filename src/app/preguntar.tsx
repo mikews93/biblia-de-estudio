@@ -3,7 +3,7 @@
 // &n=fondo pide la respuesta A fondo. Sin «q», las preguntas que muchos hacen y la caja para preguntar.
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ComponentRef, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import AskBar from '@/components/AskBar';
@@ -17,8 +17,10 @@ import { MAX_PREGUNTA, type Nivel, conversacion, separar, useConversacion } from
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import CitasRevisadas from '@/components/CitasRevisadas';
+import { useTecladoWeb } from '@/lib/teclado';
 
 export default function Preguntar() {
+  const teclado = useTecladoWeb();
   const colors = useColors();
   const { settings } = useSettings();
   const params = useLocalSearchParams<{ q?: string; n?: string }>();
@@ -51,7 +53,7 @@ export default function Preguntar() {
   const sugerencias = last?.role === 'assistant' && !estado?.working ? separar(last.text).sugerencias : [];
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background, paddingBottom: teclado }} behavior="padding">
       <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Appear style={styles.top}>
           <View style={{ flex: 1 }}>
