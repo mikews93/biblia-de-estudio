@@ -404,14 +404,14 @@ test('las citas de la IA se revisan con el texto: avisa de la que no dice eso y 
 
   await estudio.getByPlaceholder('Pregunta sobre Juan 3:16').fill('¿Qué citas lo apoyan?');
   await estudio.getByLabel('Enviar pregunta').click();
-  const revision = estudio.getByTestId('citas-revisadas').last();
+  const revision = estudio.getByTestId('fuentes').last();
   await expect(revision).toContainText('2 citas para mirar de 3');
   await expect(revision).toContainText('El versículo no dice eso. En la RV1909 dice:');
   await expect(revision).toContainText('«Porque no envió Dios á su Hijo al mundo');
   await expect(revision).toContainText('Este pasaje no existe: Juan 3 tiene 36 versículos.');
-  await expect(revision).toContainText('Dice eso en la RV1909.');
+  await expect(revision.getByRole('link', { name: 'Juan 3:16, dice eso en la RV1909: leer en su capítulo' })).toBeVisible();
 
   // La que no coincide abre su versículo en el lector
-  await revision.getByRole('link', { name: 'Juan 3:17: leer en su capítulo' }).click();
+  await revision.getByRole('link', { name: 'Juan 3:17, cita para mirar: leer en su capítulo' }).click();
   await expect(page).toHaveURL(/\/juan\/3\/17/);
 });

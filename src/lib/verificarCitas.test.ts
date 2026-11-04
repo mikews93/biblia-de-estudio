@@ -21,7 +21,7 @@ describe('buscarCitas', () => {
     const c = buscarCitas('Bendice a Dios porque «no apartó su misericordia y su verdad» ⟦2⟧.\n\n⟪Juan 3:16⟫', BOOKS, [
       { n: 2, label: 'Génesis 24:27', ref: 'gen.24.27' },
     ]);
-    expect(c).toEqual([{ texto: 'Génesis 24:27', pasaje: { book: 'gen', chapter: 24, verse: 27, verseEnd: 27 }, frase: 'no apartó su misericordia y su verdad' }]);
+    expect(c).toEqual([{ texto: 'Génesis 24:27', pasaje: { book: 'gen', chapter: 24, verse: 27, verseEnd: 27 }, frase: 'no apartó su misericordia y su verdad', fuente: 2 }]);
   });
 
   it('no toma por cita una palabra suelta entre comillas', () => {
@@ -60,5 +60,22 @@ describe('revisarCitas', () => {
     const [r] = await revisar('Juan 3:16 dice: «el Señor es mi pastor, nada me faltará»');
     expect(r.estado).toBe('no-coincide');
     if (r.estado === 'no-coincide') expect(r.texto).toMatch(/^Porque de tal manera/);
+  });
+});
+
+describe('fuentes que no son un pasaje', () => {
+  it('no compara con el versículo las comillas que van con un comentario', async () => {
+    // Romanos 11:26 citado junto al comentario de Scofield, cuya sección empieza en 11:1: no es una cita de 11:1
+    const fuentes = [
+      { n: 5, label: 'Scofield, Romanos 11:1', ref: 'rom.11.1', nota: 'Biblia anotada · C. I. Scofield · 1917' },
+      { n: 7, label: 'Romanos 11:26', ref: 'rom.11.26' },
+    ];
+    const c = buscarCitas('Pablo afirma que «todo Israel será salvo» ⟦5⟧, como dice el texto ⟦7⟧.', BOOKS, fuentes);
+    expect(c).toEqual([{ texto: 'Romanos 11:26', pasaje: { book: 'rom', chapter: 11, verse: 26, verseEnd: 26 }, fuente: 7 }]);
+  });
+
+  it('tampoco revisa el texto original como si fuera la traducción', () => {
+    const c = buscarCitas('La palabra «ὁ λόγος ἦν πρὸς» ⟦1⟧.', BOOKS, [{ n: 1, label: 'Griego de Juan 1:1', ref: 'jhn.1.1' }]);
+    expect(c).toEqual([]);
   });
 });
