@@ -53,3 +53,20 @@ describe('corregirCitas', () => {
     expect(cambios).toEqual(['quitada: Romanos 8:28']);
   });
 });
+
+describe('comillas junto a una fuente', () => {
+  it('no llama a la IA ni cambia nada si solo no cuadran las comillas de una fuente ⟦n⟧', async () => {
+    let llamadas = 0;
+    const texto = 'Respuesta a «¿qué significa unigénito en este versículo?» ⟦1⟧.';
+    const r = await corregirCitas(texto, {
+      ...base,
+      sources: [{ n: 1, label: 'Juan 3:16', ref: 'jhn.3.16' }],
+      reparar: async () => {
+        llamadas++;
+        return [];
+      },
+    });
+    expect(r.texto).toBe(texto);
+    expect(llamadas).toBe(0);
+  });
+});

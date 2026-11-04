@@ -163,9 +163,12 @@ export async function corregirCitas(texto: string, o: Opciones): Promise<{ texto
     problemas = await revisar(texto, o);
   }
 
-  // 2. Con la IA: cada fragmento que devuelve tiene que estar tal cual y una sola vez en la respuesta.
-  if (problemas.length && o.reparar) {
-    const pedidos = await o.reparar(texto, problemas.map((r) => problemaDe(r, o.books))).catch(() => [] as Reemplazo[]);
+  // 2. Con la IA, solo las citas con una referencia escrita: las comillas junto a una fuente ⟦n⟧ pueden ser otra cosa
+  // (la pregunta de la persona, una palabra) y ni se avisan ni se quitan. Cada fragmento que devuelve tiene que estar
+  // tal cual y una sola vez en la respuesta.
+  const paraIA = problemas.filter((r) => escritas(r.cita).length);
+  if (paraIA.length && o.reparar) {
+    const pedidos = await o.reparar(texto, paraIA.map((r) => problemaDe(r, o.books))).catch(() => [] as Reemplazo[]);
     let nuevo = texto;
     for (const { de, a } of pedidos) {
       if (!de || de === a) continue;
