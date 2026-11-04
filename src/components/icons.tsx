@@ -386,6 +386,15 @@ export const TreeIcon = (p: Props) => (
   </Line>
 );
 
+/** Brote con dos hojas: plantas, animales y objetos de la Biblia. */
+export const PlantIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M12 21v-9" />
+    <Path d="M12 12c0-4 2.6-6.6 7-7 .2 4.4-2.6 7-7 7z" />
+    <Path d="M12 14.5c0-3.3-2.2-5.4-6-5.6-.1 3.6 2.2 5.6 6 5.6z" />
+  </Line>
+);
+
 /** Reloj: búsquedas recientes. */
 export const ClockIcon = (p: Props) => (
   <Line {...p}>
