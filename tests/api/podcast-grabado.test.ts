@@ -17,7 +17,8 @@ type Handler = {
   GET: (r: Request) => Promise<Response>;
   POST: Post;
   scriptLines: (t: string) => { voice: string; text: string }[];
-  mudas: (p: Parte, n: number) => number[];
+  mudas: (p: Parte, n: number, rate?: number, textos?: string[], soloUltima?: boolean) => number[];
+  ultimaPerdida: (p: Parte, lines: { text: string }[]) => Parte | null;
   reemplazar: (p: Parte, k: number, nuevo: Float32Array) => Parte;
   renivelar: (s: ReturnType<typeof postgres>, where: { book: string; chapter: number }, url: string) => Promise<void>;
 };
@@ -49,8 +50,17 @@ const eleven = createServer((req, res) => {
       return;
     }
     const body = JSON.parse(raw);
-    calls.push(body);
     paths.push(req.url ?? '');
+    // La voz sola (text-to-speech): PCM sin más, con un poco de silencio en los bordes.
+    const tts = req.url?.match(/^\/v1\/text-to-speech\/([^?]+)/);
+    if (tts) {
+      calls.push({ inputs: [{ text: body.text, voice_id: tts[1] }], model_id: body.model_id });
+      const m = Float32Array.from([...voz(0, 0.1, 0), ...voz(amplitud(tts[1]), 0.6, 0.1)]);
+      const pcm = muestrasA16(m);
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream' }).end(Buffer.from(pcm.buffer, pcm.byteOffset, pcm.byteLength));
+      return;
+    }
+    calls.push(body);
     // Un segundo por tramo, repartido entre las intervenciones, en PCM de 16 bits con dónde suena cada una.
     const n = body.inputs.length;
     const partes = body.inputs.map((x: { voice_id: string }, i: number) =>
@@ -82,6 +92,8 @@ beforeAll(async () => {
   process.env.PODCAST_STORE_DIR = await mkdtemp(path.join(tmpdir(), 'podcast-'));
   process.env.PODCAST_LIMITE_CUENTA = '2';
   process.env.PODCAST_LIMITE_DIA = '1000';
+  // ElevenLabs simulada habla muy rápido (un segundo por tramo): que la duración esperada no la dé por cortada.
+  process.env.PODCAST_CHARS_POR_S = '200';
   await prepareEnv();
   api = (await import('../../api/podcast-grabado')) as unknown as Handler;
   if (!DB_URL) return;
@@ -142,6 +154,29 @@ describe('guion', () => {
     expect(nueva.muestras.length).toBe(Math.round(2.5 * RATE));
     expect(nueva.segmentos.map((x) => [x.start_time_seconds, x.end_time_seconds])).toEqual([[0, 1], [1, 1.5], [1.5, 2.5]]);
     expect(api.mudas(nueva, 3)).toEqual([]);
+  });
+
+  it('también falta la que suena mucho menos de lo que dura su texto (cortada o casi muda)', () => {
+    // Romanos 11: la última intervención, larga, apenas dejaba un respiro antes de terminar.
+    const larga = 'x'.repeat(1200); // con 200 caracteres por segundo en las pruebas: unos 6 s, mínimo 2,1 s
+    const muestras = Float32Array.from([...voz(0.3, 3, 0), ...voz(0.3, 0.2, 0), ...voz(0, 2.8, 0)]);
+    const seg = (k: number, a: number, b: number) => ({ start_time_seconds: a, end_time_seconds: b, dialogue_input_index: k });
+    const parte = { muestras, segmentos: [seg(0, 0, 3), seg(1, 3, 6)] };
+    expect(api.mudas(parte, 2, RATE, ['Hola.', larga])).toEqual([1]);
+    expect(api.mudas(parte, 2, RATE, ['Hola.', 'Corta.'])).toEqual([]);
+    // Con tiempos estimados solo se mira la duración de la última.
+    expect(api.mudas({ muestras, segmentos: [seg(0, 0, 0.1), seg(1, 0.1, 6)] }, 2, RATE, [larga, 'Corta.'], true)).toEqual([]);
+  });
+
+  it('un tramo sin tiempos que acaba en un silencio largo perdió su última intervención', () => {
+    const lines = [{ text: 'Uno.' }, { text: 'Dos.' }];
+    const bien = { muestras: Float32Array.from([...voz(0.3, 1, 0.2), ...voz(0.3, 1, 0.2)]), segmentos: [] };
+    expect(api.ultimaPerdida(bien, lines)).toBeNull();
+    const muda = { muestras: Float32Array.from([...voz(0.3, 1, 0.2), ...voz(0, 3, 0)]), segmentos: [] };
+    const ubicada = api.ultimaPerdida(muda, lines)!;
+    expect(ubicada.segmentos).toHaveLength(1);
+    expect(ubicada.segmentos[0].dialogue_input_index).toBe(1);
+    expect(ubicada.segmentos[0].start_time_seconds).toBeCloseTo(0.9, 1);
   });
 });
 
@@ -221,10 +256,13 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     const antes = calls.length;
     try {
       const listo = await (await post({ book: 'jud', chapter: 2 }, llaves[0])).json();
-      // Dos tramos (8 y 2) y, después de cada uno, su última intervención sola.
+      // Dos tramos (8 y 2) y, después de cada uno, su última intervención sola, con la voz de text-to-speech.
       const nuevas = calls.slice(antes);
       expect(nuevas.map((c) => c.inputs.length)).toEqual(expect.arrayContaining([8, 2, 1, 1]));
-      expect(nuevas.filter((c) => c.inputs.length === 1).map((c) => c.inputs[0].text).sort()).toEqual(['Respuesta 7.', 'Respuesta 9.']);
+      const solas = nuevas.filter((c) => c.inputs.length === 1);
+      expect(solas.map((c) => c.inputs[0].text).sort()).toEqual(['Respuesta 7.', 'Respuesta 9.']);
+      expect(solas.every((c) => c.model_id === 'eleven_multilingual_v2')).toBe(true);
+      expect(paths.filter((p) => p.startsWith('/v1/text-to-speech/')).length).toBeGreaterThanOrEqual(2);
       // La última suena: desde su inicio hasta el final del MP3 hay voz.
       const { muestras, rate } = await decodificarMp3(new Uint8Array(await readFile(new URL(listo.url))));
       const ultima = listo.tiempos.at(-1);
