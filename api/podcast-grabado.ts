@@ -14,7 +14,10 @@
 // las abre (por silencios, porque no traen dónde empieza cada voz) y desde ahí se sirve la versión nivelada.
 // A veces ElevenLabs entrega muda una intervención, casi siempre la última de un tramo: así se perdía la pregunta final
 // a quien escucha (Juan 1: los últimos 6 s, en silencio). Cada intervención muda se graba otra vez sola y se pone en su
-// lugar. Las grabaciones de antes se revisan igual la primera vez que alguien las abre (columna «revisado»).
+// lugar. Las grabaciones de antes se revisan igual la primera vez que alguien las abre (columna «revision»).
+// Después (Romanos 11, 4-11) se vio que la última intervención también puede llegar casi muda o cortada, o sin dónde
+// suena: se compara lo que dura con lo que debería durar su texto, y la que falta se graba con la voz sola
+// (text-to-speech), que no la pierde, en vez de otra vez como diálogo.
 
 import { put } from '@vercel/blob';
 import { createHash } from 'node:crypto';
@@ -53,6 +56,16 @@ const NIVELAR_MINUTES = 10;
 const MUDA_DB = -50;
 /** Cuántas veces se vuelve a pedir una intervención que llegó muda. */
 const REINTENTOS = 2;
+/** Caracteres por segundo de habla que se esperan (Ana y Tomás hablan a unos 14 o 16). */
+const CHARS_POR_S = Number(process.env.PODCAST_CHARS_POR_S ?? 15);
+/** Si una intervención suena menos que esta parte de lo esperado por su texto, se perdió (o se cortó). */
+const MINIMO_ESPERADO = 0.35;
+/** Silencio al final de un tramo sin tiempos que delata que su última intervención no se grabó. */
+const COLA_MUDA_S = 2;
+/** Modelo de la voz sola para regrabar lo que falta. */
+const MODELO_SOLA = process.env.PODCAST_MODELO_SOLA ?? 'eleven_multilingual_v2';
+/** Sube cuando cambia cómo se buscan las intervenciones mudas: las grabaciones con una revisión menor se revisan otra vez. */
+const REVISION = 2;
 // Para las pruebas: guarda los MP3 en una carpeta en vez de Vercel Blob.
 const STORE_DIR = process.env.PODCAST_STORE_DIR;
 // Vercel nombra el token del almacén Blob según el prefijo que se elija al conectarlo: se acepta cualquiera.
@@ -97,6 +110,8 @@ async function db() {
     // Y algunas traen mudas intervenciones (la pregunta final): «revisado» dice si ya se buscaron y regrabaron.
     .then(() => sql!`alter table podcast_grabado add column if not exists revisado boolean not null default false,
       add column if not exists revisando timestamptz`)
+    // «revisado» pasó a ser un número: con qué forma de buscarlas se revisó (REVISION).
+    .then(() => sql!`alter table podcast_grabado add column if not exists revision int not null default 0`)
     .catch((err) => {
     ready = null;
     throw err;
@@ -142,11 +157,11 @@ export async function GET(request: Request) {
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const s = await db().catch(() => null);
   if (!s) return json({ estado: 'ninguno' });
-  const [row] = await s<(Row & { nivelado: boolean; revisado: boolean })[]>`select estado, url, duracion, credito, tiempos,
-      nivelado, revisado
+  const [row] = await s<(Row & { nivelado: boolean; revision: number })[]>`select estado, url, duracion, credito, tiempos,
+      nivelado, revision
     from podcast_grabado where libro = ${where.book} and capitulo = ${where.chapter}`;
   if (row?.estado === 'listo' && !row.nivelado && row.url) waitUntil(renivelar(s, where, row.url));
-  else if (row?.estado === 'listo' && !row.revisado && row.url && row.tiempos && process.env.ELEVENLABS_API_KEY) {
+  else if (row?.estado === 'listo' && row.revision < REVISION && row.url && row.tiempos && process.env.ELEVENLABS_API_KEY) {
     waitUntil(revisar(s, where, row.url));
   }
   return json(answer(row));
@@ -183,7 +198,7 @@ export async function renivelar(s: NonNullable<typeof sql>, where: Target, url: 
  */
 export async function revisar(s: NonNullable<typeof sql>, where: Target, url: string): Promise<void> {
   const [row] = await s<{ guion: string | null; tiempos: number[] }[]>`update podcast_grabado set revisando = now()
-    where libro = ${where.book} and capitulo = ${where.chapter} and estado = 'listo' and nivelado and not revisado
+    where libro = ${where.book} and capitulo = ${where.chapter} and estado = 'listo' and nivelado and revision < ${REVISION}
       and url = ${url} and tiempos is not null
       and (revisando is null or revisando < now() - make_interval(mins => ${NIVELAR_MINUTES}))
     returning guion, tiempos`;
@@ -191,9 +206,9 @@ export async function revisar(s: NonNullable<typeof sql>, where: Target, url: st
   const marcar = (cambios: { url: string; tiempos: number[]; duracion: number } | null) =>
     cambios
       ? s`update podcast_grabado set url = ${cambios.url}, tiempos = ${s.json(cambios.tiempos)}, duracion = ${cambios.duracion},
-          revisado = true, revisando = null, actualizado = now()
+          revisado = true, revision = ${REVISION}, revisando = null, actualizado = now()
           where libro = ${where.book} and capitulo = ${where.chapter} and url = ${url}`
-      : s`update podcast_grabado set revisado = true, revisando = null
+      : s`update podcast_grabado set revisado = true, revision = ${REVISION}, revisando = null
           where libro = ${where.book} and capitulo = ${where.chapter} and url = ${url}`;
   try {
     const lines = row.guion ? scriptLines(row.guion) : [];
@@ -208,7 +223,8 @@ export async function revisar(s: NonNullable<typeof sql>, where: Target, url: st
       end_time_seconds: row.tiempos[k + 1] ?? muestras.length / rate,
       dialogue_input_index: k,
     }));
-    const reparado = await repararMudas({ muestras, segmentos }, lines, rate);
+    // Los tiempos de antes pueden ser estimados: la duración solo se mira en la última, la que se perdía.
+    const reparado = await repararMudas({ muestras, segmentos }, lines, rate, true);
     if (!reparado) return void (await marcar(null));
     const tramos = reparado.segmentos.map((sg) => ({ desde: Math.round(sg.start_time_seconds * rate), hasta: Math.round(sg.end_time_seconds * rate) }));
     const audio = await codificarMp3(muestrasA16(nivelar(reparado.muestras, rate, tramos)), rate, KBPS);
@@ -248,8 +264,28 @@ export function scriptLines(texto: string): Line[] {
 type Segmento = { start_time_seconds: number; end_time_seconds: number; dialogue_input_index: number };
 type Parte = { muestras: Float32Array; segmentos: Segmento[] };
 
-/** Las intervenciones de un tramo que suenan mudas (o que ElevenLabs no ubicó), por su índice. */
-export function mudas(parte: Parte, n: number, rate = PCM_HZ): number[] {
+/** Segundos con voz entre `desde` y `hasta` (ventanas de 50 ms por encima de MUDA_DB). */
+export function segundosConVoz(m: Float32Array, rate: number, desde: number, hasta: number): number {
+  const n = Math.max(1, Math.round(0.05 * rate));
+  const umbral = 10 ** (MUDA_DB / 20);
+  let con = 0;
+  for (let i = Math.max(0, desde); i < Math.min(m.length, hasta); i += n) {
+    let s = 0;
+    const fin = Math.min(hasta, m.length, i + n);
+    for (let k = i; k < fin; k++) s += m[k] * m[k];
+    if (Math.sqrt(s / Math.max(1, fin - i)) > umbral) con += fin - i;
+  }
+  return con / rate;
+}
+
+/** Lo que debería durar como mínimo una intervención por su texto. */
+const minimo = (texto: string) => (texto.length / CHARS_POR_S) * MINIMO_ESPERADO;
+
+/**
+ * Las intervenciones de un tramo que faltan, por su índice: mudas, sin ubicar o (con `textos`) mucho más cortas que su
+ * texto. Con `soloUltima`, la duración se mira solo en la última (cuando los tiempos son estimados).
+ */
+export function mudas(parte: Parte, n: number, rate = PCM_HZ, textos?: string[], soloUltima = false): number[] {
   const out: number[] = [];
   for (let k = 0; k < n; k++) {
     const sg = parte.segmentos.find((x) => x.dialogue_input_index === k);
@@ -257,11 +293,11 @@ export function mudas(parte: Parte, n: number, rate = PCM_HZ): number[] {
       out.push(k);
       continue;
     }
-    const v = volumenHabla(parte.muestras, rate, {
-      desde: Math.max(0, Math.round(sg.start_time_seconds * rate)),
-      hasta: Math.min(parte.muestras.length, Math.round(sg.end_time_seconds * rate)),
-    });
-    if (v === null || v < MUDA_DB) out.push(k);
+    const desde = Math.max(0, Math.round(sg.start_time_seconds * rate));
+    const hasta = Math.min(parte.muestras.length, Math.round(sg.end_time_seconds * rate));
+    const v = volumenHabla(parte.muestras, rate, { desde, hasta });
+    const corta = textos && (!soloUltima || k === n - 1) && segundosConVoz(parte.muestras, rate, desde, hasta) < minimo(textos[k]);
+    if (v === null || v < MUDA_DB || corta) out.push(k);
   }
   return out;
 }
@@ -294,32 +330,68 @@ export function reemplazar(parte: Parte, k: number, nuevo: Float32Array, rate = 
   return { muestras, segmentos };
 }
 
-/** Graba otra vez, solas, las intervenciones mudas de un tramo y las pone en su lugar. `null` si no había ninguna. */
-async function repararMudas(parte: Parte, lines: Line[], rate = PCM_HZ): Promise<Parte | null> {
-  // Sin dónde suena cada una no se puede saber cuál falta (eso lo cubre el reparto por silencios de record).
-  if (!parte.segmentos.length) return null;
-  const faltan = mudas(parte, lines.length, rate);
+/**
+ * Un tramo que ElevenLabs entregó sin decir dónde suena cada intervención: si termina con un silencio largo, o si todo
+ * junto suena mucho menos que su texto, la última no se grabó. Se le pone un lugar (después de la última voz) para
+ * cambiarla. `null` si el tramo está bien.
+ */
+export function ultimaPerdida(parte: Parte, lines: { text: string }[], rate = PCM_HZ): Parte | null {
+  const tramos = tramosPorSilencio(parte.muestras, rate);
+  const fin = tramos.at(-1)?.hasta ?? 0;
+  const cola = (parte.muestras.length - fin) / rate;
+  const total = segundosConVoz(parte.muestras, rate, 0, parte.muestras.length);
+  const esperado = lines.reduce((n, l) => n + l.text.length, 0) / CHARS_POR_S;
+  if (cola < COLA_MUDA_S && total >= esperado * 0.6) return null;
+  const desde = Math.min(parte.muestras.length, fin + Math.round(0.1 * rate)) / rate;
+  return { muestras: parte.muestras, segmentos: [{ start_time_seconds: desde, end_time_seconds: parte.muestras.length / rate, dialogue_input_index: lines.length - 1 }] };
+}
+
+/** Una intervención grabada sola con la voz de text-to-speech, sin los silencios de los bordes. */
+async function sola(line: Line): Promise<Float32Array> {
+  const res = await fetch(`${ELEVEN_URL}/v1/text-to-speech/${line.voice}?output_format=pcm_${PCM_HZ}`, {
+    method: 'POST',
+    headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY ?? '', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: line.text, model_id: MODELO_SOLA, language_code: 'es', seed: 7 }),
+  });
+  if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const m = pcmAMuestras(new Uint8Array(await res.arrayBuffer()));
+  const tramos = tramosPorSilencio(m, PCM_HZ);
+  return tramos.length ? m.subarray(tramos[0].desde, tramos.at(-1)!.hasta) : m;
+}
+
+/**
+ * Graba otra vez, sola, cada intervención de un tramo que falta (ver mudas y ultimaPerdida) y la pone en su lugar.
+ * `null` si no faltaba ninguna. Con `soloUltima`, la duración solo se mira en la última.
+ */
+async function repararMudas(parte: Parte, lines: Line[], rate = PCM_HZ, soloUltima = false): Promise<Parte | null> {
+  let base = parte;
+  let faltan: number[];
+  if (parte.segmentos.length) faltan = mudas(parte, lines.length, rate, lines.map((l) => l.text), soloUltima);
+  else {
+    const ubicada = ultimaPerdida(parte, lines, rate);
+    if (!ubicada) return null;
+    base = ubicada;
+    faltan = [lines.length - 1];
+  }
   if (!faltan.length) return null;
-  let out = parte;
+  let out = base;
   for (const k of faltan) {
     for (let intento = 0; intento < REINTENTOS; intento++) {
-      const sola = await dialogue([lines[k]]);
-      const sg = sola.segmentos[0];
-      // Sin los silencios de los bordes que deja ElevenLabs, con una pausa corta al final como entre intervenciones.
-      const voz = sg
-        ? sola.muestras.subarray(Math.round(sg.start_time_seconds * PCM_HZ), Math.round(sg.end_time_seconds * PCM_HZ))
-        : sola.muestras;
-      if (mudas({ muestras: voz, segmentos: [{ start_time_seconds: 0, end_time_seconds: voz.length / PCM_HZ, dialogue_input_index: 0 }] }, 1).length) continue;
-      const conPausa = (m: Float32Array) => {
-        const n = new Float32Array(m.length + Math.round(0.35 * rate));
-        n.set(m);
-        return n;
-      };
-      out = reemplazar(out, k, conPausa(rate === PCM_HZ ? voz : remuestrear(voz, PCM_HZ, rate)), rate);
+      const voz = await sola(lines[k]);
+      if (segundosConVoz(voz, PCM_HZ, 0, voz.length) < minimo(lines[k].text)) continue;
+      const nueva = rate === PCM_HZ ? voz : remuestrear(voz, PCM_HZ, rate);
+      // Con una pausa corta al final, como entre intervenciones.
+      const conPausa = new Float32Array(nueva.length + Math.round(0.35 * rate));
+      conPausa.set(nueva);
+      out = reemplazar(out, k, conPausa, rate);
       break;
     }
   }
-  return out === parte ? null : out;
+  if (out === base) {
+    console.error('podcast-grabado: no se pudo regrabar', faltan.map((k) => lines[k].text.slice(0, 40)));
+    return null;
+  }
+  return out;
 }
 
 /** Cambio de frecuencia lineal (solo para grabaciones viejas que vengan a otra frecuencia que la de ElevenLabs). */
@@ -469,7 +541,7 @@ export async function POST(request: Request) {
     const url = await store(`${(chapter ? `${book}-${chapter}` : book).replaceAll(':', '-')}-${tag}.mp3`, audio);
     const duracion = Math.round(largo);
     await s`update podcast_grabado set estado = 'listo', url = ${url}, duracion = ${duracion}, credito = ${CREDIT},
-      tiempos = ${s.json(tiempos)}, nivelado = true, nivelando = null, revisado = true, revisando = null, actualizado = now() where libro = ${book} and capitulo = ${chapter}`;
+      tiempos = ${s.json(tiempos)}, nivelado = true, nivelando = null, revisado = true, revision = ${REVISION}, revisando = null, actualizado = now() where libro = ${book} and capitulo = ${chapter}`;
     return json({ estado: 'listo', url, duracion, credito: CREDIT, tiempos });
   } catch (err) {
     console.error('podcast-grabado: grabar', err);
