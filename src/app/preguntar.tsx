@@ -16,7 +16,6 @@ import type { Source } from '@/lib/estudio';
 import { MAX_PREGUNTA, type Nivel, conversacion, separar, useConversacion } from '@/lib/preguntar';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
-import CitasRevisadas from '@/components/CitasRevisadas';
 import { useTecladoWeb } from '@/lib/teclado';
 
 export default function Preguntar() {
@@ -98,8 +97,7 @@ export default function Preguntar() {
                 )}
                 {working && !cuerpo.trim() && !t.pasos?.length && <Esperando colors={colors} />}
                 {t.cortada && <Text style={[styles.note, { color: colors.muted }]}>La respuesta se cortó.</Text>}
-                {!working && !!t.sources?.length && <Sources sources={t.sources} colors={colors} onOpen={openRef} />}
-                {!working && !!cuerpo.trim() && <CitasRevisadas text={cuerpo} sources={t.sources} colors={colors} onOpen={openRef} />}
+                {!working && !!cuerpo.trim() && <Sources sources={t.sources} text={cuerpo} colors={colors} onOpen={openRef} />}
               </View>
             );
           })}

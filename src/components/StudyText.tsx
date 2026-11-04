@@ -22,25 +22,8 @@ import { licensedById } from '@/lib/licenciadas';
 import { Source } from '@/lib/estudio';
 import { Colors, serif, useSettings } from '@/lib/theme';
 
-export function Sources({ sources, colors, onOpen }: { sources: Source[]; colors: Colors; onOpen: (ref: string) => void }) {
-  return (
-    <View style={[styles.sources, { borderColor: colors.border }]}>
-      <Text style={[styles.sourcesTitle, { color: colors.muted }]}>FUENTES</Text>
-      {sources.map((s) => (
-        <Pressable
-          key={s.n}
-          onPress={() => (s.ref ? onOpen(s.ref) : s.url && Linking.openURL(s.url))}
-          style={styles.sourceRow}
-          disabled={!s.ref && !s.url}
-        >
-          <Text style={[styles.sourceNumber, { color: colors.accent }]}>{s.n}</Text>
-          <Text style={{ color: colors.text, flex: 1 }}>{s.label}</Text>
-          {s.ref ? <ChevronRightIcon color={colors.muted} size={16} /> : s.url ? <ExternalIcon color={colors.muted} size={15} /> : null}
-        </Pressable>
-      ))}
-    </View>
-  );
-}
+/** Las fuentes de una respuesta; con `text`, cada pasaje lleva además su cita revisada con la Biblia. */
+export { default as Sources } from '@/components/Fuentes';
 
 /** Markdown mínimo: títulos ##, listas con -, **negritas**, *cursivas*, marcas de cita ⟦n⟧ y versículos ⟪Juan 3:16⟫. */
 // Iconos de las secciones del estudio profundo, por la palabra con que empieza el título.
@@ -485,22 +468,4 @@ const styles = StyleSheet.create({
   p: { fontSize: 16, lineHeight: 25, marginBottom: 8 },
   bulletRow: { flexDirection: 'row' },
   cite: { fontSize: 11, fontWeight: '700', lineHeight: 16 },
-  sources: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    marginTop: 12,
-    paddingTop: 10,
-  },
-  sourcesTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    marginBottom: 4,
-  },
-  sourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 6,
-  },
-  sourceNumber: { fontWeight: '700', width: 20, textAlign: 'right' },
 });
