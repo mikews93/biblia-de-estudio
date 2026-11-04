@@ -138,7 +138,7 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
               <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
             )}
             {tab === 'diccionario' && (
-              <DiccionarioVersiculo book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+              <DiccionarioVersiculo book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
             )}
             {tab === 'mapa' && <Places book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />}
             {tab === 'comentario' && (

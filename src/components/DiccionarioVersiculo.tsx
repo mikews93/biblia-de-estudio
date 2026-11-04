@@ -7,14 +7,14 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import Appear from '@/components/Appear';
 import { ChevronRightIcon, DictionaryIcon } from '@/components/icons';
-import { Articulo, Book, getArticulo, getDiccionarioCap, getDiccionarioIndice } from '@/lib/data';
+import { Articulo, Book, formatRef, getArticulo, getBooks, getDiccionarioCap, getDiccionarioIndice } from '@/lib/data';
 import { DICCIONARIO_TYNDALE, TIPOS, buscarArticulos, diccionarioHref, resumen } from '@/lib/fuentesAbiertas';
 import { Colors, serif } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-type Props = { book: Book; chapter: number; verse: number; colors: Colors; onNavigate: () => void };
+type Props = { book: Book; books: Book[]; chapter: number; verse: number; colors: Colors; onNavigate: () => void };
 
-export default function DiccionarioVersiculo({ book, chapter, verse, colors, onNavigate }: Props) {
+export default function DiccionarioVersiculo({ book, books, chapter, verse, colors, onNavigate }: Props) {
   const clave = `${book.id}.${chapter}.${verse}`;
   const [loaded, setLoaded] = useState<{ clave: string; articulos: Articulo[] } | null>(null);
 
@@ -56,7 +56,7 @@ export default function DiccionarioVersiculo({ book, chapter, verse, colors, onN
               <Text style={[styles.title, { color: colors.text }]}>{a.t}</Text>
               {!!TIPOS[a.tipo] && <Text style={[styles.tipo, { color: colors.muted }]}>{TIPOS[a.tipo]}</Text>}
               <Text style={[styles.resumen, { color: colors.text }]} numberOfLines={3}>
-                {resumen(a.x)}
+                {resumen(a.x, 180, (r) => formatRef(r, books))}
               </Text>
             </View>
             <ChevronRightIcon color={colors.muted} size={18} />
@@ -103,6 +103,11 @@ const styles = StyleSheet.create({
 /** En el buscador: los artículos del diccionario cuyo título responde a lo buscado («efod», «Getsemaní»). */
 export function DiccionarioBusqueda({ q, colors }: { q: string; colors: Colors }) {
   const [loaded, setLoaded] = useState<{ q: string; articulos: Articulo[] } | null>(null);
+  const [books, setBooks] = useState<Book[]>([]);
+
+  useEffect(() => {
+    getBooks().then(setBooks).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let vivo = true;
@@ -140,7 +145,7 @@ export function DiccionarioBusqueda({ q, colors }: { q: string; colors: Colors }
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.text }]}>{a.t}</Text>
               <Text style={[styles.resumen, { color: colors.text }]} numberOfLines={2}>
-                {resumen(a.x)}
+                {resumen(a.x, 180, (r) => (books.length ? formatRef(r, books) : ''))}
               </Text>
             </View>
             <ChevronRightIcon color={colors.muted} size={18} />

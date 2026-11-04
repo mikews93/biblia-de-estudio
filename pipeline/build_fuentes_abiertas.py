@@ -16,6 +16,10 @@ Salida:
   diccionario-es/a/<id>.json      {"t": título, "x": texto, "tipo": tipo}; el texto es el markdown sencillo de los
                                   comentarios (##, **, *, ⟦jhn.3.16⟧) y ⟦d:<id>|texto⟧ para enlazar otro artículo
   diccionario-es/cap/<libro>/<c>.json   {versículo: [[id, título, tipo], ...]}: los artículos que tratan ese versículo
+  objetos/lemas.json       {lema sin acentos ni puntos: [[id, tipo], ...]}: las plantas, animales y objetos de UBS
+                           (Flora, Fauna and Realia Handbooks, 2025, CC BY-SA 4.0) de cada palabra hebrea o griega
+  objetos/a/<id>.json      {"t": título en inglés, "tipo": flora|fauna|realia, "en": texto en inglés, "refs": [...]}:
+                           /api/comentario lo traduce con IA la primera vez que alguien lo abre y lo guarda para todos
 """
 
 import html
@@ -35,6 +39,8 @@ UBS_FILES = {"griego": UBS + "greek/JSON/UBSGreekNTDic-v1.0-es.JSON", "hebreo": 
 AQUIFER = ("https://raw.githubusercontent.com/BibleAquifer/AquiferOpenBibleDictionary/"
            "663a34ef9c4edfeff17c8dda22f5f926a8b41f90/spa/json/{:03d}.content.json")
 AQUIFER_PARTS = 27
+FFR = ("https://raw.githubusercontent.com/ubsicap/ubs-open-license/a15a96cfaa4ca18a6c0339016645ba1e534db3c8/"
+       "flora-fauna-realia/XML/{}_1.1_en.xml")
 IDS = [b[0] for b in BOOKS]
 # Artículos por versículo, como mucho; primero los más específicos (los que tratan menos pasajes).
 POR_VERSICULO = 6
@@ -254,10 +260,73 @@ def strip_accents(s):
     return "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
 
 
+# --------------------------------------------------------------- plantas, animales y objetos de la Biblia (UBS)
+
+def lema_clave(lema):
+    """Sin acentos, puntos vocálicos ni signos: «אֵזוֹב» → «אזוב», «ὕσσωπος» → «υσσωπος»."""
+    import unicodedata
+    t = unicodedata.normalize("NFD", lema or "")
+    t = "".join(ch for ch in t if not unicodedata.category(ch).startswith("M"))
+    return re.sub(r"[^\w]", "", t.lower().replace("ς", "σ"))
+
+
+def ffr_texto(xml):
+    """Un párrafo de los manuales → markdown sencillo: <s>04301902900020</s> → ⟦jhn.19.29⟧, <i> → *…*, sin imágenes."""
+    t = re.sub(r"<Image[^>]*/>", "", xml)
+    t = re.sub(r"<s>(\d{14})</s>", lambda m: (lambda r: f"⟦{r[0]}.{r[1]}.{r[2]}⟧" if r else "")(ubs_ref(m.group(1))), t)
+    t = re.sub(r"<i>(.*?)</i>", lambda m: f"*{m.group(1).strip()}*", t, flags=re.S)
+    t = re.sub(r"<b>(.*?)</b>", lambda m: f"**{m.group(1).strip()}**", t, flags=re.S)
+    t = re.sub(r"<[^>]+>", "", t)
+    return re.sub(r"\s+", " ", html.unescape(t)).strip()
+
+
+def build_objetos(out):
+    import xml.etree.ElementTree as ET
+    por_lema = defaultdict(list)
+    n = 0
+    for tipo in ("FLORA", "FAUNA", "REALIA"):
+        raw = fetch(f"ffr-{tipo.lower()}.xml", FFR.format(tipo)).read_text(encoding="utf-8")
+        for m in re.finditer(r'<ThemLex_Entry Key="([\d.]+)">(.*?)</ThemLex_Entry>', raw, flags=re.S):
+            key, body = m.group(1), m.group(2)
+            lemas = re.findall(r"<Lemma>(.*?)</Lemma>", body)
+            if not lemas:
+                continue  # introducciones y capítulos: solo las entradas con palabras de la Biblia
+            title = html.unescape(re.search(r"<Title>(.*?)</Title>", body, flags=re.S).group(1)).strip()
+            refs = []
+            for code in re.findall(r"<Reference>(\d{14})</Reference>", body):
+                r = ubs_ref(code)
+                if r and f"{r[0]}.{r[1]}.{r[2]}" not in refs:
+                    refs.append(f"{r[0]}.{r[1]}.{r[2]}")
+            parrafos = []
+            for sec in re.finditer(r"<Section[^>]*>(.*?)</Section>", body, flags=re.S):
+                sbody = sec.group(1)
+                head = re.search(r"<Heading>(.*?)</Heading>", sbody, flags=re.S)
+                h = ffr_texto(head.group(1)) if head else ""
+                ps = [ffr_texto(p) for p in re.findall(r"<Paragraph>(.*?)</Paragraph>", sbody, flags=re.S)]
+                ps = [p for p in ps if p]
+                if not ps:
+                    continue
+                if h and h.rstrip(":") not in ("References", "Discussion"):
+                    parrafos.append(f"## {h.rstrip(':')}")
+                parrafos += ps
+            if not parrafos:
+                continue
+            oid = f"{tipo.lower()}-{key}"
+            write(out, f"objetos/a/{oid}.json", {"t": title, "tipo": tipo.lower(), "en": "\n\n".join(parrafos), "refs": refs})
+            n += 1
+            for lema in set(lemas):
+                k = lema_clave(lema)
+                if k and [oid, tipo.lower()] not in por_lema[k]:
+                    por_lema[k].append([oid, tipo.lower()])
+    write(out, "objetos/lemas.json", por_lema)
+    print(f"Plantas, animales y objetos de UBS: {n} entradas, {len(por_lema)} palabras")
+
+
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "public" / "data"
     build_lexicos(out)
     build_diccionario(out)
+    build_objetos(out)
 
 
 if __name__ == "__main__":

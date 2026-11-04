@@ -18,6 +18,9 @@
 //      la imagen de un versículo («Pablo lo escribe desde la cárcel»), sacada de los comentarios y guardada para todos.
 // POST { ficha: 'h1732' }  traduce el artículo y lo envía por partes como NDJSON, igual que un comentario.
 //
+// Plantas, animales y objetos de la Biblia (Flora, Fauna and Realia de UBS, CC BY-SA 4.0; pipeline/build_fuentes_abiertas.py):
+// GET  ?objeto=flora-5.2.4  -> { texto, estado } o { texto: null };  POST { objeto }  lo traduce como una ficha.
+//
 // «Del diccionario bíblico» en el buscador (src/lib/diccionario.ts): una palabra se explica en español desde Easton,
 // Smith y Nave (api/_diccionario.ts), con IA la primera vez, y queda guardada para todos.
 // POST { diccionario: 'getsemani' }  -> { explicacion: Explicacion } o { explicacion: null } si no hay fuentes.
@@ -45,6 +48,7 @@ const MAX_NOTE = 500;
 // Tope de fichas nuevas traducidas al día entre todos.
 const FICHAS_PER_DAY = Number(process.env.FICHAS_DIA ?? 300);
 const FICHA_ID = /^[gh]\d{4}[a-z]?$/;
+const OBJETO_ID = /^(flora|fauna|realia)-\d+(\.\d+){0,4}$/;
 
 const SCHEMA = `
 create table if not exists comentarios_es (
@@ -142,6 +146,16 @@ Reglas:
 - Usa los términos de la tradición cristiana histórica en español: gracia, cruz, expiación, justificación, arrepentimiento, Espíritu Santo, el Señor.
 - Mantén los mismos párrafos, separados por una línea en blanco.
 - Responde solo con la traducción, sin comentarios antes ni después.`;
+
+const TRANSLATE_OBJETO = `Traduces al español los manuales de plantas, animales y objetos de la Biblia de las Sociedades Bíblicas Unidas (Flora, Fauna and Realia Handbooks, licencia CC BY-SA 4.0) para una app bíblica gratuita.
+
+Reglas:
+- La primera línea es «# » y el nombre en español de la planta, el animal o el objeto, como lo llama la Reina-Valera 1909 si aparece así (Marjoram → Hisopo).
+- Los manuales se escribieron para traductores. Tradúcelo para lectores de la Biblia: conserva con fidelidad todo lo que explica qué era, cómo era, cómo se usaba y qué significa en los pasajes; deja fuera solo los consejos a los traductores sobre cómo verterlo en otras lenguas y las listas de cómo lo traducen otras versiones inglesas o francesas.
+- No resumas lo demás, no añadas datos ni opiniones tuyas.
+- Usa un español claro y actual, neutro para Latinoamérica y España, y los nombres de la Reina-Valera 1909.
+- Las marcas de referencia como ⟦jhn.19.29⟧ van exactamente iguales. Los títulos «## …» se traducen y quedan como títulos; las *cursivas* y **negritas** en su sitio.
+- Mantén los párrafos separados por una línea en blanco. Responde solo con la traducción.`;
 
 const CONTEXTO = `Escribes una línea de contexto para la imagen de un versículo que alguien va a compartir en sus redes, en una app bíblica gratuita.
 
@@ -279,6 +293,7 @@ const marks = (s: string) => (s.match(/⟦[^⟧]*⟧/g) ?? []).sort().join(' ');
 async function getHandler(request: Request) {
   const q = Object.fromEntries(new URL(request.url).searchParams);
   if (q.ficha) return getFicha(q.ficha);
+  if (q.objeto) return getObjeto(q.objeto);
   const { fuente, libro, capitulo, secciones } = await chapter(request, q);
   const verse = Number(q.versiculo ?? 0);
   const seccion =
@@ -453,9 +468,53 @@ async function getFicha(id: string) {
   return Response.json(row ?? { texto: null }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
+type ObjetoSource = { t: string; tipo: string; en: string; refs: string[] };
+
+async function objetoSource(request: Request, id: unknown): Promise<ObjetoSource & { id: string }> {
+  if (typeof id !== 'string' || !OBJETO_ID.test(id)) throw new Fail('Entrada no válida');
+  const rel = `objetos/a/${id}.json`;
+  const local = await readFile(path.join(DATA_DIR, rel), 'utf8').catch(() => null);
+  if (local) return { id, ...(JSON.parse(local) as ObjetoSource) };
+  const cookie = request.headers.get('cookie');
+  const res = await fetch(new URL(`/data/${rel}`, request.url), {
+    headers: cookie ? { cookie } : {},
+    signal: AbortSignal.timeout(8000),
+  }).catch(() => null);
+  if (!res?.ok) throw new Fail('Entrada no encontrada', 404);
+  return { id, ...((await res.json()) as ObjetoSource) };
+}
+
+// Se guardan en la misma tabla que las fichas, con «obj:» delante, y cuentan en el mismo tope diario.
+async function getObjeto(id: string) {
+  if (!OBJETO_ID.test(id)) throw new Fail('Entrada no válida');
+  const sql = await db();
+  const [row] = await sql<{ texto: string; estado: string }[]>`
+    select texto, estado from fichas_es where id = ${`obj:${id}`} and texto is not null`;
+  return Response.json(row ?? { texto: null }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+async function translateObjeto(request: Request, id: unknown) {
+  const o = await objetoSource(request, id);
+  return translateGuardado(`obj:${o.id}`, TRANSLATE_OBJETO, `Entrada: ${o.t} (${o.tipo}).\n\nTraduce:\n\n${o.en}`, 'objeto');
+}
+
 async function translateFicha(request: Request, id: unknown) {
   const ficha = await fichaSource(request, id);
   if (!ficha.en) throw new Fail('Esta ficha no tiene descripción');
+  const glosario = Object.entries(ficha.glosario ?? {})
+    .map(([en, es]) => `${en} → ${es}`)
+    .join('\n');
+  return translateGuardado(
+    ficha.id,
+    TRANSLATE_FICHA,
+    `Ficha: ${ficha.nombre}.\n\nGlosario de nombres (inglés → Reina-Valera 1909):\n${glosario}\n\nTraduce:\n\n${ficha.en}`,
+    'ficha',
+  );
+}
+
+/** Traduce un texto una vez para todos (tabla fichas_es) y lo envía por partes como NDJSON. */
+async function translateGuardado(clave: string, system: string, content: string, etiqueta: string) {
+  const ficha = { id: clave };
   const sql = await db();
   const [done] = await sql<{ texto: string; estado: string }[]>`
     select texto, estado from fichas_es where id = ${ficha.id} and texto is not null`;
@@ -476,9 +535,6 @@ async function translateFicha(request: Request, id: unknown) {
     if (!stale.length) return Response.json({ enCurso: true }, { status: 409 });
   }
 
-  const glosario = Object.entries(ficha.glosario ?? {})
-    .map(([en, es]) => `${en} → ${es}`)
-    .join('\n');
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -488,13 +544,8 @@ async function translateFicha(request: Request, id: unknown) {
         const response = client.messages.stream({
           model: MODEL,
           max_tokens: 8000,
-          system: TRANSLATE_FICHA,
-          messages: [
-            {
-              role: 'user',
-              content: `Ficha: ${ficha.nombre}.\n\nGlosario de nombres (inglés → Reina-Valera 1909):\n${glosario}\n\nTraduce:\n\n${ficha.en}`,
-            },
-          ],
+          system,
+          messages: [{ role: 'user', content }],
         });
         let texto = '';
         for await (const event of response) {
@@ -513,7 +564,7 @@ async function translateFicha(request: Request, id: unknown) {
         saved = true;
         send({ type: 'done', estado: 'traducido' });
       } catch (err) {
-        console.error('ficha', err);
+        console.error(etiqueta, err);
         send({
           type: 'error',
           message:
@@ -693,6 +744,7 @@ export async function POST(request: Request) {
     }
     if (body.reporte && typeof body.reporte === 'object') return await report(request, body.reporte as Record<string, unknown>);
     if (body.ficha !== undefined) return await translateFicha(request, body.ficha);
+    if (body.objeto !== undefined) return await translateObjeto(request, body.objeto);
     if (body.diccionario !== undefined) return await diccionario(request, body.diccionario);
     if (body.contexto && typeof body.contexto === 'object') return await contexto(request, body.contexto as Record<string, unknown>);
     return await translate(request, body);

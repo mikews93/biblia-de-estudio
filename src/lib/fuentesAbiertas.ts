@@ -82,15 +82,17 @@ export function buscarArticulos(indice: FilaDiccionario[], q: string, max = 8): 
     .map(([, f]) => f);
 }
 
-/** La primera oración del artículo, sin marcas, para la vista previa. */
-export function resumen(texto: string, max = 180): string {
+/** El comienzo del artículo, sin marcas, para la vista previa. Con «cita», las referencias se escriben («Gálatas
+ * 5:22»); sin ella se quitan. */
+export function resumen(texto: string, max = 180, cita?: (ref: string) => string): string {
   const p = texto.split(/\n{2,}/).find((x) => !x.startsWith('## ')) ?? '';
   const limpio = p
     .replace(/⟦d:\d+\|([^⟧]*)⟧/g, '$1')
-    .replace(/⟦[^⟧]*⟧/g, '')
+    .replace(/⟦([^⟧]*)⟧/g, (_, r: string) => (cita ? cita(r) : ''))
     .replace(/\*\*?([^*]+)\*\*?/g, '$1')
     .replace(/\(\s*[,;]?\s*\)/g, '')
     .replace(/\s+([,.;:])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
     .trim();
   if (limpio.length <= max) return limpio;
   const corte = limpio.slice(0, max);

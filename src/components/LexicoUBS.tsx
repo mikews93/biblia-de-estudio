@@ -5,9 +5,10 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ChevronDownIcon, ChevronUpIcon } from '@/components/icons';
+import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, PlantIcon } from '@/components/icons';
 import { getLexico } from '@/lib/data';
 import { type EntradaLexico, type Sentido, LEXICO_UBS, sentidoEn, vecesSentido } from '@/lib/fuentesAbiertas';
+import { TIPO_OBJETO, type TipoObjeto, objetoHref, objetosDeLema } from '@/lib/objetos';
 import { Colors, serif } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
@@ -28,17 +29,25 @@ const sinRefs = (t: string) =>
     .replace(/\(\s*\)/g, '')
     .trim();
 
-export default function LexicoUBS({ strong, en, colors, onNavigate }: Props) {
+/** Con key, otra palabra empieza con los sentidos y la nota cerrados. */
+export default function LexicoUBS(props: Props) {
+  return <Lexico key={props.strong} {...props} />;
+}
+
+function Lexico({ strong, en, colors, onNavigate }: Props) {
   const [loaded, setLoaded] = useState<{ strong: string; entradas: EntradaLexico[] } | null>(null);
   const [otros, setOtros] = useState(false);
   const [nota, setNota] = useState(false);
+  const [objetos, setObjetos] = useState<[string, TipoObjeto][]>([]);
 
   useEffect(() => {
     let vivo = true;
-    setOtros(false);
-    setNota(false);
     getLexico(strong).then(
-      (entradas) => vivo && setLoaded({ strong, entradas }),
+      (entradas) => {
+        if (!vivo) return;
+        setLoaded({ strong, entradas });
+        objetosDeLema(entradas.map((e) => e.l)).then((o) => vivo && setObjetos(o), () => {});
+      },
       () => vivo && setLoaded({ strong, entradas: [] }),
     );
     return () => {
@@ -95,6 +104,27 @@ export default function LexicoUBS({ strong, en, colors, onNavigate }: Props) {
             ))}
         </>
       )}
+      {objetos.slice(0, 2).map(([id, tipo]) => (
+        <Pressable
+          key={id}
+          onPress={() => {
+            onNavigate?.();
+            navigate(() => router.push(objetoHref(id, (principal ?? todos[0])?.[0][0]) as never), 'forward');
+          }}
+          accessibilityRole="link"
+          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+            styles.objeto,
+            { backgroundColor: hovered || pressed ? colors.border : colors.warmSoft },
+          ]}
+        >
+          <PlantIcon color={colors.warm} size={18} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14.5 }}>¿Qué era?</Text>
+            <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 1 }}>{TIPO_OBJETO[tipo]}: cómo era y cómo se usaba</Text>
+          </View>
+          <ChevronRightIcon color={colors.muted} size={18} />
+        </Pressable>
+      ))}
       <Pressable
         onPress={() => {
           onNavigate?.();
@@ -140,4 +170,5 @@ const styles = StyleSheet.create({
   nota: { fontSize: 13.5, lineHeight: 20, marginTop: 6 },
   otro: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, marginTop: 10 },
   credit: { fontSize: 11, marginTop: 12 },
+  objeto: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, marginTop: 12 },
 });
