@@ -1,0 +1,12 @@
+# nombre url — obras de dominio público para pipeline/build_fuentes_libros.py (copiadas por .github/workflows/fuentes-libros.yml)
+TSK.zip https://crosswire.org/ftpmirror/pub/sword/packages/rawzip/TSK.zip
+ISBE.zip https://crosswire.org/ftpmirror/pub/sword/packages/rawzip/ISBE.zip
+Torrey.zip https://crosswire.org/ftpmirror/pub/sword/packages/rawzip/Torrey.zip
+edersheim-vida.xml https://ccel.org/ccel/e/edersheim/lifetimes.xml
+edersheim-templo.xml https://ccel.org/ccel/e/edersheim/temple.xml
+edersheim-social.xml https://ccel.org/ccel/e/edersheim/sketches.xml
+josefo.xml https://ccel.org/ccel/j/josephus/complete.xml
+vincent1.xml https://ccel.org/ccel/v/vincent/wordstudies1.xml
+vincent2.xml https://ccel.org/ccel/v/vincent/wordstudies2.xml
+vincent3.xml https://ccel.org/ccel/v/vincent/wordstudies3.xml
+vincent4.xml https://ccel.org/ccel/v/vincent/wordstudies4.xml

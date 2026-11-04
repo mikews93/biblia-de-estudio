@@ -182,6 +182,11 @@ export default function AcercaScreen() {
         </View>
       </Appear>
 
+      <Pressable onPress={() => router.push('/fuentes' as never)} accessibilityRole="link" testID="acerca-fuentes" hitSlop={6}>
+        <Text style={[text.small, { color: colors.accent, textAlign: 'center', marginTop: 4, fontWeight: '700' }]}>
+          Fuentes y créditos ›
+        </Text>
+      </Pressable>
       <Text style={[text.small, { color: colors.muted, textAlign: 'center', marginTop: 4 }]}>
         Zarza · {CORREO}
       </Text>

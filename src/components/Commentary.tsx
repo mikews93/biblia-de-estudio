@@ -210,7 +210,17 @@ export default function Commentary({ book, books, chapter, verse, colors, onNavi
       {section && parts.length > 0 && (
         <Text style={[styles.credit, { color: colors.muted }]}>
           {fuente.obra}, {fuente.autor}{fuente.año ? ` (${fuente.año})` : ''}. {fuente.licencia}
-          {worst && ESTADOS[worst] ? ` ${ESTADOS[worst]}` : ''}
+          {worst && ESTADOS[worst] ? ` ${ESTADOS[worst]}` : ''}{' '}
+          <Text
+            style={{ color: colors.accent, fontWeight: '600' }}
+            accessibilityRole="link"
+            onPress={() => {
+              onNavigate();
+              navigate(() => router.push('/fuentes' as never), 'forward');
+            }}
+          >
+            Fuentes
+          </Text>
         </Text>
       )}
       {section && parts.length > 0 && fuente.tipo === 'traducida' && (
@@ -284,8 +294,21 @@ function Report({ colors, send }: { colors: Colors; send: (nota: string) => Prom
   );
 }
 
-/** Markdown del comentario: ## títulos, **negritas**, *cursivas* y referencias ⟦jhn.3.16⟧ que se pueden tocar. */
-export function Rich({ text, books, colors, onRef }: { text: string; books: Book[]; colors: Colors; onRef: (ref: string) => void }) {
+/** Markdown del comentario: ## títulos, **negritas**, *cursivas* y referencias ⟦jhn.3.16⟧ que se pueden tocar.
+ * ⟦d:<id>|texto⟧ enlaza otro artículo del diccionario bíblico (onDic); sin onDic queda el texto. */
+export function Rich({
+  text,
+  books,
+  colors,
+  onRef,
+  onDic,
+}: {
+  text: string;
+  books: Book[];
+  colors: Colors;
+  onRef: (ref: string) => void;
+  onDic?: (id: string) => void;
+}) {
   return (
     <View>
       {text
@@ -295,11 +318,11 @@ export function Rich({ text, books, colors, onRef }: { text: string; books: Book
         .map((block, i) =>
           /^#{1,3} /.test(block) ? (
             <Text key={i} style={[styles.h, { color: colors.text }]}>
-              {inline(block.replace(/^#{1,3} /, ''), books, colors, onRef)}
+              {inline(block.replace(/^#{1,3} /, ''), books, colors, onRef, onDic)}
             </Text>
           ) : (
             <Text key={i} style={[styles.p, { color: colors.text }]}>
-              {inline(block, books, colors, onRef)}
+              {inline(block, books, colors, onRef, onDic)}
             </Text>
           ),
         )}
@@ -307,7 +330,7 @@ export function Rich({ text, books, colors, onRef }: { text: string; books: Book
   );
 }
 
-function inline(text: string, books: Book[], colors: Colors, onRef: (ref: string) => void): ReactNode[] {
+function inline(text: string, books: Book[], colors: Colors, onRef: (ref: string) => void, onDic?: (id: string) => void): ReactNode[] {
   return text.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*|⟦[^⟧]+⟧)/).map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
       return (
@@ -321,6 +344,16 @@ function inline(text: string, books: Book[], colors: Colors, onRef: (ref: string
         <Text key={i} style={{ fontStyle: 'italic' }}>
           {part.slice(1, -1)}
         </Text>
+      );
+    }
+    const dic = part.match(/^⟦d:(\d+)\|([^⟧]*)⟧$/);
+    if (dic) {
+      return onDic ? (
+        <Text key={i} style={{ color: colors.accent, fontWeight: '600' }} onPress={() => onDic(dic[1])} accessibilityRole="link">
+          {dic[2]}
+        </Text>
+      ) : (
+        dic[2]
       );
     }
     const ref = part.match(/^⟦([^⟧]+)⟧$/);

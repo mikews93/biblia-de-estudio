@@ -10,6 +10,7 @@ import Appear from '@/components/Appear';
 import Welcome from '@/components/comunidad/Welcome';
 import { ChevronRightIcon, ClockIcon, CloseIcon, MicIcon, SearchIcon, SparkIcon, type IconProps } from '@/components/icons';
 import DiccionarioCard from '@/components/DiccionarioCard';
+import { DiccionarioBusqueda } from '@/components/DiccionarioVersiculo';
 import { PreguntaCard, Preparadas } from '@/components/Preguntar';
 import { NeedsConnection } from '@/components/SinConexion';
 import {
@@ -476,6 +477,10 @@ export default function Search() {
       {!listening && pregunta && <PreguntaCard key={asked} texto={asked} colors={colors} />}
 
       {!listening && palabra && <DiccionarioCard palabra={palabra} books={books} colors={colors} preguntar={!pregunta} />}
+
+      {!listening && !cita && !pregunta && settled.trim() && settled.trim().split(/\s+/).length <= 4 && (
+        <DiccionarioBusqueda q={settled.trim()} colors={colors} />
+      )}
 
       {idle && (
         <>

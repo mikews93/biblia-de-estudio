@@ -20,9 +20,9 @@ export function limpiarRuta(path: string): string | null {
 /** Pantallas del primer nivel de src/app a las que tiene sentido llevar (src/lib/noEncontrada.test.ts lo comprueba). */
 export const PANTALLAS = [
   'acerca', 'buscar', 'circulo', 'comunidades', 'concordancia', 'conexiones', 'cuenta', 'descargas', 'despertador',
-  'diario', 'entrar', 'eventos', 'exportar', 'genealogia', 'gracias', 'grupos', 'herejias', 'historia', 'hombres', 'iglesia',
+  'diario', 'diccionario', 'entrar', 'eventos', 'exportar', 'fuentes', 'genealogia', 'gracias', 'grupos', 'herejias', 'historia', 'hombres', 'iglesia',
   'instalar', 'invitar', 'jovenes', 'libros', 'mi-ano', 'mis-temas', 'modo', 'ninos', 'notas', 'notificaciones',
-  'ocasiones', 'palabras', 'pareja', 'planes', 'preguntar', 'privacidad', 'promesas', 'recibidos', 'recorridos',
+  'objeto', 'ocasiones', 'palabras', 'pareja', 'planes', 'preguntar', 'privacidad', 'promesas', 'recibidos', 'recorridos',
   'registro', 'recuperar', 'repaso', 'sellos', 'semana', 'sostener', 'taller', 'terminos', 'todo', 'vivo', 'vuelta',
 ] as const;
 
