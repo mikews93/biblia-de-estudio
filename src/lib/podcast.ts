@@ -44,7 +44,10 @@ let voicesPromise: Promise<Voices> | null = null;
  * y una de hombre para Tomás, salvo que la persona haya elegido otras. Si el sistema tiene una sola, cambia el tono.
  */
 export async function pickVoices(): Promise<Voices> {
-  const [auto, ana, tomas] = await Promise.all([pickAutoVoices(), vozElegida('ana'), vozElegida('tomas')]);
+  const [auto, elegidaAna, elegidaTomas] = await Promise.all([pickAutoVoices(), vozElegida('ana'), vozElegida('tomas')]);
+  // Una voz de hombre elegida antes para Ana (o de mujer para Tomás) ya no vale: Ana es mujer y Tomás, hombre
+  const ana = elegidaAna?.genero === 'hombre' ? undefined : elegidaAna;
+  const tomas = elegidaTomas?.genero === 'mujer' ? undefined : elegidaTomas;
   if (!ana && !tomas) return auto;
   const es = await vocesEspanol();
   const a = ana?.id ?? (auto.ana.voice !== tomas?.id ? auto.ana.voice : es.find((v) => v.id !== tomas?.id)?.id);

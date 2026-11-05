@@ -209,6 +209,24 @@ export function ordenar(todas: Bruta[]): Voz[] {
     }));
 }
 
+/**
+ * Las voces que se ofrecen para Ana (solo de mujer) o para Tomás (solo de hombre), una por voz: Android trae la misma
+ * en dos copias (con y sin internet) y se queda la que suena mejor. Las que no se sabe cómo suenan solo salen si el
+ * dispositivo no tiene ninguna de ese género; las del otro género, nunca.
+ */
+export function vocesParaPapel(voces: Voz[], papel: 'ana' | 'tomas'): Voz[] {
+  const busca: Genero = papel === 'ana' ? 'mujer' : 'hombre';
+  const vistos = new Set<string>();
+  const unicas = voces.filter((v) => {
+    const codigo = codigoVoz(v.id);
+    if (vistos.has(codigo)) return false;
+    vistos.add(codigo);
+    return true;
+  });
+  const delGenero = unicas.filter((v) => v.genero === busca);
+  return delGenero.length ? delGenero : unicas.filter((v) => !v.genero);
+}
+
 let lista: Promise<Voz[]> | null = null;
 
 /** Las voces en español del dispositivo, la más natural primero. */
