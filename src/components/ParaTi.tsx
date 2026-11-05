@@ -44,8 +44,9 @@ export default function ParaTiHoy({ books, comun, colors }: { books: Book[]; com
   const cambiar = (patch: Partial<typeof ajustes>) => update({ paraTi: { ...ajustes, ...patch } });
   const hayAlgo = r.versiculo || r.planes.length > 0;
 
+  // Fragmento y no una vista: cada pieza ocupa su lugar en Hoy y, si hoy no hay nada, no queda un hueco.
   return (
-    <View style={{ gap: 16 }}>
+    <>
       {r.riesgo && !vistaAyuda && <NoEstasSolo colors={colors} onListo={() => cambiar({ ayudaVista: todayKey() })} />}
       {ajustes.activo && ajustes.acompanar !== false && <ComoSigues oraciones={oraciones} ocultos={ajustes.ocultos} colors={colors} />}
       {hayAlgo && (
@@ -99,7 +100,7 @@ export default function ParaTiHoy({ books, comun, colors }: { books: Book[]; com
           onClose={() => setPorque(false)}
         />
       )}
-    </View>
+    </>
   );
 }
 
