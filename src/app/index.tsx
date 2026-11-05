@@ -99,6 +99,7 @@ function Today() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [sharing, setSharing] = useState(false);
   const [devotional, setDevotional] = useState(false);
+  const [estudio, setEstudio] = useState(false);
   const daily = verseOfTheDay();
   const avisos = useAvisos();
   const [canNotify, setCanNotify] = useState(false);
@@ -433,7 +434,8 @@ function Today() {
         <Accesos
           colors={colors}
           funciones={accesos}
-          abrir={(f) => navigate(() => router.push(f.href as never), 'forward')}
+          // «Estudiar con IA» abre el estudio del capítulo que se está leyendo, no solo la lectura.
+          abrir={(f) => (f.id === 'estudiar' ? setEstudio(true) : navigate(() => router.push(f.href as never), 'forward'))}
           todo={() => navigate(() => router.push('/todo' as never), 'forward')}
         />
       </Appear>
@@ -467,6 +469,9 @@ function Today() {
           enfoque="devocional"
           onClose={() => setDevotional(false)}
         />
+      )}
+      {estudio && libroActual && (
+        <StudyPanel book={libroActual} chapter={continueTo.chapter} enfoque="profundo" onClose={() => setEstudio(false)} />
       )}
       {sharing && verseText && (
         <VerseImage
