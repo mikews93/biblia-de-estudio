@@ -39,6 +39,7 @@ import { Enfoque, Source, askStudy } from '@/lib/estudio';
 import { conversationKey, forgetConversation, saveConversation, savedConversation } from '@/lib/misPreguntas';
 import { forgetKept, studyKeep } from '@/lib/recordado';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
+import { usar } from '@/lib/usoFunciones';
 import { BOOK_SLUGS, chapterHref, verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
 import StudyBackground from '@/components/StudyBackground';
@@ -81,6 +82,10 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
   const mode: Enfoque = word ? 'profundo' : chosen;
   // Al seguir un enlace o ir a /entrar, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
   const focused = useIsFocused();
+  // Para los accesos de Hoy: abrir el estudio (no el devocional de Hoy) cuenta como usar «Estudiar con IA».
+  useEffect(() => {
+    if (initial !== 'devocional') usar('estudiar').catch(() => {});
+  }, [initial]);
   // La música de ambiente sigue al seguir un enlace (el panel no se desmonta) y se apaga al cerrar el estudio.
   useAmbienteEnPantalla();
   const [question, setQuestion] = useState('');
