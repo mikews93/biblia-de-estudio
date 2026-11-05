@@ -60,7 +60,7 @@ export default function PodcastAjustes({ colors, dispositivo, extras }: Props) {
           on={grabando}
           icon={grabando ? <ActivityIndicator color={colors.warm} size="small" /> : <SparkIcon color={colors.text} size={18} />}
           label={grabando ? 'Grabando…' : grabado?.estado === 'error' ? 'Reintentar' : 'Grabar'}
-          detail="Voces naturales"
+          detail="Voz natural"
           a11y={grabando ? 'Grabando con voces naturales' : 'Grabar este pódcast con voces naturales'}
           onPress={() => setHoja('grabar')}
         />
