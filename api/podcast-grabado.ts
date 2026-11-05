@@ -70,7 +70,7 @@ const COLA_MUDA_S = 2;
 /** Modelo de la voz sola para regrabar lo que falta. */
 const MODELO_SOLA = process.env.PODCAST_MODELO_SOLA ?? 'eleven_multilingual_v2';
 /** Sube cuando cambia cómo se buscan las intervenciones mudas: las grabaciones con una revisión menor se revisan otra vez. */
-const REVISION = 3;
+const REVISION = 4;
 // Para las pruebas: guarda los MP3 en una carpeta en vez de Vercel Blob.
 const STORE_DIR = process.env.PODCAST_STORE_DIR;
 // Vercel nombra el token del almacén Blob según el prefijo que se elija al conectarlo: se acepta cualquiera.
@@ -84,6 +84,8 @@ type Row = {
   duracion: number | null;
   credito: string | null;
   tiempos: number[] | null;
+  /** Qué pasó al grabar la intervención final (ver vozFinal). */
+  diagnostico?: string[] | null;
 };
 type Line = { voice: string; text: string };
 
@@ -117,6 +119,8 @@ async function db() {
       add column if not exists revisando timestamptz`)
     // «revisado» pasó a ser un número: con qué forma de buscarlas se revisó (REVISION).
     .then(() => sql!`alter table podcast_grabado add column if not exists revision int not null default 0`)
+    // Qué pasó al grabar la intervención final (y qué falló), para saber por qué faltaría sin leer los registros.
+    .then(() => sql!`alter table podcast_grabado add column if not exists diagnostico jsonb`)
     .catch((err) => {
     ready = null;
     throw err;
@@ -150,7 +154,14 @@ function place(book: unknown, chapter: unknown, palabra?: unknown, pedida?: unkn
 
 function answer(row: Row | undefined) {
   if (row?.estado === 'listo') {
-    return { estado: 'listo', url: row.url, duracion: row.duracion, credito: row.credito, ...(row.tiempos ? { tiempos: row.tiempos } : {}) };
+    return {
+      estado: 'listo',
+      url: row.url,
+      duracion: row.duracion,
+      credito: row.credito,
+      ...(row.tiempos ? { tiempos: row.tiempos } : {}),
+      ...(row.diagnostico?.length ? { diagnostico: row.diagnostico } : {}),
+    };
   }
   if (row?.estado === 'grabando') return { estado: 'grabando' };
   return { estado: 'ninguno' };
@@ -163,7 +174,7 @@ export async function GET(request: Request) {
   const s = await db().catch(() => null);
   if (!s) return json({ estado: 'ninguno' });
   const [row] = await s<(Row & { nivelado: boolean; revision: number; vieja: boolean })[]>`select g.estado, g.url, g.duracion,
-      g.credito, g.tiempos, g.nivelado, g.revision, (h.texto is not null and g.guion is not null and g.guion <> h.texto) as vieja
+      g.credito, g.tiempos, g.nivelado, g.revision, g.diagnostico, (h.texto is not null and g.guion is not null and g.guion <> h.texto) as vieja
     from podcast_grabado g
     left join herramientas_ia h on h.herramienta = ${where.guion.herramienta} and h.libro = ${where.guion.libro}
       and h.capitulo = ${where.guion.capitulo}
@@ -234,7 +245,9 @@ export async function revisar(s: NonNullable<typeof sql>, where: Target, url: st
       dialogue_input_index: k,
     }));
     // Los tiempos de antes pueden ser estimados: la duración solo se mira en la última, la que se perdía.
-    const reparado = await repararMudas({ muestras, segmentos }, lines, rate, true);
+    const diagnostico: string[] = [];
+    const reparado = await repararMudas({ muestras, segmentos }, lines, rate, true, diagnostico);
+    if (diagnostico.length) await s`update podcast_grabado set diagnostico = ${s.json(diagnostico)} where libro = ${where.book} and capitulo = ${where.chapter}`;
     if (!reparado) return void (await marcar(null));
     const tramos = reparado.segmentos.map((sg) => ({ desde: Math.round(sg.start_time_seconds * rate), hasta: Math.round(sg.end_time_seconds * rate) }));
     const audio = await codificarMp3(muestrasA16(nivelar(reparado.muestras, rate, tramos)), rate, KBPS);
@@ -374,7 +387,7 @@ async function sola(line: Line): Promise<Float32Array> {
  * Graba otra vez, sola, cada intervención de un tramo que falta (ver mudas y ultimaPerdida) y la pone en su lugar.
  * `null` si no faltaba ninguna. Con `soloUltima`, la duración solo se mira en la última.
  */
-async function repararMudas(parte: Parte, lines: Line[], rate = PCM_HZ, soloUltima = false): Promise<Parte | null> {
+async function repararMudas(parte: Parte, lines: Line[], rate = PCM_HZ, soloUltima = false, diagnostico?: string[]): Promise<Parte | null> {
   let base = parte;
   let faltan: number[];
   if (parte.segmentos.length) faltan = mudas(parte, lines.length, rate, lines.map((l) => l.text), soloUltima);
@@ -387,6 +400,16 @@ async function repararMudas(parte: Parte, lines: Line[], rate = PCM_HZ, soloUlti
   if (!faltan.length) return null;
   let out = base;
   for (const k of faltan) {
+    // En una grabación ya hecha (soloUltima), la que falta es la final: va por todos los caminos de vozFinal.
+    if (soloUltima && k === lines.length - 1 && lines.length > 1) {
+      const voz = await vozFinal(lines[k], lines[k - 1], diagnostico ?? []);
+      if (!voz) continue;
+      const nueva = rate === PCM_HZ ? voz : remuestrear(voz, PCM_HZ, rate);
+      const conPausa = new Float32Array(nueva.length + Math.round(0.35 * rate));
+      conPausa.set(nueva);
+      out = reemplazar(out, k, conPausa, rate);
+      continue;
+    }
     for (let intento = 0; intento < REINTENTOS; intento++) {
       const voz = await sola(lines[k]);
       if (segundosConVoz(voz, PCM_HZ, 0, voz.length) < minimo(lines[k].text)) continue;
@@ -438,9 +461,13 @@ async function dialogue(lines: Line[]): Promise<Parte> {
  * lleva cada una al mismo volumen y la app sigue el texto. Si no lo dijera, se reparte por la longitud del texto y
  * se nivela por silencios.
  */
-async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: number[]; duracion: number }> {
+async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: number[]; duracion: number; diagnostico: string[] }> {
+  const diagnostico: string[] = [];
+  // La intervención final (la pregunta a quien escucha) es la que ElevenLabs entrega muda una y otra vez como última
+  // del diálogo (Juan 1, Romanos 11, 1 Reyes 21): se graba aparte, con la voz sola, y se pone al final.
+  const cuerpo = lines.length > 1 ? lines.slice(0, -1) : lines;
   const groups: Line[][] = [];
-  for (let i = 0; i < lines.length; i += TURNS_PER_CHUNK) groups.push(lines.slice(i, i + TURNS_PER_CHUNK));
+  for (let i = 0; i < cuerpo.length; i += TURNS_PER_CHUNK) groups.push(cuerpo.slice(i, i + TURNS_PER_CHUNK));
   const parts: Parte[] = new Array(groups.length);
   let next = 0;
   const worker = async () => {
@@ -450,11 +477,17 @@ async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: numb
       // Si regrabar falla, se queda el tramo como vino: mejor una intervención muda que perder toda la grabación.
       parts[i] = (await repararMudas(parte, groups[i]).catch((err) => {
         console.error('podcast-grabado: regrabar', err);
+        diagnostico.push(`tramo ${i + 1}: ${String(err).slice(0, 200)}`);
         return null;
       })) ?? parte;
     }
   };
+  const final = lines.length > 1 ? grabarFinal(lines.at(-1)!, lines.at(-2)!, diagnostico) : null;
   await Promise.all(Array.from({ length: Math.min(PARALLEL, groups.length) }, worker));
+  if (final) {
+    groups.push([lines.at(-1)!]);
+    parts.push(await final);
+  }
   const todo = new Float32Array(parts.reduce((n, p) => n + p.muestras.length, 0));
   const tiempos: number[] = [];
   const tramos: Tramo[] = [];
@@ -475,7 +508,58 @@ async function record(lines: Line[]): Promise<{ audio: Uint8Array; tiempos: numb
     at += muestras.length;
   });
   const audio = await codificarMp3(muestrasA16(nivelar(todo, PCM_HZ, tramos)), PCM_HZ, KBPS);
-  return { audio, tiempos, duracion: todo.length / PCM_HZ };
+  return { audio, tiempos, duracion: todo.length / PCM_HZ, diagnostico };
+}
+
+/** La voz de un audio sin los silencios de los bordes, o null si casi no suena para lo largo que es su texto. */
+function conVoz(m: Float32Array, texto: string): Float32Array | null {
+  const tramos = tramosPorSilencio(m, PCM_HZ);
+  if (!tramos.length) return null;
+  const voz = m.subarray(tramos[0].desde, tramos.at(-1)!.hasta);
+  return segundosConVoz(voz, PCM_HZ, 0, voz.length) < minimo(texto) ? null : voz;
+}
+
+/**
+ * La intervención final, sola: primero con la voz sola (text-to-speech); si falla o llega muda, como diálogo de una
+ * intervención; y si tampoco, como diálogo con la anterior, quedándose con la segunda. Lo que pasa queda en `diagnostico`.
+ */
+async function vozFinal(line: Line, anterior: Line, diagnostico: string[]): Promise<Float32Array | null> {
+  const intentos: [string, () => Promise<Float32Array | null>][] = [
+    ['voz sola', async () => conVoz(await sola(line), line.text)],
+    ['voz sola', async () => conVoz(await sola(line), line.text)],
+    ['diálogo solo', async () => conVoz((await dialogue([line])).muestras, line.text)],
+    [
+      'diálogo con la anterior',
+      async () => {
+        const parte = await dialogue([anterior, line]);
+        const sg = parte.segmentos.find((x) => x.dialogue_input_index === 1);
+        if (!sg) return null;
+        return conVoz(parte.muestras.subarray(Math.round(sg.start_time_seconds * PCM_HZ), Math.round(sg.end_time_seconds * PCM_HZ)), line.text);
+      },
+    ],
+  ];
+  let voz: Float32Array | null = null;
+  for (const [nombre, intento] of intentos) {
+    try {
+      voz = await intento();
+      diagnostico.push(`final, ${nombre}: ${voz ? `bien (${(voz.length / PCM_HZ).toFixed(1)} s)` : 'muda'}`);
+    } catch (err) {
+      console.error('podcast-grabado: final', nombre, err);
+      diagnostico.push(`final, ${nombre}: ${String(err).slice(0, 200)}`);
+    }
+    if (voz) break;
+  }
+  return voz;
+}
+
+async function grabarFinal(line: Line, anterior: Line, diagnostico: string[]): Promise<Parte> {
+  const voz = await vozFinal(line, anterior, diagnostico);
+  // Si nada sonó, queda su lugar en silencio (como antes), pero la grabación no se pierde.
+  const cuerpo = voz ?? new Float32Array(Math.round(1 * PCM_HZ));
+  const antes = Math.round(0.25 * PCM_HZ);
+  const muestras = new Float32Array(antes + cuerpo.length + Math.round(0.6 * PCM_HZ));
+  muestras.set(cuerpo, antes);
+  return { muestras, segmentos: [{ start_time_seconds: antes / PCM_HZ, end_time_seconds: (antes + cuerpo.length) / PCM_HZ, dialogue_input_index: 0 }] };
 }
 
 async function store(name: string, audio: Uint8Array): Promise<string> {
@@ -519,7 +603,7 @@ export async function POST(request: Request) {
     () => [],
   );
   const [current] = await s<(Row & { viejo: boolean; guion: string | null })[]>`select estado, url, duracion, credito, tiempos,
-      guion, actualizado < now() - make_interval(mins => ${STALE_MINUTES}) as viejo
+      diagnostico, guion, actualizado < now() - make_interval(mins => ${STALE_MINUTES}) as viejo
     from podcast_grabado where libro = ${book} and capitulo = ${chapter}`;
   const vieja = current?.estado === 'listo' && !!guion && current.guion !== null && current.guion !== guion.texto;
   if ((current?.estado === 'listo' && !vieja) || (current?.estado === 'grabando' && !current.viejo)) return json(answer(current));
@@ -555,13 +639,13 @@ export async function POST(request: Request) {
   if (!mine) return json({ estado: 'grabando' });
 
   try {
-    const { audio, tiempos, duracion: largo } = await record(lines);
+    const { audio, tiempos, duracion: largo, diagnostico } = await record(lines);
     const tag = createHash('sha256').update(guion.texto).digest('hex').slice(0, 10);
     const url = await store(`${(chapter ? `${book}-${chapter}` : book).replaceAll(':', '-')}-${tag}.mp3`, audio);
     const duracion = Math.round(largo);
     await s`update podcast_grabado set estado = 'listo', url = ${url}, duracion = ${duracion}, credito = ${CREDIT},
-      tiempos = ${s.json(tiempos)}, nivelado = true, nivelando = null, revisado = true, revision = ${REVISION}, revisando = null, actualizado = now() where libro = ${book} and capitulo = ${chapter}`;
-    return json({ estado: 'listo', url, duracion, credito: CREDIT, tiempos });
+      tiempos = ${s.json(tiempos)}, diagnostico = ${s.json(diagnostico)}, nivelado = true, nivelando = null, revisado = true, revision = ${REVISION}, revisando = null, actualizado = now() where libro = ${book} and capitulo = ${chapter}`;
+    return json({ estado: 'listo', url, duracion, credito: CREDIT, tiempos, ...(diagnostico.length ? { diagnostico } : {}) });
   } catch (err) {
     console.error('podcast-grabado: grabar', err);
     await s`update podcast_grabado set estado = 'error', actualizado = now()

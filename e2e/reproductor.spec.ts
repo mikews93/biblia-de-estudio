@@ -88,22 +88,21 @@ test.describe('Reproductor único', () => {
 
     await page.goto(`/podcast/juan/${cap}`);
     await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
-    await v(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' })).click();
-    await expect(v(page.getByText('Grabando con voces naturales…'))).toBeVisible();
-
-    // Ya grabado, el reproductor de la pantalla suena con esas voces: no queda la voz del dispositivo.
-    await expect(v(page.getByText(/^1 de \d+ · voces naturales$/))).toBeVisible();
-    await expect(page.getByText(/voz del dispositivo/)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' })).toHaveCount(0);
+    // Empieza con la voz del teléfono; desde el reproductor se pide grabarlo con voces naturales
     await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
+    await v(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' })).click();
+    await v(page.getByRole('button', { name: 'Grabar con voces naturales' })).click();
+    await expect(v(page.getByRole('button', { name: 'Grabando con voces naturales' }))).toBeVisible();
 
-    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+    // Ya grabado, sigue sonando con esas voces: se van la voz del teléfono y el botón de grabar
     await expect(v(page.getByText('Voces de prueba'))).toBeVisible();
+    await expect(page.getByRole('button', { name: /voces naturales/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Cambiar las voces de Ana y Tomás' })).toHaveCount(0);
     await expect(v(page.getByRole('button', { name: 'Pausa', exact: true }))).toBeVisible();
     // La transcripción sigue a la grabación
-    await expect(v(page.getByText(/^2 de \d+ · voces naturales$/))).toBeVisible({ timeout: 15_000 });
+    await expect(v(page.getByText('Pódcast · habla Tomás'))).toBeVisible({ timeout: 15_000 });
     // Tocar una intervención salta a ella
     await v(page.getByText('Este capítulo empieza con una sorpresa.')).click();
-    await expect(v(page.getByText(/^1 de \d+ · voces naturales$/))).toBeVisible();
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
   });
 });
