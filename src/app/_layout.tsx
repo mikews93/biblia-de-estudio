@@ -19,6 +19,7 @@ import TabBar from '@/components/TabBar';
 import { init as initDownloads } from '@/lib/descargas';
 import { instalarAvisosDeErrores, seguirRuta } from '@/lib/errores';
 import { fixedInTransition } from '@/lib/transition';
+import { usarRuta } from '@/lib/usoFunciones';
 import { ESPACIO_NINOS, SettingsProvider, isDark, useColors, useSettings } from '@/lib/theme';
 
 // La cabecera queda quieta en las transiciones (src/lib/transition.ts). headerStyle descarta los estilos
@@ -44,6 +45,13 @@ export const ErrorBoundary = PantallaRota;
 function RutaDeErrores() {
   const path = usePathname();
   useEffect(() => seguirRuta(path), [path]);
+  return null;
+}
+
+/** Cuenta, solo en el dispositivo, qué funciones se abren: así los accesos de Hoy salen en el orden de cada uno. */
+function UsoDeFunciones() {
+  const path = usePathname();
+  useEffect(() => usarRuta(path), [path]);
   return null;
 }
 
@@ -210,6 +218,7 @@ function AppStack() {
       <Confeti />
       <GuardaNinos />
       <RutaDeErrores />
+      <UsoDeFunciones />
       {Platform.OS !== 'web' && <LlamaArranque />}
       {Platform.OS === 'web' && (
         <>

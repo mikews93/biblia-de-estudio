@@ -20,7 +20,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM });
 // Miércoles 4 de noviembre de 2026, hora de Bogotá
 const HORAS = { noche: '2026-11-05T03:30:00Z', manana: '2026-11-04T12:30:00Z' };
 
-async function page({ desktop = false, oscuro, hora }) {
+async function page({ desktop = false, oscuro, hora, uso = null }) {
   const scheme = { colorScheme: oscuro ? 'dark' : 'light', locale: 'es-CO', timezoneId: 'America/Bogota' };
   const ctx = await browser.newContext(
     desktop ? { viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2, ...scheme } : { ...devices['Pixel 7'], viewport: { width: 412, height: 915 }, ...scheme },
@@ -29,24 +29,30 @@ async function page({ desktop = false, oscuro, hora }) {
   await p.clock.install({ time: new Date(HORAS[hora]) });
   await p.clock.resume();
   await p.addInitScript(
-    ({ cu }) => {
+    ({ cu, uso }) => {
       localStorage.setItem('cuenta', cu);
+      if (uso) localStorage.setItem('uso-funciones', uso);
       localStorage.setItem('ultima-lectura', JSON.stringify({ book: '1ki', chapter: 21 }));
       localStorage.setItem('progreso', JSON.stringify({ chapters: { '1ki': [18, 19, 20], jhn: [1, 2, 3] }, days: ['2026-11-02', '2026-11-04'] }));
     },
-    { cu: JSON.stringify(cuenta) },
+    { cu: JSON.stringify(cuenta), uso: uso && JSON.stringify(uso) },
   );
   return p;
 }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-for (const [pre, oscuro, hora] of [
+// Alguien que usa mucho el pódcast, comparar versiones y el despertador: los accesos se ordenan por su uso.
+const t = Date.parse(HORAS.noche);
+const USO = { podcast: { p: 6, t }, comparar: { p: 4, t }, despertador: { p: 3, t }, historia: { p: 2, t } };
+
+for (const [pre, oscuro, hora, uso] of [
+  ['o-uso', true, 'noche', USO],
   ['o', true, 'noche'],
   ['m', false, 'noche'],
   ['o-manana', true, 'manana'],
   ['m-manana', false, 'manana'],
 ]) {
-  const p = await page({ oscuro, hora });
+  const p = await page({ oscuro, hora, uso });
   await p.goto(`${BASE}/`);
   await wait(5000);
   await p.screenshot({ path: `${OUT}/${pre}-1-arriba.png` });
@@ -56,7 +62,7 @@ for (const [pre, oscuro, hora] of [
   await wait(800);
   await p.screenshot({ path: `${OUT}/${pre}-2-abajo.png` });
   await p.getByRole('button', { name: 'Todo en Zarza' }).scrollIntoViewIfNeeded();
-  await p.evaluate(() => window.scrollBy(0, 400));
+  await p.evaluate(() => window.scrollBy(0, 200));
   await wait(800);
   await p.screenshot({ path: `${OUT}/${pre}-3-accesos.png` });
   await p.close();

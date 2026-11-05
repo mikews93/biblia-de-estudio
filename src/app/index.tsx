@@ -1,29 +1,23 @@
 import { Stack, router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import Bienvenida from '@/components/Bienvenida';
 import PlanIcon from '@/components/PlanIcon';
 import Sello from '@/components/Sello';
+import Accesos from '@/components/hoy/Accesos';
 import CieloHoy, { horaDelDia, type Hora } from '@/components/hoy/CieloHoy';
 import {
   BellIcon,
-  BooksIcon,
-  GridIcon,
   HeartIcon,
-  LecternIcon,
-  InviteIcon,
   MicIcon,
-  PencilIcon,
   OpenBookIcon,
   PersonIcon,
   SearchIcon,
   ShareIcon,
   ArrowRightIcon,
   ChevronRightIcon,
-  SunriseIcon,
-  SparkIcon,
   FlameIcon,
   type IconProps,
   PhoneDownloadIcon,
@@ -57,6 +51,8 @@ import { chapterHref, verseHref } from '@/lib/routes';
 import { dueCards, useCards } from '@/lib/tarjetas';
 import { serif, useColors, useLastRead, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { catalogo } from '@/lib/todo';
+import { ordenar, useUso } from '@/lib/usoFunciones';
 import { compilacion, etiqueta } from '@/lib/version';
 import { voiceSupported } from '@/lib/voz';
 
@@ -125,9 +121,20 @@ function Today() {
   const week = weekDays(progress.days);
   const daysThisWeek = week.filter((d) => d.read).length;
   const chaptersRead = Object.values(progress.chapters).reduce((s, c) => s + c.length, 0);
-  const continueTo = last ?? { book: 'jhn', chapter: 1 };
+  const continueTo = useMemo(() => last ?? { book: 'jhn', chapter: 1 }, [last]);
   const libroActual = books.find((b) => b.id === continueTo.book);
   const hora = horaDelDia();
+  const uso = useUso();
+  const accesos = useMemo(
+    () =>
+      ordenar(
+        catalogo(continueTo)
+          .flatMap((g) => g.funciones)
+          .filter((f) => !(f.soloAdultos && settings.modo === 'jovenes') && !(f.soloWeb && Platform.OS !== 'web')),
+        uso,
+      ),
+    [continueTo, uso, settings.modo],
+  );
   // Los planes que aún no empiezan (un reto de temporada) aparecen tres semanas antes
   const soon = dateKey(new Date(Date.now() + 21 * 86_400_000));
   const activePlans = plans.filter((p) => !p.finished && p.started <= soon);
@@ -421,34 +428,14 @@ function Today() {
         <PalabraSemana colors={colors} />
       </Appear>
 
-      {/* Accesos: una sola tarjeta con filas de ícono y nombre, sin recuadros. Solo lo que no está en la barra de abajo;
-          lo demás vive en «Todo en Zarza». */}
+      {/* Accesos: lo que cada persona más usa, sin repetir la barra de abajo ni lo que ya está en Hoy. */}
       <Appear delay={160}>
-        <Text style={[styles.kicker, styles.sectionTitle, { color: colors.muted }]}>Accesos</Text>
-        <View style={[styles.accesos, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          {[
-            { icon: BooksIcon, label: 'Libros', go: () => navigate(() => router.push('/libros')) },
-            { icon: PencilIcon, label: 'Mis notas', go: () => navigate(() => router.push('/notas'), 'forward') },
-            { icon: HeartIcon, label: 'Mi diario', go: () => navigate(() => router.push('/diario' as never), 'forward') },
-            { icon: SparkIcon, label: 'Estudiar con IA', go: () => navigate(() => router.push(chapterHref(continueTo.book, continueTo.chapter)), 'forward') },
-            { icon: SearchIcon, label: 'Preguntar', go: () => navigate(() => router.push('/preguntar' as never), 'forward') },
-            { icon: LecternIcon, label: 'Del sermón', go: () => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward') },
-            { icon: InviteIcon, label: 'Invitar amigos', go: () => navigate(() => router.push('/invitar' as never), 'forward') },
-            { icon: SunriseIcon, label: 'Despertador', go: () => navigate(() => router.push('/despertador' as never), 'forward') },
-          ].map((t, i) => (
-            <Tile key={t.label} icon={t.icon} label={t.label} colors={colors} onPress={t.go} arriba={i >= 2} derecha={i % 2 === 1} />
-          ))}
-          <Pressable
-            onPress={() => navigate(() => router.push('/todo' as never), 'forward')}
-            style={({ pressed }) => [styles.todo, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Todo en Zarza"
-          >
-            <GridIcon color={colors.warm} size={20} />
-            <Text style={{ flex: 1, color: colors.text, fontWeight: '700', fontSize: 15 }}>Todo en Zarza</Text>
-            <ArrowRightIcon color={colors.warm} size={18} />
-          </Pressable>
-        </View>
+        <Accesos
+          colors={colors}
+          funciones={accesos}
+          abrir={(f) => navigate(() => router.push(f.href as never), 'forward')}
+          todo={() => navigate(() => router.push('/todo' as never), 'forward')}
+        />
       </Appear>
 
       {OFRECER_APK && dispositivo() !== 'iphone' && (
@@ -611,42 +598,6 @@ function PalabraSemana({ colors }: { colors: C }) {
   );
 }
 
-function Tile({
-  icon: Icon,
-  label,
-  colors,
-  onPress,
-  arriba,
-  derecha,
-}: {
-  icon: (p: IconProps) => React.ReactNode;
-  label: string;
-  colors: C;
-  onPress: () => void;
-  arriba?: boolean;
-  derecha?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tile,
-        { borderColor: colors.border },
-        arriba && { borderTopWidth: StyleSheet.hairlineWidth },
-        derecha && { borderLeftWidth: StyleSheet.hairlineWidth },
-        pressed && { backgroundColor: colors.accentSoft },
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <Icon color={colors.text} size={22} />
-      <Text style={{ flex: 1, color: colors.text, fontWeight: '600', fontSize: 15 }} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   content: { padding: 20, paddingTop: 44, paddingBottom: 64, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -702,10 +653,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     marginTop: 22,
   },
-  accesos: { flexDirection: 'row', flexWrap: 'wrap', borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  todo: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth },
   devotionalLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tile: { width: '50%', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 17 },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
   instalar: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'center', marginTop: 16, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth },
   version: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', marginTop: 8, paddingVertical: 6, paddingHorizontal: 12 },

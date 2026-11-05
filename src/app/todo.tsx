@@ -1,104 +1,21 @@
 import { Stack, router } from 'expo-router';
-import { ReactNode, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import {
-  ArcsIcon,
-  BellIcon,
-  BooksIcon,
-  CandleIcon,
-  CardsIcon,
   ChevronRightIcon,
-  ChurchIcon,
-  ClockIcon,
   CloseIcon,
-  CompareIcon,
-  DictionaryIcon,
-  DocumentIcon,
-  DownloadIcon,
-  FlagIcon,
-  FlameIcon,
-  HammerIcon,
-  HeartIcon,
-  type IconProps,
-  InviteIcon,
-  LampIcon,
-  LecternIcon,
-  ListenIcon,
-  LiveIcon,
-  MindMapIcon,
-  PeopleIcon,
-  PencilIcon,
-  PersonIcon,
-  PhoneDownloadIcon,
-  PinIcon,
-  PlansIcon,
-  PromiseIcon,
-  RepeatIcon,
-  RingsIcon,
-  RouteIcon,
-  ScrollIcon,
   SearchIcon,
-  ShareIcon,
-  ShieldIcon,
-  SparkIcon,
-  StarIcon,
-  SunIcon,
-  SunriseIcon,
-  TopicIcon,
-  TreeIcon,
-  WordJourneyIcon,
 } from '@/components/icons';
-import { type Icono, catalogo, filtrar, type Funcion } from '@/lib/todo';
+import { ICONOS } from '@/components/iconosFuncion';
+import { catalogo, filtrar, type Funcion } from '@/lib/todo';
 import { isDark, serif, useColors, useLastRead, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 
-const ICONOS: Record<Icono, (p: IconProps) => ReactNode> = {
-  books: BooksIcon,
-  plans: PlansIcon,
-  compare: CompareIcon,
-  listen: ListenIcon,
-  download: DownloadIcon,
-  sun: SunIcon,
-  spark: SparkIcon,
-  search: SearchIcon,
-  word: WordJourneyIcon,
-  arcs: ArcsIcon,
-  promise: PromiseIcon,
-  clock: ClockIcon,
-  tree: TreeIcon,
-  route: RouteIcon,
-  pin: PinIcon,
-  mindmap: MindMapIcon,
-  cards: CardsIcon,
-  heart: HeartIcon,
-  pencil: PencilIcon,
-  document: DocumentIcon,
-  flag: FlagIcon,
-  star: (p) => <StarIcon {...p} />,
-  sunrise: SunriseIcon,
-  topic: TopicIcon,
-  lectern: LecternIcon,
-  scroll: ScrollIcon,
-  calendar: RepeatIcon,
-  live: LiveIcon,
-  people: PeopleIcon,
-  invite: InviteIcon,
-  share: ShareIcon,
-  gift: HeartIcon,
-  rings: RingsIcon,
-  candle: CandleIcon,
-  hammer: HammerIcon,
-  church: ChurchIcon,
-  bell: BellIcon,
-  person: PersonIcon,
-  lamp: LampIcon,
-  flame: FlameIcon,
-  shield: ShieldIcon,
-  dictionary: DictionaryIcon,
-  phone: PhoneDownloadIcon,
-};
+
+/** Lo que tiene su propio botón fuera de «Todo en Zarza» (la barra de abajo y el buscador de Hoy). */
+const EN_SU_BOTON = new Set(['planes', 'taller', 'comunidad', 'preguntar']);
 
 /** «Todo en Zarza»: cada función en un solo lugar, por grupos, con un buscador (src/lib/todo.ts). */
 export default function Todo() {
@@ -114,6 +31,9 @@ export default function Todo() {
       ...g,
       funciones: g.funciones.filter((f) => !(f.soloAdultos && settings.modo === 'jovenes') && !(f.soloWeb && Platform.OS !== 'web')),
     }));
+    // Sin buscar, no se repite lo que ya tiene su botón propio: las pestañas de abajo y el buscador de Hoy (que
+    // también responde preguntas). Al buscar sí aparecen, para que nadie se pierda.
+    if (!q.trim()) return todos.map((g) => ({ ...g, funciones: g.funciones.filter((f) => !EN_SU_BOTON.has(f.id)) })).filter((g) => g.funciones.length);
     return filtrar(todos, q);
   }, [last, q, settings.modo]);
 
@@ -194,6 +114,11 @@ export default function Todo() {
           </Appear>
         ))}
       </View>
+      {!q.trim() && (
+        <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: 'center', marginTop: 4 }}>
+          Planes, Taller y Comunidad están en la barra de abajo; las preguntas, en el buscador de Hoy.
+        </Text>
+      )}
     </ScrollView>
   );
 }
