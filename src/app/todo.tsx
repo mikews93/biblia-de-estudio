@@ -1,5 +1,5 @@
 import { Stack, router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import Appear from '@/components/Appear';
@@ -9,6 +9,8 @@ import {
   SearchIcon,
 } from '@/components/icons';
 import { ICONOS } from '@/components/iconosFuncion';
+import StudyPanel from '@/components/StudyPanel';
+import { type Book, getBooks } from '@/lib/data';
 import { catalogo, filtrar, type Funcion } from '@/lib/todo';
 import { isDark, serif, useColors, useLastRead, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -37,7 +39,15 @@ export default function Todo() {
     return filtrar(todos, q);
   }, [last, q, settings.modo]);
 
-  const abrir = (f: Funcion) => navigate(() => router.push(f.href as never), 'forward');
+  const [books, setBooks] = useState<Book[]>([]);
+  const [estudio, setEstudio] = useState(false);
+  useEffect(() => {
+    getBooks().then(setBooks).catch(() => {});
+  }, []);
+  const ultimo = last ?? { book: 'jhn', chapter: 1 };
+  const libro = books.find((b) => b.id === ultimo.book);
+  // «Estudiar con IA» abre el estudio del capítulo que se está leyendo, no solo la lectura.
+  const abrir = (f: Funcion) => (f.id === 'estudiar' && libro ? setEstudio(true) : navigate(() => router.push(f.href as never), 'forward'));
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={[styles.page, dosColumnas && { maxWidth: 980 }]} keyboardShouldPersistTaps="handled">
@@ -119,6 +129,7 @@ export default function Todo() {
           Planes, Taller y Comunidad están en la barra de abajo; las preguntas, en el buscador de Hoy.
         </Text>
       )}
+      {estudio && libro && <StudyPanel book={libro} chapter={ultimo.chapter} enfoque="profundo" onClose={() => setEstudio(false)} />}
     </ScrollView>
   );
 }
