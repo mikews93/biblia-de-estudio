@@ -39,6 +39,21 @@ test.describe('Herramientas del capítulo con IA', () => {
     await expect.poll(async () => (await peticionesIA(request, marca)).length).toBe(antes + 1);
   });
 
+  test('resumen en audio: se pasa al capítulo de al lado, se prepara y empieza a sonar solo', async ({ page, request }, info) => {
+    const cap = capitulo(info, 18);
+    await conSesion(page, await cuentaNueva(request, 'Oyente'));
+    await page.goto(`/podcast/juan/${cap}`);
+    await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
+    await expect(v(page.getByRole('button', { name: `Pódcast del capítulo anterior: Juan ${cap - 1}` }))).toBeVisible();
+    await v(page.getByRole('button', { name: `Pódcast del capítulo siguiente: Juan ${cap + 1}` })).click();
+    await expect(page).toHaveURL(new RegExp(`/podcast/juan/${cap + 1}\\?seguir=1$`));
+    await expect(v(page.getByText(`Juan ${cap + 1}`, { exact: true })).first()).toBeVisible();
+    await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
+    // Sin tocar nada, suena desde la primera intervención
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+    await page.screenshot({ path: info.outputPath(`podcast-vecinos-${info.project.name}.png`) });
+  });
+
   test('resumen en audio: conversación de Ana y Tomás que se guarda y no se vuelve a pedir', async ({ page, request, browser }, info) => {
     const cap = capitulo(info, 6);
     await conSesion(page, await cuentaNueva(request, 'Oyente'));

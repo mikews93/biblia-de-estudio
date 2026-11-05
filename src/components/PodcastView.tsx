@@ -7,7 +7,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { BackIcon, ForwardIcon, PauseIcon, PlayIcon } from '@/components/audioIcons';
 
-import { TalkIcon } from '@/components/icons';
+import { ChevronLeftIcon, ChevronRightIcon, TalkIcon } from '@/components/icons';
 import MusicaPodcast from '@/components/MusicaPodcast';
 import { PodcastGrabado } from '@/components/PodcastGrabado';
 import { Sources } from '@/components/StudyPanel';
@@ -52,9 +52,30 @@ type Props = {
   header?: React.ReactNode;
   /** De dónde salió el guion, debajo de las fuentes. */
   disclaimer?: string;
+  /** El capítulo anterior y el siguiente, para seguir escuchando (se prepara si todavía no está). */
+  vecinos?: { anterior?: Vecino; siguiente?: Vecino };
+  /** Se llegó desde el capítulo de al lado: empieza a sonar en cuanto está listo. */
+  seguir?: boolean;
 };
 
-export default function PodcastView({ book: bookId, chapter, title, kicker, subtitle, tool, version, recorded, palabra, waiting, header, disclaimer }: Props) {
+export type Vecino = { label: string; onPress: () => void };
+
+export default function PodcastView({
+  book: bookId,
+  chapter,
+  title,
+  kicker,
+  subtitle,
+  tool,
+  version,
+  recorded,
+  palabra,
+  waiting,
+  header,
+  disclaimer,
+  vecinos,
+  seguir,
+}: Props) {
   const colors = useColors();
   const lines = useMemo(() => parseScript(tool.text), [tool.text]);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -69,6 +90,20 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
   const player = usePodcastPlayer(bookId, chapter, title, lines, natural);
   const colorOf = (speaker: string) => (speaker === 'ana' ? colors.accent : colors.greek);
   const tint = ready ? colors.text : colors.border;
+
+  // Al pasar de capítulo, el nuevo empieza solo en cuanto su guion (y su grabación, si la hay) está listo.
+  const arranco = useRef(false);
+  useEffect(() => {
+    if (!seguir || !ready || arranco.current) return;
+    arranco.current = true;
+    player.jump(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seguir, ready]);
+
+  const pasar = (v: Vecino) => {
+    player.stop();
+    v.onPress();
+  };
 
   // Sigue la intervención que suena
   useEffect(() => {
@@ -141,6 +176,44 @@ export default function PodcastView({ book: bookId, chapter, title, kicker, subt
           </Text>
         )}
         {ready && <MusicaPodcast colors={colors} />}
+        {vecinos && (vecinos.anterior || vecinos.siguiente) && (
+          <View style={styles.vecinos}>
+            {vecinos.anterior ? (
+              <Pressable
+                onPress={() => pasar(vecinos.anterior!)}
+                accessibilityRole="button"
+                accessibilityLabel={`Pódcast del capítulo anterior: ${vecinos.anterior.label}`}
+                style={({ pressed }) => [styles.vecino, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && styles.pressed]}
+              >
+                <ChevronLeftIcon color={colors.muted} size={16} />
+                <Text style={[styles.vecinoText, { color: colors.text }]} numberOfLines={1}>
+                  {vecinos.anterior.label}
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+            {vecinos.siguiente ? (
+              <Pressable
+                onPress={() => pasar(vecinos.siguiente!)}
+                accessibilityRole="button"
+                accessibilityLabel={`Pódcast del capítulo siguiente: ${vecinos.siguiente.label}`}
+                style={({ pressed }) => [
+                  styles.vecino,
+                  { justifyContent: 'flex-end', borderColor: colors.border, backgroundColor: colors.surface },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={[styles.vecinoText, { color: colors.text }]} numberOfLines={1}>
+                  {vecinos.siguiente.label}
+                </Text>
+                <ChevronRightIcon color={colors.muted} size={16} />
+              </Pressable>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+          </View>
+        )}
         {!natural && <VocesPodcast />}
 
         <ToolState
@@ -268,6 +341,18 @@ const styles = StyleSheet.create({
   play: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
   progress: { fontSize: 12, textAlign: 'center', marginTop: 8 },
+  vecinos: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  vecino: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  vecinoText: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
   line: { flexDirection: 'row', gap: 10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginHorizontal: -10 },
   speaker: { width: 52, fontWeight: '700', fontSize: 13, marginTop: 3 },
 });
