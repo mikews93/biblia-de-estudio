@@ -5,9 +5,9 @@ import { router } from 'expo-router';
 import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BackIcon, ForwardIcon, PauseIcon, PlayIcon } from '@/components/audioIcons';
+import { BackIcon, ForwardIcon, NextChapterIcon, PauseIcon, PlayIcon, PrevChapterIcon } from '@/components/audioIcons';
 
-import { ChevronLeftIcon, ChevronRightIcon, TalkIcon } from '@/components/icons';
+import { TalkIcon } from '@/components/icons';
 import MusicaPodcast from '@/components/MusicaPodcast';
 import { PodcastGrabado } from '@/components/PodcastGrabado';
 import { Sources } from '@/components/StudyPanel';
@@ -25,11 +25,13 @@ import {
   playRecordedPodcast,
   playSpeech,
   seekChapter,
+  setRate,
   toggle,
   useAudio,
 } from '@/lib/audio';
 import { Line, SPEAKERS, minutes, parseScript } from '@/lib/podcast';
 import { usePodcastGrabado } from '@/lib/podcastGrabado';
+import { Vecino, irAlVecino, useVecinos } from '@/lib/podcastVecinos';
 import { verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -39,7 +41,7 @@ type Props = {
   book: string;
   chapter: number;
   title: string;
-  kicker: string;
+  kicker?: string;
   subtitle: string;
   tool: ReturnType<typeof useHerramienta>;
   /** En qué versión se escribió y se graba (cada versión libre tiene su guion y su grabación). */
@@ -52,13 +54,9 @@ type Props = {
   header?: React.ReactNode;
   /** De dónde salió el guion, debajo de las fuentes. */
   disclaimer?: string;
-  /** El capítulo anterior y el siguiente, para seguir escuchando (se prepara si todavía no está). */
-  vecinos?: { anterior?: Vecino; siguiente?: Vecino };
   /** Se llegó desde el capítulo de al lado: empieza a sonar en cuanto está listo. */
   seguir?: boolean;
 };
-
-export type Vecino = { label: string; onPress: () => void };
 
 export default function PodcastView({
   book: bookId,
@@ -73,7 +71,6 @@ export default function PodcastView({
   waiting,
   header,
   disclaimer,
-  vecinos,
   seguir,
 }: Props) {
   const colors = useColors();
@@ -88,6 +85,7 @@ export default function PodcastView({
   const natural = recorded ? {} : grabado.estado === 'listo' ? { remote: grabado } : null;
   const ready = tool.done && lines.length > 0 && (recorded || grabado.estado !== 'cargando');
   const player = usePodcastPlayer(bookId, chapter, title, lines, natural);
+  const audio = useAudio();
   const colorOf = (speaker: string) => (speaker === 'ana' ? colors.accent : colors.greek);
   const tint = ready ? colors.text : colors.border;
 
@@ -100,9 +98,12 @@ export default function PodcastView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seguir, ready]);
 
+  // El capítulo de al lado (no en el pódcast de una palabra): se prepara si hace falta y empieza solo.
+  const vecinos = useVecinos(bookId, chapter);
+  const hayVecinos = !!(vecinos.anterior || vecinos.siguiente);
   const pasar = (v: Vecino) => {
     player.stop();
-    v.onPress();
+    irAlVecino(v, true);
   };
 
   // Sigue la intervención que suena
@@ -121,9 +122,11 @@ export default function PodcastView({
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView ref={scroll} contentContainerStyle={styles.content}>
         {header}
-        <IconText icon={TalkIcon} color={colors.accent} size={14}>
-          <Text style={[styles.kicker, { color: colors.accent }]}>{kicker}</Text>
-        </IconText>
+        {kicker && (
+          <IconText icon={TalkIcon} color={colors.accent} size={14}>
+            <Text style={[styles.kicker, { color: colors.accent }]}>{kicker}</Text>
+          </IconText>
+        )}
         <Text style={[styles.title, { color: colors.text, fontFamily: serif }]}>{title}</Text>
         <Text style={{ color: colors.muted, marginTop: 4 }}>
           {subtitle}
@@ -131,89 +134,81 @@ export default function PodcastView({
           {ready ? ` · unos ${minutes(lines)} min` : ''}
         </Text>
 
-        {!natural && <PodcastGrabado grabado={grabado} scriptReady={ready} />}
-
         <View style={[styles.player, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Pressable
-            onPress={() => player.jump(player.index - 1)}
-            disabled={!ready}
-            accessibilityRole="button"
-            accessibilityLabel="Intervención anterior"
-            hitSlop={8}
-            style={({ pressed }) => [styles.side, pressed && styles.pressed]}
+          <View
+            style={[styles.track, { backgroundColor: colors.border }]}
+            accessibilityRole="progressbar"
+            accessibilityLabel={ready ? `Intervención ${player.index + 1} de ${lines.length}` : 'Preparando'}
           >
-            <BackIcon color={tint} size={26} />
-          </Pressable>
-          <Pressable
-            onPress={player.toggle}
-            disabled={!ready}
-            accessibilityRole="button"
-            accessibilityLabel={player.playing ? 'Pausar' : 'Escuchar'}
-            style={({ pressed }) => [styles.play, { backgroundColor: ready ? colors.accent : colors.border }, pressed && styles.pressed]}
-          >
-            {player.loading ? (
-              <ActivityIndicator color={colors.surface} />
-            ) : player.playing ? (
-              <PauseIcon color={colors.surface} size={26} />
-            ) : (
-              <PlayIcon color={colors.surface} size={30} />
-            )}
-          </Pressable>
-          <Pressable
-            onPress={() => player.jump(player.index + 1)}
-            disabled={!ready}
-            accessibilityRole="button"
-            accessibilityLabel="Intervención siguiente"
-            hitSlop={8}
-            style={({ pressed }) => [styles.side, pressed && styles.pressed]}
-          >
-            <ForwardIcon color={tint} size={26} />
-          </Pressable>
-        </View>
-        {ready && (
-          <Text style={[styles.progress, { color: colors.muted }]}>
-            {player.index + 1} de {lines.length} · {natural ? 'voces naturales' : 'voz del dispositivo'}
-          </Text>
-        )}
-        {ready && <MusicaPodcast colors={colors} />}
-        {vecinos && (vecinos.anterior || vecinos.siguiente) && (
-          <View style={styles.vecinos}>
-            {vecinos.anterior ? (
-              <Pressable
-                onPress={() => pasar(vecinos.anterior!)}
-                accessibilityRole="button"
-                accessibilityLabel={`Pódcast del capítulo anterior: ${vecinos.anterior.label}`}
-                style={({ pressed }) => [styles.vecino, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && styles.pressed]}
-              >
-                <ChevronLeftIcon color={colors.muted} size={16} />
-                <Text style={[styles.vecinoText, { color: colors.text }]} numberOfLines={1}>
-                  {vecinos.anterior.label}
-                </Text>
-              </Pressable>
-            ) : (
-              <View style={{ flex: 1 }} />
-            )}
-            {vecinos.siguiente ? (
-              <Pressable
-                onPress={() => pasar(vecinos.siguiente!)}
-                accessibilityRole="button"
-                accessibilityLabel={`Pódcast del capítulo siguiente: ${vecinos.siguiente.label}`}
-                style={({ pressed }) => [
-                  styles.vecino,
-                  { justifyContent: 'flex-end', borderColor: colors.border, backgroundColor: colors.surface },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={[styles.vecinoText, { color: colors.text }]} numberOfLines={1}>
-                  {vecinos.siguiente.label}
-                </Text>
-                <ChevronRightIcon color={colors.muted} size={16} />
-              </Pressable>
-            ) : (
-              <View style={{ flex: 1 }} />
-            )}
+            <View
+              style={[
+                styles.fill,
+                { backgroundColor: colors.accent, width: `${ready && player.started ? ((player.index + 1) / lines.length) * 100 : 0}%` },
+              ]}
+            />
           </View>
-        )}
+          <View style={styles.controls}>
+            <Salto
+              label={vecinos.anterior && `Pódcast del capítulo anterior: ${vecinos.anterior.label}`}
+              onPress={() => vecinos.anterior && pasar(vecinos.anterior)}
+              color={colors.text}
+              hidden={!hayVecinos}
+            >
+              <PrevChapterIcon color={vecinos.anterior ? colors.text : colors.border} size={22} />
+            </Salto>
+            <Salto label="Intervención anterior" onPress={() => player.jump(player.index - 1)} disabled={!ready} color={tint}>
+              <BackIcon color={tint} size={26} />
+            </Salto>
+            <Pressable
+              onPress={player.toggle}
+              disabled={!ready}
+              accessibilityRole="button"
+              accessibilityLabel={player.playing ? 'Pausar' : 'Escuchar'}
+              style={({ pressed }) => [styles.play, { backgroundColor: ready ? colors.accent : colors.border }, pressed && styles.pressed]}
+            >
+              {player.loading || (!ready && tool.busy) ? (
+                <ActivityIndicator color={colors.surface} />
+              ) : player.playing ? (
+                <PauseIcon color={colors.surface} size={26} />
+              ) : (
+                <PlayIcon color={colors.surface} size={30} />
+              )}
+            </Pressable>
+            <Salto label="Intervención siguiente" onPress={() => player.jump(player.index + 1)} disabled={!ready} color={tint}>
+              <ForwardIcon color={tint} size={26} />
+            </Salto>
+            <Salto
+              label={vecinos.siguiente && `Pódcast del capítulo siguiente: ${vecinos.siguiente.label}`}
+              onPress={() => vecinos.siguiente && pasar(vecinos.siguiente)}
+              color={colors.text}
+              hidden={!hayVecinos}
+            >
+              <NextChapterIcon color={vecinos.siguiente ? colors.text : colors.border} size={22} />
+            </Salto>
+          </View>
+          <View style={styles.meta}>
+            <Pressable
+              onPress={() => setRate(RATES[(RATES.indexOf(audio.rate) + 1) % RATES.length])}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Velocidad ${audio.rate}×. Cambiar`}
+              style={({ pressed }) => [styles.rate, { borderColor: colors.border }, pressed && styles.pressed]}
+            >
+              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 12 }}>{audio.rate}×</Text>
+            </Pressable>
+            <Text style={[styles.metaMid, { color: colors.muted }]} numberOfLines={1}>
+              {ready ? `${player.index + 1} de ${lines.length} · ${natural ? 'voces naturales' : 'voz del dispositivo'}` : 'Preparando…'}
+            </Text>
+            <View style={styles.rateSpacer} />
+          </View>
+          {!!player.credit && (
+            <Text style={[styles.credit, { color: colors.muted }]} numberOfLines={2}>
+              {player.credit}
+            </Text>
+          )}
+        </View>
+        {ready && <MusicaPodcast colors={colors} />}
+        {!natural && <PodcastGrabado grabado={grabado} scriptReady={ready} />}
         {!natural && <VocesPodcast />}
 
         <ToolState
@@ -265,6 +260,36 @@ export default function PodcastView({
   );
 }
 
+/** Botón de los lados del reproductor; oculto deja su hueco para que el de reproducir siga en el centro. */
+function Salto({
+  label,
+  onPress,
+  disabled,
+  hidden,
+  children,
+}: {
+  label?: string;
+  onPress: () => void;
+  disabled?: boolean;
+  hidden?: boolean;
+  color: string;
+  children: React.ReactNode;
+}) {
+  if (hidden) return <View style={styles.side} />;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || !label}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+      style={({ pressed }) => [styles.side, pressed && styles.pressed]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 /**
  * El pódcast suena en el reproductor único; esta pantalla solo muestra y mueve la intervención actual. Con voces
  * naturales es una grabación (la intervención sale de sus tiempos); si no, lo lee la voz del dispositivo.
@@ -281,6 +306,8 @@ function usePodcastPlayer(book: string, chapter: number, title: string, lines: L
     const jump = (i: number) => playSpeech(book, chapter, title, lines, clamp(i, lines));
     return {
       index: speech?.index ?? 0,
+      started: !!speech,
+      credit: '',
       playing: speech?.playing ?? false,
       loading: false,
       toggle: () => (speech ? toggle() : jump(0)),
@@ -296,6 +323,8 @@ function usePodcastPlayer(book: string, chapter: number, title: string, lines: L
   };
   return {
     index: recording ? at.index : 0,
+    started: !!recording,
+    credit: file?.audio?.credit ?? '',
     playing: !!recording && at.playing,
     loading: !!file?.loading,
     toggle: () => (recording ? toggle() : !file?.loading && jump(0)),
@@ -303,6 +332,9 @@ function usePodcastPlayer(book: string, chapter: number, title: string, lines: L
     stop: () => file && closeAudio(),
   };
 }
+
+/** Las mismas velocidades del reproductor de abajo. */
+const RATES = [1, 1.25, 1.5, 0.75];
 
 const clamp = (i: number, lines: Line[]) => Math.max(0, Math.min(lines.length - 1, i));
 
@@ -327,32 +359,18 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 64, maxWidth: 680, width: '100%', alignSelf: 'center' },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   title: { fontSize: 30, marginTop: 4 },
-  player: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 22,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 16,
-    marginTop: 20,
-  },
-  side: { padding: 6 },
-  play: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  player: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, marginTop: 18 },
+  track: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  fill: { height: 4, borderRadius: 2 },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
+  side: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  play: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
-  progress: { fontSize: 12, textAlign: 'center', marginTop: 8 },
-  vecinos: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  vecino: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 40,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  vecinoText: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  metaMid: { flex: 1, fontSize: 12, textAlign: 'center' },
+  rate: { minWidth: 40, borderWidth: 1, borderRadius: 10, paddingVertical: 3, alignItems: 'center' },
+  rateSpacer: { minWidth: 40 },
+  credit: { fontSize: 10, textAlign: 'center', marginTop: 6 },
   line: { flexDirection: 'row', gap: 10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginHorizontal: -10 },
   speaker: { width: 52, fontWeight: '700', fontSize: 13, marginTop: 3 },
 });

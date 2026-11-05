@@ -32,13 +32,33 @@ import { journeysFor, recorridoHref } from '@/lib/recorridos';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { fixedInTransition, navigate } from '@/lib/transition';
 import { SPEAKERS } from '@/lib/podcast';
+import { Vecino, irAlVecino, podcastHref, useVecinos } from '@/lib/podcastVecinos';
+import { palabraHref } from '@/lib/palabras';
 
-import { BackIcon, CloseIcon, DramaIcon, ForwardIcon, ListenIcon, OriginalIcon, PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon, TalkIcon } from './audioIcons';
+import {
+  BackIcon,
+  CloseIcon,
+  DramaIcon,
+  ForwardIcon,
+  ListenIcon,
+  NextChapterIcon,
+  OriginalIcon,
+  PauseIcon,
+  PlayIcon,
+  PrevChapterIcon,
+  SkipBackIcon,
+  SkipForwardIcon,
+  TalkIcon,
+} from './audioIcons';
 import { usePantallaEncendida } from '@/lib/pantalla';
 
 const RATES = [1, 1.25, 1.5, 0.75];
 // En la lengua original también se puede ir a media velocidad, para repetir palabra por palabra.
 const ORIGINAL_RATES = [1, 0.75, 0.5];
+
+/** La pantalla de un pódcast: la del capítulo o, para una palabra («palabra:jesed»), la de su historia. */
+const podcastPath = (book: string, chapter: number) =>
+  book.startsWith('palabra:') ? `${palabraHref(book.slice('palabra:'.length))}/podcast` : podcastHref(book, chapter);
 
 const KIND_ICON: Record<AudioKind, typeof ListenIcon> = { lectura: ListenIcon, dramatizado: DramaIcon, podcast: TalkIcon, original: OriginalIcon };
 
@@ -59,6 +79,8 @@ export default function AudioBar() {
   if (!audio.open) return null;
   // El mapa que sigue la lectura ya trae sus controles para el capítulo que suena
   if (audio.book && audio.kind !== 'podcast' && path === recorridoHref(audio.book, audio.chapter)) return null;
+  // La pantalla del pódcast que suena ya es su reproductor (con la transcripción): no se repite abajo.
+  if (audio.book && audio.kind === 'podcast' && path === podcastPath(audio.book, audio.chapter)) return null;
   return <Bar />;
 }
 
@@ -78,6 +100,14 @@ function Bar() {
     else getPlaces(audio.book, audio.chapter).then((p) => setMappable(p.length > 0), () => {});
   }, [audio.book, audio.chapter]);
   const onMap = path.startsWith('/recorrido/');
+  // En el pódcast de un capítulo se pasa al de al lado desde aquí, en cualquier pantalla.
+  const vecinos = useVecinos(audio.kind === 'podcast' ? audio.book : null, audio.chapter);
+  const capitulos = !!(vecinos.anterior || vecinos.siguiente);
+  const pasar = (v?: Vecino) => {
+    if (!v) return;
+    closeAudio();
+    irAlVecino(v, path.startsWith('/podcast/'));
+  };
 
   const speech = audio.speech;
   const file = audio.audio;
@@ -105,6 +135,30 @@ function Bar() {
       ? [['original', isHebrew(audio.book) ? 'Hebreo' : 'Griego', () => playOriginal(audio.book!, audio.chapter, audio.title)] as const]
       : []),
   ];
+
+  const rateButton = (
+    <Pressable
+      onPress={() => setRate(rates[(rates.indexOf(audio.rate) + 1) % rates.length])}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={`Velocidad ${audio.rate}×. Cambiar`}
+      style={({ pressed }) => [styles.rate, { borderColor: colors.border }, pressed && styles.pressed]}
+    >
+      <Text style={{ color: colors.text, fontWeight: '700', fontSize: 12 }}>{audio.rate}×</Text>
+    </Pressable>
+  );
+  const chapterButton = (v: Vecino | undefined, next: boolean) => (
+    <Pressable
+      onPress={() => pasar(v)}
+      disabled={!v}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={v ? `Pódcast del capítulo ${next ? 'siguiente' : 'anterior'}: ${v.label}` : undefined}
+      style={({ pressed }) => [styles.small, pressed && styles.pressed]}
+    >
+      {next ? <NextChapterIcon color={v ? colors.text : colors.border} size={22} /> : <PrevChapterIcon color={v ? colors.text : colors.border} size={22} />}
+    </Pressable>
+  );
 
   return (
     <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.border }, fixedInTransition('audio')]}>
@@ -202,18 +256,19 @@ function Bar() {
             </View>
           </Pressable>
           <View style={styles.controls}>
-            <Text style={[styles.time, { color: colors.muted }]}>
-              {speech ? `${speech.index + 1}/${speech.lines.length}` : clock(now)}
-            </Text>
-            <Pressable
-              onPress={() => setRate(rates[(rates.indexOf(audio.rate) + 1) % rates.length])}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={`Velocidad ${audio.rate}×. Cambiar`}
-              style={({ pressed }) => [styles.rate, { borderColor: colors.border }, pressed && styles.pressed]}
-            >
-              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 12 }}>{audio.rate}×</Text>
-            </Pressable>
+            {capitulos ? (
+              <>
+                {rateButton}
+                {chapterButton(vecinos.anterior, false)}
+              </>
+            ) : (
+              <>
+                <Text style={[styles.time, { color: colors.muted }]}>
+                  {speech ? `${speech.index + 1}/${speech.lines.length}` : clock(now)}
+                </Text>
+                {rateButton}
+              </>
+            )}
             <Pressable
               onPress={() => seekBy(-step)}
               hitSlop={8}
@@ -246,8 +301,19 @@ function Bar() {
             >
               {speech ? <ForwardIcon color={colors.text} size={26} /> : <SkipForwardIcon color={colors.text} size={28} seconds={step} />}
             </Pressable>
-            <View style={styles.rateSpacer} />
-            <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]}>{speech ? '' : clock(total)}</Text>
+            {capitulos ? (
+              <>
+                {chapterButton(vecinos.siguiente, true)}
+                <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]}>
+                  {speech ? `${speech.index + 1}/${speech.lines.length}` : clock(now)}
+                </Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.rateSpacer} />
+                <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]}>{speech ? '' : clock(total)}</Text>
+              </>
+            )}
           </View>
           {file?.note && <Text style={[styles.note, { color: colors.muted }]}>{file.note}</Text>}
           <Text style={[styles.credit, { color: colors.muted }]} numberOfLines={2}>

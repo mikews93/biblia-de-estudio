@@ -32,7 +32,9 @@ export default function VocesPodcast() {
   }, [voces]);
 
   const nombre = (s: Speaker, id: string | null) => voces?.find((v) => v.id === id)?.nombre ?? auto[s]?.nombre ?? '…';
-  const resumen = `Ana: ${nombre('ana', ana)} · Tomás: ${nombre('tomas', tomas)}`;
+  // Mientras el dispositivo no dice qué voces tiene, no se enseñan puntos suspensivos que parecen un fallo.
+  const desconocidas = nombre('ana', ana) === '…' && nombre('tomas', tomas) === '…';
+  const resumen = desconocidas ? 'Voces del dispositivo' : `Ana: ${nombre('ana', ana)} · Tomás: ${nombre('tomas', tomas)}`;
 
   return (
     <View style={{ marginTop: 10 }}>

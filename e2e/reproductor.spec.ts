@@ -97,9 +97,8 @@ test.describe('Reproductor único', () => {
     await expect(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' })).toHaveCount(0);
     await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
 
-    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
     await expect(v(page.getByText('Voces de prueba'))).toBeVisible();
-    await expect(v(page.getByRole('button', { name: 'Pausa', exact: true }))).toBeVisible();
+    await expect(v(page.getByRole('button', { name: 'Pausar', exact: true }))).toBeVisible();
     // La transcripción sigue a la grabación
     await expect(v(page.getByText(/^2 de \d+ · voces naturales$/))).toBeVisible({ timeout: 15_000 });
     // Tocar una intervención salta a ella
