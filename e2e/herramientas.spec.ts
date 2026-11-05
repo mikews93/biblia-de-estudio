@@ -39,6 +39,59 @@ test.describe('Herramientas del capítulo con IA', () => {
     await expect.poll(async () => (await peticionesIA(request, marca)).length).toBe(antes + 1);
   });
 
+  test('resumen en audio: se pasa al capítulo de al lado, se prepara y empieza a sonar solo', async ({ page, request }, info) => {
+    const cap = capitulo(info, 18);
+    await conSesion(page, await cuentaNueva(request, 'Oyente'));
+    await page.goto(`/podcast/juan/${cap}`);
+    await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
+    // Un solo reproductor: la barra de abajo aparece al empezar y la pantalla ya no trae el suyo
+    await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Escuchar', exact: true })).toHaveCount(0);
+    // La música, las voces y las voces naturales van en el reproductor
+    await expect(v(page.getByRole('button', { name: /^Música de fondo: / }))).toBeVisible();
+    await expect(v(page.getByRole('button', { name: 'Cambiar las voces de Ana y Tomás' }))).toBeVisible();
+    await expect(v(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' }))).toBeVisible();
+    await expect(page.getByText('Tu progreso quedó guardado en tu cuenta')).toHaveCount(0, { timeout: 10_000 });
+    await page.screenshot({ path: info.outputPath(`podcast-unico-${info.project.name}.png`) });
+
+    await expect(v(page.getByRole('button', { name: `Pódcast del capítulo anterior: Juan ${cap - 1}` }))).toBeVisible();
+    await v(page.getByRole('button', { name: `Pódcast del capítulo siguiente: Juan ${cap + 1}` })).click();
+    await expect(page).toHaveURL(new RegExp(`/podcast/juan/${cap + 1}\\?seguir=1$`));
+    await expect(v(page.getByText(`Juan ${cap + 1}`, { exact: true })).first()).toBeVisible();
+    await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible();
+    // Sin tocar nada, suena desde la primera intervención (sin tener que tocar «Escuchar»)
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Escuchar', exact: true })).toHaveCount(0);
+
+    // Las voces del teléfono se eligen en una hoja desde el reproductor
+    await v(page.getByRole('button', { name: 'Cambiar las voces de Ana y Tomás' })).click();
+    await expect(v(page.getByRole('tab', { name: 'Voz de Tomás' }))).toBeVisible();
+    await page.screenshot({ path: info.outputPath(`podcast-voces-${info.project.name}.png`) });
+  });
+
+  test('resumen en audio: la barra de abajo también pasa al capítulo de al lado desde el lector', async ({ page, request }, info) => {
+    const cap = capitulo(info, 12);
+    await conSesion(page, await cuentaNueva(request, 'Oyente'));
+    await page.goto(`/juan/${cap}`);
+    await v(page.getByRole('button', { name: 'Resumen del capítulo en audio, como una conversación' })).click();
+    await expect(page).toHaveURL(new RegExp(`/podcast/juan/${cap}$`));
+    await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+
+    // De vuelta en el lector, el pódcast sigue en la barra con sus botones de capítulo
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`/juan/${cap}$`));
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+    await expect(v(page.getByRole('button', { name: `Pódcast del capítulo anterior: Juan ${cap - 1}` }))).toBeVisible();
+    await expect(page.getByText('Tu progreso quedó guardado en tu cuenta')).toHaveCount(0, { timeout: 10_000 });
+    await page.screenshot({ path: info.outputPath(`podcast-barra-${info.project.name}.png`) });
+    await v(page.getByRole('button', { name: `Pódcast del capítulo siguiente: Juan ${cap + 1}` })).click();
+    await expect(page).toHaveURL(new RegExp(`/podcast/juan/${cap + 1}\\?seguir=1$`));
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Escuchar', exact: true })).toHaveCount(0);
+  });
+
   test('resumen en audio: conversación de Ana y Tomás que se guarda y no se vuelve a pedir', async ({ page, request, browser }, info) => {
     const cap = capitulo(info, 6);
     await conSesion(page, await cuentaNueva(request, 'Oyente'));
@@ -51,12 +104,13 @@ test.describe('Herramientas del capítulo con IA', () => {
     await expect(v(page.getByText('Sí, y el versículo dieciséis lo resume todo.'))).toBeVisible();
     await expect(v(page.getByText('Ana', { exact: true }))).toHaveCount(2);
     await expect(v(page.getByText('Tomás', { exact: true }))).toHaveCount(1);
-    await expect(v(page.getByText('1 de 3 · voz del dispositivo'))).toBeVisible();
+    await expect(v(page.getByText('Con la voz del teléfono'))).toBeVisible();
 
-    // Saltar a la intervención siguiente
+    // Suena en el reproductor de abajo, el único; se salta a la intervención siguiente desde ahí
+    await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
+    await expect(v(page.getByText('1/3'))).toBeVisible();
     await v(page.getByLabel('Intervención siguiente')).click();
-    await expect(v(page.getByText('2 de 3 · voz del dispositivo'))).toBeVisible();
-    // El pódcast suena en el reproductor único, como todo lo demás
+    await expect(v(page.getByText('2/3'))).toBeVisible();
     await expect(v(page.getByText('Pódcast · habla Tomás'))).toBeVisible();
     expect((await peticionesIA(request, marca)).length).toBe(antes + 1);
 

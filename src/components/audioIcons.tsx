@@ -53,6 +53,21 @@ const Skip = ({ size = 26, color, seconds, forward }: Props & { seconds: number;
 export const SkipBackIcon = (p: Props & { seconds?: number }) => <Skip {...p} seconds={p.seconds ?? 10} />;
 export const SkipForwardIcon = (p: Props & { seconds?: number }) => <Skip {...p} seconds={p.seconds ?? 10} forward />;
 
+/** Al capítulo anterior o al siguiente: la barra y el triángulo de «pista» de cualquier reproductor. */
+export const PrevChapterIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M6 5.5v13" />
+    <Path d="M18 6.2v11.6c0 .5-.6.8-1 .5l-8.2-5.8a.6.6 0 0 1 0-1L17 5.7c.4-.3 1 0 1 .5z" />
+  </Line>
+);
+
+export const NextChapterIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M18 5.5v13" />
+    <Path d="M6 6.2v11.6c0 .5.6.8 1 .5l8.2-5.8a.6.6 0 0 0 0-1L7 5.7c-.4-.3-1 0-1 .5z" />
+  </Line>
+);
+
 export const CloseIcon = (p: Props) => (
   <Line {...p}>
     <Path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />

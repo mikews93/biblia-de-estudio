@@ -47,7 +47,8 @@ const eleven = createServer((req, res) => {
   let raw = '';
   req.on('data', (c) => (raw += c));
   req.on('end', () => {
-    if (failNext) {
+    // Falla el diálogo (la intervención final, grabada aparte con la voz sola, tiene sus propios caminos).
+    if (failNext && !req.url?.startsWith('/v1/text-to-speech/')) {
       failNext = false;
       res.writeHead(500).end('falló');
       return;
@@ -205,29 +206,35 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     const res = await post({ book: 'oba', chapter: 1 }, llaves[0]);
     expect(res.status).toBe(200);
     const listo = await res.json();
-    expect(listo).toMatchObject({ estado: 'listo', duracion: 2 });
-    // 10 intervenciones en tramos de 8: dos peticiones, con las voces alternadas y sin las marcas de cita.
+    expect(listo).toMatchObject({ estado: 'listo', duracion: 3 });
+    // 9 intervenciones en tramos de 8 (dos diálogos, con las voces alternadas y sin las marcas de cita) y la final aparte,
+    // con la voz sola: es la que ElevenLabs entregaba muda como última del diálogo.
     const nuevas = calls.slice(antes);
-    expect(nuevas.length).toBe(2);
-    expect(nuevas[0].model_id).toBe('eleven_v4');
+    expect(nuevas.length).toBe(3);
+    const dialogos = nuevas.filter((c) => c.model_id === 'eleven_v4');
+    expect(dialogos.map((c) => c.inputs.length).sort()).toEqual([1, 8]);
+    expect(nuevas.find((c) => c.model_id === 'eleven_multilingual_v2')!.inputs[0].text).toBe('Respuesta 9.');
+    expect(listo.diagnostico).toEqual([expect.stringMatching(/^final, voz sola: bien/)]);
+    nuevas.splice(0, nuevas.length, ...dialogos.sort((a, b) => b.inputs.length - a.inputs.length));
     expect(nuevas[0].inputs[1].text).toBe('Respuesta 1.');
     expect(nuevas[0].inputs[0].voice_id).not.toBe(nuevas[0].inputs[1].voice_id);
-    expect(paths.at(-1)).toBe('/v1/text-to-dialogue/with-timestamps?output_format=pcm_24000');
-    // Dónde empieza cada intervención, como lo dice ElevenLabs: 8 en el primer segundo y 2 en el segundo.
-    expect(listo.tiempos).toEqual([0, 0.1, 0.3, 0.4, 0.5, 0.6, 0.8, 0.9, 1, 1.5]);
+    expect(paths).toContain('/v1/text-to-dialogue/with-timestamps?output_format=pcm_24000');
+    // Dónde empieza cada intervención, como lo dice ElevenLabs: 8 en el primer segundo, 1 en el segundo y la final
+    // después de una pausa corta.
+    expect(listo.tiempos).toEqual([0, 0.1, 0.3, 0.4, 0.5, 0.6, 0.8, 0.9, 1, 2.3]);
     // Ana llega 14 dB más baja; en el MP3 las dos voces suenan igual.
     const { muestras, rate } = await decodificarMp3(new Uint8Array(await readFile(new URL(listo.url))));
     expect(rate).toBe(RATE);
     // El MP3 añade unos milisegundos de relleno.
-    expect(muestras.length / rate).toBeGreaterThanOrEqual(2);
-    expect(muestras.length / rate).toBeLessThan(2.1);
-    const ana = volumenHabla(muestras, rate, { desde: Math.round(1.05 * rate), hasta: Math.round(1.4 * rate) })!;
-    const tomas = volumenHabla(muestras, rate, { desde: Math.round(1.55 * rate), hasta: Math.round(1.9 * rate) })!;
+    expect(muestras.length / rate).toBeGreaterThanOrEqual(3);
+    expect(muestras.length / rate).toBeLessThan(3.6);
+    const ana = volumenHabla(muestras, rate, { desde: Math.round(1.1 * rate), hasta: Math.round(1.8 * rate) })!;
+    const tomas = volumenHabla(muestras, rate, { desde: Math.round(2.3 * rate), hasta: Math.round(2.7 * rate) })!;
     expect(Math.abs(ana - tomas)).toBeLessThan(1.5);
 
     expect(await get('oba', 1)).toEqual(listo);
     expect(await (await post({ book: 'oba', chapter: 1 }, llaves[1])).json()).toEqual(listo);
-    expect(calls.length).toBe(antes + 2);
+    expect(calls.length).toBe(antes + 3);
   });
 
   it('una grabación de antes se nivela una vez y desde ahí se sirve la nivelada', async () => {
@@ -263,10 +270,10 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     const antes = calls.length;
     try {
       const listo = await (await post({ book: 'jud', chapter: 2 }, llaves[0])).json();
-      // Dos tramos (8 y 2) y, después de cada uno, su última intervención sola, con la voz de text-to-speech.
+      // Dos tramos (8 y 1): la última del de 8 llega muda y se graba otra vez sola; la final va siempre sola.
       const nuevas = calls.slice(antes);
-      expect(nuevas.map((c) => c.inputs.length)).toEqual(expect.arrayContaining([8, 2, 1, 1]));
-      const solas = nuevas.filter((c) => c.inputs.length === 1);
+      expect(nuevas.map((c) => c.inputs.length)).toEqual(expect.arrayContaining([8, 1, 1, 1]));
+      const solas = nuevas.filter((c) => c.model_id === 'eleven_multilingual_v2');
       expect(solas.map((c) => c.inputs[0].text).sort()).toEqual(['Respuesta 7.', 'Respuesta 9.']);
       expect(solas.every((c) => c.model_id === 'eleven_multilingual_v2')).toBe(true);
       // Sin language_code: no todos los modelos lo aceptan, y si lo rechazan no se regraba nada (1 Reyes 21).
@@ -293,7 +300,19 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     try {
       const res = await post({ book: 'jud', chapter: 2 }, llaves[0]);
       expect(res.status).toBe(200);
-      expect((await res.json()).estado).toBe('listo');
+      const listo = await res.json();
+      expect(listo.estado).toBe('listo');
+      // La final no se pierde: sin la voz sola, se graba como diálogo de una intervención; y queda dicho qué pasó.
+      expect(listo.diagnostico).toHaveLength(4);
+      expect(listo.diagnostico).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(/^final, voz sola: Error: ElevenLabs 400/),
+          expect.stringMatching(/^final, diálogo solo: bien/),
+          expect.stringMatching(/^tramo 1: Error: ElevenLabs 400/),
+        ]),
+      );
+      const { muestras, rate } = await decodificarMp3(new Uint8Array(await readFile(new URL(listo.url))));
+      expect(volumenHabla(muestras, rate, { desde: Math.round(listo.tiempos.at(-1) * rate), hasta: muestras.length })).not.toBeNull();
     } finally {
       mudaUltima = false;
       ttsFalla = false;
@@ -391,7 +410,7 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     expect(res.status).toBe(200);
     const listo = await res.json();
     // Se grabó el guion de la PDT, no el de la RV1909, y con otro nombre de archivo
-    expect(calls[antes].inputs[0].text).toBe('En la PDT?');
+    expect(calls.slice(antes).some((c) => c.inputs[0].text === 'En la PDT?')).toBe(true);
     expect(path.basename(new URL(listo.url).pathname)).toMatch(/^oba-pdt-1-[0-9a-f]{10}\.mp3$/);
     expect(await q('pdt')).toEqual(listo);
     expect(await q('nbla')).toEqual(listo);
@@ -408,7 +427,7 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     const res = await post({ palabra: 'jesed' }, llaves[2]);
     expect(res.status).toBe(200);
     const listo = await res.json();
-    expect(listo).toMatchObject({ estado: 'listo', duracion: 2 });
+    expect(listo).toMatchObject({ estado: 'listo', duracion: 3 });
     expect(path.basename(new URL(listo.url).pathname)).toMatch(/^palabra-jesed-[0-9a-f]{10}\.mp3$/);
     expect(await (await palabra('palabra=jesed')).json()).toEqual(listo);
   });
