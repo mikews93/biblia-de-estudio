@@ -34,6 +34,7 @@ import { palabraAudioId, palabraPorId } from '../src/lib/palabras';
 import { conVersion, versionPodcast } from '../src/lib/podcastVersion';
 import { lineStarts } from '../src/lib/podcastTiempos';
 import { codificarMp3, decodificarMp3 } from './_mp3';
+import { esCuidador } from './_senales';
 import { waitUntil } from './_seguir';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -529,13 +530,16 @@ export async function POST(request: Request) {
   const lines = guion ? scriptLines(guion.texto) : [];
   if (!lines.length) return json({ error: 'Primero hay que preparar el guion del pódcast.' }, 409);
 
-  const [{ mias, todas }] = await s<{ mias: number; todas: number }[]>`select
-      count(*) filter (where pedido_por = ${user})::int as mias, count(*)::int as todas
+  const [{ mias, todas, correo }] = await s<{ mias: number; todas: number; correo: string | null }[]>`select
+      count(*) filter (where pedido_por = ${user})::int as mias, count(*)::int as todas,
+      (select correo from usuarios where id = ${user}) as correo
     from podcast_grabado where creado > now() - interval '1 day'`;
-  if (mias >= PER_ACCOUNT) {
+  // Quienes cuidan Zarza (CUIDADORES en Vercel) pagan las voces: sin tope, para poder volver a grabar lo que haga falta.
+  const cuida = esCuidador(correo);
+  if (!cuida && mias >= PER_ACCOUNT) {
     return json({ error: `Puedes grabar hasta ${PER_ACCOUNT} pódcasts al día. Vuelve mañana.` }, 429);
   }
-  if (todas >= PER_DAY) {
+  if (!cuida && todas >= PER_DAY) {
     return json({ error: 'Por hoy ya se grabaron todos los pódcasts que permite la app. Vuelve mañana.' }, 429);
   }
 

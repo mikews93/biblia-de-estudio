@@ -1,5 +1,6 @@
 // /api/podcast-grabado: graba el pódcast con una ElevenLabs simulada y lo deja listo para todos.
 // Necesita DATABASE_URL (ver tests/api/helpers.ts); los MP3 se guardan en una carpeta temporal.
+import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { AddressInfo } from 'node:net';
@@ -368,6 +369,16 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     const res = await post({ book: '2jn', chapter: 1 }, llaves[1]);
     expect(res.status).toBe(429);
     expect((await res.json()).error).toContain('2 pódcasts al día');
+    // Quien cuida Zarza (CUIDADORES) no tiene tope: puede volver a grabar lo que haga falta.
+    const correo = `cuida.${Date.now()}@prueba.test`;
+    const hash = createHash('sha256').update(llaves[1]).digest('hex');
+    await sql`update usuarios set correo = ${correo} where id = (select usuario_id from sesiones where llave_hash = ${hash})`;
+    process.env.CUIDADORES = `otra@prueba.test, ${correo.toUpperCase()}`;
+    try {
+      expect((await post({ book: '2jn', chapter: 1 }, llaves[1])).status).toBe(200);
+    } finally {
+      delete process.env.CUIDADORES;
+    }
   });
 
   it('cada versión libre tiene su grabación; una con derechos usa la de la PDT', async () => {
