@@ -22,6 +22,7 @@ import {
   ShareIcon,
   ArrowRightIcon,
   ChevronRightIcon,
+  SunriseIcon,
   SparkIcon,
   FlameIcon,
   type IconProps,
@@ -420,28 +421,33 @@ function Today() {
         <PalabraSemana colors={colors} />
       </Appear>
 
-      {/* Accesos: solo lo que no está en la barra de abajo; lo demás vive en «Todo en Zarza». */}
+      {/* Accesos: una sola tarjeta con filas de ícono y nombre, sin recuadros. Solo lo que no está en la barra de abajo;
+          lo demás vive en «Todo en Zarza». */}
       <Appear delay={160}>
         <Text style={[styles.kicker, styles.sectionTitle, { color: colors.muted }]}>Accesos</Text>
-        <View style={styles.grid}>
-          <Tile icon={BooksIcon} label="Libros" colors={colors} onPress={() => navigate(() => router.push('/libros'))} />
-          <Tile icon={PencilIcon} label="Mis notas" colors={colors} onPress={() => navigate(() => router.push('/notas'), 'forward')} />
-          <Tile icon={HeartIcon} label="Mi diario" colors={colors} onPress={() => navigate(() => router.push('/diario' as never), 'forward')} />
-          <Tile
-            icon={SparkIcon}
-            label="Estudiar con IA"
-            colors={colors}
-            onPress={() => navigate(() => router.push(chapterHref(continueTo.book, continueTo.chapter)), 'forward')}
-          />
-          <Tile icon={SearchIcon} label="Preguntar" colors={colors} onPress={() => navigate(() => router.push('/preguntar' as never), 'forward')} />
-          <Tile
-            icon={LecternIcon}
-            label="Del sermón"
-            colors={colors}
-            onPress={() => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward')}
-          />
-          <Tile icon={InviteIcon} label="Invitar" a11y="Invitar amigos" colors={colors} onPress={() => navigate(() => router.push('/invitar' as never), 'forward')} />
-          <Tile icon={GridIcon} label="Todo en Zarza" colors={colors} onPress={() => navigate(() => router.push('/todo' as never), 'forward')} destacado />
+        <View style={[styles.accesos, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {[
+            { icon: BooksIcon, label: 'Libros', go: () => navigate(() => router.push('/libros')) },
+            { icon: PencilIcon, label: 'Mis notas', go: () => navigate(() => router.push('/notas'), 'forward') },
+            { icon: HeartIcon, label: 'Mi diario', go: () => navigate(() => router.push('/diario' as never), 'forward') },
+            { icon: SparkIcon, label: 'Estudiar con IA', go: () => navigate(() => router.push(chapterHref(continueTo.book, continueTo.chapter)), 'forward') },
+            { icon: SearchIcon, label: 'Preguntar', go: () => navigate(() => router.push('/preguntar' as never), 'forward') },
+            { icon: LecternIcon, label: 'Del sermón', go: () => navigate(() => router.push((semana ? `/semana/${semana.id}` : '/semana') as never), 'forward') },
+            { icon: InviteIcon, label: 'Invitar amigos', go: () => navigate(() => router.push('/invitar' as never), 'forward') },
+            { icon: SunriseIcon, label: 'Despertador', go: () => navigate(() => router.push('/despertador' as never), 'forward') },
+          ].map((t, i) => (
+            <Tile key={t.label} icon={t.icon} label={t.label} colors={colors} onPress={t.go} arriba={i >= 2} derecha={i % 2 === 1} />
+          ))}
+          <Pressable
+            onPress={() => navigate(() => router.push('/todo' as never), 'forward')}
+            style={({ pressed }) => [styles.todo, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Todo en Zarza"
+          >
+            <GridIcon color={colors.warm} size={20} />
+            <Text style={{ flex: 1, color: colors.text, fontWeight: '700', fontSize: 15 }}>Todo en Zarza</Text>
+            <ArrowRightIcon color={colors.warm} size={18} />
+          </Pressable>
         </View>
       </Appear>
 
@@ -608,29 +614,33 @@ function PalabraSemana({ colors }: { colors: C }) {
 function Tile({
   icon: Icon,
   label,
-  a11y,
   colors,
   onPress,
-  destacado,
+  arriba,
+  derecha,
 }: {
   icon: (p: IconProps) => React.ReactNode;
   label: string;
-  a11y?: string;
   colors: C;
   onPress: () => void;
-  destacado?: boolean;
+  arriba?: boolean;
+  derecha?: boolean;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={a11y ?? label}>
-      <View
-        style={[
-          styles.tileIcon,
-          destacado ? { backgroundColor: colors.text } : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth },
-        ]}
-      >
-        <Icon color={destacado ? colors.background : colors.text} size={24} />
-      </View>
-      <Text style={{ color: colors.text, fontWeight: '600', fontSize: 12, marginTop: 8, textAlign: 'center' }} numberOfLines={2}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tile,
+        { borderColor: colors.border },
+        arriba && { borderTopWidth: StyleSheet.hairlineWidth },
+        derecha && { borderLeftWidth: StyleSheet.hairlineWidth },
+        pressed && { backgroundColor: colors.accentSoft },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Icon color={colors.text} size={22} />
+      <Text style={{ flex: 1, color: colors.text, fontWeight: '600', fontSize: 15 }} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -692,10 +702,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     marginTop: 22,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 18 },
+  accesos: { flexDirection: 'row', flexWrap: 'wrap', borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  todo: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 16, borderTopWidth: StyleSheet.hairlineWidth },
   devotionalLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tile: { width: '25%', alignItems: 'center', paddingHorizontal: 4 },
-  tileIcon: { width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  tile: { width: '50%', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 17 },
   pressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
   instalar: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'center', marginTop: 16, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth },
   version: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', marginTop: 8, paddingVertical: 6, paddingHorizontal: 12 },
