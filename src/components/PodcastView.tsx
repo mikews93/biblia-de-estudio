@@ -5,14 +5,11 @@ import { router } from 'expo-router';
 import { ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BackIcon, ForwardIcon, NextChapterIcon, PauseIcon, PlayIcon, PrevChapterIcon } from '@/components/audioIcons';
+import { PlayIcon } from '@/components/audioIcons';
 
 import { TalkIcon } from '@/components/icons';
-import MusicaPodcast from '@/components/MusicaPodcast';
-import { PodcastGrabado } from '@/components/PodcastGrabado';
 import { Sources } from '@/components/StudyPanel';
 import { ToolFooter, ToolState } from '@/components/ToolState';
-import VocesPodcast from '@/components/VocesPodcast';
 import { IconText } from '@/components/comunidad/ui';
 import { parseRef } from '@/lib/data';
 import { VersionPodcast, useHerramienta } from '@/lib/herramientas';
@@ -25,13 +22,12 @@ import {
   playRecordedPodcast,
   playSpeech,
   seekChapter,
-  setRate,
   toggle,
   useAudio,
 } from '@/lib/audio';
 import { Line, SPEAKERS, minutes, parseScript } from '@/lib/podcast';
 import { usePodcastGrabado } from '@/lib/podcastGrabado';
-import { Vecino, irAlVecino, useVecinos } from '@/lib/podcastVecinos';
+import { publicarExtras, retirarExtras } from '@/lib/podcastExtras';
 import { verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -85,9 +81,7 @@ export default function PodcastView({
   const natural = recorded ? {} : grabado.estado === 'listo' ? { remote: grabado } : null;
   const ready = tool.done && lines.length > 0 && (recorded || grabado.estado !== 'cargando');
   const player = usePodcastPlayer(bookId, chapter, title, lines, natural);
-  const audio = useAudio();
   const colorOf = (speaker: string) => (speaker === 'ana' ? colors.accent : colors.greek);
-  const tint = ready ? colors.text : colors.border;
 
   // Al pasar de capítulo, el nuevo empieza solo en cuanto su guion (y su grabación, si la hay) está listo.
   const arranco = useRef(false);
@@ -98,18 +92,42 @@ export default function PodcastView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seguir, ready]);
 
-  // El capítulo de al lado (no en el pódcast de una palabra): se prepara si hace falta y empieza solo.
-  const vecinos = useVecinos(bookId, chapter);
-  const hayVecinos = !!(vecinos.anterior || vecinos.siguiente);
-  const pasar = (v: Vecino) => {
-    player.stop();
-    irAlVecino(v, true);
-  };
+  // El reproductor de abajo ofrece grabarlo con voces naturales mientras suena con la voz del dispositivo.
+  const { record } = grabado;
+  const errorGrabado = grabado.estado === 'error' ? grabado.error : '';
+  useEffect(() => {
+    if (recorded || !ready) return;
+    const estado =
+      grabado.estado === 'error'
+        ? { estado: 'error' as const, error: errorGrabado }
+        : grabado.estado === 'listo'
+          ? null
+          : { estado: grabado.estado };
+    if (!estado) return;
+    publicarExtras({ book: bookId, chapter, grabado: estado, record });
+    return () => retirarExtras(bookId, chapter);
+  }, [bookId, chapter, recorded, ready, grabado.estado, errorGrabado, record]);
+
+  // Si termina de grabarse con voces naturales mientras suena con la voz del dispositivo, sigue en la grabación desde la
+  // misma intervención.
+  const remota = natural?.remote;
+  const audioAhora = useAudio();
+  const conVozDelDispositivo =
+    audioAhora.open && audioAhora.kind === 'podcast' && audioAhora.book === bookId && audioAhora.chapter === chapter && audioAhora.speech;
+  useEffect(() => {
+    if (!remota || !conVozDelDispositivo) return;
+    playRecordedPodcast(bookId, chapter, title, { remote: remota, lines, from: conVozDelDispositivo.index });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remota?.url]);
 
   // Sigue la intervención que suena
   useEffect(() => {
     const y = positions.current[player.index];
-    if (player.playing && y !== undefined && player.index > 0) scroll.current?.scrollTo({ y: Math.max(0, listY.current + y - 160), animated: true });
+    if (player.playing && y !== undefined && player.index > 0)
+      scroll.current?.scrollTo({
+        y: Math.max(0, listY.current + y - 160),
+        animated: true,
+      });
   }, [player.index, player.playing]);
 
   const open = (ref: string) => {
@@ -134,90 +152,32 @@ export default function PodcastView({
           {ready ? ` · unos ${minutes(lines)} min` : ''}
         </Text>
 
-        <View style={[styles.player, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View
-            style={[styles.track, { backgroundColor: colors.border }]}
-            accessibilityRole="progressbar"
-            accessibilityLabel={ready ? `Intervención ${player.index + 1} de ${lines.length}` : 'Preparando'}
+        {/* El reproductor es la barra de abajo; aquí solo se empieza. Mientras suena, la transcripción lo sigue. */}
+        {!player.started && (
+          <Pressable
+            onPress={player.toggle}
+            disabled={!ready || player.loading}
+            accessibilityRole="button"
+            accessibilityLabel="Escuchar"
+            style={({ pressed }) => [styles.start, { backgroundColor: ready ? colors.accent : colors.border }, pressed && styles.pressed]}
           >
-            <View
-              style={[
-                styles.fill,
-                { backgroundColor: colors.accent, width: `${ready && player.started ? ((player.index + 1) / lines.length) * 100 : 0}%` },
-              ]}
-            />
-          </View>
-          <View style={styles.controls}>
-            <Salto
-              label={vecinos.anterior && `Pódcast del capítulo anterior: ${vecinos.anterior.label}`}
-              onPress={() => vecinos.anterior && pasar(vecinos.anterior)}
-              color={colors.text}
-              hidden={!hayVecinos}
-            >
-              <PrevChapterIcon color={vecinos.anterior ? colors.text : colors.border} size={22} />
-            </Salto>
-            <Salto label="Intervención anterior" onPress={() => player.jump(player.index - 1)} disabled={!ready} color={tint}>
-              <BackIcon color={tint} size={26} />
-            </Salto>
-            <Pressable
-              onPress={player.toggle}
-              disabled={!ready}
-              accessibilityRole="button"
-              accessibilityLabel={player.playing ? 'Pausar' : 'Escuchar'}
-              style={({ pressed }) => [styles.play, { backgroundColor: ready ? colors.accent : colors.border }, pressed && styles.pressed]}
-            >
-              {player.loading || (!ready && tool.busy) ? (
-                <ActivityIndicator color={colors.surface} />
-              ) : player.playing ? (
-                <PauseIcon color={colors.surface} size={26} />
-              ) : (
-                <PlayIcon color={colors.surface} size={30} />
+            {!ready || player.loading ? <ActivityIndicator color={colors.surface} /> : <PlayIcon color={colors.surface} size={22} />}
+            <View>
+              <Text style={[styles.startText, { color: colors.surface }]}>{ready ? 'Escuchar' : 'Preparando…'}</Text>
+              {ready && (
+                <Text style={[styles.startDetail, { color: colors.surface }]}>
+                  {natural
+                    ? 'Con voces naturales'
+                    : grabado.estado === 'grabando'
+                      ? 'Grabándose con voces naturales'
+                      : 'Con la voz del teléfono'}
+                </Text>
               )}
-            </Pressable>
-            <Salto label="Intervención siguiente" onPress={() => player.jump(player.index + 1)} disabled={!ready} color={tint}>
-              <ForwardIcon color={tint} size={26} />
-            </Salto>
-            <Salto
-              label={vecinos.siguiente && `Pódcast del capítulo siguiente: ${vecinos.siguiente.label}`}
-              onPress={() => vecinos.siguiente && pasar(vecinos.siguiente)}
-              color={colors.text}
-              hidden={!hayVecinos}
-            >
-              <NextChapterIcon color={vecinos.siguiente ? colors.text : colors.border} size={22} />
-            </Salto>
-          </View>
-          <View style={styles.meta}>
-            <Pressable
-              onPress={() => setRate(RATES[(RATES.indexOf(audio.rate) + 1) % RATES.length])}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={`Velocidad ${audio.rate}×. Cambiar`}
-              style={({ pressed }) => [styles.rate, { borderColor: colors.border }, pressed && styles.pressed]}
-            >
-              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 12 }}>{audio.rate}×</Text>
-            </Pressable>
-            <Text style={[styles.metaMid, { color: colors.muted }]} numberOfLines={1}>
-              {ready ? `${player.index + 1} de ${lines.length} · ${natural ? 'voces naturales' : 'voz del dispositivo'}` : 'Preparando…'}
-            </Text>
-            <View style={styles.rateSpacer} />
-          </View>
-          {!!player.credit && (
-            <Text style={[styles.credit, { color: colors.muted }]} numberOfLines={2}>
-              {player.credit}
-            </Text>
-          )}
-        </View>
-        {ready && <MusicaPodcast colors={colors} />}
-        {!natural && <PodcastGrabado grabado={grabado} scriptReady={ready} />}
-        {!natural && <VocesPodcast />}
+            </View>
+          </Pressable>
+        )}
 
-        <ToolState
-          colors={colors}
-          busy={tool.busy}
-          error={tool.error}
-          waiting={lines.length ? null : waiting}
-          onRetry={tool.retry}
-        />
+        <ToolState colors={colors} busy={tool.busy} error={tool.error} waiting={lines.length ? null : waiting} onRetry={tool.retry} />
 
         <View style={{ marginTop: 16 }} onLayout={(e) => (listY.current = e.nativeEvent.layout.y)}>
           {lines.map((line, i) => {
@@ -231,10 +191,24 @@ export default function PodcastView({
                 accessibilityHint="Escuchar desde aquí"
               >
                 <Text style={[styles.speaker, { color: colorOf(line.speaker) }]}>{SPEAKERS[line.speaker]}</Text>
-                <Text style={{ color: colors.text, fontSize: 16, lineHeight: 24, flex: 1 }}>
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontSize: 16,
+                    lineHeight: 24,
+                    flex: 1,
+                  }}
+                >
                   {line.text}
                   {line.cites.map((n) => (
-                    <Text key={n} style={{ color: colors.accent, fontSize: 11, fontWeight: '700' }}>
+                    <Text
+                      key={n}
+                      style={{
+                        color: colors.accent,
+                        fontSize: 11,
+                        fontWeight: '700',
+                      }}
+                    >
                       {' '}
                       {n}
                     </Text>
@@ -260,36 +234,6 @@ export default function PodcastView({
   );
 }
 
-/** Botón de los lados del reproductor; oculto deja su hueco para que el de reproducir siga en el centro. */
-function Salto({
-  label,
-  onPress,
-  disabled,
-  hidden,
-  children,
-}: {
-  label?: string;
-  onPress: () => void;
-  disabled?: boolean;
-  hidden?: boolean;
-  color: string;
-  children: React.ReactNode;
-}) {
-  if (hidden) return <View style={styles.side} />;
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled || !label}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={6}
-      style={({ pressed }) => [styles.side, pressed && styles.pressed]}
-    >
-      {children}
-    </Pressable>
-  );
-}
-
 /**
  * El pódcast suena en el reproductor único; esta pantalla solo muestra y mueve la intervención actual. Con voces
  * naturales es una grabación (la intervención sale de sus tiempos); si no, lo lee la voz del dispositivo.
@@ -307,7 +251,6 @@ function usePodcastPlayer(book: string, chapter: number, title: string, lines: L
     return {
       index: speech?.index ?? 0,
       started: !!speech,
-      credit: '',
       playing: speech?.playing ?? false,
       loading: false,
       toggle: () => (speech ? toggle() : jump(0)),
@@ -317,14 +260,18 @@ function usePodcastPlayer(book: string, chapter: number, title: string, lines: L
   }
   const jump = (i: number) => {
     const to = clamp(i, lines);
-    if (!recording) return playRecordedPodcast(book, chapter, title, { remote: natural.remote, lines, from: to });
+    if (!recording)
+      return playRecordedPodcast(book, chapter, title, {
+        remote: natural.remote,
+        lines,
+        from: to,
+      });
     seekChapter(recording.timestamps[to]?.[1] ?? 0);
     if (!getPlayer().playing) getPlayer().play();
   };
   return {
     index: recording ? at.index : 0,
     started: !!recording,
-    credit: file?.audio?.credit ?? '',
     playing: !!recording && at.playing,
     loading: !!file?.loading,
     toggle: () => (recording ? toggle() : !file?.loading && jump(0)),
@@ -332,9 +279,6 @@ function usePodcastPlayer(book: string, chapter: number, title: string, lines: L
     stop: () => file && closeAudio(),
   };
 }
-
-/** Las mismas velocidades del reproductor de abajo. */
-const RATES = [1, 1.25, 1.5, 0.75];
 
 const clamp = (i: number, lines: Line[]) => Math.max(0, Math.min(lines.length - 1, i));
 
@@ -356,21 +300,36 @@ function useRecordingLine(active: boolean) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, paddingBottom: 64, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  content: {
+    padding: 20,
+    paddingBottom: 64,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
+  },
   kicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   title: { fontSize: 30, marginTop: 4 },
-  player: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, marginTop: 18 },
-  track: { height: 4, borderRadius: 2, overflow: 'hidden' },
-  fill: { height: 4, borderRadius: 2 },
-  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
-  side: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  play: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  start: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    alignSelf: 'flex-start',
+    height: 56,
+    paddingLeft: 18,
+    paddingRight: 24,
+    borderRadius: 28,
+    marginTop: 18,
+  },
+  startText: { fontSize: 16, fontWeight: '700' },
+  startDetail: { fontSize: 12, opacity: 0.8 },
   pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
-  metaMid: { flex: 1, fontSize: 12, textAlign: 'center' },
-  rate: { minWidth: 40, borderWidth: 1, borderRadius: 10, paddingVertical: 3, alignItems: 'center' },
-  rateSpacer: { minWidth: 40 },
-  credit: { fontSize: 10, textAlign: 'center', marginTop: 6 },
-  line: { flexDirection: 'row', gap: 10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginHorizontal: -10 },
+  line: {
+    flexDirection: 'row',
+    gap: 10,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginHorizontal: -10,
+  },
   speaker: { width: 52, fontWeight: '700', fontSize: 13, marginTop: 3 },
 });

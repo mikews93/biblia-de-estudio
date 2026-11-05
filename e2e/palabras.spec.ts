@@ -70,8 +70,9 @@ test('el pódcast de la palabra: Ana y Tomás, con la opción de grabarlo con vo
   await expect(page).toHaveURL(/\/palabras\/jesed\/podcast$/);
   await expect(v(page.getByText('La historia de jésed'))).toBeVisible();
   await expect(v(page.getByText('Muchísimas. Detrás de esa frase hay una palabra hebrea: jésed.'))).toBeVisible();
-  await expect(v(page.getByText('Escuchar con voces naturales'))).toBeVisible();
-  await expect(v(page.getByText('1 de 5 · voz del dispositivo'))).toBeVisible();
+  await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
+  await expect(v(page.getByText('1/5'))).toBeVisible();
+  await expect(v(page.getByRole('button', { name: 'Grabar este pódcast con voces naturales' }))).toBeVisible();
 });
 
 test('desde el interlineal, una palabra del catálogo abre su historia', async ({ page, request }) => {
