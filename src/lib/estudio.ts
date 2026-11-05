@@ -152,5 +152,8 @@ export async function askStudy(
   }
   onUpdate(text, [...sources], [...pasos]);
   if (failure) throw new Error(failure);
+  // La conexión se cerró sin decir nada (el servidor llegó a su tiempo máximo, se cortó la red): no es una respuesta.
+  // Sin esto quedaba una respuesta vacía guardada en la conversación y las preguntas siguientes fallaban.
+  if (!text.trim()) throw new Error('La respuesta se cortó antes de llegar. Inténtalo de nuevo.');
   return { text, sources, ...(pasos.length && { pasos }) };
 }
