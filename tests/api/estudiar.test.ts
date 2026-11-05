@@ -185,6 +185,38 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(henry.source.content).toEqual([{ type: 'text', text: 'The love of God\nHere is the great gospel truth.' }]);
   });
 
+  it('una pregunta con «seguir» queda guardada para recogerla si se corta la conexión, y solo para quien preguntó', async () => {
+    const seguir = crypto.randomUUID();
+    const messages = [
+      { role: 'assistant', text: 'Estudio anterior' },
+      // Una pregunta que falló antes y quedó sin respuesta: vale la última.
+      { role: 'user', text: 'Características de Acab' },
+      { role: 'user', text: '¿Quién era Nicodemo?' },
+    ];
+    const evs = await events(await ask({ book: 'jhn', chapter: 3, verse: 16, messages, seguir }));
+    const texto = textOf(evs);
+    expect(texto).toBe('Respuesta simulada a «¿Quién era Nicodemo?».⟦1⟧');
+    expect(aiRequests.at(-1)!.messages.slice(1)).toEqual([
+      { role: 'assistant', content: 'Estudio anterior' },
+      { role: 'user', content: '¿Quién era Nicodemo?' },
+    ]);
+    // Se guarda en segundo plano mientras se envía: se espera a que esté.
+    let fila: Record<string, unknown> = {};
+    for (let i = 0; i < 40 && !fila.terminada; i++) {
+      const res = await ask({ reanudar: seguir });
+      expect([200, 404]).toContain(res.status);
+      fila = res.status === 200 ? await res.json() : {};
+      if (!fila.terminada) await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(fila).toMatchObject({ texto, error: null, terminada: true });
+    expect((fila.fuentes as unknown[]).length).toBeGreaterThan(0);
+    // Otra cuenta no la ve
+    const otra = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Otra' })).json.llave;
+    expect((await ask({ reanudar: seguir }, otra)).status).toBe(404);
+    expect((await ask({ reanudar: 'no-es-un-id' })).status).toBe(400);
+    expect((await ask({ detener: seguir })).status).toBe(204);
+  });
+
   it('las preguntas pueden investigar: lee, busca y consulta teología, envía los pasos y cita lo que encontró', async () => {
     const messages = [
       { role: 'assistant', text: 'Estudio anterior' },

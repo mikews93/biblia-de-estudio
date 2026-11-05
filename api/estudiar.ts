@@ -47,6 +47,7 @@ import {
 import { corregirRespuesta } from './_corregir';
 import { guardarPregunta } from './_preguntas';
 import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
+import { Registro, detener, reanudar } from './_reanudar';
 import { waitUntil } from './_seguir';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
@@ -54,6 +55,7 @@ import { original } from '../src/lib/original';
 import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabras';
 import { conVersion, versionPodcast } from '../src/lib/podcastVersion';
 import { PREPARADAS } from '../src/lib/preguntasPreparadas';
+import { MAX_VUELTAS, ordenarVueltas } from '../src/lib/turnos';
 
 // Lo que se guarda para todos (el primer estudio de un pasaje, las herramientas) se paga una vez: va con el mejor modelo.
 // Lo de cada persona (preguntas de seguimiento, Taller, semana) se paga cada vez: va con uno más barato.
@@ -67,7 +69,7 @@ const STUDY_VERSION = 'c2';
 // Con una versión con derechos los estudios usan marcas ⟪Juan 3:16⟫ en vez de citar la RV1909 (ver versionSystem):
 // los guardados antes citaban la RV1909, así que se preparan de nuevo.
 const MARCAS = 'm1';
-const MAX_TURNS = 12;
+const MAX_TURNS = MAX_VUELTAS;
 const MAX_QUESTION = 600;
 const MAX_USES = 24;
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -102,6 +104,12 @@ type Body = {
   compartir?: boolean;
   /** Id de una pregunta frecuente del pasaje: su respuesta, guardada para todos. */
   frecuente?: number;
+  /** Id (UUID) que pone la app en cada pregunta: la respuesta sigue aunque se corte la conexión (api/_reanudar.ts). */
+  seguir?: string;
+  /** El id de una pregunta cuya conexión se cortó: devuelve lo que lleva escrito la IA. */
+  reanudar?: string;
+  /** El id de una pregunta que la persona detuvo: la IA deja de escribir. */
+  detener?: string;
   /** Una pregunta libre sobre la Biblia desde el buscador (src/lib/preguntar.ts), sin pasaje. */
   pregunta?: Pregunta;
   /** Pide las señales del estudio de este pasaje (api/_senales.ts). */
@@ -1105,14 +1113,11 @@ async function palabraPost(request: Request, body: Body) {
 }
 
 /** La conversación después del primer mensaje: respuestas de la IA y preguntas de la persona, alternadas. */
-function validTurns(turns: unknown): turns is Turn[] {
-  return (
-    Array.isArray(turns) &&
-    turns.length <= MAX_TURNS &&
-    turns.every((t, i) => t?.role === (i % 2 === 0 ? 'assistant' : 'user') && typeof t.text === 'string') &&
-    (turns.length === 0 || turns[turns.length - 1].role === 'user') &&
-    turns.every((t) => t.role !== 'user' || t.text.length <= MAX_QUESTION)
-  );
+// Una pregunta que se quedó sin respuesta seguida de otra (la app vieja las mandaba así) vale como la última.
+function validTurns(turns: unknown): Turn[] | null {
+  const ordenadas = ordenarVueltas<Turn>(turns);
+  if (!ordenadas || ordenadas.length > MAX_TURNS || ordenadas.some((t) => t.role === 'user' && t.text.length > MAX_QUESTION)) return null;
+  return ordenadas;
 }
 
 // El Taller desde un tema: todavía no hay pasaje, así que la IA investiga con las herramientas desde el principio.
@@ -1128,8 +1133,8 @@ async function temaPost(request: Request, body: Body) {
   ) {
     return badRequest('Tema no válido');
   }
-  const turns = body.messages ?? [];
-  if (!validTurns(turns)) return badRequest('Conversación no válida');
+  const turns = validTurns(body.messages ?? []);
+  if (!turns) return badRequest('Conversación no válida');
   const version = await lectura(body.version);
   if (!version) return badRequest('Versión no válida');
   const vacia = await gastarLampara(request);
@@ -1141,7 +1146,7 @@ async function temaPost(request: Request, body: Body) {
     ...turns.map((t) => ({ role: t.role, content: t.text })),
   ];
   const system = SYSTEM + TALLER_SYSTEM + TEMA_SYSTEM + versionSystem(version) + TOOLS_SYSTEM;
-  return streamAnswer(request, [], messages, system, MODEL_PROPIO, async () => {}, biblia);
+  return streamAnswer(request, [], messages, system, MODEL_PROPIO, async () => {}, biblia, false, undefined, Registro.de(request, body.seguir));
 }
 
 // Una pregunta desde el buscador: sin pasaje, la IA investiga con las herramientas desde el principio. La primera
@@ -1162,8 +1167,8 @@ async function preguntaPost(request: Request, body: Body) {
   }
   if (body.publico !== undefined && body.publico !== 'jovenes') return badRequest('Público no válido');
   const jovenes = body.publico === 'jovenes';
-  const turns = body.messages ?? [];
-  if (!validTurns(turns)) return badRequest('Conversación no válida');
+  const turns = validTurns(body.messages ?? []);
+  if (!turns) return badRequest('Conversación no válida');
   const version = await lectura(body.version);
   if (!version) return badRequest('Versión no válida');
   // La preparada se guarda con su texto del catálogo, no con lo que escribió la persona.
@@ -1205,6 +1210,8 @@ async function preguntaPost(request: Request, body: Body) {
     },
     biblia,
     Boolean(clave),
+    undefined,
+    clave ? null : Registro.de(request, body.seguir),
   );
 }
 
@@ -1229,6 +1236,8 @@ export async function POST(request: Request) {
   } catch {
     return badRequest('JSON no válido');
   }
+  if (body.reanudar !== undefined) return reanudar(request, body.reanudar);
+  if (body.detener !== undefined) return detener(request, body.detener);
   if (body.tema !== undefined) return temaPost(request, body);
   const books = await load<Book[]>('books.json');
   const book = books.find((b) => b.id === body.book);
@@ -1243,8 +1252,8 @@ export async function POST(request: Request) {
     return badRequest('Palabra no válida');
   }
 
-  const turns = body.messages ?? [];
-  if (!validTurns(turns)) return badRequest('Conversación no válida');
+  const turns = validTurns(body.messages ?? []);
+  if (!turns) return badRequest('Conversación no válida');
   if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
   const taller = body.taller;
   if (body.semana !== undefined && (!validSemana(body.semana) || taller || verse !== undefined || word !== undefined || turns.length > 0)) {
@@ -1389,6 +1398,7 @@ export async function POST(request: Request) {
     investiga ? biblia : undefined,
     compartido,
     biblia,
+    compartido ? null : Registro.de(request, body.seguir),
   );
 }
 
@@ -1467,6 +1477,8 @@ export function paraDevolver(content: Anthropic.Beta.BetaContentBlock[]): Anthro
  * usar las herramientas de api/_investigar.ts: cada vuelta envía lo que consulta y sigue hasta que responde.
  * Con «compartido» (lo que se guarda para todos) sigue hasta guardarla aunque la persona se vaya: en iPhone, al
  * bloquear la pantalla o salir de la app, Safari corta la conexión, y sin esto el estudio nunca quedaba guardado.
+ * Con «registro» (las preguntas de cada persona) también sigue, y lo escrito se guarda para que la app lo recoja al
+ * volver (api/_reanudar.ts).
  */
 function streamAnswer(
   request: Request,
@@ -1479,7 +1491,9 @@ function streamAnswer(
   compartido = false,
   /** Para revisar las citas al final cuando la IA no tiene herramientas (si no, es «biblia»). */
   lector?: Biblia,
+  registro?: Registro | null,
 ) {
+  const sigue = compartido || Boolean(registro);
   const encoder = new TextEncoder();
   // Si la persona cierra la conexión, lo que queda por enviar se descarta.
   let abierto = true;
@@ -1489,6 +1503,7 @@ function streamAnswer(
     },
     async start(controller) {
       const send = (event: object) => {
+        registro?.anotar(event as Record<string, unknown>);
         if (!abierto) return;
         try {
           controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
@@ -1496,12 +1511,14 @@ function streamAnswer(
           abierto = false;
         }
       };
-      const work = generate(send).finally(() => {
-        if (!abierto) return;
-        abierto = false;
-        controller.close();
+      const work = generate(send).finally(async () => {
+        if (abierto) {
+          abierto = false;
+          controller.close();
+        }
+        await registro?.cerrar();
       });
-      if (compartido) waitUntil(work);
+      if (sigue) waitUntil(work);
       await work;
     },
   });
@@ -1545,8 +1562,9 @@ function streamAnswer(
           betas: ['server-side-fallback-2026-07-01'],
           fallbacks: 'default',
         },
-        // Lo que se guarda para todos termina aunque la persona se haya ido; lo suyo se detiene con ella.
-        { signal: compartido ? undefined : request.signal },
+        // Lo que se guarda para todos, y las preguntas que la app puede recoger luego, terminan aunque la persona se
+        // haya ido; lo demás se detiene con ella.
+        { signal: registro ? registro.corte.signal : compartido ? undefined : request.signal },
       );
       for await (const event of response) {
         if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
@@ -1582,7 +1600,7 @@ function streamAnswer(
             break;
           } catch (err) {
             const nuevo = enviado && !antes;
-            const arreglo = intento < 3 && !nuevo && !request.signal.aborted ? reintento(err, history) : null;
+            const arreglo = intento < 3 && !nuevo && !(registro ? registro.corte.signal : compartido ? null : request.signal)?.aborted ? reintento(err, history) : null;
             if (!arreglo) throw err;
             console.warn('estudiar: reintento', round, intento, arreglo, detalle(err));
             if (arreglo === 'esperar') await new Promise((r) => setTimeout(r, 1500 * intento));
