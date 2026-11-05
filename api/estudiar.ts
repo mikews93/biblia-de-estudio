@@ -54,6 +54,7 @@ import { original } from '../src/lib/original';
 import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabras';
 import { conVersion, versionPodcast } from '../src/lib/podcastVersion';
 import { PREPARADAS } from '../src/lib/preguntasPreparadas';
+import { MAX_VUELTAS, ordenarVueltas } from '../src/lib/turnos';
 
 // Lo que se guarda para todos (el primer estudio de un pasaje, las herramientas) se paga una vez: va con el mejor modelo.
 // Lo de cada persona (preguntas de seguimiento, Taller, semana) se paga cada vez: va con uno más barato.
@@ -67,7 +68,7 @@ const STUDY_VERSION = 'c2';
 // Con una versión con derechos los estudios usan marcas ⟪Juan 3:16⟫ en vez de citar la RV1909 (ver versionSystem):
 // los guardados antes citaban la RV1909, así que se preparan de nuevo.
 const MARCAS = 'm1';
-const MAX_TURNS = 12;
+const MAX_TURNS = MAX_VUELTAS;
 const MAX_QUESTION = 600;
 const MAX_USES = 24;
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -1105,14 +1106,11 @@ async function palabraPost(request: Request, body: Body) {
 }
 
 /** La conversación después del primer mensaje: respuestas de la IA y preguntas de la persona, alternadas. */
-function validTurns(turns: unknown): turns is Turn[] {
-  return (
-    Array.isArray(turns) &&
-    turns.length <= MAX_TURNS &&
-    turns.every((t, i) => t?.role === (i % 2 === 0 ? 'assistant' : 'user') && typeof t.text === 'string') &&
-    (turns.length === 0 || turns[turns.length - 1].role === 'user') &&
-    turns.every((t) => t.role !== 'user' || t.text.length <= MAX_QUESTION)
-  );
+// Una pregunta que se quedó sin respuesta seguida de otra (la app vieja las mandaba así) vale como la última.
+function validTurns(turns: unknown): Turn[] | null {
+  const ordenadas = ordenarVueltas<Turn>(turns);
+  if (!ordenadas || ordenadas.length > MAX_TURNS || ordenadas.some((t) => t.role === 'user' && t.text.length > MAX_QUESTION)) return null;
+  return ordenadas;
 }
 
 // El Taller desde un tema: todavía no hay pasaje, así que la IA investiga con las herramientas desde el principio.
@@ -1128,8 +1126,8 @@ async function temaPost(request: Request, body: Body) {
   ) {
     return badRequest('Tema no válido');
   }
-  const turns = body.messages ?? [];
-  if (!validTurns(turns)) return badRequest('Conversación no válida');
+  const turns = validTurns(body.messages ?? []);
+  if (!turns) return badRequest('Conversación no válida');
   const version = await lectura(body.version);
   if (!version) return badRequest('Versión no válida');
   const vacia = await gastarLampara(request);
@@ -1162,8 +1160,8 @@ async function preguntaPost(request: Request, body: Body) {
   }
   if (body.publico !== undefined && body.publico !== 'jovenes') return badRequest('Público no válido');
   const jovenes = body.publico === 'jovenes';
-  const turns = body.messages ?? [];
-  if (!validTurns(turns)) return badRequest('Conversación no válida');
+  const turns = validTurns(body.messages ?? []);
+  if (!turns) return badRequest('Conversación no válida');
   const version = await lectura(body.version);
   if (!version) return badRequest('Versión no válida');
   // La preparada se guarda con su texto del catálogo, no con lo que escribió la persona.
@@ -1243,8 +1241,8 @@ export async function POST(request: Request) {
     return badRequest('Palabra no válida');
   }
 
-  const turns = body.messages ?? [];
-  if (!validTurns(turns)) return badRequest('Conversación no válida');
+  const turns = validTurns(body.messages ?? []);
+  if (!turns) return badRequest('Conversación no válida');
   if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
   const taller = body.taller;
   if (body.semana !== undefined && (!validSemana(body.semana) || taller || verse !== undefined || word !== undefined || turns.length > 0)) {

@@ -3,6 +3,7 @@
 import { aiDenied, aiHeaders, sessionKey } from './comunidad';
 import { requireConnection } from './conexion';
 import { getSettings } from './theme';
+import { ordenarVueltas, recortarVueltas } from './turnos';
 
 // En web la función vive en el mismo dominio; en el teléfono, en la web publicada.
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
@@ -101,7 +102,8 @@ export async function askStudy(
     // En el Modo Jóvenes la IA escribe para su edad (ver JOVENES_SYSTEM en api/estudiar.ts).
     body: JSON.stringify({
       ...req,
-      messages: req.messages.map(({ role, text }) => ({ role, text })),
+      // Alternadas y sin pasarse del máximo, aunque lo guardado en el dispositivo venga de una versión vieja.
+      messages: recortarVueltas(ordenarVueltas(req.messages) ?? req.messages).map(({ role, text }) => ({ role, text })),
       ...(getSettings().modo === 'jovenes' ? { publico: 'jovenes' } : {}),
       // Las preguntas sobre el pasaje pueden ayudar a otros, limpias y sin nombre. Nunca en el Modo Jóvenes.
       ...(getSettings().modo === 'general' && getSettings().compartirPreguntas && req.messages.length > 0 && !req.taller && !req.semana && !req.tema && !req.pregunta

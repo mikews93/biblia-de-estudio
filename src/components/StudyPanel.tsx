@@ -165,7 +165,8 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
     setQuestion('');
     setPeek(null);
     setClearing(false);
-    convs.run(mode, [...turns, { role: 'user', text }]);
+    // Si la pregunta anterior se quedó sin respuesta, esta la reemplaza (la IA espera preguntas y respuestas alternadas).
+    convs.ask(mode, text);
   };
 
   const clearMine = () => {
