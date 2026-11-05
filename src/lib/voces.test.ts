@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { citaHablada, generoDeVoz, nombreCorto, ordenar, paraHablar } from './voces';
+import { citaHablada, generoDeVoz, nombreCorto, ordenar, paraHablar, vocesParaPapel } from './voces';
 
 const v = (name: string, language: string, extra: { identifier?: string; localService?: boolean } = {}) => ({
   identifier: extra.identifier ?? name,
@@ -92,4 +92,31 @@ it('dice la cita sin «dos puntos»', () => {
 
 it('las citas con dos puntos se leen como capítulo y versículo', () => {
   expect(paraHablar('Lee Juan 3:16 y Salmo 23:1-3.')).toBe('Lee Juan capítulo 3, versículo 16 y Salmo capítulo 23, versículos 1 al 3.');
+});
+
+describe('vocesParaPapel', () => {
+  const voces = ordenar([
+    { identifier: 'es-us-x-esf-network', name: 'es-us-x-esf-network', language: 'es-US', quality: 'Default' as never },
+    { identifier: 'es-us-x-esf-local', name: 'es-us-x-esf-local', language: 'es-US', quality: 'Default' as never },
+    { identifier: 'es-us-x-sfb-network', name: 'es-us-x-sfb-network', language: 'es-US', quality: 'Default' as never },
+    { identifier: 'es-us-x-sfb-local', name: 'es-us-x-sfb-local', language: 'es-US', quality: 'Default' as never },
+    { identifier: 'es-es-x-eed-network', name: 'es-es-x-eed-network', language: 'es-ES', quality: 'Default' as never },
+    { identifier: 'misterio', name: 'Español Estados Unidos', language: 'es-US', quality: 'Default' as never },
+  ]);
+
+  it('Ana solo tiene voces de mujer y cada voz una vez (la copia con internet)', () => {
+    expect(vocesParaPapel(voces, 'ana').map((v) => v.id)).toEqual(['es-us-x-sfb-network']);
+  });
+
+  it('Tomás solo tiene voces de hombre, sin repetir', () => {
+    const ids = vocesParaPapel(voces, 'tomas').map((v) => v.id);
+    expect(ids).toHaveLength(2);
+    expect(ids).toContain('es-us-x-esf-network');
+    expect(ids).toContain('es-es-x-eed-network');
+  });
+
+  it('si no hay ninguna de ese género, ofrece las que no se sabe cómo suenan, nunca las del otro', () => {
+    const sinHombres = voces.filter((v) => v.genero !== 'hombre');
+    expect(vocesParaPapel(sinHombres, 'tomas').map((v) => v.id)).toEqual(['misterio']);
+  });
 });

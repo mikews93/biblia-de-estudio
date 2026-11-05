@@ -4,7 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronDownIcon, WavesIcon } from '@/components/icons';
 import { callar, narrar } from '@/lib/narrador';
 import { useColors } from '@/lib/theme';
-import { Papel, Voz, elegirVoz, useVoces, useVozElegida } from '@/lib/voces';
+import { Papel, Voz, elegirVoz, useVoces, useVozElegida, vocesParaPapel } from '@/lib/voces';
 
 /** Cuántas voces se ven antes de «Ver todas». */
 const PRIMERAS = 4;
@@ -28,7 +28,9 @@ type Props = {
 export default function ElegirVoz({ papel, muestra, ritmo, automatica, sinNota, testID }: Props) {
   const colors = useColors();
   const voces = useVocesPara(papel);
-  const elegida = useVozElegida(papel);
+  const guardada = useVozElegida(papel);
+  // Una voz elegida antes que ya no se ofrece (de otro género, o la copia repetida) cuenta como «Automática»
+  const elegida = voces && guardada && !voces.some((v) => v.id === guardada) ? null : guardada;
   const [sonando, setSonando] = useState<string | null>(null);
   const [todas, setTodas] = useState(false);
 
@@ -143,13 +145,11 @@ export default function ElegirVoz({ papel, muestra, ritmo, automatica, sinNota, 
 
 const GENERO = { mujer: 'Mujer', hombre: 'Hombre' } as const;
 
-/** Para Ana primero las voces de mujer y para Tomás las de hombre; las que no se sabe, en medio. */
+/** Para Ana solo voces de mujer y para Tomás solo de hombre, sin repetir la misma voz (src/lib/voces.ts). */
 function useVocesPara(papel: Papel) {
   const voces = useVoces();
-  const busca = papel === 'ana' ? 'mujer' : papel === 'tomas' ? 'hombre' : null;
-  if (!voces || !busca) return voces;
-  const orden = (v: Voz) => (v.genero === busca ? 0 : v.genero ? 2 : 1);
-  return [...voces].sort((a, b) => orden(a) - orden(b));
+  if (!voces || papel === 'despertar') return voces;
+  return vocesParaPapel(voces, papel);
 }
 
 /** Dónde conseguir una voz más natural en este dispositivo. */

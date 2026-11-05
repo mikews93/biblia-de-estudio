@@ -62,14 +62,16 @@ describe('pickVoices', () => {
   it('respeta las voces que la persona eligió para Ana y Tomás', async () => {
     const { elegirVoz } = await import('./voces');
     const { pickVoices } = await import('./podcast');
-    elegirVoz('ana', 'Microsoft Gonzalo Online (Natural) - Spanish (Colombia)');
+    elegirVoz('ana', 'Microsoft Sabina Desktop - Spanish (Mexico)');
     let v = await pickVoices();
-    expect(v.ana.voice).toContain('Gonzalo');
-    // Tomás no repite la voz de Ana
-    expect(v.tomas.voice).not.toContain('Gonzalo');
+    expect(v.ana.voice).toContain('Sabina');
     elegirVoz('tomas', 'Microsoft Jorge Desktop - Spanish (Mexico)');
     v = await pickVoices();
     expect(v.tomas.voice).toContain('Jorge');
+    // Una voz de hombre que quedó elegida para Ana de antes ya no vale: suena la automática de mujer
+    elegirVoz('ana', 'Microsoft Gonzalo Online (Natural) - Spanish (Colombia)');
+    v = await pickVoices();
+    expect(v.ana.voice).toContain('Salome');
     elegirVoz('ana', null);
     elegirVoz('tomas', null);
   });
