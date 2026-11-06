@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 
 import AudioBar from '@/components/AudioBar';
+import AvisoActualizacion from '@/components/AvisoActualizacion';
 import AvisosSync from '@/components/AvisosSync';
 import InvitacionSync from '@/components/InvitacionSync';
 import Celebracion from '@/components/Celebracion';
@@ -209,6 +210,7 @@ function AppStack() {
       </View>
       <AudioBar />
       <OfflineBanner />
+      <AvisoActualizacion />
       <TabBar />
       {Platform.OS === 'web' && <AvisosSync />}
       <InvitacionSync />
