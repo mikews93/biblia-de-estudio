@@ -1,16 +1,39 @@
 import { useEffect, useState } from 'react';
 import { Keyboard, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+/** Si hay un campo de texto enfocado (el teclado solo sale con uno). */
+function escribiendo(): boolean {
+  const el = typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null);
+  return !!el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable);
+}
 
 /**
  * Cuánto tapa el teclado la parte de abajo de la pantalla en la web.
  *
  * En Chrome de Android la página pide `interactive-widget=resizes-content` (public/index.html): el teclado encoge la
- * ventana y los paneles a pantalla completa (Estudio, Pregúntale a la Biblia, Taller) se acortan solos, así que aquí
- * sale 0. Donde esa etiqueta no se entiende (Safari de iPhone, navegadores viejos) el teclado solo encoge la parte
- * visible: la diferencia con la ventana es lo que tapa, y se devuelve para dejar ese espacio debajo de la caja.
+ * ventana y los paneles a pantalla completa (Estudio, Pregúntale a la Biblia, Taller) se acortan solos. Pero en
+ * algunos teléfonos (Samsung con la PWA instalada, 2026-11-06) Chrome encoge la ventana un poco menos que el teclado
+ * y el borde de abajo de la caja sigue tapado. Y donde la etiqueta no se entiende (Safari de iPhone) no la encoge.
+ * Por eso se mide lo que de verdad queda a la vista: la ventana de la página (documentElement.clientHeight) menos
+ * la parte visible (visualViewport). Ojo: window.innerHeight no sirve, porque en Chrome ya es la parte visible.
+ * Si no hay nada que medir, se deja la franja de la barra de gestos de Android (env(safe-area-inset-bottom)): la PWA
+ * se dibuja de borde a borde y Chrome, al sacar el teclado, puede encoger la ventana sin contar esa franja.
+ * `siempre` es para los paneles que llegan al borde de abajo aunque no haya teclado (Estudio, Taller); en una
+ * pantalla con pestañas abajo (Pregúntale a la Biblia) solo hace falta con el teclado abierto.
  * En la app nativa lo hace KeyboardAvoidingView y siempre devuelve 0.
  */
-export function useTecladoWeb(): number {
+export function useTecladoWeb(siempre = true): number {
+  const tapa = useTapaMedida();
+  const abierto = useTecladoAbierto();
+  const { bottom } = useSafeAreaInsets();
+  if (Platform.OS !== 'web') return 0;
+  if (tapa > 0) return tapa;
+  return siempre || abierto ? bottom : 0;
+}
+
+/** Lo que tapa el teclado medido con visualViewport (ver useTecladoWeb). */
+function useTapaMedida(): number {
   const [tapa, setTapa] = useState(0);
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
@@ -20,18 +43,26 @@ export function useTecladoWeb(): number {
     const medir = () => {
       cancelAnimationFrame(marco);
       marco = requestAnimationFrame(() => {
-        const t = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
-        // Menos de 80 px es la barra del navegador que aparece o se va, no un teclado.
-        setTapa(t >= 80 ? t : 0);
+        const ventana = document.documentElement.clientHeight || window.innerHeight;
+        const t = Math.max(0, Math.round(ventana - vv.height - vv.offsetTop));
+        // Con un campo de texto enfocado, cualquier trozo tapado cuenta. Sin él, menos de 80 px es la barra del
+        // navegador que aparece o se va (o un zoom con los dedos), no un teclado.
+        setTapa(escribiendo() ? t : t >= 80 ? t : 0);
       });
     };
     medir();
     vv.addEventListener('resize', medir);
     vv.addEventListener('scroll', medir);
+    window.addEventListener('resize', medir);
+    document.addEventListener('focusin', medir);
+    document.addEventListener('focusout', medir);
     return () => {
       cancelAnimationFrame(marco);
       vv.removeEventListener('resize', medir);
       vv.removeEventListener('scroll', medir);
+      window.removeEventListener('resize', medir);
+      document.removeEventListener('focusin', medir);
+      document.removeEventListener('focusout', medir);
     };
   }, []);
   return tapa;
@@ -58,10 +89,6 @@ export function useTecladoAbierto(): boolean {
     const vv = window.visualViewport;
     let alto = window.innerHeight;
     let ancho = window.innerWidth;
-    const escribiendo = () => {
-      const el = document.activeElement as HTMLElement | null;
-      return !!el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable);
-    };
     const medir = () => {
       // Al girar el teléfono cambia el ancho: el alto normal es otro.
       if (window.innerWidth !== ancho) {
@@ -86,3 +113,4 @@ export function useTecladoAbierto(): boolean {
   }, []);
   return abierto;
 }
+

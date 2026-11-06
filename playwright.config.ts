@@ -14,7 +14,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : undefined,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
-  use: {
+  use: { launchOptions: { executablePath: '/opt/pw-browsers/chromium' },
     baseURL: `http://localhost:${PORT}`,
     locale: 'es-ES',
     trace: 'retain-on-failure',
