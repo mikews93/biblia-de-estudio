@@ -103,11 +103,28 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     const base = { book: 'jhn', chapter: 3 };
     expect(await bad({ ...base, messages: [turn('user')] })).toBe('Conversación no válida');
     expect(await bad({ ...base, messages: [turn('assistant')] })).toBe('Conversación no válida');
-    expect(await bad({ ...base, messages: [turn('assistant'), turn('user', 'x'.repeat(601))] })).toBe('Conversación no válida');
+    expect(await bad({ ...base, messages: [turn('assistant'), turn('user', 'x'.repeat(601))] })).toBe(
+      'Tu pregunta es muy larga: escríbela en menos de 600 letras.',
+    );
     expect(await bad({ ...base, messages: [turn('assistant'), { role: 'user', text: 5 }] })).toBe('Conversación no válida');
     expect(await bad({ ...base, messages: 'hola' })).toBe('Conversación no válida');
-    const long = Array.from({ length: 14 }, (_, i) => turn(i % 2 ? 'user' : 'assistant'));
-    expect(await bad({ ...base, messages: long })).toBe('Conversación no válida');
+  });
+
+  it('una conversación larga (la app vieja la mandaba entera) se recorta en vez de fallar', async () => {
+    const long = [
+      { role: 'assistant', text: 'Estudio anterior' },
+      ...Array.from({ length: 10 }, (_, i) => [
+        { role: 'user', text: (i === 0 ? 'y'.repeat(700) : `Pregunta ${i}`) },
+        { role: 'assistant', text: `Respuesta ${i}` },
+      ]).flat(),
+      { role: 'user', text: '¿Quién era Nicodemo?' },
+    ];
+    const evs = await events(await ask({ book: 'jhn', chapter: 3, verse: 16, messages: long }));
+    expect(textOf(evs)).toContain('¿Quién era Nicodemo?');
+    const sent = aiRequests.at(-1)!.messages.slice(1);
+    expect(sent.length).toBeLessThanOrEqual(12);
+    expect(sent[0]).toEqual({ role: 'assistant', content: 'Estudio anterior' });
+    expect(sent.at(-1)).toEqual({ role: 'user', content: '¿Quién era Nicodemo?' });
   });
 
   it('valida el pedido del Taller y las herramientas', async () => {

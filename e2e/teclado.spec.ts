@@ -62,3 +62,28 @@ test('Safari: deja el espacio que tapa el teclado', async ({ page, request }) =>
   const box = await caja.boundingBox();
   expect(box!.y + box!.height).toBeLessThanOrEqual(H - TECLADO);
 });
+
+test('Chrome que encoge la ventana menos que el teclado: deja el trozo que falta', async ({ page, request }) => {
+  await page.setViewportSize({ width: W, height: H });
+  await page.addInitScript(() => {
+    const vv = new EventTarget() as EventTarget & { height: number; offsetTop: number };
+    vv.height = window.innerHeight; vv.offsetTop = 0;
+    Object.defineProperty(window, 'visualViewport', { value: vv });
+    // window.innerHeight en Chrome es la parte visible: se imita igual que el visualViewport
+    (window as unknown as { faltan: (n: number) => void }).faltan = (n) => {
+      vv.height = document.documentElement.clientHeight - n;
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: vv.height });
+      vv.dispatchEvent(new Event('resize'));
+    };
+  });
+  await conSesion(page, await cuentaNueva(request, 'Teclado'));
+  await page.goto('/romanos/11/26');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  const caja = page.getByRole('dialog').getByRole('textbox').last();
+  await expect(caja).toBeEnabled({ timeout: 20000 });
+  await caja.click();
+  await page.evaluate(() => (window as unknown as { faltan: (n: number) => void }).faltan(50));
+  await page.waitForTimeout(400);
+  const box = await caja.boundingBox();
+  expect(box!.y + box!.height).toBeLessThanOrEqual(H - 50);
+});

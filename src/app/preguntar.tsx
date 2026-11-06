@@ -19,7 +19,7 @@ import { navigate } from '@/lib/transition';
 import { useTecladoWeb } from '@/lib/teclado';
 
 export default function Preguntar() {
-  const teclado = useTecladoWeb();
+  const teclado = useTecladoWeb(false);
   const colors = useColors();
   const { settings } = useSettings();
   const params = useLocalSearchParams<{ q?: string; n?: string }>();
