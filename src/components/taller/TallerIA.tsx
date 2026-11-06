@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,7 +32,7 @@ import { Mensaje, borradorParaIA, plantilla } from '@/lib/taller';
 import { guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
-import { useTecladoWeb } from '@/lib/teclado';
+import { useTecladoPanel } from '@/lib/teclado';
 
 export type Modo = TallerRequest['modo'];
 export type Paso = TallerRequest['paso'];
@@ -46,7 +47,7 @@ type Props = { mensaje: Mensaje; paso: Paso; modo: Modo; title: string; onClose:
 
 /** La IA del Taller: pregunta, sugiere o revisa con citas de las fuentes de la app. Nunca escribe el mensaje. */
 export default function TallerIA({ mensaje, paso, modo: initialModo, title, onClose }: Props) {
-  const teclado = useTecladoWeb();
+  const teclado = useTecladoPanel();
   const colors = useColors();
   const { settings } = useSettings();
   // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
@@ -156,7 +157,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTop} onPress={onClose} accessibilityLabel="Cerrar" />
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
-          <KeyboardAvoidingView behavior="padding" style={{ flex: 1, minHeight: 0, paddingBottom: teclado }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, minHeight: 0, paddingBottom: teclado }}>
             <View style={[styles.header, { borderColor: colors.border }]}>
               <View style={{ flex: 1 }}>
                 <IconText icon={SparkIcon} color={colors.accent} size={13}>
