@@ -55,7 +55,7 @@ import { original } from '../src/lib/original';
 import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabras';
 import { conVersion, versionPodcast } from '../src/lib/podcastVersion';
 import { PREPARADAS } from '../src/lib/preguntasPreparadas';
-import { MAX_VUELTAS, ordenarVueltas } from '../src/lib/turnos';
+import { ordenarVueltas, recortarVueltas } from '../src/lib/turnos';
 
 // Lo que se guarda para todos (el primer estudio de un pasaje, las herramientas) se paga una vez: va con el mejor modelo.
 // Lo de cada persona (preguntas de seguimiento, Taller, semana) se paga cada vez: va con uno más barato.
@@ -69,7 +69,6 @@ const STUDY_VERSION = 'c2';
 // Con una versión con derechos los estudios usan marcas ⟪Juan 3:16⟫ en vez de citar la RV1909 (ver versionSystem):
 // los guardados antes citaban la RV1909, así que se preparan de nuevo.
 const MARCAS = 'm1';
-const MAX_TURNS = MAX_VUELTAS;
 const MAX_QUESTION = 600;
 const MAX_USES = 24;
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -1112,12 +1111,20 @@ async function palabraPost(request: Request, body: Body) {
   return streamAnswer(request, docs, messages, system, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true, lector);
 }
 
-/** La conversación después del primer mensaje: respuestas de la IA y preguntas de la persona, alternadas. */
-// Una pregunta que se quedó sin respuesta seguida de otra (la app vieja las mandaba así) vale como la última.
-function validTurns(turns: unknown): Turn[] | null {
+/**
+ * La conversación después del primer mensaje: respuestas de la IA y preguntas de la persona, alternadas. Devuelve el
+ * mensaje de error si no vale.
+ * - Una pregunta que se quedó sin respuesta seguida de otra (la app vieja las mandaba así) vale como la última.
+ * - Una conversación larga se recorta (la primera respuesta y las últimas vueltas): la app vieja la mandaba entera
+ *   y al pasar de 12 vueltas la conversación dejaba de funcionar.
+ * - Solo la pregunta nueva tiene que caber en MAX_QUESTION; las de antes se acortan si hiciera falta.
+ */
+function validTurns(turns: unknown): Turn[] | string {
   const ordenadas = ordenarVueltas<Turn>(turns);
-  if (!ordenadas || ordenadas.length > MAX_TURNS || ordenadas.some((t) => t.role === 'user' && t.text.length > MAX_QUESTION)) return null;
-  return ordenadas;
+  if (!ordenadas) return 'Conversación no válida';
+  const ultima = ordenadas[ordenadas.length - 1];
+  if (ultima && ultima.text.length > MAX_QUESTION) return `Tu pregunta es muy larga: escríbela en menos de ${MAX_QUESTION} letras.`;
+  return recortarVueltas(ordenadas).map((t) => (t.role === 'user' && t.text.length > MAX_QUESTION ? { ...t, text: t.text.slice(0, MAX_QUESTION) } : t));
 }
 
 // El Taller desde un tema: todavía no hay pasaje, así que la IA investiga con las herramientas desde el principio.
@@ -1134,7 +1141,7 @@ async function temaPost(request: Request, body: Body) {
     return badRequest('Tema no válido');
   }
   const turns = validTurns(body.messages ?? []);
-  if (!turns) return badRequest('Conversación no válida');
+  if (typeof turns === 'string') return badRequest(turns);
   const version = await lectura(body.version);
   if (!version) return badRequest('Versión no válida');
   const vacia = await gastarLampara(request);
@@ -1168,7 +1175,7 @@ async function preguntaPost(request: Request, body: Body) {
   if (body.publico !== undefined && body.publico !== 'jovenes') return badRequest('Público no válido');
   const jovenes = body.publico === 'jovenes';
   const turns = validTurns(body.messages ?? []);
-  if (!turns) return badRequest('Conversación no válida');
+  if (typeof turns === 'string') return badRequest(turns);
   const version = await lectura(body.version);
   if (!version) return badRequest('Versión no válida');
   // La preparada se guarda con su texto del catálogo, no con lo que escribió la persona.
@@ -1253,7 +1260,7 @@ export async function POST(request: Request) {
   }
 
   const turns = validTurns(body.messages ?? []);
-  if (!turns) return badRequest('Conversación no válida');
+  if (typeof turns === 'string') return badRequest(turns);
   if (body.taller !== undefined && !validTaller(body.taller)) return badRequest('Pedido del Taller no válido');
   const taller = body.taller;
   if (body.semana !== undefined && (!validSemana(body.semana) || taller || verse !== undefined || word !== undefined || turns.length > 0)) {

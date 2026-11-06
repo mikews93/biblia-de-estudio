@@ -114,3 +114,23 @@ export function useTecladoAbierto(): boolean {
   return abierto;
 }
 
+/**
+ * Lo que hay que dejar debajo de la caja en un panel a pantalla completa dentro de un Modal (Estudio, Taller).
+ * En la web, lo de useTecladoWeb. En Android, el alto del teclado: KeyboardAvoidingView mide su posición respecto al
+ * Modal y no a la pantalla, así que se quedaba corto por la barra de estado y el margen de arriba del panel, y el
+ * teclado tapaba la caja. En iPhone lo hace bien KeyboardAvoidingView y devuelve 0.
+ */
+export function useTecladoPanel(): number {
+  const web = useTecladoWeb();
+  const [alto, setAlto] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const a = Keyboard.addListener('keyboardDidShow', (e) => setAlto(Math.max(0, Math.round(e.endCoordinates.height))));
+    const b = Keyboard.addListener('keyboardDidHide', () => setAlto(0));
+    return () => {
+      a.remove();
+      b.remove();
+    };
+  }, []);
+  return Platform.OS === 'android' ? alto : web;
+}
