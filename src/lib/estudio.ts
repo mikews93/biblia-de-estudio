@@ -12,7 +12,7 @@ const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 export type Source = { n: number; label: string; ref?: string; url?: string; nota?: string };
 /** Lo que la IA consultó para responder una pregunta (las herramientas de api/_investigar.ts). */
 export type Paso = {
-  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas' | 'web';
+  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas' | 'web' | 'personajes';
   texto: string;
 };
 export type Turn = {
@@ -72,7 +72,13 @@ type Request = {
   /** Del sermón a tu semana: las notas del sermón para preparar cinco días (src/lib/semanas.ts). */
   semana?: { notas: string; desde?: number; hasta?: number; predicador?: string };
   /** El Taller desde un tema, todavía sin pasaje: lo que la persona quiere tratar (src/lib/tallerTema.ts). */
-  tema?: { texto: string; tipo: 'reflexion' | 'encuentro' | 'sermon'; preparar?: boolean };
+  tema?: {
+    texto: string;
+    tipo: 'reflexion' | 'encuentro' | 'sermon';
+    preparar?: boolean;
+    /** Un estudio profundo convertido en mensaje (src/lib/estudioASermon.ts). */
+    estudio?: { cita: string; texto: string; preguntas: { pregunta: string; respuesta: string }[] };
+  };
   /** La versión que lee la persona: la IA cita esa (o la RV1909 si es una con derechos; ver api/_investigar.ts). */
   version?: string;
   /** Una pregunta frecuente del pasaje (src/lib/senales.ts): su respuesta es la misma para todos. */

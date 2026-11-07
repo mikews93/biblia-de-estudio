@@ -178,7 +178,13 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
       'Referencias cruzadas de Juan 3 (OpenBible.info)',
       'Notas de estudio abiertas de Tyndale, Tyndale House Publishers (2022) · comentario sobre Juan 3',
       'Comentario de toda la Biblia, Matthew Henry (1706-1721) · comentario sobre Juan 3',
+      'Personas, lugares y momento histórico de Juan 3 (fichas y línea de tiempo de la app; descripciones en inglés)',
     ]);
+    // Las fichas de quienes aparecen (Nicodemo, de los fariseos) y el momento del ministerio de Jesús
+    const fichas = JSON.stringify(docs[5].source.content);
+    expect(fichas).toContain('Nicodemo');
+    expect(fichas).toContain('Periodo: Ministerio de Jesús');
+    expect(fichas).not.toContain('Nerón');
     expect(docs[4].source.content.map((b: { text: string }) => b.text)).toEqual([
       "In this chapter we have Christ's discourse with Nicodemus.",
       'The love of God\nHere is the great gospel truth.',
@@ -406,6 +412,13 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(await bad({ tema: { texto: 'Jóvenes ansiosos por el futuro', tipo: 'sermon' }, messages: [{ role: 'user', text: 'hola' }] })).toBe(
       'Conversación no válida',
     );
+    // El estudio profundo que se convierte en mensaje: solo al preparar, con su pasaje, el estudio y hasta 8 preguntas
+    const estudio = { cita: 'Juan 3:16', texto: 'Dios ama al mundo.', preguntas: [{ pregunta: '¿Qué es unigénito?', respuesta: 'Único.' }] };
+    const tema = { texto: 'Quiero predicar Juan 3:16 a partir de lo que estudié', tipo: 'sermon' };
+    expect(await bad({ tema: { ...tema, estudio } })).toBe('Tema no válido');
+    expect(await bad({ tema: { ...tema, preparar: true, estudio: { ...estudio, cita: '' } } })).toBe('Tema no válido');
+    expect(await bad({ tema: { ...tema, preparar: true, estudio: { ...estudio, preguntas: Array(9).fill(estudio.preguntas[0]) } } })).toBe('Tema no válido');
+    expect(await bad({ tema: { ...tema, preparar: true, estudio: { ...estudio, preguntas: [{ pregunta: '¿Y?', respuesta: '' }] } } })).toBe('Tema no válido');
     expect(await bad({ book: 'jhn', chapter: 3, taller: { modo: 'maqueta', tipo: 'sermon', paso: 'bosquejo', situacion: 'x'.repeat(4001) } })).toBe(
       'Pedido del Taller no válido',
     );
@@ -428,6 +441,30 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     const sources = evs.filter((e) => e.type === 'source');
     expect(sources[0]).toMatchObject({ label: expect.stringMatching(/^Filipenses 4:/), ref: expect.stringMatching(/^php\.4\./) });
     expect(sources.some((e) => e.url?.startsWith('https://'))).toBe(true);
+    expect(evs.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('un estudio profundo convertido en sermón lleva el estudio y las preguntas, y la IA dice cómo usar cada una', async () => {
+    const before = aiRequests.length;
+    const pregunta = `¿Qué significa unigénito? ${Date.now()}`;
+    const evs = await events(
+      await ask({
+        tema: {
+          texto: 'Quiero preparar un sermón sobre Juan 3:16 a partir de lo que estudié.',
+          tipo: 'sermon',
+          preparar: true,
+          estudio: { cita: 'Juan 3:16', texto: '## Panorama\nDios ama al mundo entero.', preguntas: [{ pregunta, respuesta: 'Único en su clase.' }] },
+        },
+      }),
+    );
+    const [first] = aiRequests.slice(before);
+    const encargo = JSON.stringify(first.messages[0].content);
+    expect(encargo).toContain('Antes estudié Juan 3:16 a fondo');
+    expect(encargo).toContain('Dios ama al mundo entero.');
+    expect(encargo).toContain(`Pregunté: «${pregunta}»`);
+    expect(encargo).toContain('## Lo que preguntaste');
+    expect(encargo).toContain('El mensaje parte de Juan 3:16');
+    expect(textOf(evs)).toContain('## Lo que preguntaste');
     expect(evs.at(-1)).toEqual({ type: 'done' });
   });
 

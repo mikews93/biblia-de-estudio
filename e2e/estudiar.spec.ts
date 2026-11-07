@@ -333,8 +333,10 @@ test('mientras la IA responde, tocar el texto deja de seguirlo y «Ir al final»
   // «Ir al final» vuelve a seguir la respuesta hasta que termina
   await irAlFinal.click();
   await expect(irAlFinal).toHaveCount(0);
-  await expect(estudio.getByText(/^Párrafo 40 de la respuesta lenta/)).toBeAttached({ timeout: 30_000 });
-  await expect.poll(alFinal).toBe(true);
+  const ultimo = estudio.getByText(/^Párrafo 40 de la respuesta lenta/);
+  await expect(ultimo).toBeAttached({ timeout: 30_000 });
+  // Al terminar aparece debajo «Convertirlo en un sermón»: lo que importa es que se vea el final de la respuesta
+  await expect.poll(async () => (await alFinal()) || (await ultimo.evaluate((el) => el.getBoundingClientRect().bottom <= window.innerHeight))).toBe(true);
 });
 
 test('«Me ayudó» y «Algo suena raro» bajo el estudio guardado', async ({ page, request }) => {

@@ -120,8 +120,21 @@ const PREPARAR: { text: string; tool?: number; web?: boolean }[] = [
   { text: '\n\n## Puntos de vista\n- ¿«No os afanéis» prohíbe planear el futuro? | Una lectura dice que Jesús prohíbe la preocupación ansiosa, no la previsión; otra subraya que el énfasis está en buscar primero el reino antes que cualquier plan.' },
   { text: '\n\n## Predicaciones\n' },
   { text: '- Cuando el viento sopla | La fe de Pedro no falló al salir del barco, sino al cambiar de enfoque: la tormenta no era nueva, su mirada sí.', web: true },
-  { text: '\n\n## Contexto\n- Las tormentas en el mar de Galilea llegan de repente porque el aire frío baja de los montes al lago, que está muy por debajo del nivel del mar.\n- La cuarta vigilia era entre las tres y las seis de la mañana: llevaban toda la noche remando.\n\n## Enfoques\n- Mira a Jesús, no a las olas | Mateo 14:22-33 | La ansiedad se vence mirando a Jesús y no al viento.\n- Tu Padre ya sabe | Mateo 6:25-34 | El afán se calma confiando en un Padre que ya sabe lo que necesitamos.\n- Echa tu carga | Filipenses 4:6-7 | Pasos concretos para convertir la ansiedad en oración con gratitud.' },
+  { text: '\n\n## Momento histórico\n- Las tormentas en el mar de Galilea llegan de repente porque el aire frío baja de los montes al lago, que está muy por debajo del nivel del mar.\n- La cuarta vigilia era entre las tres y las seis de la mañana: llevaban toda la noche remando.\n\n## Protagonistas\n- Pedro | Un pescador de Betsaida, un pueblo pequeño de Galilea, que trabajaba con su hermano Andrés; impulsivo y valiente, el primero en salir del barco y también en hundirse. Dios escoge a gente común para hacer cosas grandes.\n\n## Enfoques\n- Mira a Jesús, no a las olas | Mateo 14:22-33 | La ansiedad se vence mirando a Jesús y no al viento.\n- Tu Padre ya sabe | Mateo 6:25-34 | El afán se calma confiando en un Padre que ya sabe lo que necesitamos.\n- Echa tu carga | Filipenses 4:6-7 | Pasos concretos para convertir la ansiedad en oración con gratitud.' },
 ];
+
+// Desde un estudio profundo con preguntas, la investigación dice cómo usar cada pregunta en el mensaje.
+const PREPARAR_ESTUDIO = PREPARAR.map((x, i) =>
+  i < PREPARAR.length - 1
+    ? x
+    : {
+        ...x,
+        text: x.text.replace(
+          '\n\n## Enfoques\n',
+          '\n\n## Lo que preguntaste\n- Explícamelo más sencillo | Escribe el mensaje con palabras de todos los días y una imagen de la vida diaria: fue lo primero que necesitaste al estudiarlo, y la gente lo necesitará también.\n\n## Enfoques\n',
+        ),
+      },
+);
 
 /** Texto de la respuesta y, si corresponde, una cita al primer documento. */
 function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]; slow?: boolean } {
@@ -601,7 +614,7 @@ async function sse(res: ServerResponse, body: Body) {
     send({ type: 'content_block_stop', index: 1 });
     return sendTools(res, send, TEMA_CALLS, 2);
   }
-  if (tema === 'responder' && preparar) return sendTema(res, send, body, PREPARAR);
+  if (tema === 'responder' && preparar) return sendTema(res, send, body, JSON.stringify(body.messages[0]).includes('<preguntas>') ? PREPARAR_ESTUDIO : PREPARAR);
   if (tema === 'pedir') return sendTools(res, send, TEMA_CALLS);
   if (tema === 'responder' && saturada && !SATURADAS.has(JSON.stringify(body.messages[0]))) {
     SATURADAS.add(JSON.stringify(body.messages[0]));

@@ -18,7 +18,7 @@ import Appear from '@/components/Appear';
 import { IconText } from '@/components/comunidad/ui';
 import AskBar from '@/components/AskBar';
 import Devotional from '@/components/Devotional';
-import { ArrowDownIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, HeartIcon, type IconProps, SparkIcon } from '@/components/icons';
+import { ArrowDownIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, HeartIcon, type IconProps, LecternIcon, SparkIcon } from '@/components/icons';
 import Investigacion from '@/components/Investigacion';
 import StudyContext from '@/components/StudyContext';
 import StudySignals from '@/components/StudySignals';
@@ -36,6 +36,7 @@ import { NEEDS_ACCOUNT } from '@/lib/comunidad';
 import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { useConversations } from '@/lib/conversaciones';
 import { Enfoque, Source, askStudy } from '@/lib/estudio';
+import { estudioPrevio, prepararDesdeEstudio } from '@/lib/estudioASermon';
 import { conversationKey, forgetConversation, saveConversation, savedConversation } from '@/lib/misPreguntas';
 import { forgetKept, studyKeep } from '@/lib/recordado';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
@@ -253,6 +254,14 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
     <StudyContext book={book.id} chapter={chapter} verse={verse} onOpen={open} onOpenMap={openMap} />
   );
   const first = turns[0];
+  const preguntas = turns.filter((t, i) => i > 0 && t.role === 'user').length;
+  // Un estudio profundo convertido en sermón: el estudio y las preguntas de la persona pasan a «Preparar un mensaje».
+  const aSermon = async () => {
+    const e = estudioPrevio({ book: book.id, chapter, verse, cita: passage }, turns);
+    if (!e) return;
+    await prepararDesdeEstudio(e);
+    navigate(() => router.push('/taller/preparar'), 'forward');
+  };
   const retry = () => convs.retry(mode);
   // «Me ayudó», «Algo suena raro» y las preguntas que otros hicieron, cuando el estudio de todos ya está completo.
   const signals = !!first?.text && (busy ? turns.length > 1 : true) && (
@@ -531,6 +540,30 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
                   )}
                 </View>
               )}
+
+              {!word && first?.text && !busy && !first.cortada && (
+                <Appear>
+                  <Pressable
+                    onPress={aSermon}
+                    accessibilityRole="button"
+                    accessibilityLabel="Convertir este estudio en un sermón"
+                    style={({ pressed }) => [styles.aSermon, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.8 }]}
+                  >
+                    <View style={[styles.aSermonIcon, { backgroundColor: colors.accentSoft }]}>
+                      <LecternIcon color={colors.accent} size={20} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.aSermonTitle, { color: colors.text }]}>Convertirlo en un sermón</Text>
+                      <Text style={[styles.aSermonHint, { color: colors.muted }]}>
+                        {preguntas
+                          ? `Lleva el estudio y ${preguntas === 1 ? 'tu pregunta' : `tus ${preguntas} preguntas`} al Taller: la IA investiga más y te escribe un borrador.`
+                          : 'Lleva el estudio al Taller: la IA investiga más y te escribe un borrador. Tus preguntas también lo enriquecen.'}
+                      </Text>
+                    </View>
+                    <ChevronRightIcon color={colors.muted} size={18} />
+                  </Pressable>
+                </Appear>
+              )}
               </>
               )}
 
@@ -652,6 +685,10 @@ function ModeSwitch({ mode, onChange, colors }: { mode: Enfoque; onChange: (m: E
 }
 
 const styles = StyleSheet.create({
+  aSermon: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 16, marginTop: 22 },
+  aSermonIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  aSermonTitle: { fontFamily: serif, fontSize: 18, lineHeight: 24 },
+  aSermonHint: { fontSize: 13, lineHeight: 19, marginTop: 2 },
   toEndWrap: { position: 'absolute', bottom: 12, left: 0, right: 0, alignItems: 'center' },
   toEnd: {
     flexDirection: 'row',
