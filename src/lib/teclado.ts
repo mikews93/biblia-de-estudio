@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { Keyboard, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+/**
+ * Aire entre la caja y el teclado. En el Samsung de Mike (2026-11-07) la caja quedaba justo al ras y el borde de abajo
+ * se metía un pelín bajo la franja de sugerencias del teclado: Android no siempre cuenta esa franja en el alto que
+ * da del teclado. Con este margen la caja queda separada del teclado en todos los teléfonos.
+ */
+export const RESPIRO = 20;
+
 /** Si hay un campo de texto enfocado (el teclado solo sale con uno). */
 function escribiendo(): boolean {
   const el = typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null);
@@ -28,8 +35,9 @@ export function useTecladoWeb(siempre = true): number {
   const abierto = useTecladoAbierto();
   const { bottom } = useSafeAreaInsets();
   if (Platform.OS !== 'web') return 0;
-  if (tapa > 0) return tapa;
-  return siempre || abierto ? bottom : 0;
+  if (tapa > 0) return tapa + RESPIRO;
+  if (abierto) return bottom + RESPIRO;
+  return siempre ? bottom : 0;
 }
 
 /** Lo que tapa el teclado medido con visualViewport (ver useTecladoWeb). */
@@ -132,5 +140,5 @@ export function useTecladoPanel(): number {
       b.remove();
     };
   }, []);
-  return Platform.OS === 'android' ? alto : web;
+  return Platform.OS === 'android' ? (alto > 0 ? alto + RESPIRO : 0) : web;
 }
