@@ -17,6 +17,7 @@ import { Section, sections } from './_comentarios';
 import { ISBE, OBRAS, TORREY, TYNDALE, buscarEntradas, buscarLD, buscarTema, buscarTyndale, etiqueta, partes, textoTyndale } from './_diccionario';
 import { Area, buscarTeologia } from './_teologia';
 import { parseCita } from '../src/lib/cita';
+import { type CapituloRow, type FichaDatos, type IndiceRow, buscarNombre, citasDeFicha, datosDe, delTramo, enlaceFicha, momentoDe } from './_personajes';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
 import { LICENSED } from '../src/lib/licenciadas';
 import { describeMorph } from '../src/lib/morph';
@@ -152,6 +153,45 @@ export class Biblia {
   }
 }
 
+// ---------------------------------------------------------------- Personajes, lugares y momento histórico
+
+export const AVISO_FICHAS =
+  'Datos de las fichas de personas y lugares de la app y de su línea de tiempo. La descripción de cada ficha está en inglés y la escribió un equipo de STEPBible: explícala en español con tus palabras, cita cada dato y no afirmes nada que no esté aquí o en el texto. Antes de citar un pasaje que aparece en la descripción, léelo.';
+
+/**
+ * Las fichas de un pasaje (o de un nombre) y el momento histórico del capítulo, listas para darlas a la IA como
+ * resultado de herramienta o como documento del estudio (api/_personajes.ts).
+ */
+export async function fichasDe(
+  biblia: Biblia,
+  c: { book: Book; chapter: number; verse?: number; verseEnd?: number } | null,
+  nombre = '',
+  max = 6,
+  /** Palabras de la descripción de cada ficha: menos en los documentos del pasaje, que van en cada estudio. */
+  palabras = 260,
+): Promise<{ title: string; source: string; blocks: Block[] }[]> {
+  const ids: string[] = [];
+  if (nombre) {
+    const hit = buscarNombre(await load<IndiceRow[]>('fichas/indice.json', []), nombre);
+    if (hit) ids.push(hit[0]);
+  } else if (c) {
+    const rows = await load<CapituloRow[]>(`fichas/cap/${c.book.id}/${c.chapter}.json`, []);
+    ids.push(...delTramo(Array.isArray(rows) ? rows : [], c.verse, c.verseEnd ?? c.verse, max).map((r) => r[0]));
+  }
+  const fichas = (await Promise.all(ids.map((id) => load<FichaDatos | null>(`fichas/f/${id}.json`, null)))).filter((f): f is FichaDatos => !!f);
+  const out = fichas.map((f) => {
+    const meta = { label: `Ficha de ${f.nombre.split(' (')[0]} (STEPBible)`, url: enlaceFicha(f), nota: 'STEPBible TIPNR · CC BY 4.0' };
+    const blocks = [...datosDe(f), ...firstWords(partes(citasDeFicha(f.en ?? '', (r) => biblia.label(r))), palabras)].map((text) => ({ text, meta }));
+    return { title: `Ficha de ${f.nombre} (datos en español; la descripción, en inglés)`, source: `ficha:${f.id}`, blocks };
+  });
+  const momento = c ? momentoDe(c.book.id, c.chapter) : null;
+  if (momento) {
+    const meta = { label: `Línea de tiempo de la app: ${momento.periodo.titulo}`, url: 'https://zarzabiblia.com/historia', nota: 'Cronología conservadora (éxodo c. 1446 a.C., reyes según Thiele)' };
+    out.push({ title: `Momento histórico de ${c!.book.name} ${c!.chapter}: ${momento.periodo.titulo}`, source: `historia:${momento.periodo.id}`, blocks: momento.lineas.map((text) => ({ text, meta })) });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- Comentarios
 
 /** Los primeros párrafos de un texto hasta unas palabras; el último se corta en una frase si hace falta. */
@@ -276,7 +316,7 @@ export async function searchVerses(query: string, books: Book[], testamento?: 'A
 // ---------------------------------------------------------------- Las herramientas
 
 export type Paso = {
-  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas' | 'web';
+  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas' | 'web' | 'personajes';
   texto: string;
 };
 
@@ -382,6 +422,21 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
     strict: true,
   },
   {
+    name: 'personajes_y_lugares',
+    description:
+      'Las fichas de la app de las personas, pueblos y lugares de un pasaje (STEPBible), unidas entre sí: de dónde viene cada persona (su tribu o pueblo, su ciudad), su familia, su papel y su época, los lugares donde aparece y con quién; de cada lugar, qué era, quiénes vivieron allí y qué hay cerca. Trae también el momento histórico del capítulo (el periodo bíblico con sus fechas y lo que pasaba en el mundo en esos años). Úsalo para entender el entorno de los protagonistas: si venían de un pueblo pequeño o despreciado, a qué familia pertenecían, qué imperio gobernaba. Con «nombre» vacío da las del pasaje; con un nombre, la ficha de esa persona o lugar.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        cita: { type: 'string', description: 'El pasaje, como «Mateo 14:22-33» o «Rut 1».' },
+        nombre: { type: 'string', description: 'Una persona o lugar concreto, como en la RV1909 («Pedro», «Belén», «Moab»), o vacío para todos los del pasaje.' },
+      },
+      required: ['cita', 'nombre'],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
     name: 'temas_biblicos',
     description:
       'Los índices por temas de Nave (1896) y de Torrey (1897), de dominio público: para un tema, sus aspectos en inglés y los pasajes de toda la Biblia que tratan cada uno, con el texto de una muestra. Sirve para responder «¿qué dice la Biblia sobre…?» reuniendo los pasajes de un tema (la oración, el perdón, la ansiedad, el matrimonio).',
@@ -455,6 +510,8 @@ export function pasoDe(name: string, input: Record<string, unknown>, biblia: Bib
       return { tipo: 'diccionario', texto: raw };
     case 'temas_biblicos':
       return { tipo: 'temas', texto: raw };
+    case 'personajes_y_lugares':
+      return { tipo: 'personajes', texto: typeof input.nombre === 'string' && input.nombre.trim() ? `${input.nombre.trim().slice(0, 40)} (${where})` : where };
     default:
       return { tipo: 'concordancia', texto: raw.toUpperCase() };
   }
@@ -537,6 +594,16 @@ export async function investigar(name: string, input: Record<string, unknown>, b
       const aviso =
         'El diccionario Tyndale es moderno y ya está en español: puedes apoyarte primero en él. La ISBE (1915) es más amplia y académica. La ISBE, Easton y Smith son antiguos y en inglés: explícalos en español con tus palabras y sin traducir párrafos enteros; sus datos de arqueología y geografía pueden estar superados. No pongas ningún diccionario al nivel de la Escritura.';
       return { content: [{ type: 'text', text: aviso }, ...rs.map((r) => r.param)], results: rs.map((r) => r.metas), paso };
+    }
+
+    if (name === 'personajes_y_lugares') {
+      const c = biblia.cita(String(input.cita ?? ''));
+      const nombre = String(input.nombre ?? '').slice(0, 60).trim();
+      if (!c && !nombre) return fail(paso, 'No entendí la cita. Escríbela como «Mateo 14:22-33».');
+      const found = await fichasDe(biblia, c, nombre);
+      if (!found.length) return { content: `No hay fichas${nombre ? ` de «${nombre}»` : ' de ese pasaje'}. Prueba con el nombre como en la RV1909, o usa el diccionario.`, results: [], paso };
+      const rs = found.map((f) => result(f.title, f.source, f.blocks));
+      return { content: [{ type: 'text', text: AVISO_FICHAS }, ...rs.map((r) => r.param)], results: rs.map((r) => r.metas), paso };
     }
 
     if (name === 'temas_biblicos') {

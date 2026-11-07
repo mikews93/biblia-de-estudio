@@ -32,8 +32,12 @@ export type Exploracion = {
   vistas: { pregunta: string; texto: string }[];
   /** Ideas de predicaciones y estudios de la web: el título y la idea, con su cita (el enlace va en la fuente). */
   predicaciones: { titulo: string; idea: string }[];
-  /** Datos del contexto histórico, cultural o geográfico, con sus citas. */
+  /** El momento histórico y el contexto cultural o geográfico, con sus citas. */
   contexto: string[];
+  /** Las personas del pasaje: de dónde vienen, su familia y su entorno, y lo que enseña de cómo obra Dios. */
+  protagonistas: { nombre: string; texto: string }[];
+  /** Desde un estudio profundo: cada pregunta que hizo la persona y cómo puede enriquecer el mensaje. */
+  deEstudio: { pregunta: string; texto: string }[];
   /** Las direcciones posibles para el mensaje. */
   enfoques: { titulo: string; cita: string; pasaje: Pasaje | null; idea: string }[];
 };
@@ -61,7 +65,7 @@ const sinMarcas = (s: string) => s.replace(/(?:\s*⟦\d+⟧)+/g, '').replace(/\*
 
 /** Lee la investigación de un tema; mientras llega, devuelve lo que ya está completo. */
 export function leerExploracion(markdown: string, books: Book[]): Exploracion {
-  const out: Exploracion = { entiendo: '', pasajes: [], fuentes: [], preguntas: [], vistas: [], predicaciones: [], contexto: [], enfoques: [] };
+  const out: Exploracion = { entiendo: '', pasajes: [], fuentes: [], preguntas: [], vistas: [], predicaciones: [], contexto: [], protagonistas: [], deEstudio: [], enfoques: [] };
   const items = (lineas: string[]) => lineas.map(item).filter((x): x is string => !!x && !/^ninguna\.?$/i.test(sinMarcas(x)));
   const dos = (x: string) => {
     const i = x.indexOf('|');
@@ -80,7 +84,18 @@ export function leerExploracion(markdown: string, books: Book[]): Exploracion {
         const [titulo, idea] = dos(x);
         return { titulo, idea };
       });
-    } else if (t.startsWith('contexto')) out.contexto = items(lineas);
+    } else if (t.startsWith('contexto') || t.startsWith('momento')) out.contexto = items(lineas);
+    else if (t.startsWith('protagonista') || t.startsWith('personaje')) {
+      out.protagonistas = items(lineas).map((x) => {
+        const [nombre, texto] = dos(x);
+        return { nombre, texto };
+      });
+    } else if (t.includes('preguntaste')) {
+      out.deEstudio = items(lineas).map((x) => {
+        const [pregunta, texto] = dos(x);
+        return { pregunta, texto };
+      });
+    }
     else if (t.startsWith('enfoque')) {
       out.enfoques = items(lineas).map((x) => {
         const [tit, cita, ...idea] = x.split('|');

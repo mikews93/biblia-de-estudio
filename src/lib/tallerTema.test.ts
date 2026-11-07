@@ -128,19 +128,29 @@ Jóvenes con ansiedad por el futuro.⟦1⟧
 - Cuando el viento sopla | Pedro se hunde al mirar las olas.⟦4⟧
 - Ninguna
 
-## Contexto
+## Momento histórico
 - En Galilea las tormentas llegan de golpe.⟦5⟧
+
+## Protagonistas
+- Pedro | Pescador de Betsaida, un pueblo pequeño; impulsivo y valiente.⟦6⟧
+
+## Lo que preguntaste
+- ¿Por qué los mandó a la tormenta? | Úsala para abrir el mensaje: Jesús los mandó y oraba por ellos.⟦2⟧
 
 ## Enfoques
 - Mira a Jesús, no a las olas | Mateo 14:22-33 | La ansiedad se vence mirando a Jesús.⟦1⟧
 - Tu Padre ya sabe | «Mateo 6:25-34». | El Padre cuida.`;
 
-  it('lee los puntos de vista, las predicaciones, el contexto y los enfoques con su pasaje', () => {
+  it('lee los puntos de vista, las predicaciones, el momento histórico, los protagonistas y los enfoques con su pasaje', () => {
     const e = leerExploracion(PREPARAR, BOOKS);
     expect(e.fuentes).toEqual(['Un comentario señala que Jesús oraba en el monte.⟦2⟧']);
     expect(e.vistas).toEqual([{ pregunta: '¿No os afanéis prohíbe planear?', texto: 'Una lectura dice que no; otra, que sí con matices.⟦3⟧' }]);
     expect(e.predicaciones).toEqual([{ titulo: 'Cuando el viento sopla', idea: 'Pedro se hunde al mirar las olas.⟦4⟧' }]);
     expect(e.contexto).toEqual(['En Galilea las tormentas llegan de golpe.⟦5⟧']);
+    expect(e.protagonistas).toEqual([{ nombre: 'Pedro', texto: 'Pescador de Betsaida, un pueblo pequeño; impulsivo y valiente.⟦6⟧' }]);
+    // Desde un estudio profundo: sus preguntas no se confunden con «Para afinar»
+    expect(e.deEstudio).toEqual([{ pregunta: '¿Por qué los mandó a la tormenta?', texto: 'Úsala para abrir el mensaje: Jesús los mandó y oraba por ellos.⟦2⟧' }]);
+    expect(e.preguntas).toEqual([]);
     expect(e.enfoques.map((x) => [x.titulo, x.cita, x.pasaje])).toEqual([
       ['Mira a Jesús, no a las olas', 'Mateo 14:22-33', { book: 'mat', chapter: 14, from: 22, to: 33 }],
       ['Tu Padre ya sabe', 'Mateo 6:25-34', { book: 'mat', chapter: 6, from: 25, to: 34 }],
