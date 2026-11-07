@@ -227,6 +227,16 @@ function PasajeStep({ m, books, set }: StepProps & { books: Book[] }) {
 
   return (
     <View style={{ marginTop: 16, gap: 14 }}>
+      {!!m.ia && (
+        <Pressable
+          onPress={() => navigate(() => router.push(`/taller/${m.id}/borrador`), 'forward')}
+          accessibilityRole="link"
+          style={({ pressed }) => [styles.situacion, { borderColor: colors.accent, backgroundColor: colors.accentSoft }, pressed && { opacity: 0.8 }]}
+        >
+          <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>Ver el borrador completo ›</Text>
+          <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>Para leerlo de corrido, pedir cambios hablando y escucharlo.</Text>
+        </Pressable>
+      )}
       {!!m.situacion && (
         <View style={[styles.situacion, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>LO QUE QUERÍAS TRATAR</Text>

@@ -118,13 +118,16 @@ type Body = {
 };
 // Del sermón a tu semana: lo que la persona anotó del sermón del domingo, para cinco días de devocional.
 type Semana = { notas: string; desde?: number; hasta?: number; predicador?: string };
-// Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa,
-// pero nunca escribe el mensaje por la persona.
+// Ayuda del Taller (preparar reflexiones, encuentros y sermones): la IA pregunta, sugiere o revisa; en el Taller con
+// borrador («borrador», «cambiar») escribe el borrador que la persona revisa y hace suyo.
 type Taller = {
   /** «repaso»: las preguntas de opción múltiple que la congregación responde en vivo durante el evento (api/vivo.ts).
    *  «maqueta»: el esqueleto del mensaje a partir de un tema (títulos, preguntas guía y pasajes de apoyo).
-   *  «corregir»: correcciones puntuales a lo que la persona ya escribió, según la revisión (src/lib/correcciones.ts). */
-  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta' | 'corregir';
+   *  «corregir»: correcciones puntuales a lo que la persona ya escribió, según la revisión (src/lib/correcciones.ts).
+   *  «borrador»: el mensaje completo, escrito como borrador para que la persona lo revise (src/lib/borrador.ts).
+   *  «cambiar»: lo que la persona pide cambiar del borrador, hablándole a la IA, parte por parte.
+   *  «practicar»: un repaso hablado del mensaje, para escucharlo y aprenderlo antes de exponerlo. */
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta' | 'corregir' | 'borrador' | 'cambiar' | 'practicar';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;
@@ -135,8 +138,16 @@ type Taller = {
   situacion?: string;
   /** Solo «corregir»: la revisión que hizo la IA y que las correcciones aplican. */
   revision?: string;
+  /** Solo «borrador»: lo que la persona marcó de la investigación y hacia dónde quiere llevar el mensaje. */
+  investigacion?: string;
+  direccion?: string;
+  /** Solo «borrador»: los minutos que tiene para el mensaje. */
+  minutos?: number;
+  /** Solo «cambiar»: lo que la persona pide cambiar, dicho o escrito. */
+  pedido?: string;
 };
-type Tema = { texto: string; tipo: Taller['tipo'] };
+/** «preparar»: el Taller con borrador; la investigación es más amplia y también busca predicaciones en la web. */
+type Tema = { texto: string; tipo: Taller['tipo']; preparar?: boolean };
 // «sencillo»: corto y sin palabras técnicas; «fondo»: con contexto, el original y las fuentes. «preparada»: el id de una
 // de las preguntas que muchos hacen (src/lib/preguntasPreparadas.ts), cuya respuesta se guarda para todos.
 type Pregunta = { texto: string; nivel: 'sencillo' | 'fondo'; preparada?: string };
@@ -169,6 +180,40 @@ Herramientas: puedes investigar más allá del pasaje abierto: leer otros pasaje
 - Lo que encuentres con ellas se cita igual que los documentos. Si algo no está en ninguna fuente de la app, márcalo como «contexto general», breve y sin inventar fechas ni citas.
 - Antes de nombrar o copiar un versículo que no está en los documentos, léelo con «leer_pasaje» (o encuéntralo con «buscar_en_la_biblia»): nunca des una referencia de memoria.`;
 
+// La búsqueda en la web del Taller con borrador: predicaciones y estudios evangélicos. Se dejan fuera los sitios de
+// grupos que niegan doctrinas centrales y los católicos (decisiones de Mike del 2026-10-18 y 2026-10-27).
+const WEB_BLOQUEADOS = [
+  'jw.org',
+  'churchofjesuschrist.org',
+  'lds.org',
+  'christianscience.com',
+  'christadelphians.org',
+  'aletheiacollege.net',
+  'carelinks.net',
+  'adventist.org',
+  'adventistas.org',
+  'upci.org',
+  'iglesiapentecostalunida.org',
+  'vatican.va',
+  'catholic.net',
+  'catholic.com',
+  'catholic.org',
+  'aciprensa.com',
+  'ewtn.com',
+  'opusdei.org',
+  'corazones.org',
+  'vaticannews.va',
+];
+const WEB_TOOL: Anthropic.Beta.BetaWebSearchTool20260209 = {
+  type: 'web_search_20260209',
+  name: 'web_search',
+  max_uses: 5,
+  blocked_domains: WEB_BLOQUEADOS,
+};
+const WEB_SYSTEM = `
+
+Búsqueda en la web: puedes buscar predicaciones y estudios en la web. Usa solo los de iglesias y ministerios evangélicos; descarta los de grupos que niegan la Trinidad o la divinidad de Cristo y los católicos. Lo que tomes de ellos se cita igual, sin nombrar al predicador en el texto. La Biblia y las fuentes de la app van primero: la web solo aporta ideas y enfoques.`;
+
 const TALLER_SYSTEM = `
 
 Ahora acompañas a alguien en el Taller de la app, donde prepara una reflexión, un encuentro de grupo o un sermón. Eres un acompañante que pregunta y sugiere, no un escritor fantasma: el valor está en que la persona estudie, ore y prepare.
@@ -179,6 +224,23 @@ Reglas del Taller:
 - No inventes anécdotas como si fueran reales. Si sugieres una ilustración, márcala como «Ejemplo, no hecho real», en una o dos frases.
 - Ayuda a que el mensaje tenga una sola idea central que salga del texto, nombre la necesidad humana que el pasaje toca y ponga la gracia de Dios en el centro, no solo consejos.
 - Sé breve: lo justo para dar el siguiente paso.`;
+
+// El Taller con borrador: la persona ora, la IA investiga, la persona da la dirección y la IA escribe el borrador.
+// Reemplaza la regla del Taller de no escribir el mensaje (Mike lo decidió el 2026-11-07): es un borrador que la persona
+// revisa, cambia y hace suyo.
+const BORRADOR_SYSTEM = `
+
+Ahora acompañas a alguien en el Taller de la app, donde prepara una reflexión, un encuentro de grupo o un sermón. Esta persona ya oró, revisó la investigación y te dio la dirección: te pide que escribas el borrador completo del mensaje, para leerlo entero, ver si quedó bien y cambiar lo que quiera. Es su mensaje: tú le ahorras el trabajo de redactar.
+
+Reglas del borrador:
+- Sigue la dirección que te dio y las ideas que marcó de la investigación; no cambies el rumbo por tu cuenta.
+- Que el mensaje tenga una sola idea central que salga del texto, nombre la necesidad humana que el pasaje toca y ponga la gracia de Dios en el centro, no solo consejos.
+- Escribe para decirlo en voz alta: frases claras, cálidas y cortas, en segunda persona o en «nosotros», sin tecnicismos. Que se pueda leer de corrido.
+- Usa todas las fuentes de la app para complementar el mensaje (comentarios, texto original, diccionario bíblico, temas, teologías, credos) y cita cada cosa que tomes de ellas. Cada afirmación sobre el texto, el hebreo o el griego, la historia o las costumbres lleva su cita. Si no lo encontraste en una fuente, no lo afirmes: nada de datos, fechas, cifras ni citas de memoria.
+- Los versículos que copies, exactos y leídos con las herramientas; la app revisa cada cita con la Biblia y corrige las que no cuadran.
+- No nombres a comentaristas, teólogos ni predicadores en el texto: la cita ya dice de quién es.
+- No inventes anécdotas como si fueran reales ni pongas palabras en boca de la persona («cuando yo estaba…»). Si una ilustración ayuda, márcala como «Ejemplo:» y que sea breve; si sirve una historia personal, deja el hueco entre corchetes para que la ponga ella: [Aquí, una historia tuya sobre…].
+- Las dinámicas salen solo del catálogo de la app.`;
 
 const TEMA_SYSTEM = `
 
@@ -271,6 +333,7 @@ V: la cita que la respalda (por ejemplo «Juan 3:16»)`;
 
 // La investigación de un tema sin pasaje. src/lib/tallerTema.ts lee este formato.
 function temaTask(t: Tema) {
+  if (t.preparar) return prepararTask(t);
   return `Quiero preparar ${TIPOS[t.tipo]} sobre algo que me importa. Te lo cuento como me salió:
 
 «${t.texto.trim()}»
@@ -292,6 +355,46 @@ De 2 a 5 líneas con lo que aportan los comentarios de la app y las teologías s
 
 Reglas del formato:
 - Cada pasaje dentro de un solo capítulo, de 1 a 30 versículos, con el nombre del libro completo en español («1 Corintios 13:4-7», «Salmos 46»), y antes del «|».
+- Si te respondo o te pido otra cosa, vuelve a dar la respuesta completa con este mismo formato, ajustada a lo nuevo.`;
+}
+
+// La investigación del Taller con borrador: src/lib/tallerTema.ts (leerExploracion) lee este formato.
+function prepararTask(t: Tema) {
+  return `Quiero preparar ${TIPOS[t.tipo]}. Oré y esto es lo que siento que Dios me puso; te lo cuento como me salió:
+
+«${t.texto.trim()}»
+
+Investiga a fondo antes de responder, con todas las fuentes de la app: el índice por temas para reunir lo que dice la Biblia del tema; lee cada pasaje en su contexto; los comentarios de la app sobre los más fuertes; el texto original de las palabras clave; el diccionario bíblico para lugares, personas, costumbres o palabras del texto; y la teología (sistemáticas, credos y catecismos) para lo doctrinal. Busca también en la web predicaciones o estudios de iglesias evangélicas sobre este tema o estos pasajes (de 2 a 4), y lee lo que dicen. Después responde con este formato estricto, sin nada antes ni después:
+
+## Lo que entiendo
+Una o dos frases con el tema tal como lo entiendes, sin juzgar a nadie.
+
+## Pasajes
+De 3 a 5 líneas, el pasaje más fuerte primero, cada una así:
+- Juan 14:1-6 | por qué sirve para este tema, en una frase, con su cita
+
+## Lo que dicen las fuentes
+De 3 a 5 líneas con lo que aportan los comentarios de la app y las teologías, cada una con su cita y sin nombrar al autor.
+
+## Puntos de vista
+De 1 a 3 líneas donde haya lecturas distintas entre evangélicos sobre el tema o el pasaje, cada una así:
+- La pregunta | lo que dice una lectura; lo que dice la otra, con sus citas
+
+## Predicaciones
+De 2 a 4 líneas, cada una con una idea útil de una predicación o un estudio que leíste en la web, así:
+- El título de la predicación | la idea que aporta, en una o dos frases, con su cita
+Solo de iglesias o ministerios evangélicos. Si no encontraste ninguna que valga la pena, escribe solo «- Ninguna».
+
+## Contexto
+De 1 a 3 líneas con datos del contexto histórico, cultural o geográfico que ayudan a entender los pasajes, con su cita.
+
+## Enfoques
+Tres direcciones posibles para el mensaje, cada una así:
+- Un título corto | la cita del pasaje principal | la idea central en una frase
+
+Reglas del formato:
+- Cada pasaje dentro de un solo capítulo, de 1 a 30 versículos, con el nombre del libro completo en español («1 Corintios 13:4-7», «Salmos 46»).
+- No nombres a los autores en el texto: la cita lo dice.
 - Si te respondo o te pido otra cosa, vuelve a dar la respuesta completa con este mismo formato, ajustada a lo nuevo.`;
 }
 
@@ -337,6 +440,61 @@ function validPregunta(p: unknown): p is Pregunta {
   );
 }
 
+// El borrador completo: src/lib/borrador.ts (leerBorrador) lee este formato.
+function borradorAsk(t: Taller) {
+  const catalogo = DINAMICAS.map((d) => `${d.id}: ${d.nombre} (${d.minutos} min): ${d.objetivo}`).join('\n');
+  return `${t.investigacion?.trim() ? `De la investigación marqué esto para usar:\n${t.investigacion.trim()}\n\n` : ''}${
+    t.direccion?.trim() ? `La dirección que le quiero dar:\n«${t.direccion.trim()}»\n\n` : ''
+  }Escribe el borrador completo del mensaje sobre las partes de la estructura que van en lo que llevo${t.minutos ? `, para unos ${t.minutos} minutos en total` : ''}. Antes de escribir, investiga con todas las fuentes de la app para complementar cada parte: lee los pasajes que vas a citar, los comentarios de la app sobre ellos, el texto original de las palabras clave, el diccionario bíblico para el contexto y la teología para lo doctrinal. Todo lo que tomes de ellas va con su cita; si algo no está en ninguna fuente, no lo afirmes.
+
+Formato estricto, sin nada antes ni después:
+
+# El título del mensaje (de 2 a 8 palabras)
+
+## Idea central
+- Tema: … | Complemento: …
+
+Después, un título "## " por cada parte de la estructura, en su orden, en la forma "## Título de la parte | minutos" (por ejemplo "## Introducción | 5"), y bajo cada uno:
+- el texto de esa parte en párrafos, tal como se diría, con sus citas;
+- si encaja una dinámica, una línea "> dinámica: el id del catálogo";
+- al final, de 1 a 3 líneas "* " con los puntos clave de esa parte para tenerlos a mano al presentar (máximo 12 palabras cada uno).
+
+Catálogo de dinámicas (id: nombre (minutos): para qué):
+${catalogo}
+
+Reglas:
+- ${t.tipo === 'sermon' ? 'Los títulos de los puntos («Punto 1», «Punto 2»…) cámbialos por un título corto que salga del texto; las demás partes conservan su nombre.' : 'Cada parte conserva su nombre exacto.'}
+- ${
+    t.tipo === 'encuentro'
+      ? 'En un encuentro, el texto de cada parte es la guía de quien dirige: lo que dice, las preguntas que hace al grupo (que lleven al texto, no de sí o no) y cómo pasa a la siguiente parte.'
+      : 'Los minutos de las partes suman más o menos el tiempo total; cada parte, de un largo que se pueda decir en sus minutos (unas 120 palabras por minuto).'
+  }
+- Como mucho una dinámica por parte, y solo donde ayude.
+- No escribas anuncios: los pongo yo.`;
+}
+
+// Cambiar el borrador hablándole a la IA: src/lib/borrador.ts (leerCambios) lee este formato.
+function cambiarAsk(t: Taller) {
+  return `Esto quiero cambiar del borrador:
+«${(t.pedido ?? '').trim()}»
+
+Cada parte de lo que llevo empieza con su id entre corchetes. Responde con este formato estricto:
+
+Primero, una o dos frases que digan qué cambiaste y por qué, con citas si tocan el texto bíblico.
+
+Después, un bloque por cada parte que cambia, con una línea en blanco entre bloques:
+@@ el id de la parte, tal cual (por ejemplo texto:abc123)
+el texto nuevo completo de esa parte, en párrafos, con sus citas
+
+Para el título de una parte usa el id titulo:… y una sola línea. Para añadir una parte nueva después de otra usa @@ nueva:despues:<id de la parte> y en la primera línea "## Título | minutos", luego su texto.
+
+Reglas:
+- Cambia solo lo que pido; lo demás queda igual y no lo repitas.
+- Si pido otro versículo, léelo antes con las herramientas. Si pido otro punto de vista, investígalo y preséntalo con justicia, con su cita.
+- Conserva mi tono y lo que yo ya edité a mano, salvo que pida cambiarlo.
+- Si lo que pido no se puede hacer o no sale del texto bíblico, dilo en la primera frase y no pongas bloques.`;
+}
+
 function tallerTask(book: Book, chapter: number, verse: number | undefined, t: Taller) {
   const target = verse
     ? `${book.name} ${chapter}:${verse}`
@@ -348,7 +506,23 @@ function tallerTask(book: Book, chapter: number, verse: number | undefined, t: T
     (t.situacion?.trim() ? `\n\nEmpecé por esto que quiero tratar, antes de tener el pasaje:\n«${t.situacion.trim()}»` : '');
   const draft = t.borrador?.trim() ? `\n\nLo que llevo:\n${t.borrador.trim()}` : '\n\nTodavía no he escrito nada.';
   let ask: string;
-  if (t.modo === 'maqueta') {
+  if (t.modo === 'borrador') {
+    ask = borradorAsk(t);
+  } else if (t.modo === 'cambiar') {
+    ask = cambiarAsk(t);
+  } else if (t.modo === 'practicar') {
+    ask = `Prepárame un repaso hablado de este mensaje para escucharlo varias veces antes de exponerlo y tenerlo en la cabeza. Me lo va a leer la voz del teléfono, de 3 a 5 minutos.
+
+Formato estricto, sin títulos ni marcas, en párrafos cortos separados por una línea en blanco:
+- Primero, la idea central en una frase, y por qué importa para quien me va a escuchar.
+- Luego, un párrafo por cada parte, en su orden: cómo entro a ella (la transición desde la anterior), lo esencial que digo y el versículo clave, dicho con su cita en palabras («Mateo catorce, versículo treinta»).
+- Al final, la idea central otra vez y la frase con la que cierro.
+
+Reglas:
+- Háblame a mí, en segunda persona: «empiezas preguntando…», «aquí lees…».
+- Sale solo de lo que llevo; no añadas ideas nuevas.
+- Sin listas, sin markdown, sin abreviaturas ni números de versículo con dos puntos: todo se lee en voz alta.`;
+  } else if (t.modo === 'maqueta') {
     // src/lib/tallerTema.ts lee este formato y lo convierte en las partes del mensaje.
     ask = `Arma la maqueta de este mensaje: el esqueleto para que yo lo escriba, no el mensaje. Las partes de la estructura van en lo que llevo.
 
@@ -516,7 +690,9 @@ Reglas:
 - Solo dos niveles bajo la idea central.`,
 };
 
-const MODOS = ['preguntar', 'sugerir', 'revisar', 'repaso', 'ruleta', 'maqueta', 'corregir'];
+const MODOS = ['preguntar', 'sugerir', 'revisar', 'repaso', 'ruleta', 'maqueta', 'corregir', 'borrador', 'cambiar', 'practicar'];
+/** Los modos en que la IA escribe: el borrador y sus cambios (BORRADOR_SYSTEM). */
+const ESCRIBE = ['borrador', 'cambiar'];
 const TALLER_TIPOS = ['reflexion', 'encuentro', 'sermon'];
 const TALLER_PASOS = ['pasaje', 'idea', 'bosquejo', 'revisar'];
 const MAX_DRAFT = 12000;
@@ -535,6 +711,11 @@ function validTaller(t: unknown): t is Taller {
     (x.borrador === undefined || (typeof x.borrador === 'string' && x.borrador.length <= MAX_DRAFT)) &&
     (x.situacion === undefined || (typeof x.situacion === 'string' && x.situacion.length <= MAX_TEMA)) &&
     (x.revision === undefined || (typeof x.revision === 'string' && x.revision.length <= MAX_DRAFT)) &&
+    (x.investigacion === undefined || (typeof x.investigacion === 'string' && x.investigacion.length <= MAX_DRAFT)) &&
+    (x.direccion === undefined || (typeof x.direccion === 'string' && x.direccion.length <= MAX_TEMA)) &&
+    (x.pedido === undefined || (typeof x.pedido === 'string' && x.pedido.trim().length > 0 && x.pedido.length <= MAX_TEMA)) &&
+    (x.modo !== 'cambiar' || typeof x.pedido === 'string') &&
+    optInt(x.minutos) &&
     optInt(x.desde) &&
     optInt(x.hasta)
   );
@@ -543,7 +724,13 @@ function validTaller(t: unknown): t is Taller {
 function validTema(t: unknown): t is Tema {
   if (!t || typeof t !== 'object') return false;
   const x = t as Record<string, unknown>;
-  return typeof x.texto === 'string' && x.texto.trim().length >= 10 && x.texto.length <= MAX_TEMA && TALLER_TIPOS.includes(x.tipo as string);
+  return (
+    typeof x.texto === 'string' &&
+    x.texto.trim().length >= 10 &&
+    x.texto.length <= MAX_TEMA &&
+    TALLER_TIPOS.includes(x.tipo as string) &&
+    (x.preparar === undefined || typeof x.preparar === 'boolean')
+  );
 }
 
 const client = new Anthropic();
@@ -1152,8 +1339,9 @@ async function temaPost(request: Request, body: Body) {
     { role: 'user', content: temaTask(body.tema) },
     ...turns.map((t) => ({ role: t.role, content: t.text })),
   ];
-  const system = SYSTEM + TALLER_SYSTEM + TEMA_SYSTEM + versionSystem(version) + TOOLS_SYSTEM;
-  return streamAnswer(request, [], messages, system, MODEL_PROPIO, async () => {}, biblia, false, undefined, Registro.de(request, body.seguir));
+  const preparar = body.tema.preparar === true;
+  const system = SYSTEM + (preparar ? BORRADOR_SYSTEM : TALLER_SYSTEM) + TEMA_SYSTEM + versionSystem(version) + TOOLS_SYSTEM + (preparar ? WEB_SYSTEM : '');
+  return streamAnswer(request, [], messages, system, MODEL_PROPIO, async () => {}, biblia, false, undefined, Registro.de(request, body.seguir), preparar);
 }
 
 // Una pregunta desde el buscador: sin pasaje, la IA investiga con las herramientas desde el principio. La primera
@@ -1385,9 +1573,10 @@ export async function POST(request: Request) {
 
   // Investigar otros pasajes y fuentes: en las preguntas de la persona. El primer estudio se basta con el pasaje.
   // La maqueta de un tema también lee los pasajes de apoyo que propone.
-  const investiga = turns.length > 0 || taller?.modo === 'maqueta';
+  const investiga = turns.length > 0 || taller?.modo === 'maqueta' || taller?.modo === 'borrador' || taller?.modo === 'cambiar';
+  const tallerSystem = taller && ESCRIBE.includes(taller.modo) ? BORRADOR_SYSTEM : TALLER_SYSTEM;
   const system =
-    (frecuente ? SYSTEM : semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + TALLER_SYSTEM : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) +
+    (frecuente ? SYSTEM : semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + tallerSystem : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) +
     // Las marcas de versículo se leen donde la respuesta es texto libre: no en el Taller ni en la semana, que tienen su formato.
     versionSystem(version, !taller && !semana) +
     (investiga ? TOOLS_SYSTEM : '') +
@@ -1499,6 +1688,8 @@ function streamAnswer(
   /** Para revisar las citas al final cuando la IA no tiene herramientas (si no, es «biblia»). */
   lector?: Biblia,
   registro?: Registro | null,
+  /** Que la IA también pueda buscar en la web (el Taller con borrador). */
+  web = false,
 ) {
   const sigue = compartido || Boolean(registro);
   const encoder = new TextEncoder();
@@ -1563,7 +1754,7 @@ function streamAnswer(
           system,
           messages: history,
           // En la última vuelta las herramientas siguen declaradas (la conversación las usó), pero ya no se pueden pedir.
-          ...(biblia && { tools: TOOLS, tool_choice: { type: last ? 'none' : 'auto' } as const }),
+          ...(biblia && { tools: web ? [...TOOLS, WEB_TOOL] : TOOLS, tool_choice: { type: last ? 'none' : 'auto' } as const }),
           cache_control: { type: 'ephemeral' },
           output_config: { effort: 'medium' },
           betas: ['server-side-fallback-2026-07-01'],
@@ -1584,6 +1775,7 @@ function streamAnswer(
           const into = pending.get(event.index)!;
           if (c.type === 'content_block_location') cite(docs[c.document_index]?.metas ?? [], c.start_block_index, c.end_block_index, into);
           else if (c.type === 'search_result_location') cite(results[c.search_result_index] ?? [], c.start_block_index, c.end_block_index, into);
+          else if (c.type === 'web_search_result_location') cite([{ label: c.title?.trim() || new URL(c.url).hostname, url: c.url }], 0, 1, into);
         } else if (event.type === 'content_block_stop' && pending.has(event.index)) {
           // Las marcas van al final del fragmento citado, como notas al pie.
           const marks = [...pending.get(event.index)!].map((n) => `⟦${n}⟧`).join('');
@@ -1614,6 +1806,18 @@ function streamAnswer(
           }
         }
         const content = paraDevolver(final.content);
+        // Lo que buscó en la web (herramienta del servidor): se ve como un paso más de la investigación.
+        for (const b of content) {
+          if (b.type === 'server_tool_use' && b.name === 'web_search') {
+            const q = (b.input as { query?: unknown } | null)?.query;
+            if (typeof q === 'string') send({ type: 'paso', tipo: 'web', texto: `«${q.slice(0, 80)}»` });
+          }
+        }
+        // La búsqueda en la web puede pausar la vuelta: se sigue con lo que lleva.
+        if (final.stop_reason === 'pause_turn' && round < MAX_ROUNDS) {
+          history.push({ role: 'assistant', content });
+          continue;
+        }
         const calls = content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
         if (biblia && final.stop_reason === 'tool_use' && calls.length) {
           // Separa lo que hubiera escrito antes de investigar de la respuesta que viene después.

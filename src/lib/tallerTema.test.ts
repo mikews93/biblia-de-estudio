@@ -110,3 +110,41 @@ describe('ayudas', () => {
     expect(estructuraParaIA('expositiva')).toContain('1. Introducción: la necesidad');
   });
 });
+
+describe('leerExploracion del Taller con borrador', () => {
+  const PREPARAR = `## Lo que entiendo
+Jóvenes con ansiedad por el futuro.⟦1⟧
+
+## Pasajes
+- Mateo 14:22-33 | Pedro mira el viento.⟦1⟧
+
+## Lo que dicen las fuentes
+- Un comentario señala que Jesús oraba en el monte.⟦2⟧
+
+## Puntos de vista
+- ¿«No os afanéis» prohíbe planear? | Una lectura dice que no; otra, que sí con matices.⟦3⟧
+
+## Predicaciones
+- Cuando el viento sopla | Pedro se hunde al mirar las olas.⟦4⟧
+- Ninguna
+
+## Contexto
+- En Galilea las tormentas llegan de golpe.⟦5⟧
+
+## Enfoques
+- Mira a Jesús, no a las olas | Mateo 14:22-33 | La ansiedad se vence mirando a Jesús.⟦1⟧
+- Tu Padre ya sabe | «Mateo 6:25-34». | El Padre cuida.`;
+
+  it('lee los puntos de vista, las predicaciones, el contexto y los enfoques con su pasaje', () => {
+    const e = leerExploracion(PREPARAR, BOOKS);
+    expect(e.fuentes).toEqual(['Un comentario señala que Jesús oraba en el monte.⟦2⟧']);
+    expect(e.vistas).toEqual([{ pregunta: '¿No os afanéis prohíbe planear?', texto: 'Una lectura dice que no; otra, que sí con matices.⟦3⟧' }]);
+    expect(e.predicaciones).toEqual([{ titulo: 'Cuando el viento sopla', idea: 'Pedro se hunde al mirar las olas.⟦4⟧' }]);
+    expect(e.contexto).toEqual(['En Galilea las tormentas llegan de golpe.⟦5⟧']);
+    expect(e.enfoques.map((x) => [x.titulo, x.cita, x.pasaje])).toEqual([
+      ['Mira a Jesús, no a las olas', 'Mateo 14:22-33', { book: 'mat', chapter: 14, from: 22, to: 33 }],
+      ['Tu Padre ya sabe', 'Mateo 6:25-34', { book: 'mat', chapter: 6, from: 25, to: 34 }],
+    ]);
+    expect(e.enfoques[0].idea).toBe('La ansiedad se vence mirando a Jesús.⟦1⟧');
+  });
+});

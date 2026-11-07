@@ -86,6 +86,43 @@ const RELATO: Segment[] = [
   { text: '\n\n## Para pensar\n\n- ¿En qué momento de tu historia podrías decir, como el siervo de Abraham, que Dios no apartó su misericordia?\n- ¿A quién podrías mostrar hoy una lealtad como la de Booz?' },
 ];
 
+// El borrador completo de un encuentro (borradorAsk en api/estudiar.ts), con citas a los versículos del pasaje.
+const BORRADOR: Segment[] = [
+  { text: '# Mira a Jesús, no a las olas\n\n## Idea central\n- Tema: La ansiedad por el futuro | Complemento: se vence mirando a Jesús y no al viento\n\n## Bienvenida | 15\n' },
+  {
+    text: 'Empieza con una pregunta sencilla: ¿qué te quita el sueño esta semana? Todos tenemos una tormenta, aunque desde fuera parezca que el mar está tranquilo. Pide que cada uno lo escriba en un papel, sin nombre, y que lo guarde: al final vamos a volver a esas olas.\n> dinámica: pregunta-en-ronda\n* Romper el hielo con honestidad, sin presionar\n* Cada uno escribe su ola y la guarda\n\n## Exaltación | 15\nCanten juntos y lean en voz alta el Salmo 46, despacio. «Dios es nuestro amparo y fortaleza»: es la verdad que sostiene todo lo que vamos a ver.\n* Un canto y el Salmo 46 leído juntos\n\n## Edificación | 30\n',
+  },
+  { text: 'Lean Mateo 14:22-33. Fíjate en algo: los discípulos no estaban en la tormenta por desobedecer. Estaban ahí porque Jesús los mandó a cruzar.', cite: 'Mateo 14:22' },
+  {
+    text: ' Y mientras ellos remaban, Él estaba en el monte orando.\n\nPedro pide caminar sobre el agua y camina. Pero el texto dice que, «al ver el viento fuerte», tuvo miedo y comenzó a hundirse. No cambió el mar: cambió hacia dónde miraba.',
+    cite: 'Mateo 14:30',
+  },
+  {
+    text: '\n\nPregunta al grupo: ¿qué «viento» estás mirando tú? ¿Qué cambia si Jesús ya estaba orando por ti antes de que empezara la tormenta?\n> dinámica: pregunta-luz-desafio\n* No estar en la tormenta por error\n* Pedro se hunde al mirar el viento\n* ¿Qué viento estás mirando?\n\n## Evangelismo | 10\n',
+  },
+  {
+    text: '«Al momento Jesús, extendiendo la mano, trabó de él». La mano de Jesús llega antes que el agua. Piensen en alguien de su escuela o su trabajo que está hundiéndose en ansiedad: ¿cómo podemos ser esa mano esta semana?',
+    cite: 'Mateo 14:31',
+  },
+  { text: '\n\nCierren orando en parejas por las olas que escribieron al principio.\n> dinámica: silla-vacia\n* Ser la mano para alguien esta semana\n* Orar por las olas escritas\n' },
+];
+
+// La investigación del Taller con borrador (prepararTask): pasajes, fuentes, puntos de vista, predicaciones de la
+// web, contexto y enfoques. La predicación cita el resultado de la búsqueda en la web.
+const PREPARAR: { text: string; tool?: number; web?: boolean }[] = [
+  { text: '## Lo que entiendo\nTus muchachos viven ansiosos por el futuro y sientes que Dios quiere hablarles de confiar en Él en medio de la tormenta.\n\n## Pasajes\n' },
+  { text: '- Mateo 14:22-33 | Pedro camina sobre el agua y se hunde cuando mira el viento en vez de mirar a Jesús.', tool: 0 },
+  { text: '\n- Mateo 6:25-34 | Jesús habla del afán por el mañana y de un Padre que ya sabe lo que necesitamos.\n- Filipenses 4:6-7 | convertir la ansiedad en oración con gratitud, y la paz que guarda el corazón.\n- 1 Pedro 5:7 | echar toda la ansiedad sobre Dios, porque Él cuida de nosotros.\n\n## Lo que dicen las fuentes\n' },
+  { text: '- Un comentario señala que Jesús mandó a los discípulos a la tormenta mientras Él oraba por ellos en el monte.', tool: 1 },
+  { text: '\n' },
+  { text: '- La tradición reformada explica que la providencia de Dios alcanza también lo que parece azar, y por eso se puede confiar en el mañana.', tool: 2 },
+  { text: '\n- El diccionario bíblico describe el mar de Galilea: un lago rodeado de montes donde el viento baja de golpe.' },
+  { text: '\n\n## Puntos de vista\n- ¿«No os afanéis» prohíbe planear el futuro? | Una lectura dice que Jesús prohíbe la preocupación ansiosa, no la previsión; otra subraya que el énfasis está en buscar primero el reino antes que cualquier plan.' },
+  { text: '\n\n## Predicaciones\n' },
+  { text: '- Cuando el viento sopla | La fe de Pedro no falló al salir del barco, sino al cambiar de enfoque: la tormenta no era nueva, su mirada sí.', web: true },
+  { text: '\n\n## Contexto\n- Las tormentas en el mar de Galilea llegan de repente porque el aire frío baja de los montes al lago, que está muy por debajo del nivel del mar.\n- La cuarta vigilia era entre las tres y las seis de la mañana: llevaban toda la noche remando.\n\n## Enfoques\n- Mira a Jesús, no a las olas | Mateo 14:22-33 | La ansiedad se vence mirando a Jesús y no al viento.\n- Tu Padre ya sabe | Mateo 6:25-34 | El afán se calma confiando en un Padre que ya sabe lo que necesitamos.\n- Echa tu carga | Filipenses 4:6-7 | Pasos concretos para convertir la ansiedad en oración con gratitud.' },
+];
+
 /** Texto de la respuesta y, si corresponde, una cita al primer documento. */
 function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]; slow?: boolean } {
   const system = systemText(body.system);
@@ -196,6 +233,34 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
   }
   // Del sermón a tu semana: cinco días con el formato de src/lib/semanas.ts
   if (system.includes('Reglas de la semana')) return { text: SEMANA, cite: true };
+  // El Taller con borrador (src/lib/borrador.ts): el mensaje completo, los cambios pedidos y el repaso hablado.
+  if (system.includes('Reglas del borrador') && first.includes('Escribe el borrador completo')) return { text: '', cite: false, segments: BORRADOR };
+  if (system.includes('Reglas del borrador') && first.includes('Esto quiero cambiar del borrador')) {
+    const ids = [...first.matchAll(/\[texto:([\w-]+)\]/g)].map((m) => m[1]);
+    const id = ids[Math.min(2, ids.length - 1)];
+    return {
+      text: '',
+      cite: false,
+      segments: [
+        { text: 'Cambié la tercera parte para que gire en torno a Isaías 43:2: la promesa no es que no haya aguas, sino que Él pasa con nosotros.', cite: '' },
+        {
+          text: `\n\n@@ texto:${id}\n«Cuando pases por las aguas, yo seré contigo», dice Dios por Isaías. No promete que no habrá olas: promete que no vas a pasarlas solo.\n\nPedro lo vivió en el lago: al empezar a hundirse gritó, y «al momento Jesús, extendiendo la mano, trabó de él». La mano llegó antes que el agua.\n\n@@ nueva:despues:${id}\n## Oración en parejas | 5\nDe dos en dos, cada uno nombra su ola y el otro ora por él en una frase.`,
+        },
+      ],
+    };
+  }
+  if (system.includes('Reglas del Taller') && first.includes('repaso hablado de este mensaje')) {
+    return {
+      text: [
+        'La idea central es esta: la ansiedad se vence mirando a Jesús, no al viento. Importa porque tus muchachos viven mirando las olas del futuro.',
+        'Empiezas con la bienvenida y la dinámica de «Mi ola»: cada uno escribe en un papel lo que le quita el sueño. No lo leas todavía.',
+        'Luego pasas al barco: los discípulos estaban en la tormenta porque Jesús los mandó. Mateo catorce, versículo veintidós.',
+        'Después Pedro camina y mira el viento. Aquí lees en voz alta el versículo treinta y haces que subrayen el verbo ver.',
+        'Cierras con la mano que llega antes: Jesús, extendiendo la mano, lo sostuvo. Vuelves a la idea central y oran en parejas por las olas que escribieron.',
+      ].join('\n\n'),
+      cite: false,
+    };
+  }
   // La maqueta de un mensaje que empezó desde un tema (src/lib/tallerTema.ts lee este formato).
   if (system.includes('Reglas del Taller') && first.includes('Arma la maqueta')) {
     const sermon = first.includes('un sermón');
@@ -437,7 +502,7 @@ function temaTools(body: Body): 'pedir' | 'responder' | null {
   return typeof last.content !== 'string' && last.content.some((b) => b.type === 'tool_result') ? 'responder' : 'pedir';
 }
 
-function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) => void, body: Body, segments = TEMA) {
+function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) => void, body: Body, segments: { text: string; tool?: number; web?: boolean }[] = TEMA) {
   // El índice del primer search_result que devolvió cada herramienta, en el orden en que los recibió la IA.
   const first: number[] = [];
   let n = 0;
@@ -449,8 +514,18 @@ function sendTema(res: ServerResponse, send: (event: Record<string, unknown>) =>
   }
   segments.forEach((seg, index) => {
     const at = seg.tool !== undefined ? first[seg.tool] : -1;
-    send({ type: 'content_block_start', index, content_block: { type: 'text', text: '', citations: at >= 0 ? [] : null } });
+    send({ type: 'content_block_start', index, content_block: { type: 'text', text: '', citations: at >= 0 || seg.web ? [] : null } });
     send({ type: 'content_block_delta', index, delta: { type: 'text_delta', text: seg.text } });
+    if (seg.web) {
+      send({
+        type: 'content_block_delta',
+        index,
+        delta: {
+          type: 'citations_delta',
+          citation: { type: 'web_search_result_location', cited_text: '', encrypted_index: 'x', title: 'Cuando el viento sopla', url: 'https://iglesia.example.org/predicas/cuando-el-viento-sopla' },
+        },
+      });
+    }
     if (at >= 0) {
       send({
         type: 'content_block_delta',
@@ -508,6 +583,25 @@ async function sse(res: ServerResponse, body: Body) {
     send({ type: 'content_block_stop', index: 1 });
     return sendTools(res, send, TEMA_CALLS, 2);
   }
+  const preparar = tema && JSON.stringify(body.messages[0]).includes('Busca también en la web predicaciones');
+  // Antes de las herramientas de la app, busca en la web (herramienta del servidor: llega con su resultado).
+  if (tema === 'pedir' && preparar) {
+    send({ type: 'content_block_start', index: 0, content_block: { type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: {} } });
+    send({ type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ query: 'predicación Pedro camina sobre el agua ansiedad' }) } });
+    send({ type: 'content_block_stop', index: 0 });
+    send({
+      type: 'content_block_start',
+      index: 1,
+      content_block: {
+        type: 'web_search_tool_result',
+        tool_use_id: 'srvtoolu_1',
+        content: [{ type: 'web_search_result', url: 'https://iglesia.example.org/predicas/cuando-el-viento-sopla', title: 'Cuando el viento sopla', encrypted_content: 'x', page_age: null }],
+      },
+    });
+    send({ type: 'content_block_stop', index: 1 });
+    return sendTools(res, send, TEMA_CALLS, 2);
+  }
+  if (tema === 'responder' && preparar) return sendTema(res, send, body, PREPARAR);
   if (tema === 'pedir') return sendTools(res, send, TEMA_CALLS);
   if (tema === 'responder' && saturada && !SATURADAS.has(JSON.stringify(body.messages[0]))) {
     SATURADAS.add(JSON.stringify(body.messages[0]));
