@@ -6,7 +6,6 @@
       "name": "zarza-video-promo",
       "dependencies": {
         "@remotion/cli": "4.0.534",
-        "@remotion/google-fonts": "4.0.534",
         "react": "19.1.0",
         "react-dom": "19.1.0",
         "remotion": "4.0.534",
@@ -164,8 +163,6 @@
     "@remotion/compositor-win32-x64-msvc": ["@remotion/compositor-win32-x64-msvc@4.0.534", "", { "os": "win32", "cpu": "x64" }, "sha512-+hp7c5ZAnomRe4U+s9tG36kmjMo0V43xV7WG353QCCHLRjKiR5KdkrU1TJQOAq53oyLdsD7BHUkEEWIBSSzSLg=="],
 
     "@remotion/elevenlabs": ["@remotion/elevenlabs@4.0.534", "", { "dependencies": { "@remotion/captions": "4.0.534", "zod": "4.5.4" } }, "sha512-TPd1XFSUfausKxeIljPqWOslJpeYARAeZFT2TSmvrmQBpz3i8yoG96gk3qXkqj7ebzQAqzv75bzd8jegwRU1Gw=="],
-
-    "@remotion/google-fonts": ["@remotion/google-fonts@4.0.534", "", { "dependencies": { "remotion": "4.0.534" } }, "sha512-bgXF3QJ5Mkjmnaz1ROm1UfeP0jCJpkv4y6EPoisIVtexqVgwk9Zmp1dMemE81ok38zDLHTqM0/+5msBKWuhg3A=="],
 
     "@remotion/licensing": ["@remotion/licensing@4.0.534", "", {}, "sha512-pNP8OfY+vbDbjNBLYGoxGyE0SsReRy85G/QTF17mQC86dt2+pzsYlOkG2mq6R4tkt27xaQv8O5EFiJfYYfVkkw=="],
 
