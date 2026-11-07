@@ -10,6 +10,7 @@ import {
   CommentaryIcon,
   ConcordanceIcon,
   DictionaryIcon,
+  GlobeIcon,
   type IconProps,
   LinkIcon,
   ScrollIcon,
@@ -29,6 +30,7 @@ const TIPOS: Record<Paso['tipo'], { icon: ((p: IconProps) => ReactNode) | string
   teologia: { icon: BooksIcon, haciendo: 'Consultando teologías clásicas sobre', hecho: 'Teología sobre' },
   diccionario: { icon: DictionaryIcon, haciendo: 'Buscando en el diccionario bíblico:', hecho: 'Diccionario bíblico:' },
   temas: { icon: TopicIcon, haciendo: 'Reuniendo los pasajes sobre', hecho: 'Pasajes sobre' },
+  web: { icon: GlobeIcon, haciendo: 'Buscando predicaciones en la web:', hecho: 'Buscó en la web:' },
 };
 
 function Icon({ tipo, color, size = 14 }: { tipo: Paso['tipo']; color: string; size?: number }) {

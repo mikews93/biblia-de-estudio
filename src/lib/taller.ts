@@ -64,6 +64,10 @@ export type Mensaje = {
   terminado?: string;
   /** Las veces que se predicó o compartió, de la más reciente a la más antigua. */
   ocasiones?: Ocasion[];
+  /** Si la IA escribió el borrador (el Taller con borrador, src/lib/borrador.ts): cuándo. */
+  ia?: string;
+  /** El repaso hablado para practicar el mensaje (modo «practicar»), y con qué versión del texto se hizo. */
+  practicar?: { texto: string; huella: string };
 };
 
 type SeccionBase = { titulo: string; ayuda: string; minutos: number; dinamica?: string };
