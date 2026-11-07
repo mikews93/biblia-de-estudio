@@ -81,6 +81,28 @@ describe('sumarRespuesta', () => {
   });
 });
 
+describe('sinPendientes', () => {
+  it('quita las llamadas del servidor sin resultado y lo que pidieron dentro, y deja las completas', async () => {
+    const { sinPendientes } = await import('../../api/estudiar');
+    const b = (type: string, extra: object = {}): { type: string; id?: string; tool_use_id?: string } => ({ type, ...extra });
+    const content = [
+      b('thinking', { thinking: '', signature: 'x' }),
+      b('server_tool_use', { id: 's1', name: 'web_search' }),
+      b('web_search_tool_result', { tool_use_id: 's1' }),
+      b('server_tool_use', { id: 's2', name: 'code_execution' }),
+      b('server_tool_use', { id: 's3', name: 'web_search', caller: { tool_id: 's2' } }),
+      b('web_search_tool_result', { tool_use_id: 's3' }),
+      b('tool_use', { id: 't1', name: 'comentarios' }),
+    ];
+    expect(sinPendientes(content).map((x) => x.id ?? x.tool_use_id ?? x.type)).toEqual(['thinking', 's1', 's1', 't1']);
+    // Lo que nombra la API también se va, aunque tenga resultado
+    expect(sinPendientes(content.slice(0, 3), ['s1']).map((x) => x.type)).toEqual(['thinking']);
+    // Si no falta nada, la respuesta queda igual
+    const completa = content.slice(0, 3);
+    expect(sinPendientes(completa)).toBe(completa);
+  });
+});
+
 describe('/api/estudiar sin cuenta', () => {
   it('pide una cuenta antes de mirar la petición', async () => {
     const res = await estudiar(request('/api/estudiar', { book: 'jhn', chapter: 3 }));
@@ -466,6 +488,19 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(encargo).toContain('El mensaje parte de Juan 3:16');
     expect(textOf(evs)).toContain('## Lo que preguntaste');
     expect(evs.at(-1)).toEqual({ type: 'done' });
+  });
+
+  it('si la IA pide la búsqueda en la web y herramientas de la app a la vez, la búsqueda a medias no rompe la investigación', async () => {
+    const before = aiRequests.length;
+    // Con su propia cuenta, para no gastar las consultas de las demás pruebas
+    const otra = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Investigadora' })).json.llave;
+    const evs = await events(await ask({ tema: { texto: 'Jóvenes ansiosos PENDIENTE por el futuro', tipo: 'sermon' } }, otra));
+    expect(evs.filter((e) => e.type === 'error')).toEqual([]);
+    expect(evs.at(-1)).toEqual({ type: 'done' });
+    const [, segunda] = aiRequests.slice(before);
+    const devuelto = segunda.messages[1].content as { type: string }[];
+    expect(devuelto.map((b) => b.type)).not.toContain('server_tool_use');
+    expect(devuelto.filter((b) => b.type === 'tool_use')).toHaveLength(3);
   });
 
   it('si la IA se satura a mitad de la investigación, repite esa vuelta y devuelve su respuesta sin textos vacíos ni tool_result mezclados', async () => {

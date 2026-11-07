@@ -615,6 +615,14 @@ async function sse(res: ServerResponse, body: Body) {
     return sendTools(res, send, TEMA_CALLS, 2);
   }
   if (tema === 'responder' && preparar) return sendTema(res, send, body, JSON.stringify(body.messages[0]).includes('<preguntas>') ? PREPARAR_ESTUDIO : PREPARAR);
+  // «PENDIENTE» en el tema: la IA pide el código de la búsqueda en la web y a la vez herramientas de la app; la vuelta
+  // termina sin el resultado del código, como pasó en producción.
+  if (tema === 'pedir' && JSON.stringify(body.messages[0]).includes('PENDIENTE')) {
+    send({ type: 'content_block_start', index: 0, content_block: { type: 'server_tool_use', id: 'srvtoolu_pendiente', name: 'code_execution', input: {} } });
+    send({ type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ code: 'print(1)' }) } });
+    send({ type: 'content_block_stop', index: 0 });
+    return sendTools(res, send, TEMA_CALLS, 1);
+  }
   if (tema === 'pedir') return sendTools(res, send, TEMA_CALLS);
   if (tema === 'responder' && saturada && !SATURADAS.has(JSON.stringify(body.messages[0]))) {
     SATURADAS.add(JSON.stringify(body.messages[0]));
@@ -726,6 +734,15 @@ function rechazo(body: Body): string | null {
       const tipos = new Set(b.content.map((x) => x.type));
       if (tipos.has('search_result') && tipos.size > 1)
         return `messages.${m}.content.${c}.tool_result: if any blocks in a tool result are of type search_result, all blocks must be of that type`;
+    }
+    // Como la API: una llamada del servidor sin su resultado solo vale al final del último mensaje (tras una pausa).
+    if (msg.role !== 'assistant') continue;
+    const bloques = msg.content as (Block & { id?: string; tool_use_id?: string; name?: string })[];
+    const resultados = new Set(bloques.map((b) => b.tool_use_id).filter(Boolean));
+    for (const [c, b] of bloques.entries()) {
+      const alFinal = m === body.messages.length - 1 && c === bloques.length - 1;
+      if (b.type === 'server_tool_use' && !resultados.has(b.id) && !alFinal)
+        return `messages.${m}: \`${b.name}\` tool use with id \`${b.id}\` was found without a corresponding \`${b.name}_tool_result\` block`;
     }
   }
   return null;
