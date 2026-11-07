@@ -1,4 +1,8 @@
-# Compila la app para las tiendas con EAS (Expo) y, si se pide, la sube a Google Play como borrador de prueba interna.
+# Compila la app para las tiendas con EAS (Expo) y, si se pide, la sube a Producción de Google Play
+# (eas.json → submit.production: track production, releaseStatus completed = se envía a revisión y sale al aprobarse).
+# Sola al publicar main (si la variable del repo TIENDAS_SUBIR es «true»): calcula la huella nativa y, solo si no hay
+# ya un AAB de producción con esa huella (cambió un permiso, un módulo nativo o Expo), compila y lo sube a Producción
+# de Google Play, que lo revisa y lo publica. Si solo cambió JS no gasta compilación: eso llega con app-actualizar.yml.
 # A mano, o al subir una etiqueta de versión (git tag v1.1.0 && git push origin v1.1.0): entonces compila «production»
 # para las plataformas de la variable del repo TIENDAS_PLATAFORMA (android por defecto; «all» cuando exista la app de
 # Apple) y la sube sola si la variable TIENDAS_SUBIR es «true». Solo hace falta cuando cambia algo nativo; lo demás
@@ -10,7 +14,17 @@ name: App para tiendas
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'app.json'
+      - 'app.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'fingerprint.config.js'
+      - 'eas.json'
   workflow_dispatch:
     inputs:
       plataforma:
@@ -24,9 +38,17 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: app-tiendas
+  cancel-in-progress: false
+
 jobs:
   eas:
+    # En main solo corre cuando ya se puede subir a la tienda sola (TIENDAS_SUBIR=true y la cuenta de servicio en EAS).
+    if: github.ref != 'refs/heads/main' || github.event_name != 'push' || vars.TIENDAS_SUBIR == 'true'
     runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -55,7 +77,21 @@ jobs:
           else
             echo "::warning::No llegó GOOGLE_SERVICES_JSON de expo.dev."
           fi
+      # En main: si ya hay un AAB de producción con esta misma huella nativa, la tienda ya tiene lo nativo y lo demás
+      # llega con EAS Update. Así no se gasta el cupo de compilaciones en cada publicación.
+      - name: Ver si cambió algo nativo
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          huella=$(npx expo-updates runtimeversion:resolve --platform android | jq -r '.runtimeVersion')
+          echo "Huella nativa: $huella"
+          eas build:list --platform android --build-profile production --status finished \
+            --runtime-version "$huella" --limit 1 --json --non-interactive > "$RUNNER_TEMP/build.json"
+          if [ "$(jq 'length' "$RUNNER_TEMP/build.json")" != "0" ]; then
+            echo "Ya hay un AAB con la huella $huella: no hace falta compilar; lo nuevo llega con EAS Update." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "SIN_CAMBIO_NATIVO=true" >> "$GITHUB_ENV"
+          fi
       - name: Compilar
+        if: env.SIN_CAMBIO_NATIVO != 'true'
         run: >
           eas build --non-interactive --no-wait
           --platform ${{ inputs.plataforma || vars.TIENDAS_PLATAFORMA || 'android' }}
