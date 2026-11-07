@@ -1669,6 +1669,20 @@ export function paraDevolver(content: Anthropic.Beta.BetaContentBlock[]): Anthro
 }
 
 /**
+ * Añade a la conversación lo que respondió la IA. Tras una pausa («pause_turn», la búsqueda en la web con su código),
+ * la respuesta que sigue continúa el MISMO mensaje: se une al anterior. Si se enviaba como otro mensaje, el primero
+ * quedaba con su código sin resultado y la API respondía 400 («code_execution tool use … without a corresponding
+ * code_execution_tool_result block»), y el paso Investigar fallaba en producción.
+ */
+export function sumarRespuesta(history: Anthropic.Beta.BetaMessageParam[], content: Anthropic.Beta.BetaContentBlock[]) {
+  const ultimo = history.at(-1);
+  if (ultimo?.role === 'assistant') {
+    const antes = typeof ultimo.content === 'string' ? [{ type: 'text' as const, text: ultimo.content }] : ultimo.content;
+    ultimo.content = [...antes, ...content];
+  } else history.push({ role: 'assistant', content });
+}
+
+/**
  * Pide la respuesta a Claude y la envía por partes; «save» guarda la respuesta completa. Con «biblia», la IA puede
  * usar las herramientas de api/_investigar.ts: cada vuelta envía lo que consulta y sigue hasta que responde.
  * Con «compartido» (lo que se guarda para todos) sigue hasta guardarla aunque la persona se vaya: en iPhone, al
@@ -1815,7 +1829,7 @@ function streamAnswer(
         }
         // La búsqueda en la web puede pausar la vuelta: se sigue con lo que lleva.
         if (final.stop_reason === 'pause_turn' && round < MAX_ROUNDS) {
-          history.push({ role: 'assistant', content });
+          sumarRespuesta(history, content);
           continue;
         }
         const calls = content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
@@ -1829,10 +1843,8 @@ function streamAnswer(
           calls.forEach((call, i) => send({ type: 'paso', ...pasoDe(call.name, inputs[i], biblia) }));
           const done = await Promise.all(calls.map((call, i) => investigar(call.name, inputs[i], biblia)));
           done.forEach((d) => results.push(...d.results));
-          history.push(
-            { role: 'assistant', content },
-            { role: 'user', content: respuestas(calls, done) },
-          );
+          sumarRespuesta(history, content);
+          history.push({ role: 'user', content: respuestas(calls, done) });
           continue;
         }
         if (final.stop_reason === 'refusal') {
