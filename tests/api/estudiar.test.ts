@@ -63,6 +63,24 @@ describe('paraDevolver', () => {
   });
 });
 
+describe('sumarRespuesta', () => {
+  it('tras una pausa, la respuesta que sigue continúa el mismo mensaje de la IA', async () => {
+    const { sumarRespuesta } = await import('../../api/estudiar');
+    const b = (type: string, extra: object = {}) => ({ type, ...extra }) as never;
+    const history = [{ role: 'user' as const, content: 'Investiga' }];
+    // Primera vuelta: se pausa con el código de la búsqueda sin terminar
+    sumarRespuesta(history as never, [b('text', { text: 'Busco' }), b('server_tool_use', { id: 's1', name: 'code_execution', input: {} })]);
+    // Segunda vuelta: llega el resultado del código y pide una herramienta de la app
+    sumarRespuesta(history as never, [b('code_execution_tool_result', { tool_use_id: 's1', content: {} }), b('tool_use', { id: 't1', name: 'comentarios', input: {} })]);
+    expect(history.map((m) => m.role)).toEqual(['user', 'assistant']);
+    expect((history[1].content as unknown as { type: string }[]).map((x) => x.type)).toEqual(['text', 'server_tool_use', 'code_execution_tool_result', 'tool_use']);
+    // Después de los resultados de la persona, la siguiente respuesta es un mensaje nuevo
+    history.push({ role: 'user', content: 'resultados' });
+    sumarRespuesta(history as never, [b('text', { text: 'Listo' })]);
+    expect(history.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
+  });
+});
+
 describe('/api/estudiar sin cuenta', () => {
   it('pide una cuenta antes de mirar la petición', async () => {
     const res = await estudiar(request('/api/estudiar', { book: 'jhn', chapter: 3 }));
