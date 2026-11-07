@@ -407,7 +407,7 @@ test('desde un tema: la IA busca pasajes y fuentes, arma la maqueta y el mensaje
   const m = marca();
   await conSesion(page, await cuentaNueva(request, 'Temática'));
   await page.goto('/taller');
-  await page.getByRole('button', { name: /Tengo algo de qué hablar/ }).click();
+  await page.getByRole('link', { name: /Solo la maqueta/ }).click();
   await expect(page).toHaveURL(/\/taller\/tema$/);
   await expect(page.getByText('¿De qué quieres hablar?')).toBeVisible();
 
@@ -475,4 +475,40 @@ test('desde un tema: la IA busca pasajes y fuentes, arma la maqueta y el mensaje
   await expect(acompanante(page).getByText('Preguntas del Taller simuladas:')).toBeVisible();
   const preguntas = (await peticionesIA(request, situacion)).find((r) => JSON.stringify(r.messages[0].content).includes('Hazme de 3 a 5 preguntas'))!;
   expect(JSON.stringify(preguntas.messages[0].content)).toContain('Empecé por esto que quiero tratar');
+});
+
+test('preparar un mensaje: investiga, marca lo que sirve, da la dirección y la IA escribe el borrador que se cambia hablando', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Preparar'));
+  await page.goto('/taller');
+  await page.getByRole('button', { name: /Preparar un mensaje/ }).click();
+  await expect(page).toHaveURL(/\/taller\/preparar$/);
+
+  const investigar = page.getByRole('button', { name: 'Investigar esto' });
+  await expect(investigar).toBeDisabled();
+  await page.getByLabel('Lo que Dios te puso').fill('Los muchachos andan ansiosos por el futuro; me vino Pedro caminando sobre el agua.');
+  await investigar.click();
+
+  // Lo que encontró, por grupos, también en la web, para marcar con la estrella
+  await expect(page.getByText('PREDICACIONES EN LA WEB')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('COMENTARIOS, DICCIONARIO Y TEOLOGÍAS')).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Me sirve' }).first().click();
+  await expect(page.getByText(/Marcaste 1 idea/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Dar la dirección' }).click();
+  await page.getByText('Célula de las 4 E').click();
+  await page.getByLabel('Tu dirección para el mensaje').fill('Muy práctico para los jóvenes.');
+  await page.getByRole('button', { name: 'Escribir el borrador' }).click();
+  await page.getByRole('button', { name: 'Abrir el borrador para revisarlo' }).click({ timeout: 20_000 });
+
+  // El borrador completo, con sus partes y dinámicas
+  await expect(page).toHaveURL(/\/taller\/[^/]+\/borrador$/);
+  await expect(page.getByText('BORRADOR DE LA IA')).toBeVisible();
+  await expect(page.getByText('Mira a Jesús, no a las olas').locator('visible=true').first()).toBeVisible();
+  await expect(page.getByText('Pregunta en ronda').locator('visible=true').first()).toBeVisible();
+
+  // Se cambia hablándole a la IA y se acepta
+  await page.getByPlaceholder(/Pide un cambio/).fill('Cambia la tercera parte con Isaías 43:2');
+  await page.getByRole('button', { name: 'Pedir cambio' }).click();
+  await page.getByRole('button', { name: 'Aceptar' }).first().click({ timeout: 20_000 });
+  await expect(page.getByText(/Cuando pases por las aguas/).locator('visible=true').first()).toBeVisible();
 });
