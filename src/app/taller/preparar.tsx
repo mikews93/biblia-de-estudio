@@ -11,11 +11,13 @@ import { Button, Chips, IconText } from '@/components/comunidad/ui';
 import {
   type IconProps,
   BooksIcon,
+  CommentIcon,
   CompassIcon,
   GlobeIcon,
   LampIcon,
   LecternIcon,
   PeopleIcon,
+  PersonIcon,
   PrayIcon,
   ScrollIcon,
   SparkIcon,
@@ -31,6 +33,7 @@ import { NEEDS_CONNECTION } from '@/lib/conexion';
 import { paraGuardar, useConversations } from '@/lib/conversaciones';
 import { dinamica } from '@/lib/dinamicas';
 import { Book, getBooks, parseRef } from '@/lib/data';
+import { type EstudioGuardado, paraLaIA, preguntasParaBorrador } from '@/lib/estudioASermon';
 import { Source, askStudy } from '@/lib/estudio';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { PLANTILLAS, Pasaje, TIPOS, Tipo, pasajeLabel, plantilla as plantillaDe, tipoInfo } from '@/lib/taller';
@@ -61,6 +64,8 @@ type Guardado = {
   direccion: string;
   plantilla: string;
   pedido?: { pasaje: Pasaje; plantilla: string } | null;
+  /** Un estudio profundo convertido en mensaje: la IA parte de él y de las preguntas que hizo la persona. */
+  estudio?: EstudioGuardado | null;
 };
 
 /**
@@ -84,13 +89,19 @@ export default function PrepararScreen() {
   const [pregunta, setPregunta] = useState('');
   const [peek, setPeek] = useState<Source | null>(null);
   const [creando, setCreando] = useState(false);
+  const [estudio, setEstudio] = useState<EstudioGuardado | null>(null);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   // El pasaje y la estructura con que se pidió el borrador, y lo marcado y la dirección de ese momento.
   const pedido = useRef<{ pasaje: Pasaje; plantilla: string; investigacion: string; direccion: string } | null>(null);
   const [pedidoVisto, setPedidoVisto] = useState<{ pasaje: Pasaje; plantilla: string } | null>(null);
 
   const convs = useConversations<Clave>((clave, history, onUpdate, signal) => {
-    if (clave === 'investigar') return askStudy({ tema: { texto, tipo, preparar: true }, messages: history, version: settings.version }, onUpdate, signal);
+    if (clave === 'investigar')
+      return askStudy(
+        { tema: { texto, tipo, preparar: true, ...(estudio && { estudio: paraLaIA(estudio) }) }, messages: history, version: settings.version },
+        onUpdate,
+        signal,
+      );
     const p = pedido.current!;
     const single = p.pasaje.from && !p.pasaje.to ? p.pasaje.from : undefined;
     return askStudy(
@@ -109,7 +120,7 @@ export default function PrepararScreen() {
           hasta: single ? undefined : p.pasaje.to,
           borrador: estructuraParaIA(p.plantilla),
           situacion: texto,
-          investigacion: p.investigacion || undefined,
+          investigacion: p.investigacion.slice(0, 12_000) || undefined,
           direccion: p.direccion || undefined,
           minutos: tipoInfo(tipo).minutos,
         },
@@ -131,6 +142,7 @@ export default function PrepararScreen() {
         setMarcadas(g.marcadas ?? []);
         setEnfoque(g.enfoque ?? 0);
         setDireccion(g.direccion ?? '');
+        setEstudio(g.estudio ?? null);
         if (e?.convs?.investigar?.length) convs.set('investigar', e.convs.investigar);
         if (g.pedido && e?.convs?.borrador?.length) {
           pedido.current = { ...g.pedido, investigacion: '', direccion: g.direccion ?? '' };
@@ -147,10 +159,10 @@ export default function PrepararScreen() {
 
   useEffect(() => {
     if (!cargado || creando) return;
-    const vista: Guardado = { texto, tipo, etapa, marcadas, enfoque, direccion, plantilla: plantillaId, pedido: pedidoVisto };
+    const vista: Guardado = { texto, tipo, etapa, marcadas, enfoque, direccion, plantilla: plantillaId, pedido: pedidoVisto, estudio };
     guardarTallerIa(CLAVE, { vista, convs: paraGuardar(convs.all) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [texto, tipo, etapa, marcadas, enfoque, direccion, plantillaId, pedidoVisto, convs.all, cargado]);
+  }, [texto, tipo, etapa, marcadas, enfoque, direccion, plantillaId, pedidoVisto, estudio, convs.all, cargado]);
 
   const inv = convs.get('investigar');
   const ultima = [...inv.turns].reverse().find((t) => t.role === 'assistant');
@@ -196,8 +208,11 @@ export default function PrepararScreen() {
     exp.fuentes.forEach((f, i) => marcadas.includes(`f${i}`) && lineas.push(`- Fuentes: ${c(f)}`));
     exp.vistas.forEach((v, i) => marcadas.includes(`v${i}`) && lineas.push(`- Punto de vista: ${v.pregunta}: ${c(v.texto)}`));
     exp.predicaciones.forEach((p, i) => marcadas.includes(`r${i}`) && lineas.push(`- Predicación «${p.titulo}»: ${c(p.idea)}`));
-    exp.contexto.forEach((x, i) => marcadas.includes(`c${i}`) && lineas.push(`- Contexto: ${c(x)}`));
-    return lineas.join('\n');
+    exp.contexto.forEach((x, i) => marcadas.includes(`c${i}`) && lineas.push(`- Momento histórico: ${c(x)}`));
+    exp.protagonistas.forEach((x, i) => marcadas.includes(`h${i}`) && lineas.push(`- Protagonista ${x.nombre}: ${c(x.texto)}`));
+    exp.deEstudio.forEach((x, i) => marcadas.includes(`q${i}`) && lineas.push(`- Pregunta de mi estudio «${x.pregunta}»: ${c(x.texto)}`));
+    // Las preguntas que hizo al estudiar van siempre: son las que también tendrá la gente.
+    return [lineas.join('\n'), estudio ? preguntasParaBorrador(estudio) : ''].filter(Boolean).join('\n\n');
   };
 
   // El pasaje sobre el que se escribe: el del enfoque elegido; si no, el primer pasaje marcado o el más fuerte.
@@ -287,6 +302,9 @@ export default function PrepararScreen() {
             onInvestigar={investigar}
             hayInvestigacion={inv.turns.length > 0}
             onVolver={() => irA('investigar')}
+            estudio={estudio}
+            onQuitarEstudio={() => setEstudio(null)}
+            onAbrirEstudio={() => estudio && navigate(() => router.push(estudio.verse ? verseHref(estudio.book, estudio.chapter, estudio.verse) : chapterHref(estudio.book, estudio.chapter)), 'forward')}
           />
         )}
 
@@ -362,13 +380,33 @@ export default function PrepararScreen() {
               ))}
             </Grupo>
 
-            <Grupo titulo="CONTEXTO" icon={CompassIcon} colors={colors} vacio={!exp.contexto.length}>
+            <Grupo titulo="MOMENTO HISTÓRICO" icon={CompassIcon} colors={colors} vacio={!exp.contexto.length}>
               {exp.contexto.map((x, i) => (
                 <Hallazgo key={`c${i}`} on={marcadas.includes(`c${i}`)} onMarcar={() => marcar(`c${i}`)} colors={colors}>
                   <Markdown text={x} colors={colors} sources={fuentesInv} onCite={setPeek} />
                 </Hallazgo>
               ))}
             </Grupo>
+
+            <Grupo titulo="PROTAGONISTAS" icon={PersonIcon} colors={colors} vacio={!exp.protagonistas.length}>
+              {exp.protagonistas.map((x, i) => (
+                <Hallazgo key={`h${i}`} on={marcadas.includes(`h${i}`)} onMarcar={() => marcar(`h${i}`)} colors={colors}>
+                  {!!x.nombre && <Text style={[styles.hTitulo, { color: colors.text }]}>{x.nombre}</Text>}
+                  <Markdown text={x.texto} colors={colors} sources={fuentesInv} onCite={setPeek} />
+                </Hallazgo>
+              ))}
+            </Grupo>
+
+            {!!estudio?.preguntas.length && (
+              <Grupo titulo="LO QUE PREGUNTASTE AL ESTUDIAR" icon={CommentIcon} colors={colors} vacio={!exp.deEstudio.length}>
+                {exp.deEstudio.map((x, i) => (
+                  <Hallazgo key={`q${i}`} on={marcadas.includes(`q${i}`)} onMarcar={() => marcar(`q${i}`)} colors={colors}>
+                    {!!x.pregunta && <Text style={[styles.hTitulo, { color: colors.text }]}>«{x.pregunta}»</Text>}
+                    <Markdown text={x.texto} colors={colors} sources={fuentesInv} onCite={setPeek} />
+                  </Hallazgo>
+                ))}
+              </Grupo>
+            )}
 
             {listo && !!fuentesInv.length && <Sources sources={fuentesInv} colors={colors} onOpen={open} />}
             {fallo}
@@ -527,6 +565,9 @@ function Orar({
   onInvestigar,
   hayInvestigacion,
   onVolver,
+  estudio,
+  onQuitarEstudio,
+  onAbrirEstudio,
 }: {
   texto: string;
   setTexto: (t: string | ((t: string) => string)) => void;
@@ -536,6 +577,9 @@ function Orar({
   onInvestigar: () => void;
   hayInvestigacion: boolean;
   onVolver: () => void;
+  estudio: EstudioGuardado | null;
+  onQuitarEstudio: () => void;
+  onAbrirEstudio: () => void;
 }) {
   return (
     <>
@@ -550,6 +594,8 @@ function Orar({
           situación del grupo.
         </Text>
       </Appear>
+
+      {estudio && <DesdeEstudio estudio={estudio} onQuitar={onQuitarEstudio} onAbrir={onAbrirEstudio} colors={colors} />}
 
       <Text style={[styles.label, { color: colors.muted, marginTop: 22 }]}>QUÉ VAS A PREPARAR</Text>
       <View style={styles.tipos}>
@@ -591,6 +637,48 @@ function Orar({
       <Button label="Investigar esto" icon={SparkIcon} onPress={onInvestigar} disabled={texto.trim().length < MIN_TEMA} style={{ marginTop: 16 }} />
       {hayInvestigacion && <Button label="Volver a lo que encontré" kind="quiet" onPress={onVolver} style={{ marginTop: 6 }} />}
     </>
+  );
+}
+
+/** El estudio profundo del que parte el mensaje: su pasaje, el comienzo del estudio y las preguntas que hizo. */
+function DesdeEstudio({ estudio, onQuitar, onAbrir, colors }: { estudio: EstudioGuardado; onQuitar: () => void; onAbrir: () => void; colors: Colors }) {
+  const n = estudio.preguntas.length;
+  const inicio = estudio.texto.replace(/^#+.*$/gm, '').replace(/[*_>#]/g, '').replace(/\s+/g, ' ').trim();
+  return (
+    <Appear style={[styles.desde, { backgroundColor: colors.accentSoft, borderColor: colors.accent }]}>
+      <View style={styles.desdeHead}>
+        <IconText icon={SparkIcon} color={colors.accent} size={13}>
+          <Text style={[styles.kicker, { color: colors.accent }]}>DESDE TU ESTUDIO PROFUNDO</Text>
+        </IconText>
+        <Pressable onPress={onQuitar} hitSlop={8} accessibilityRole="button" accessibilityLabel="No usar el estudio">
+          <Text style={{ color: colors.muted, fontWeight: '600', fontSize: 13 }}>Quitar</Text>
+        </Pressable>
+      </View>
+      <Pressable onPress={onAbrir} accessibilityRole="link" accessibilityLabel={`Abrir ${estudio.cita}`}>
+        <Text style={[styles.desdeCita, { color: colors.text }]}>{estudio.cita} ›</Text>
+      </Pressable>
+      <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 4 }} numberOfLines={2}>
+        {inicio}
+      </Text>
+      {n > 0 && (
+        <View style={[styles.desdePreguntas, { borderTopColor: colors.border }]}>
+          <Text style={[styles.label, { color: colors.muted, marginBottom: 6 }]}>
+            {n === 1 ? 'TU PREGUNTA, PARA ENRIQUECER EL MENSAJE' : `TUS ${n} PREGUNTAS, PARA ENRIQUECER EL MENSAJE`}
+          </Text>
+          {estudio.preguntas.map((p, i) => (
+            <View key={i} style={styles.desdePregunta}>
+              <CommentIcon color={colors.accent} size={14} />
+              <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20, flex: 1 }} numberOfLines={2}>
+                {p.pregunta}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+      <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 18, marginTop: 10 }}>
+        La IA parte de este pasaje, amplía el estudio con las fuentes{n ? ' y te dice cómo usar cada pregunta en el mensaje' : ''}.
+      </Text>
+    </Appear>
   );
 }
 
@@ -696,6 +784,11 @@ const styles = StyleSheet.create({
   tipos: { flexDirection: 'row', gap: 10 },
   tipo: { flex: 1, borderWidth: 1, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center' },
   quote: { borderLeftWidth: 3, paddingLeft: 12, marginBottom: 16 },
+  desde: { borderWidth: 1, borderRadius: 20, padding: 18, marginTop: 16 },
+  desdeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  desdeCita: { fontFamily: serif, fontSize: 21, lineHeight: 28, marginTop: 8 },
+  desdePreguntas: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 12, paddingTop: 12 },
+  desdePregunta: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingVertical: 3 },
   quoteText: { fontFamily: serif, fontSize: 16, lineHeight: 25, fontStyle: 'italic' },
   center: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24 },
   hallazgo: { flexDirection: 'row', gap: 10, borderWidth: 1, borderRadius: 16, padding: 14 },

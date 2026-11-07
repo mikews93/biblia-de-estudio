@@ -40,6 +40,7 @@ import {
   commentaryBlocks,
   investigar,
   lectura,
+  fichasDe,
   load,
   pasoDe,
   versionSystem,
@@ -147,7 +148,9 @@ type Taller = {
   pedido?: string;
 };
 /** «preparar»: el Taller con borrador; la investigación es más amplia y también busca predicaciones en la web. */
-type Tema = { texto: string; tipo: Taller['tipo']; preparar?: boolean };
+type Tema = { texto: string; tipo: Taller['tipo']; preparar?: boolean; estudio?: EstudioPrevio };
+/** Un estudio profundo que la persona convierte en mensaje: el pasaje, el estudio que leyó y las preguntas que hizo. */
+type EstudioPrevio = { cita: string; texto: string; preguntas: { pregunta: string; respuesta: string }[] };
 // «sencillo»: corto y sin palabras técnicas; «fondo»: con contexto, el original y las fuentes. «preparada»: el id de una
 // de las preguntas que muchos hacen (src/lib/preguntasPreparadas.ts), cuya respuesta se guarda para todos.
 type Pregunta = { texto: string; nivel: 'sencillo' | 'fondo'; preparada?: string };
@@ -176,6 +179,7 @@ Herramientas: puedes investigar más allá del pasaje abierto: leer otros pasaje
 - No escribas nada antes de terminar de investigar: tu respuesta empieza cuando ya tienes lo que necesitas.
 - Para doctrina o historia de la Iglesia (el canon, los concilios, la Trinidad, la justificación) consulta «teologia» y presenta cada postura como la de su tradición («la tradición reformada», «una teología metodista», «un credo antiguo»), sin nombrar al autor en el texto: la cita dice quién es. Si las obras difieren (sobre la elección, sobre el bautismo), muestra las dos posturas sin tomar partido. La Escritura va primero: apoya lo que digas en pasajes leídos con las otras herramientas.
 - Para herejías y controversias antiguas (el modalismo o sabelianismo, el arrianismo, el gnosticismo, el nestorianismo, el pelagianismo) y lo que decidieron los concilios (Nicea, Constantinopla, Éfeso, Calcedonia), consulta «teologia» con el área «herejias» y, si sirve, también «credos» y «sistematicas». Explica con justicia qué enseñaban, por qué la Iglesia lo rechazó, con qué pasajes, en qué concilio o credo, y qué afirma la fe que se confesó en su lugar. Aquí no hay dos posturas que equilibrar: la Trinidad y la persona de Cristo tal como las confiesan los credos antiguos son la fe que comparten todas las tradiciones evangélicas. Si hoy algún grupo enseña algo parecido, puedes decirlo con respeto y sin burla, sin usar sus materiales.
+- Para las personas y los lugares de un pasaje (de dónde venía alguien, su tribu o pueblo, su familia, su ciudad, si era grande o pequeña) y el momento histórico del capítulo, consulta «personajes_y_lugares»: son las fichas de la app, unidas entre sí, con su línea de tiempo.
 - Para explicar algo concreto de la Biblia (un lugar como Getsemaní, un objeto como el efod, un grupo como los fariseos, una costumbre o una palabra como «propiciación») consulta «diccionario». Para reunir lo que la Biblia dice de un tema (la oración, el perdón, el matrimonio) consulta «temas_biblicos» y lee los pasajes más fuertes antes de usarlos.
 - Lo que encuentres con ellas se cita igual que los documentos. Si algo no está en ninguna fuente de la app, márcalo como «contexto general», breve y sin inventar fechas ni citas.
 - Antes de nombrar o copiar un versículo que no está en los documentos, léelo con «leer_pasaje» (o encuéntralo con «buscar_en_la_biblia»): nunca des una referencia de memoria.`;
@@ -240,7 +244,8 @@ Reglas del borrador:
 - Los versículos que copies, exactos y leídos con las herramientas; la app revisa cada cita con la Biblia y corrige las que no cuadran.
 - No nombres a comentaristas, teólogos ni predicadores en el texto: la cita ya dice de quién es.
 - No inventes anécdotas como si fueran reales ni pongas palabras en boca de la persona («cuando yo estaba…»). Si una ilustración ayuda, márcala como «Ejemplo:» y que sea breve; si sirve una historia personal, deja el hueco entre corchetes para que la ponga ella: [Aquí, una historia tuya sobre…].
-- Las dinámicas salen solo del catálogo de la app.`;
+- Las dinámicas salen solo del catálogo de la app.
+- Usa el momento histórico y a los protagonistas para que el texto se vea vivo: de dónde venían, qué pasaba alrededor, a quién escogió Dios (muchas veces a los pequeños o despreciados) y por qué eso importa hoy. Cada dato con su cita.`;
 
 const TEMA_SYSTEM = `
 
@@ -359,12 +364,37 @@ Reglas del formato:
 }
 
 // La investigación del Taller con borrador: src/lib/tallerTema.ts (leerExploracion) lee este formato.
+/** Lo que trae un estudio profundo convertido en mensaje: el estudio y las preguntas de la persona, con sus respuestas. */
+function estudioPrevio(e: EstudioPrevio) {
+  const preguntas = e.preguntas.map((p) => `- Pregunté: «${p.pregunta.trim()}»\n  Me respondió: ${p.respuesta.trim().replace(/\s*\n+\s*/g, ' ')}`).join('\n');
+  return `
+
+Antes estudié ${e.cita} a fondo en la app. Este es el estudio que leí:
+
+<estudio>
+${e.texto.trim()}
+</estudio>
+${
+  preguntas
+    ? `
+Y estas son las preguntas que le hice al estudiar, con lo que me respondió. Son lo que me tocó o me costó entender, y seguramente son las mismas que tendrá la gente: tenlas muy en cuenta.
+
+<preguntas>
+${preguntas}
+</preguntas>
+`
+    : ''
+}
+El mensaje parte de ${e.cita}: que sea el primer pasaje y que los enfoques salgan de él. No repitas sin más el estudio: amplíalo y compruébalo con las fuentes, y cita solo lo que tú leas ahora (el estudio y sus respuestas no se pueden citar).`;
+}
+
 function prepararTask(t: Tema) {
+  const e = t.estudio;
   return `Quiero preparar ${TIPOS[t.tipo]}. Oré y esto es lo que siento que Dios me puso; te lo cuento como me salió:
 
-«${t.texto.trim()}»
+«${t.texto.trim()}»${e ? estudioPrevio(e) : ''}
 
-Investiga a fondo antes de responder, con todas las fuentes de la app: el índice por temas para reunir lo que dice la Biblia del tema; lee cada pasaje en su contexto; los comentarios de la app sobre los más fuertes; el texto original de las palabras clave; el diccionario bíblico para lugares, personas, costumbres o palabras del texto; y la teología (sistemáticas, credos y catecismos) para lo doctrinal. Busca también en la web predicaciones o estudios de iglesias evangélicas sobre este tema o estos pasajes (de 2 a 4), y lee lo que dicen. Después responde con este formato estricto, sin nada antes ni después:
+Investiga a fondo antes de responder, con todas las fuentes de la app: el índice por temas para reunir lo que dice la Biblia del tema; lee cada pasaje en su contexto; los comentarios de la app sobre los más fuertes; el texto original de las palabras clave; las fichas de personajes y lugares de la app para cada protagonista, su familia, su pueblo y su ciudad, y para el momento histórico; el diccionario bíblico para lugares, personas, pueblos, costumbres o palabras del texto; los pasajes que cuentan la historia de cada protagonista; y la teología (sistemáticas, credos y catecismos) para lo doctrinal. Busca también en la web predicaciones o estudios de iglesias evangélicas sobre este tema o estos pasajes (de 2 a 4), y lee lo que dicen. Después responde con este formato estricto, sin nada antes ni después:
 
 ## Lo que entiendo
 Una o dos frases con el tema tal como lo entiendes, sin juzgar a nadie.
@@ -385,9 +415,23 @@ De 2 a 4 líneas, cada una con una idea útil de una predicación o un estudio q
 - El título de la predicación | la idea que aporta, en una o dos frases, con su cita
 Solo de iglesias o ministerios evangélicos. Si no encontraste ninguna que valga la pena, escribe solo «- Ninguna».
 
-## Contexto
-De 1 a 3 líneas con datos del contexto histórico, cultural o geográfico que ayudan a entender los pasajes, con su cita.
+## Momento histórico
+De 2 a 4 líneas con lo que pasaba alrededor cuando ocurrió o se escribió el pasaje (el imperio o el rey de turno, la situación del pueblo, la religión, la economía, las costumbres, la geografía) y por qué ayuda a entenderlo, cada una con su cita.
 
+## Protagonistas
+De 1 a 4 líneas, una por cada persona importante del pasaje, así:
+- El nombre | de dónde viene (su pueblo o tribu, su ciudad, y si era grande o pequeña, importante o despreciada), su familia y su oficio, lo que vivía en ese momento y cómo era según lo que muestran los textos; y lo que eso enseña de cómo obra Dios, con sus citas
+Solo lo que dicen el texto, otros pasajes sobre esa persona o las fuentes de la app: no le inventes sentimientos ni rasgos.
+
+${
+    e?.preguntas.length
+      ? `
+## Lo que preguntaste
+Una línea por cada pregunta que hice al estudiar, así:
+- La pregunta, corta | cómo puede enriquecer el mensaje (una pregunta para la gente, un punto, una aclaración o una aplicación), con su cita
+`
+      : ''
+  }
 ## Enfoques
 Tres direcciones posibles para el mensaje, cada una así:
 - Un título corto | la cita del pasaje principal | la idea central en una frase
@@ -729,7 +773,22 @@ function validTema(t: unknown): t is Tema {
     x.texto.trim().length >= 10 &&
     x.texto.length <= MAX_TEMA &&
     TALLER_TIPOS.includes(x.tipo as string) &&
-    (x.preparar === undefined || typeof x.preparar === 'boolean')
+    (x.preparar === undefined || typeof x.preparar === 'boolean') &&
+    (x.estudio === undefined || (x.preparar === true && validEstudio(x.estudio)))
+  );
+}
+
+const MAX_PREGUNTAS_ESTUDIO = 8;
+function validEstudio(e: unknown): e is EstudioPrevio {
+  if (!e || typeof e !== 'object') return false;
+  const x = e as Record<string, unknown>;
+  const texto = (v: unknown, max: number) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
+  return (
+    texto(x.cita, 80) &&
+    texto(x.texto, MAX_DRAFT) &&
+    Array.isArray(x.preguntas) &&
+    x.preguntas.length <= MAX_PREGUNTAS_ESTUDIO &&
+    x.preguntas.every((p) => !!p && typeof p === 'object' && texto((p as Record<string, unknown>).pregunta, MAX_PREGUNTA * 2) && texto((p as Record<string, unknown>).respuesta, MAX_TEMA))
   );
 }
 
@@ -969,6 +1028,16 @@ async function buildSources(biblia: Biblia, book: Book, chapter: number, verse: 
     focus = { word: w, total: uses.total };
   }
   docs.push(...(await commentaryDocs(request, book, chapter, verse, books)));
+  // Quiénes son las personas del pasaje, de dónde vienen y el momento histórico: un documento con las fichas de la app.
+  const fichas = await fichasDe(biblia, { book, chapter, verse }, '', verse ? 4 : 6, 110).catch(() => []);
+  if (fichas.length) {
+    docs.push(
+      doc(
+        `Personas, lugares y momento histórico de ${book.name} ${chapter} (fichas y línea de tiempo de la app; descripciones en inglés)`,
+        fichas.flatMap((f) => f.blocks),
+      ),
+    );
+  }
   return { docs, focus, hasOriginal: greek.length > 0 };
 }
 
@@ -995,6 +1064,7 @@ function studyTask(book: Book, chapter: number, verse: number | undefined, hasGr
   const sections = verse
     ? [
         '## Panorama: dónde está el versículo dentro del capítulo y qué ocurre alrededor.',
+        '## Su mundo: quiénes son las personas del pasaje (de dónde vienen, su pueblo o tribu, su ciudad y si era grande o pequeña, su familia) y qué pasaba en ese momento de la historia, con las fichas y la línea de tiempo de la app. Si el pasaje no tiene personas ni lugares, el momento histórico en dos o tres frases.',
         '## Observa: quién habla y a quién, qué se afirma, palabras repetidas y conectores («pero», «por tanto», «para que»).',
         hasGreek && `## Palabras del ${lang}: 2 a 4 palabras clave, con su significado y lo que aporta su gramática.`,
         '## Interpreta: qué significaba para sus primeros lectores y, si las tradiciones cristianas lo leen distinto, cómo.',
@@ -1004,6 +1074,7 @@ function studyTask(book: Book, chapter: number, verse: number | undefined, hasGr
       ]
     : [
         '## Panorama: de qué trata el capítulo y dónde encaja en el libro.',
+        '## Su mundo: quiénes son las personas del capítulo (de dónde vienen, su pueblo o tribu, su ciudad y si era grande o pequeña, su familia) y qué pasaba en ese momento de la historia, con las fichas y la línea de tiempo de la app. Si no tiene personas ni lugares, el momento histórico en dos o tres frases.',
         '## Cómo avanza: las partes del capítulo por grupos de versículos.',
         '## Observa: palabras y temas que se repiten, contrastes y conectores importantes.',
         hasGreek && `## Palabras del ${lang}: 3 a 5 palabras importantes en el capítulo.`,
@@ -1013,7 +1084,7 @@ function studyTask(book: Book, chapter: number, verse: number | undefined, hasGr
         '## Para aplicar: 2 o 3 preguntas personales o para un grupo.',
       ];
   return `Prepara un estudio de ${target} con estas secciones:\n${sections.filter(Boolean).join('\n')}\n\nExtensión: ${
-    verse ? '450 a 650' : '600 a 850'
+    verse ? '500 a 700' : '650 a 900'
   } palabras. Empieza directamente por la primera sección.`;
 }
 
@@ -1029,7 +1100,7 @@ function devotionalTask(book: Book, chapter: number, verse: number | undefined) 
   return `Prepara el devocional de ${target}${verse ? ', leído dentro de su capítulo' : ''}. La app muestra cada sección como un paso; respeta el formato exacto, sin texto antes ni después:
 
 ## Observa
-De 80 a 140 palabras en uno o dos párrafos: qué dice el pasaje en su contexto y qué revela de Dios, con citas.
+De 80 a 140 palabras en uno o dos párrafos: qué dice el pasaje en su contexto y qué revela de Dios, con citas. Si ayuda, una o dos frases sobre quiénes son sus personas, de dónde vienen o qué pasaba en ese momento, con las fichas de la app.
 
 ## Medita
 - Tres preguntas abiertas, una por línea: una sobre lo que el texto muestra de Dios, una sobre la persona a la luz del texto y una que la invite a quedarse con una palabra o frase. Cada pregunta con su cita.

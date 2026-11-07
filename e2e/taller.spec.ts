@@ -3,7 +3,7 @@
 
 import type { Page } from '@playwright/test';
 
-import { conSesion, cuentaNueva, expect, peticionesIA, test } from './support/fixtures';
+import { conSesion, cuentaNueva, expect, modoProfundo, peticionesIA, test } from './support/fixtures';
 
 const marca = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 const acompanante = (page: Page) => page.getByRole('dialog').filter({ hasText: 'ACOMPAÑANTE' });
@@ -511,4 +511,40 @@ test('preparar un mensaje: investiga, marca lo que sirve, da la dirección y la 
   await page.getByRole('button', { name: 'Pedir cambio' }).click();
   await page.getByRole('button', { name: 'Aceptar' }).first().click({ timeout: 20_000 });
   await expect(page.getByText(/Cuando pases por las aguas/).locator('visible=true').first()).toBeVisible();
+});
+
+test('un estudio profundo se convierte en sermón con las preguntas que hizo la persona', async ({ page, request }) => {
+  await modoProfundo(page);
+  await conSesion(page, await cuentaNueva(request, 'Estudiosa'));
+  await page.goto('/juan/3/16');
+  await page.getByRole('button', { name: 'Estudiar', exact: true }).click();
+  const estudio = page.getByRole('dialog').filter({ hasText: 'ESTUDIO' });
+  await expect(estudio.getByText('Estudio simulado del pasaje')).toBeVisible();
+
+  // Pregunta algo al estudiar y lo lleva al Taller
+  const pregunta = `¿Qué significa unigénito? ${marca()}`;
+  await estudio.getByPlaceholder('Pregunta sobre Juan 3:16').fill(pregunta);
+  await estudio.getByLabel('Enviar pregunta').click();
+  await expect(estudio.getByText(`Respuesta simulada a «${pregunta}».`)).toBeVisible();
+  await estudio.getByRole('button', { name: 'Convertir este estudio en un sermón' }).click();
+
+  // «Preparar un mensaje» empieza un sermón desde el estudio, con su pregunta
+  await expect(page).toHaveURL(/\/taller\/preparar$/);
+  await expect(page.getByText('DESDE TU ESTUDIO PROFUNDO')).toBeVisible();
+  await expect(page.getByText(pregunta).locator('visible=true').first()).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Sermón/ })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: 'Investigar esto' }).click();
+
+  // La IA recibe el estudio y la pregunta, y dice cómo usarla en el mensaje
+  await expect(page.getByText('LO QUE PREGUNTASTE AL ESTUDIAR')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/palabras de todos los días/)).toBeVisible();
+  const [investigacion] = (await peticionesIA(request, pregunta)).filter((r) => JSON.stringify(r.messages[0]).includes('<preguntas>'));
+  expect(JSON.stringify(investigacion.messages[0])).toContain('Antes estudié Juan 3:16 a fondo');
+
+  // El borrador también la tiene en cuenta
+  await page.getByRole('button', { name: 'Dar la dirección' }).click();
+  await page.getByRole('button', { name: 'Escribir el borrador' }).click();
+  await expect(page.getByRole('button', { name: 'Abrir el borrador para revisarlo' })).toBeVisible({ timeout: 20_000 });
+  const pedidos = await peticionesIA(request, pregunta);
+  expect(pedidos.some((r) => JSON.stringify(r.messages).includes('Preguntas que hice al estudiar Juan 3:16'))).toBe(true);
 });
