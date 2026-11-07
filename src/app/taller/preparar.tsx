@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router';
 import { ComponentRef, ReactNode, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import AmbienteBoton from '@/components/Ambiente';
 import Appear from '@/components/Appear';
@@ -38,6 +38,7 @@ import { Source, askStudy } from '@/lib/estudio';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { PLANTILLAS, Pasaje, TIPOS, Tipo, pasajeLabel, plantilla as plantillaDe, tipoInfo } from '@/lib/taller';
 import { borrarTallerIa, guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
+import { useTecladoWeb } from '@/lib/teclado';
 import { MAX_TEMA, MIN_TEMA, conCitas, estructuraParaIA, leerExploracion } from '@/lib/tallerTema';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -77,6 +78,8 @@ export default function PrepararScreen() {
   const colors = useColors();
   const { settings } = useSettings();
   useAmbienteEnPantalla();
+  // Que el teclado no tape la caja de pedir más ni lo que se escribe (como en Pregúntale a la Biblia, src/lib/teclado.ts).
+  const teclado = useTecladoWeb(false);
   const [books, setBooks] = useState<Book[]>([]);
   const [cargado, setCargado] = useState(false);
   const [texto, setTexto] = useState('');
@@ -288,7 +291,7 @@ export default function PrepararScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background, paddingBottom: teclado }} behavior="padding">
       <Stack.Screen options={{ title: 'Preparar un mensaje', headerRight: () => <View style={{ marginRight: 12 }}><AmbienteBoton colors={colors} label={false} /></View> }} />
       <Pasos etapa={etapa} disponibles={disponibles} onIr={irA} colors={colors} />
       <ScrollView ref={scroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
@@ -552,7 +555,7 @@ export default function PrepararScreen() {
           colors={colors}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
