@@ -66,6 +66,8 @@ const MAX_ANSWER = 600;
 const MAX_OPEN_QUESTIONS = 5;
 const MAX_PARTS = 30;
 const MAX_PART_CITAS = 12;
+// Cuántos teléfonos sin cuenta se cuentan en una sala (una iglesia entera cabe).
+const MAX_INVITADOS = 500;
 
 const SCHEMA = `
 create table if not exists vivo_salas (
@@ -87,6 +89,13 @@ create table if not exists vivo_presentes (
   usuario_id uuid not null references usuarios on delete cascade,
   visto timestamptz not null default now(),
   primary key (sala_id, usuario_id)
+);
+-- Quien sigue sin cuenta: un identificador al azar de su teléfono, solo para contarlo entre los que leen.
+create table if not exists vivo_invitados (
+  sala_id uuid not null references vivo_salas on delete cascade,
+  invitado text not null,
+  visto timestamptz not null default now(),
+  primary key (sala_id, invitado)
 );
 create table if not exists vivo_toques (
   sala_id uuid not null references vivo_salas on delete cascade,
@@ -455,7 +464,7 @@ async function view(sql: Sql, s: SalaRow) {
   const live = isLive(s);
   const ronda = s.estado.tarjeta?.tipo === 'ronda' ? s.estado.tarjeta : null;
   const repaso = s.estado.tarjeta?.tipo === 'repaso' ? s.estado.tarjeta : null;
-  const [presentes, toques, preguntas, respuestas] = live
+  const [presentes, toques, preguntas, respuestas, invitados] = live
     ? await Promise.all([
         sql<{ id: string; nombre: string; foto: string | null }[]>`
           select u.id, u.nombre, u.foto from vivo_presentes p join usuarios u on u.id = p.usuario_id
@@ -478,8 +487,11 @@ async function view(sql: Sql, s: SalaRow) {
                 join usuarios u on u.id = r.usuario_id
                 where r.sala_id = ${s.id} and r.ronda like ${repaso.id + ':%'} order by r.creado`
             : Promise.resolve([]),
+        sql<{ n: number }[]>`
+          select count(*)::int as n from vivo_invitados
+          where sala_id = ${s.id} and visto > now() - make_interval(secs => ${PRESENT_SECONDS})`,
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], [{ n: 0 }]];
   const guia = s.guia ?? s.dueno;
   return {
     sala: {
@@ -494,6 +506,8 @@ async function view(sql: Sql, s: SalaRow) {
     ahora: new Date().toISOString(),
     estado: { ...s.estado, tarjeta: publicCard(s.estado.tarjeta) },
     presentes,
+    // Los que siguen sin cuenta: solo cuántos son.
+    invitados: invitados[0]?.n ?? 0,
     toques,
     preguntas,
     // Lo que ve todo el mundo: antes de revelar, solo quiénes ya respondieron, sin lo que escribieron.
@@ -707,6 +721,33 @@ export const celulaActions: Record<string, Handler> = {
     const user = await auth(sql, request);
     const s = await liveSala(sql, body.sala);
     if (await present(sql, s.id, user.id)) await bump(sql, s.id);
+    return { ok: true };
+  },
+
+  /**
+   * Quien sigue sin cuenta avisa que sigue ahí con un identificador al azar de su teléfono: así cuenta entre los que
+   * leen. No da nombre ni deja hacer nada más.
+   */
+  async presenteInvitado({ sql, body }) {
+    const invitado = typeof body.invitado === 'string' && /^[A-Za-z0-9-]{8,40}$/.test(body.invitado) ? body.invitado : null;
+    if (!invitado) throw new Fail('Invitado no válido');
+    const s = await liveSala(sql, body.sala);
+    const [row] = await sql<{ nuevo: boolean }[]>`
+      with antes as (select visto from vivo_invitados where sala_id = ${s.id} and invitado = ${invitado}),
+      cuantos as (select count(*)::int as n from vivo_invitados where sala_id = ${s.id})
+      insert into vivo_invitados (sala_id, invitado)
+      select ${s.id}, ${invitado} where (select n from cuantos) < ${MAX_INVITADOS} or exists (select 1 from antes)
+      on conflict (sala_id, invitado) do update set visto = now()
+      returning (select coalesce(bool_or(visto < now() - make_interval(secs => ${PRESENT_SECONDS})), true) from antes) as nuevo`;
+    if (row?.nuevo) await bump(sql, s.id);
+    return { ok: true };
+  },
+
+  async salirInvitado({ sql, body }) {
+    const s = await salaByCode(sql, codeOf(body.sala));
+    const fuera =
+      typeof body.invitado === 'string' ? await sql`delete from vivo_invitados where sala_id = ${s.id} and invitado = ${body.invitado} returning 1` : [];
+    if (fuera.length) await bump(sql, s.id);
     return { ok: true };
   },
 

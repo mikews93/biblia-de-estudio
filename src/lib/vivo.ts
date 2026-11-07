@@ -85,6 +85,8 @@ export type Sala = {
   ahora: string;
   estado: EstadoSala;
   presentes: Persona[];
+  /** Cuántos siguen la lectura sin cuenta (solo se cuentan). */
+  invitados?: number;
   toques: Toque[];
   preguntas: PreguntaSala[];
   respuestas: Respuestas | null;
@@ -226,7 +228,28 @@ function useVisible() {
  * cada 20 s que la persona sigue ahí. `apply` mete la respuesta de un cambio propio sin esperar al siguiente
  * sondeo. `skew` es la diferencia entre el reloj del servidor y el del teléfono, para la cuenta atrás.
  */
-export function useSala(codigo: string, conCuenta: boolean) {
+let invitadoId: string | null = null;
+/** Un identificador al azar de este teléfono para contarlo en la sala sin cuenta. No dice quién es. */
+function invitado() {
+  if (invitadoId) return invitadoId;
+  try {
+    invitadoId = globalThis.localStorage?.getItem('vivo-invitado') ?? null;
+  } catch {
+    invitadoId = null;
+  }
+  if (!invitadoId) {
+    invitadoId = `i-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    try {
+      globalThis.localStorage?.setItem('vivo-invitado', invitadoId);
+    } catch {
+      // Sin almacenamiento: vale para esta visita.
+    }
+  }
+  return invitadoId;
+}
+
+/** `sinCuenta`: ya se sabe que quien abre no tiene cuenta; se cuenta entre los que leen como invitado. */
+export function useSala(codigo: string, conCuenta: boolean, sinCuenta = false) {
   const [sala, setSala] = useState<Sala | null>(null);
   const [error, setError] = useState<VivoError | null>(null);
   const [skew, setSkew] = useState(0);
@@ -289,6 +312,19 @@ export function useSala(codigo: string, conCuenta: boolean) {
     },
     [codigo, conCuenta],
   );
+
+  // Sin cuenta: avisa que sigue ahí para contar entre los que leen, y sale al cerrar.
+  useEffect(() => {
+    if (!sinCuenta || !visible) return;
+    const id = invitado();
+    const latir = () => vivoApi('presenteInvitado', { sala: codigo, invitado: id }).catch(() => {});
+    latir();
+    const beat = setInterval(latir, HEARTBEAT_MS);
+    return () => {
+      clearInterval(beat);
+      if (latest.current?.sala.enVivo) vivoApi('salirInvitado', { sala: codigo, invitado: id }).catch(() => {});
+    };
+  }, [codigo, sinCuenta, visible]);
 
   return { sala, error, skew, apply };
 }

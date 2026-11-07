@@ -29,7 +29,7 @@ import { type Persona, type Respuestas, type Tarjeta, TONOS } from '@/lib/vivo';
 
 import { Progreso } from './Estudio';
 import { CasillaPill, Leyenda, Rueda, useParada } from './Ruleta';
-import { LIVE_RED, vivoText } from './piezas';
+import { EntrarParaParticipar, LIVE_RED, vivoText } from './piezas';
 
 const BIEN = TONOS[1];
 const EQUIPO_TONOS = [TONOS[0], TONOS[2]];
@@ -361,7 +361,7 @@ export function TarjetaRepaso({ tarjeta: t, respuestas, presentes, guia, me, lea
                 {elegida !== undefined && !solucion ? `Elegiste la ${LETRAS[elegida]}. ` : 'Ya respondiste. '}Espera a que se revele.
               </Text>
             )}
-            {!me && <Text style={{ color: colors.muted, fontSize: 13, marginTop: 12 }}>Entra con tu cuenta para jugar.</Text>}
+            {!me && <EntrarParaParticipar para="Entra para jugar con el grupo" compacto />}
             {respondieron === undefined ? (
               <Progreso clave={ronda} presentes={presentes} quienes={quienes} guia={guia} />
             ) : (

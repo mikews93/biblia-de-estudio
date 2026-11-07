@@ -4,14 +4,18 @@
 // parte y cómo se cuenta el tiempo.
 
 import type { Book } from './data';
-import { dinamica } from './dinamicas';
+import { dinamica, pasosDe } from './dinamicas';
 import { citasEn, leerCita } from './eventos';
+import { citasDeTexto } from './presentador';
 import { ANUNCIOS, type Mensaje, type Pasaje, type Seccion, anunciosDe } from './taller';
 import type { Guion, Rango } from './vivo';
 
-/** Las citas de una parte: las que aparecen en lo que escribió y la del pasaje que la apoya. */
-export function citasDeParte(s: Seccion, books: Book[]) {
-  const citas = citasEn(`${s.paraGrupo ?? ''}\n${s.texto}\n${s.claves ?? ''}`, books);
+/**
+ * Las citas de una parte: las que aparecen en lo que escribió y la del pasaje que la apoya. Con el pasaje del mensaje
+ * también valen las que solo dan el versículo («v. 20», «versículos 11 al 13»).
+ */
+export function citasDeParte(s: Seccion, books: Book[], pasaje?: Pasaje | null) {
+  const citas = citasDeTexto(`${s.paraGrupo ?? ''}\n${s.texto}\n${s.claves ?? ''}`, books, pasaje).slice(0, 12);
   const apoyo = s.apoyo?.cita ? citasEn(s.apoyo.cita, books)[0] : undefined;
   return apoyo && !citas.includes(apoyo) ? [...citas, apoyo] : citas;
 }
@@ -25,7 +29,7 @@ export function guionDe(m: Mensaje, titulo: string, books: Book[]) {
   const partes = m.secciones.slice(0, anuncios ? 29 : 30).map((s) => ({
     titulo: (s.titulo.trim() || 'Sin título').slice(0, 120),
     minutos: s.minutos > 0 ? Math.min(s.minutos, 120) : 0,
-    citas: citasDeParte(s, books).slice(0, 12),
+    citas: citasDeParte(s, books, m.pasaje).slice(0, 12),
   }));
   if (anuncios) partes.push({ titulo: ANUNCIOS, minutos: 0, citas: [] });
   return { mensaje: m.id, titulo: titulo.slice(0, 120), partes };
@@ -55,7 +59,7 @@ export function moverAParte(m: Mensaje, parte: number, books: Book[]) {
     return { parte, tarjeta: { tipo: 'parte' as const, titulo: ANUNCIOS, texto: anuncios.map((a) => `• ${a}`).join('\n').slice(0, 1500), minutos: null } };
   }
   const s = parte >= 0 ? m.secciones[parte] : undefined;
-  const cita = s ? citasDeParte(s, books).map((c) => leerCita(c, books)).find(Boolean) : undefined;
+  const cita = s ? citasDeParte(s, books, m.pasaje).map((c) => leerCita(c, books)).find(Boolean) : undefined;
   const pasaje = cita ? { book: cita.book, chapter: cita.chapter, from: cita.from, to: cita.to } : m.pasaje;
   const d = dinamica(s?.dinamica);
   const texto = s?.paraGrupo?.trim();
@@ -64,7 +68,7 @@ export function moverAParte(m: Mensaje, parte: number, books: Book[]) {
     ...(pasaje && { libro: pasaje.book, capitulo: pasaje.chapter, rango: rangoDe(pasaje) }),
     tarjeta:
       s && (texto || d)
-        ? { tipo: 'parte' as const, titulo: s.titulo.trim() || 'Sin título', texto: texto?.slice(0, 1500), pasos: d?.pasos, minutos: s.minutos || null }
+        ? { tipo: 'parte' as const, titulo: s.titulo.trim() || 'Sin título', texto: texto?.slice(0, 1500), pasos: pasosDe(s), minutos: s.minutos || null }
         : null,
   };
 }

@@ -35,6 +35,24 @@ describe('leerBorrador', () => {
     expect(b.partes[1].claves).toEqual(['Estar en la tormenta no es estar fuera de su voluntad', 'Él ora por ti en el monte']);
   });
 
+  it('lee los pasos de la dinámica escritos para quienes la hacen', () => {
+    const b = leerBorrador(`# T
+
+## Introducción | 5
+Texto.
+> dinámica: recuento-en-cadena
+> paso: Lean Lucas 15:11-24 y cierren la Biblia.
+> paso: Cada uno cuenta un pedazo de la historia con sus palabras.
+* Punto
+
+## Cierre | 3
+> paso: suelto, sin dinámica`);
+    expect(b.partes[0].dinamica).toBe('recuento-en-cadena');
+    expect(b.partes[0].pasos).toEqual(['Lean Lucas 15:11-24 y cierren la Biblia.', 'Cada uno cuenta un pedazo de la historia con sus palabras.']);
+    expect(b.partes[0].texto).toBe('Texto.');
+    expect(b.partes[1].pasos).toBeUndefined();
+  });
+
   it('mientras llega, devuelve lo que ya está', () => {
     const b = leerBorrador('# Título\n\n## Introducción | 5\nUna frase a me');
     expect(b.partes).toHaveLength(1);

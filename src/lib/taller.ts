@@ -28,6 +28,11 @@ export type Seccion = {
   /** Solo encuentros: quién guía la parte. */
   responsable?: string;
   dinamica?: string;
+  /**
+   * Los pasos de la dinámica escritos para este mensaje (por la IA del borrador): lo que hace cada persona, con el
+   * pasaje y la pregunta concretos. Sin ellos se usan los pasos del catálogo.
+   */
+  dinamicaPasos?: string[];
   /** Un pasaje que apoya esta parte, sugerido por la maqueta de un tema (src/lib/tallerTema.ts). */
   apoyo?: { cita: string; porque: string };
   /** Puntos concretos para hablar, uno por línea: lo que orienta a quien predica en esta parte. */

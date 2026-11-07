@@ -1,17 +1,18 @@
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { ComponentRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Appear from '@/components/Appear';
 import { Button } from '@/components/comunidad/ui';
 import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, LiveIcon, OpenBookIcon, ShareIcon } from '@/components/icons';
 import { BotonPreguntas, PreguntasSheet, TarjetaEstudio, TarjetaRonda, preguntarAlEstudio } from '@/components/vivo/Estudio';
-import { BarraGuion, ChipGuion } from '@/components/vivo/Guion';
+import { ChipGuion } from '@/components/vivo/Guion';
+import { MandosPresentador, NotasPresentador, useLetraNotas } from '@/components/vivo/Presentador';
 import { TarjetaRepaso } from '@/components/vivo/Repaso';
 import { NuevaTarjeta, PantallaSheet, PasajeSheet, PersonasSheet } from '@/components/vivo/Hojas';
-import { Faces, LIVE_RED, LiveBadge, Sheet, vivoText } from '@/components/vivo/piezas';
+import { EntrarParaParticipar, Faces, LIVE_RED, LiveBadge, Sheet, vivoText } from '@/components/vivo/piezas';
 import TarjetaVivo from '@/components/vivo/TarjetaVivo';
 import TextoVivo from '@/components/vivo/TextoVivo';
 import { shareMessage } from '@/lib/compartir';
@@ -25,6 +26,7 @@ import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
 import { type PreguntaSala, type Sala, cleanCode, liveUrl, spacedCode, touchesByVerse, useSala, vivoApi } from '@/lib/vivo';
 import { usePantallaEncendida } from '@/lib/pantalla';
+import { pedirCuenta } from '@/lib/volver';
 
 type Open = null | 'pasaje' | 'pantalla' | 'personas' | 'invitar' | 'preguntas';
 /** La respuesta del estudio a una duda del grupo mientras se escribe (solo la ve quien guía). */
@@ -39,7 +41,7 @@ export default function SalaEnVivo() {
   const { settings } = useSettings();
   usePantallaEncendida(true);
   const { ready, usuario } = useAccount();
-  const { sala, error, skew, apply } = useSala(codigo, ready && !!usuario);
+  const { sala, error, skew, apply } = useSala(codigo, ready && !!usuario, ready && !usuario);
   const { mensajes } = useTaller();
   const [books, setBooks] = useState<Book[]>([]);
   const [verses, setVerses] = useState<Verse[] | null>(null);
@@ -58,6 +60,9 @@ export default function SalaEnVivo() {
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const positions = useRef(new Map<number, number>());
   const textTop = useRef(0);
+  const { width } = useWindowDimensions();
+  // Las notas de quien presenta: su letra, que se puede agrandar.
+  const [letra, cambiarLetra] = useLetraNotas();
 
   const me = usuario?.id ?? null;
   const lead = !!sala && me === sala.sala.guia.id;
@@ -72,6 +77,9 @@ export default function SalaEnVivo() {
   const rango = pending ? null : (estado?.rango ?? null);
   const rangoKey = rango ? `${libro}.${capitulo}.${rango.desde}-${rango.hasta}` : '';
   const todo = !!rangoKey && todoEn === rangoKey;
+  // Quien guía abre el capítulo entero para todos; se recuerda qué versículos había para volver a ellos.
+  const [rangoAntes, setRangoAntes] = useState<{ clave: string; rango: { desde: number; hasta: number } } | null>(null);
+  const antes = lead && !rango && rangoAntes?.clave === `${libro}.${capitulo}` ? rangoAntes.rango : null;
 
   useEffect(() => {
     getBooks().then(setBooks).catch(() => {});
@@ -144,8 +152,25 @@ export default function SalaEnVivo() {
     if (y !== undefined) scroll.current?.scrollTo({ y: Math.max(0, textTop.current + y - 140), animated: true });
   }, []);
   useEffect(() => {
-    if (!lead) scrollToFocus(estado?.foco);
-  }, [estado?.foco, lead, scrollToFocus, verses]);
+    if (lead || !estado?.foco) return;
+    scrollToFocus(estado.foco);
+    // Si el versículo acaba de aparecer (otra hoja, o el capítulo entero), se espera a que tenga lugar en la pantalla.
+    const t = setTimeout(() => scrollToFocus(estado.foco), 450);
+    return () => clearTimeout(t);
+  }, [estado?.foco, estado?.rango, lead, scrollToFocus, verses]);
+
+  // Cuando quien guía muestra otros versículos, quien sigue los ve sin buscarlos: se baja hasta el texto.
+  // Al pasar de parte no: arriba está lo que la parte trae para el grupo.
+  const rangoVisto = estado?.rango ? `${estado.libro}.${estado.capitulo}.${estado.rango.desde}-${estado.rango.hasta}` : null;
+  const parteVista = estado?.guion?.parte ?? null;
+  const antesVisto = useRef<{ rango: string | null; parte: number | null } | null>(null);
+  useEffect(() => {
+    const prev = antesVisto.current;
+    antesVisto.current = { rango: rangoVisto, parte: parteVista };
+    if (!prev || prev.parte !== parteVista || lead || !rangoVisto) return;
+    const t = setTimeout(() => scroll.current?.scrollTo({ y: Math.max(0, textTop.current - 16), animated: true }), 350);
+    return () => clearTimeout(t);
+  }, [rangoVisto, parteVista, lead]);
 
   const act = useCallback(
     async (accion: string, body: Record<string, unknown> = {}) => {
@@ -263,6 +288,26 @@ export default function SalaEnVivo() {
     act('moverSala', body);
   };
 
+  /** Mostrar en las pantallas de todos una cita de las notas («Lucas 15:20»): solo esos versículos. */
+  const mostrarCita = (label: string) => {
+    const c = leerCita(label, books);
+    if (!c) return;
+    if (c.book !== estado?.libro || c.chapter !== estado?.capitulo) setPending({ libro: c.book, capitulo: c.chapter });
+    act('moverSala', { libro: c.book, capitulo: c.chapter, rango: rangoDe(c), foco: null }).then((ok) => ok && setToast(`${label} en las pantallas de todos`));
+  };
+  const enPantalla = (label: string) => {
+    const c = books.length ? leerCita(label, books) : null;
+    if (!c || c.book !== libro || c.chapter !== capitulo) return false;
+    const r = rangoDe(c);
+    return r ? !!rango && rango.desde === r.desde && rango.hasta === r.hasta : !rango;
+  };
+  // El aviso de lo que se mostró se va solo.
+  useEffect(() => {
+    if (!toast || !lead) return;
+    const t = setTimeout(() => setToast(null), 2400);
+    return () => clearTimeout(t);
+  }, [toast, lead]);
+
   const toques = useMemo(() => {
     const list = sala?.toques ?? [];
     if (pendingTap === null || !me) return touchesByVerse(list);
@@ -342,6 +387,42 @@ export default function SalaEnVivo() {
   const guia = lead ? 'Tú' : sala.sala.guia.nombre;
   const abiertas = sala.preguntas.filter((p) => !p.respondida).length;
   const tarjeta = estado?.tarjeta;
+  // Quien presenta un mensaje del Taller: mandos grandes arriba y sus notas; en el computador, a un lado.
+  const presentando = lead && !!guion;
+  const aLado = presentando && width >= 980;
+  const mandos = presentando && guion && <MandosPresentador guion={guion} skew={skew} onParte={irAParte} size={letra} onSize={cambiarLetra} />;
+  const notas =
+    presentando && guion ? (
+      guionMensaje ? (
+        <NotasPresentador
+          m={guionMensaje}
+          parte={guion.parte}
+          books={books}
+          size={letra}
+          enPantalla={enPantalla}
+          preguntaActual={tarjeta?.tipo === 'pregunta' || tarjeta?.tipo === 'ronda' ? tarjeta.titulo : null}
+          onMostrar={mostrarCita}
+          onPregunta={(q, cadaUno) => put(cadaUno ? { tipo: 'ronda', titulo: q, anonima: false } : { tipo: 'pregunta', titulo: q.slice(0, 120) })}
+          onDinamica={() => {
+            const t = moverAParte(guionMensaje, guion.parte, books).tarjeta;
+            if (t) put(t);
+          }}
+          estudio={book && capitulo ? { libro: book.id, capitulo, nombre: `${book.name} ${capitulo}`, version: settings.version } : undefined}
+          onPut={put}
+        />
+      ) : (
+        <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 14 }}>
+          Tus notas están en el teléfono donde escribiste el mensaje. Ábrelo ahí para verlas mientras presentas.
+        </Text>
+      )
+    ) : null;
+  const loQueVen = presentando && (
+    <View style={styles.loQueVen}>
+      <View style={[styles.linea, { backgroundColor: colors.border }]} />
+      <Text style={[vivoText.kicker, { color: colors.muted }]}>LO QUE VEN TODOS</Text>
+      <View style={[styles.linea, { backgroundColor: colors.border }]} />
+    </View>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -367,8 +448,9 @@ export default function SalaEnVivo() {
           <View style={styles.topRow}>
             <Pressable onPress={() => setOpen('personas')} style={styles.people} accessibilityRole="button" accessibilityLabel="Ver quiénes están">
               <Faces people={sala.presentes} />
-              <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }}>
-                {sala.presentes.length} {sala.presentes.length === 1 ? 'leyendo' : 'leyendo'}
+              <Text style={{ color: colors.muted, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
+                {sala.presentes.length + (sala.invitados ?? 0)} leyendo
+                {sala.invitados ? <Text style={{ fontWeight: '500' }}> · {sala.invitados} sin cuenta</Text> : null}
               </Text>
             </Pressable>
             <Pressable
@@ -384,8 +466,26 @@ export default function SalaEnVivo() {
         </View>
       </View>
 
-      <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={[styles.content, lead && guion && { paddingBottom: 320 }]}>
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        {aLado && (
+          <View style={[styles.lado, { width: Math.min(560, width * 0.44), borderColor: colors.border }]}>
+            <View style={{ padding: 16, paddingBottom: 0 }}>{mandos}</View>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+              {notas}
+            </ScrollView>
+          </View>
+        )}
+      <ScrollView
+        ref={scroll}
+        style={{ flex: 1 }}
+        stickyHeaderIndices={presentando && !aLado ? [0] : undefined}
+        contentContainerStyle={[styles.content, presentando && !aLado && styles.contentPresentando]}
+      >
+        {presentando && !aLado && <View style={[styles.fijo, { backgroundColor: colors.background }]}>{mandos}</View>}
+        {presentando && !aLado && notas}
+        {loQueVen}
         {guion && !lead && <ChipGuion guion={guion} skew={skew} />}
+        {ready && !usuario && tarjeta?.tipo !== 'ronda' && tarjeta?.tipo !== 'repaso' && <EntrarParaParticipar />}
         {respondiendo ? (
           <TarjetaEstudio
             tarjeta={{ titulo: respondiendo.pregunta.texto, texto: respondiendo.texto || '…', pregunta: respondiendo.pregunta.id }}
@@ -444,9 +544,16 @@ export default function SalaEnVivo() {
               chapter={capitulo!}
               verses={verses}
               version={shown}
-              rango={rango}
-              todo={todo}
-              onTodo={(t) => setTodoEn(t ? rangoKey : null)}
+              rango={rango ?? antes}
+              todo={lead ? !rango && !!antes : todo}
+              onTodo={(t) => {
+                if (!lead) return setTodoEn(t ? rangoKey : null);
+                // Lo que abre quien guía lo ven todos.
+                if (t && rango) {
+                  setRangoAntes({ clave: `${libro}.${capitulo}`, rango });
+                  act('moverSala', { rango: null });
+                } else if (!t && antes) act('moverSala', { rango: antes, foco: null });
+              }}
               toques={toques}
               foco={pending ? null : (estado?.foco ?? null)}
               guia={guia}
@@ -460,13 +567,14 @@ export default function SalaEnVivo() {
           )}
         </View>
       </ScrollView>
+      </View>
 
       {/* Avisos: la hoja que pasó, o un problema */}
       {(toast || problem) && (
-        <View pointerEvents="box-none" style={[styles.toastWrap, { bottom: insets.bottom + (lead ? (guion ? 250 : 96) : 76) }]}>
+        <View pointerEvents="box-none" style={[styles.toastWrap, { bottom: insets.bottom + (lead ? 96 : 76) }]}>
           <Appear from={6}>
             <Pressable accessibilityRole="button"
-              onPress={() => (problem && !me ? router.push('/entrar') : setProblem(null))}
+              onPress={() => (problem && !me ? pedirCuenta('entrar') : setProblem(null))}
               style={[styles.toast, { backgroundColor: problem ? LIVE_RED : colors.accent }]}
             >
               <Text style={{ color: problem ? '#FFFFFF' : colors.surface, fontWeight: '600', fontSize: 14 }}>{problem ?? toast}</Text>
@@ -477,7 +585,6 @@ export default function SalaEnVivo() {
 
       {/* Abajo: los mandos de quien guía, o para los demás a quién siguen */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
-        {lead && guion && <BarraGuion guion={guion} skew={skew} mensaje={guionMensaje} onParte={irAParte} />}
         {lead ? (
           <View style={[styles.dock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Pressable accessibilityRole="button" onPress={() => turn(-1)} accessibilityLabel="Capítulo anterior" style={[styles.dockRound, { backgroundColor: colors.accentSoft }]}>
@@ -516,7 +623,7 @@ export default function SalaEnVivo() {
                 ) : (
                   <>
                     Sigues a <Text style={{ color: colors.text, fontWeight: '700' }}>{sala.sala.guia.nombre.split(' ')[0]}</Text>.{' '}
-                    <Text onPress={() => router.push('/entrar')} style={{ color: colors.accent, fontWeight: '700' }}>
+                    <Text onPress={() => pedirCuenta('entrar')} style={{ color: colors.accent, fontWeight: '700' }}>
                       Entra
                     </Text>{' '}
                     para iluminar versículos.
@@ -658,6 +765,11 @@ const styles = StyleSheet.create({
   code: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 6 },
   codeText: { fontSize: 14, fontWeight: '800', letterSpacing: 1.6, fontVariant: ['tabular-nums'] },
   content: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 160, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  contentPresentando: { paddingHorizontal: 14, paddingTop: 0 },
+  fijo: { paddingTop: 10, paddingBottom: 4, marginHorizontal: -2 },
+  lado: { borderRightWidth: StyleSheet.hairlineWidth },
+  loQueVen: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 26, marginBottom: 18 },
+  linea: { flex: 1, height: StyleSheet.hairlineWidth },
   toastWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', paddingHorizontal: 20 },
   toast: { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingHorizontal: 12, gap: 8 },

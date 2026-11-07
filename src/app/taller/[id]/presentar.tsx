@@ -12,9 +12,10 @@ import { CreditoVersion, Tramos, useVersion } from '@/components/vivo/Guion';
 import { useAmbienteEnPantalla } from '@/lib/ambiente';
 import { useAccount } from '@/lib/comunidad';
 import { Book, Verse, getBooks, getChapter } from '@/lib/data';
-import { dinamica } from '@/lib/dinamicas';
+import { dinamica, pasosDe } from '@/lib/dinamicas';
 import { citasDeParte } from '@/lib/guion';
-import { codigoLegible, interactuarEvento, moverEvento, useMisEventos } from '@/lib/eventos';
+import { codigoLegible, interactuarEvento, leerCita, moverEvento, useMisEventos } from '@/lib/eventos';
+import { preguntasDeParte, trozosConCitas } from '@/lib/presentador';
 import { anunciosDe, enPasaje, ideaCentral, pasajeLabel, tituloDe, useTaller } from '@/lib/taller';
 import { sans, serif, useColors, useSettings } from '@/lib/theme';
 import { usePantallaEncendida } from '@/lib/pantalla';
@@ -35,6 +36,11 @@ export default function PresentarScreen() {
   const [running, setRunning] = useState(true);
   const [verses, setVerses] = useState<Verse[] | null>(null);
   const [showPassage, setShowPassage] = useState(false);
+  // La cita de las notas que se abrió (sin ella, el pasaje del mensaje) y sus versículos.
+  const [verCita, setVerCita] = useState<string | null>(null);
+  const [versosCita, setVersosCita] = useState<{ cita: string; verses: Verse[] } | null>(null);
+  // Las preguntas de las notas que se mandaron a los teléfonos.
+  const [preguntada, setPreguntada] = useState<string | null>(null);
   const [size, setSize] = useState(22);
   // El pasaje en la versión en que lees (las con derechos se piden en el momento), o la RV1909 si no se puede.
   const { settings } = useSettings();
@@ -79,6 +85,17 @@ export default function PresentarScreen() {
       .catch(() => {});
   }, [p?.book, p?.chapter, p?.from, p?.to, settings.version]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!verCita || !books.length) return;
+    const c = leerCita(verCita, books);
+    if (!c) return;
+    const elegir = (v: Verse[]) => setVersosCita({ cita: verCita, verses: v.filter(([n]) => !c.from || (n >= c.from && n <= (c.to ?? c.from))) });
+    getChapter(c.book, c.chapter, settings.version)
+      .then(elegir)
+      .catch(() => getChapter(c.book, c.chapter).then(elegir))
+      .catch(() => setVersosCita({ cita: verCita, verses: [] }));
+  }, [verCita, books, settings.version]);
+
   if (!m) return <Stack.Screen options={{ headerShown: false }} />;
 
   const sections = m.secciones;
@@ -96,11 +113,37 @@ export default function PresentarScreen() {
   const inSection = elapsed - sectionStart;
   const over = s && s.minutos ? inSection > s.minutos * 60 : false;
   const d = dinamica(s?.dinamica);
+  const pasos = pasosDe(s);
+  const preguntas = s ? preguntasDeParte(s) : [];
+  const abrirCita = (c: string | null) => {
+    setVerCita(c);
+    setShowPassage(true);
+  };
+  /** Las notas con sus citas tocables: se abren ahí mismo, en la versión en que lees. */
+  const conCitas = (texto: string) =>
+    trozosConCitas(texto, books, m.pasaje).map((t, i, todos) =>
+      todos.length === 1 && !t.cita ? (
+        t.texto
+      ) : t.cita ? (
+        <Text key={i} onPress={() => abrirCita(t.cita!)} role="button" style={{ color: colors.accent, fontWeight: '700', textDecorationLine: 'underline' }}>
+          {t.texto}
+        </Text>
+      ) : (
+        <Text key={i}>{t.texto}</Text>
+      ),
+    );
+  const preguntar = (q: string) => {
+    if (!evento) return;
+    setFallo(false);
+    interactuarEvento(evento.codigo, { nueva: { tipo: 'pregunta', titulo: q } })
+      .then(() => setPreguntada(q))
+      .catch(() => setFallo(true));
+  };
   const clave = s && d ? `${s.id}:${d.id}` : null;
   const mandar = () => {
     if (!evento || !d || !s) return;
     setFallo(false);
-    interactuarEvento(evento.codigo, { nueva: { tipo: 'dinamica', dinamica: d.id, ...(s.minutos > 0 && { minutos: Math.min(s.minutos, 60) }) } })
+    interactuarEvento(evento.codigo, { nueva: { tipo: 'dinamica', dinamica: d.id, ...(pasos && { pasos }), ...(s.minutos > 0 && { minutos: Math.min(s.minutos, 60) }) } })
       .then(() => setMandada(clave))
       .catch(() => setFallo(true));
   };
@@ -168,8 +211,10 @@ export default function PresentarScreen() {
             <Text style={[styles.title, { color: colors.accent }]}>{s.titulo}</Text>
             {d && (
               <View style={[styles.box, { backgroundColor: colors.accentSoft }]}>
-                <Text style={{ color: colors.text, fontWeight: '700', fontSize: size * 0.8 }}>{d.nombre}</Text>
-                {d.pasos.map((step, i) => (
+                <Text style={{ color: colors.warm, fontWeight: '800', fontSize: 11.5, letterSpacing: 1 }}>DINÁMICA · {d.minutos} MIN</Text>
+                <Text style={{ color: colors.text, fontWeight: '700', fontSize: size * 0.8, marginTop: 4 }}>{d.nombre}</Text>
+                <Text style={{ color: colors.muted, fontSize: size * 0.62, lineHeight: size * 0.95, marginTop: 2 }}>{d.objetivo}</Text>
+                {(pasos ?? []).map((step, i) => (
                   <Text key={i} style={{ color: colors.text, fontSize: size * 0.72, lineHeight: size * 1.1, marginTop: 4 }}>
                     {i + 1}. {step}
                   </Text>
@@ -205,7 +250,7 @@ export default function PresentarScreen() {
                   marginTop: 16,
                 }}
               >
-                {s.texto.trim()}
+                {conCitas(s.texto.trim())}
               </Text>
             )}
             {!!s.claves?.trim() && (
@@ -217,9 +262,35 @@ export default function PresentarScreen() {
                   .map((c, i) => (
                     <View key={i} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 8 }}>
                       <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.warm, marginTop: size * 0.5 }} />
-                      <Text style={{ color: colors.text, fontSize: size * 0.85, lineHeight: size * 1.25, flex: 1 }}>{c}</Text>
+                      <Text style={{ color: colors.text, fontSize: size * 0.85, lineHeight: size * 1.25, flex: 1 }}>{conCitas(c)}</Text>
                     </View>
                   ))}
+              </View>
+            )}
+            {evento && enVivo && preguntas.length > 0 && (
+              <View style={[styles.claves, { borderColor: colors.border }]}>
+                <Text style={[styles.counter, { color: colors.muted, marginTop: 8 }]}>TUS PREGUNTAS · QUE LA IGLESIA RESPONDA</Text>
+                {preguntas.map((q) => (
+                  <View
+                    key={q}
+                    style={[styles.preguntaFila, { borderColor: preguntada === q ? colors.warm : colors.border, backgroundColor: preguntada === q ? colors.warmSoft : 'transparent' }]}
+                  >
+                    <Text style={{ color: colors.text, fontFamily: serif, fontSize: size * 0.8, lineHeight: size * 1.15, flex: 1 }}>{q}</Text>
+                    {preguntada === q ? (
+                      <CheckIcon color={colors.warm} size={18} strokeWidth={2.4} />
+                    ) : (
+                      <Pressable
+                        onPress={() => preguntar(q)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Mandar a los teléfonos: ${q}`}
+                        style={({ pressed }) => [styles.mandar, { backgroundColor: colors.warm, marginTop: 0 }, pressed && { opacity: 0.8 }]}
+                      >
+                        <PeopleIcon color="#FFFFFF" size={15} />
+                        <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>Mandar</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ))}
               </View>
             )}
             {!s.texto.trim() && !s.paraGrupo?.trim() && !s.claves?.trim() && !d && (
@@ -275,7 +346,7 @@ export default function PresentarScreen() {
           </IconText>
         </Pressable>
         {m.pasaje && (
-          <Pressable onPress={() => setShowPassage(true)} style={[styles.passageBtn, { borderColor: colors.accent }]}>
+          <Pressable onPress={() => abrirCita(null)} style={[styles.passageBtn, { borderColor: colors.accent }]}>
             <Text style={{ color: colors.accent, fontWeight: '700' }}>Pasaje</Text>
           </Pressable>
         )}
@@ -296,11 +367,11 @@ export default function PresentarScreen() {
           <Pressable style={styles.backdrop} onPress={() => setShowPassage(false)}>
             <View style={[styles.passage, { backgroundColor: colors.surface }]}>
               <Text style={{ color: colors.accent, fontWeight: '700', marginBottom: 10 }}>
-                {pasajeLabel(m.pasaje, books)} · {abbr}
+                {verCita ?? pasajeLabel(m.pasaje, books)} · {abbr}
               </Text>
               <ScrollView>
                 <Text style={{ color: colors.text, fontFamily: serif, fontSize: size * 0.9, lineHeight: size * 1.4 }}>
-                  {verses?.map(([n, t]) => (
+                  {(verCita ? (versosCita?.cita === verCita ? versosCita.verses : []) : verses)?.map(([n, t]) => (
                     <Text key={n}>
                       <Text style={{ color: colors.accent, fontSize: size * 0.5 }}>{n} </Text>
                       {t}{' '}
@@ -318,6 +389,7 @@ export default function PresentarScreen() {
 }
 
 const styles = StyleSheet.create({
+  preguntaFila: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 10 },
   screen: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 8 },
   timer: { alignItems: 'center' },

@@ -182,6 +182,32 @@ describe('/api/vivo (célula)', () => {
       expect((await act('salaDelGrupo', { grupo: g.json.id }, beto.llave)).json.sala).toBeNull();
     });
 
+    it('quien sigue sin cuenta cuenta entre los que leen, y deja de contar al salir', async () => {
+      const ana = await persona('Ana Invita');
+      const codigo = (await act('crearSala', { libro: 'jhn', capitulo: 3 }, ana.llave)).json.sala.codigo as string;
+      expect((await ver(codigo)).json.invitados).toBe(0);
+      expect((await act('presenteInvitado', { sala: codigo, invitado: 'x' })).status).toBe(400);
+      expect((await act('presenteInvitado', { sala: codigo, invitado: 'i-abc12345-zz' })).status).toBe(200);
+      expect((await act('presenteInvitado', { sala: codigo, invitado: 'i-abc12345-zz' })).status).toBe(200);
+      expect((await act('presenteInvitado', { sala: codigo, invitado: 'i-def67890-yy' })).status).toBe(200);
+      const v = await ver(codigo);
+      expect(v.json.invitados).toBe(2);
+      expect(JSON.stringify(v.json)).not.toContain('i-abc12345-zz');
+      await act('salirInvitado', { sala: codigo, invitado: 'i-abc12345-zz' });
+      expect((await ver(codigo)).json.invitados).toBe(1);
+    });
+
+    it('quien guía abre el capítulo entero para todos y vuelve a los versículos', async () => {
+      const ana = await persona('Ana Abre');
+      const codigo = (await act('crearSala', { libro: 'php', capitulo: 2 }, ana.llave)).json.sala.codigo as string;
+      await act('moverSala', { sala: codigo, libro: 'php', capitulo: 2, rango: { desde: 5, hasta: 11 } }, ana.llave);
+      expect((await ver(codigo)).json.estado.rango).toEqual({ desde: 5, hasta: 11 });
+      await act('moverSala', { sala: codigo, rango: null }, ana.llave);
+      expect((await ver(codigo)).json.estado.rango).toBeNull();
+      await act('moverSala', { sala: codigo, rango: { desde: 5, hasta: 11 }, foco: 9 }, ana.llave);
+      expect((await ver(codigo)).json.estado).toMatchObject({ rango: { desde: 5, hasta: 11 }, foco: 9 });
+    });
+
     it('códigos que no existen o mal escritos', async () => {
       expect((await ver('ZZZZZZ')).status).toBe(404);
       expect((await ver('abc')).status).toBe(400);
