@@ -28,10 +28,13 @@ export async function prepareEnv({ ai = false } = {}) {
   process.env.ANTHROPIC_API_KEY = 'clave-de-prueba';
   // Sin IA simulada, un puerto cerrado: si algo llamara a la IA, fallaría en vez de salir a internet.
   process.env.ANTHROPIC_BASE_URL = 'http://127.0.0.1:9';
+  process.env.YOUTUBE_OEMBED_URL = 'http://127.0.0.1:9/oembed';
   if (ai) {
     const port = await freePort();
     await startMockAnthropic(port);
     process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${port}`;
+    process.env.YOUTUBE_OEMBED_URL = `http://127.0.0.1:${port}/oembed`;
+    process.env.GEMINI_BASE_URL = `http://127.0.0.1:${port}`;
   }
   return { requests };
 }

@@ -57,6 +57,8 @@ import { PalabraEnTema, palabraPorId, unirApariciones } from '../src/lib/palabra
 import { conVersion, versionPodcast } from '../src/lib/podcastVersion';
 import { PREPARADAS } from '../src/lib/preguntasPreparadas';
 import { ordenarVueltas, recortarVueltas } from '../src/lib/turnos';
+import type { Video } from '../src/lib/videos';
+import { datosVideo, geminiActivo, transcribirConGemini, validVideos, videosParaIA } from './_videos';
 
 // Lo que se guarda para todos (el primer estudio de un pasaje, las herramientas) se paga una vez: va con el mejor modelo.
 // Lo de cada persona (preguntas de seguimiento, Taller, semana) se paga cada vez: va con uno más barato.
@@ -94,6 +96,12 @@ type Body = {
   semana?: Semana;
   /** Taller desde un tema: lo que la persona quiere tratar, grabado o escrito, todavía sin pasaje. */
   tema?: Tema;
+  /** Un video de YouTube que la app transcribe con Gemini para usarlo como fuente al preparar (api/_videos.ts). */
+  video?: string;
+  /** ¿Puede la app sacar sola la transcripción de un video? (sin cuenta: solo dice si hay clave de Gemini) */
+  videosSolos?: true;
+  /** Título y canal de un video de YouTube, para mostrarlo en la app (sin cuenta: es el oEmbed público). */
+  videoDatos?: string;
   /** Id de una palabra del catálogo (src/lib/palabras.ts): su historia por toda la Biblia. */
   palabra?: string;
   /** «jovenes»: la app está en el Modo Jóvenes (12 a 17 años). */
@@ -148,7 +156,7 @@ type Taller = {
   pedido?: string;
 };
 /** «preparar»: el Taller con borrador; la investigación es más amplia y también busca predicaciones en la web. */
-type Tema = { texto: string; tipo: Taller['tipo']; preparar?: boolean; estudio?: EstudioPrevio };
+type Tema = { texto: string; tipo: Taller['tipo']; preparar?: boolean; estudio?: EstudioPrevio; videos?: Video[] };
 /** Un estudio profundo que la persona convierte en mensaje: el pasaje, el estudio que leyó y las preguntas que hizo. */
 type EstudioPrevio = { cita: string; texto: string; preguntas: { pregunta: string; respuesta: string }[] };
 // «sencillo»: corto y sin palabras técnicas; «fondo»: con contexto, el original y las fuentes. «preparada»: el id de una
@@ -337,11 +345,11 @@ R: la letra de la opción correcta
 V: la cita que la respalda (por ejemplo «Juan 3:16»)`;
 
 // La investigación de un tema sin pasaje. src/lib/tallerTema.ts lee este formato.
-function temaTask(t: Tema) {
-  if (t.preparar) return prepararTask(t);
+function temaTask(t: Tema, videos = '') {
+  if (t.preparar) return prepararTask(t, videos);
   return `Quiero preparar ${TIPOS[t.tipo]} sobre algo que me importa. Te lo cuento como me salió:
 
-«${t.texto.trim()}»
+«${t.texto.trim()}»${videos}
 
 Investiga con las herramientas antes de responder. Después responde con este formato estricto, sin nada antes ni después:
 
@@ -388,11 +396,11 @@ ${preguntas}
 El mensaje parte de ${e.cita}: que sea el primer pasaje y que los enfoques salgan de él. No repitas sin más el estudio: amplíalo y compruébalo con las fuentes, y cita solo lo que tú leas ahora (el estudio y sus respuestas no se pueden citar).`;
 }
 
-function prepararTask(t: Tema) {
+function prepararTask(t: Tema, videos = '') {
   const e = t.estudio;
   return `Quiero preparar ${TIPOS[t.tipo]}. Oré y esto es lo que siento que Dios me puso; te lo cuento como me salió:
 
-«${t.texto.trim()}»${e ? estudioPrevio(e) : ''}
+«${t.texto.trim()}»${videos}${e ? estudioPrevio(e) : ''}
 
 Investiga a fondo antes de responder, con todas las fuentes de la app: el índice por temas para reunir lo que dice la Biblia del tema; lee cada pasaje en su contexto; los comentarios de la app sobre los más fuertes; el texto original de las palabras clave; las fichas de personajes y lugares de la app para cada protagonista, su familia, su pueblo y su ciudad, y para el momento histórico; el diccionario bíblico para lugares, personas, pueblos, costumbres o palabras del texto; los pasajes que cuentan la historia de cada protagonista; y la teología (sistemáticas, credos y catecismos) para lo doctrinal. Busca también en la web predicaciones o estudios de iglesias evangélicas sobre este tema o estos pasajes (de 2 a 4), y lee lo que dicen. Después responde con este formato estricto, sin nada antes ni después:
 
@@ -774,7 +782,8 @@ function validTema(t: unknown): t is Tema {
     x.texto.length <= MAX_TEMA &&
     TALLER_TIPOS.includes(x.tipo as string) &&
     (x.preparar === undefined || typeof x.preparar === 'boolean') &&
-    (x.estudio === undefined || (x.preparar === true && validEstudio(x.estudio)))
+    (x.estudio === undefined || (x.preparar === true && validEstudio(x.estudio))) &&
+    (x.videos === undefined || validVideos(x.videos))
   );
 }
 
@@ -1406,13 +1415,34 @@ async function temaPost(request: Request, body: Body) {
   if (vacia) return vacia;
   const books = await load<Book[]>('books.json');
   const biblia = new Biblia(request, version, books);
+  // Los videos que compartió: su transcripción va como documento, para citarla como las demás fuentes.
+  const videos = body.tema.videos?.length ? await videosParaIA(body.tema.videos) : { docs: [], texto: '' };
+  const docs = videos.docs.map((d) => doc(d.title, d.blocks));
+  const encargo = temaTask(body.tema, videos.texto);
   const messages: Anthropic.Beta.BetaMessageParam[] = [
-    { role: 'user', content: temaTask(body.tema) },
+    { role: 'user', content: docs.length ? [...docs.map((d) => d.param), { type: 'text', text: encargo }] : encargo },
     ...turns.map((t) => ({ role: t.role, content: t.text })),
   ];
   const preparar = body.tema.preparar === true;
   const system = SYSTEM + (preparar ? BORRADOR_SYSTEM : TALLER_SYSTEM) + TEMA_SYSTEM + versionSystem(version) + TOOLS_SYSTEM + (preparar ? WEB_SYSTEM : '');
-  return streamAnswer(request, [], messages, system, MODEL_PROPIO, async () => {}, biblia, false, undefined, Registro.de(request, body.seguir), preparar);
+  return streamAnswer(request, docs, messages, system, MODEL_PROPIO, async () => {}, biblia, false, undefined, Registro.de(request, body.seguir), preparar);
+}
+
+// La transcripción de un video de YouTube con Gemini, para que la persona la vea y la use al preparar. Sin la clave,
+// 501: la app pide pegarla.
+async function videoPost(request: Request, url: unknown) {
+  if (typeof url !== 'string' || url.length > 300 || !validVideos([{ url }])) return badRequest('Enlace de video no válido');
+  if (!geminiActivo()) return Response.json({ error: 'La app todavía no puede ver videos sola: pega la transcripción.', sinClave: true }, { status: 501 });
+  const vacia = await gastarLampara(request);
+  if (vacia) return vacia;
+  try {
+    const [datos, transcripcion] = await Promise.all([datosVideo(url), transcribirConGemini(url)]);
+    if (!transcripcion) return Response.json({ error: 'No encontré voz en el video. Si tiene transcripción en YouTube, pégala.' }, { status: 422 });
+    return Response.json({ ...datos, transcripcion });
+  } catch (err) {
+    console.error('estudiar: video', detalle(err));
+    return Response.json({ error: 'No pude ver el video. Si es público, inténtalo otra vez o pega su transcripción.' }, { status: 502 });
+  }
 }
 
 // Una pregunta desde el buscador: sin pasaje, la IA investiga con las herramientas desde el principio. La primera
@@ -1494,6 +1524,14 @@ export async function POST(request: Request) {
   if (peek && typeof peek === 'object' && 'palabra' in peek) return palabraPost(request, peek as Body);
   // La respuesta guardada de una pregunta que muchos hacen también se lee sin cuenta.
   if (peek && typeof peek === 'object' && 'pregunta' in peek) return preguntaPost(request, peek as Body);
+  // Los videos de YouTube del Taller: si la app puede sacar sola la transcripción y el título de cada uno (solo dicen
+  // si hay clave de Gemini y lo público del oEmbed, sin gastar nada).
+  if (peek && typeof peek === 'object' && 'videosSolos' in peek) return Response.json({ activo: geminiActivo() });
+  if (peek && typeof peek === 'object' && 'videoDatos' in peek) {
+    const url = (peek as Body).videoDatos;
+    if (typeof url !== 'string' || url.length > 300 || !validVideos([{ url }])) return badRequest('Enlace de video no válido');
+    return Response.json(await datosVideo(url));
+  }
   const denied = await needsAccount(request);
   if (denied) return denied;
   let body: Body;
@@ -1505,6 +1543,7 @@ export async function POST(request: Request) {
   if (body.reanudar !== undefined) return reanudar(request, body.reanudar);
   if (body.detener !== undefined) return detener(request, body.detener);
   if (body.tema !== undefined) return temaPost(request, body);
+  if (body.video !== undefined) return videoPost(request, body.video);
   const books = await load<Book[]>('books.json');
   const book = books.find((b) => b.id === body.book);
   const chapter = Number(body.chapter);

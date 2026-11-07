@@ -548,3 +548,50 @@ test('un estudio profundo se convierte en sermón con las preguntas que hizo la 
   const pedidos = await peticionesIA(request, pregunta);
   expect(pedidos.some((r) => JSON.stringify(r.messages).includes('Preguntas que hice al estudiar Juan 3:16'))).toBe(true);
 });
+
+// Videos de YouTube como fuente (Mike, 2026-11-07): la IA no puede verlos, así que usa su transcripción, que la app
+// saca sola (Gemini, simulado) o que la persona pega desde YouTube.
+test('preparar un mensaje con videos de YouTube: saca la transcripción o se pega, y la IA la usa como fuente', async ({ page, request }) => {
+  await conSesion(page, await cuentaNueva(request, 'Con videos'));
+  await page.goto('/taller/preparar');
+  const tema = `Pedro y el viento ${marca()}`;
+  await expect(page.getByText(/Te inspiró una predicación de YouTube/)).toBeVisible();
+  await page.getByLabel('Lo que Dios te puso').fill(`${tema}. Me ayudaron https://youtu.be/abcdefghijk y https://www.youtube.com/watch?v=zyxwvutsrqp.`);
+
+  // Cada video con su título; sin transcripción, la app avisa que la IA no puede verlo
+  await expect(page.getByText('LOS VIDEOS QUE COMPARTISTE')).toBeVisible();
+  await expect(page.getByText('Cuando el viento sopla')).toHaveCount(2);
+  await expect(page.getByText('La IA no puede ver videos: necesita lo que se dice en él.')).toHaveCount(2);
+
+  // El primero, sacado por la app
+  await page.getByRole('button', { name: 'Sacar la transcripción' }).first().click();
+  await expect(page.getByText(/La IA lo usará como fuente · \d+ palabras/)).toHaveCount(1, { timeout: 20_000 });
+
+  // El segundo, pegado desde YouTube (con sus marcas de tiempo)
+  const pegada = Array.from({ length: 8 }, (_, i) => `${i}:0${i}\nJesús camina sobre el agua y nos llama a mirarle a Él, frase ${i}.`).join('\n');
+  const caja = page.getByLabel('Transcripción del video');
+  await expect(caja).toHaveCount(1);
+  await caja.fill(pegada);
+  await page.getByRole('button', { name: 'Usar esta transcripción' }).click();
+  await expect(page.getByText(/La IA lo usará como fuente · \d+ palabras/)).toHaveCount(2);
+
+  // Se puede cambiar o quitar
+  await page.getByRole('button', { name: 'Cambiar la transcripción' }).last().click();
+  await expect(page.getByLabel('Transcripción del video')).toHaveValue(pegada);
+  await page.getByRole('button', { name: 'Cancelar' }).click();
+
+  await page.getByRole('button', { name: 'Investigar esto' }).click();
+  await expect(page.getByText('PREDICACIONES EN LA WEB')).toBeVisible({ timeout: 20_000 });
+
+  // La IA recibe las dos transcripciones como documentos para citarlas, sin las marcas de tiempo
+  const [primera] = await peticionesIA(request, tema);
+  const enviado = JSON.stringify(primera.messages[0]);
+  expect(enviado).toContain('Transcripción del video «Cuando el viento sopla» (Iglesia de prueba)');
+  expect(enviado).toContain('se hundió cuando dejó de mirar a Jesús');
+  expect(enviado).toContain('Jesús camina sobre el agua y nos llama a mirarle a Él, frase 0. Jesús camina');
+  expect(enviado).not.toContain('1:01');
+
+  // Y lo pegado sigue ahí al volver
+  await page.getByRole('tab', { name: /Orar/ }).click();
+  await expect(page.getByText(/La IA lo usará como fuente · \d+ palabras/)).toHaveCount(2);
+});
