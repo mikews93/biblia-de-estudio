@@ -58,7 +58,9 @@ export default function TallerScreen() {
   const { width } = useWindowDimensions();
   const peligro = isDark(colors) ? PELIGRO.oscuro : PELIGRO.claro;
 
-  const abrir = (m: Mensaje) => navigate(() => router.push(esTerminado(m) ? `/taller/${m.id}/documento` : `/taller/${m.id}`), 'forward');
+  // Los borradores que escribió la IA se abren enteros, para leerlos de corrido; los demás, paso a paso.
+  const abrir = (m: Mensaje) =>
+    navigate(() => router.push(esTerminado(m) ? `/taller/${m.id}/documento` : m.ia ? `/taller/${m.id}/borrador` : `/taller/${m.id}`), 'forward');
   const copiar = async (m: Mensaje) => {
     const copia = await duplicarMensaje(m.id);
     if (copia) navigate(() => router.push(`/taller/${copia}`), 'forward');
@@ -103,8 +105,8 @@ export default function TallerScreen() {
         <Stack.Screen options={{ title: 'Taller' }} />
         <Text style={[text.title, { color: colors.text }]}>Taller</Text>
         <Text style={[text.body, { color: colors.muted, marginTop: 6 }]}>
-          Prepara lo que vas a compartir: del pasaje a una idea central, de la idea a un bosquejo, y de ahí a presentarlo. La IA
-          te pregunta y sugiere, pero el mensaje lo escribes tú.
+          Prepara lo que vas a compartir y preséntalo en vivo. La IA investiga contigo y te escribe un borrador que revisas, cambias
+          y haces tuyo; o lo armas tú paso a paso.
         </Text>
 
         {pasaje && books.length > 0 && (
@@ -116,23 +118,31 @@ export default function TallerScreen() {
         )}
 
         {!pasaje && (
-          <Pressable
-            onPress={() => navigate(() => router.push('/taller/tema'), 'forward')}
-            accessibilityRole="button"
-            accessibilityHint="Graba o escribe de qué quieres hablar y la IA busca pasajes, comentarios y teologías"
-            style={({ pressed }) => [styles.tema, { backgroundColor: colors.surface, borderColor: colors.accent }, pressed && { opacity: 0.8 }]}
-          >
-            <View style={[styles.temaMic, { backgroundColor: colors.accent }]}>
-              <MicIcon color={colors.surface} size={22} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.temaTitle, { color: colors.text }]}>Tengo algo de qué hablar</Text>
-              <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>
-                Grábalo o escríbelo. La IA te busca pasajes, comentarios y teologías, y te arma la maqueta.
+          <>
+            <Pressable
+              onPress={() => navigate(() => router.push('/taller/preparar'), 'forward')}
+              accessibilityRole="button"
+              accessibilityHint="Ora, cuenta lo que Dios te puso y la IA investiga y te escribe un borrador para revisar"
+              style={({ pressed }) => [styles.tema, { backgroundColor: colors.surface, borderColor: colors.accent }, pressed && { opacity: 0.8 }]}
+            >
+              <View style={[styles.temaMic, { backgroundColor: colors.accent }]}>
+                <MicIcon color={colors.surface} size={22} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.temaTitle, { color: colors.text }]}>Preparar un mensaje</Text>
+                <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>
+                  Ora y cuenta lo que Dios te puso. La IA investiga con comentarios, diccionario, teologías y predicaciones, y te escribe
+                  un borrador para revisar y practicar.
+                </Text>
+              </View>
+              <ChevronRightIcon color={colors.accent} size={20} />
+            </Pressable>
+            <Pressable onPress={() => navigate(() => router.push('/taller/tema'), 'forward')} style={{ marginTop: 10 }} accessibilityRole="link">
+              <Text style={{ color: colors.muted, fontSize: 14 }}>
+                ¿Prefieres escribirlo tú? <Text style={{ color: colors.accent, fontWeight: '700' }}>Solo la maqueta ›</Text>
               </Text>
-            </View>
-            <ChevronRightIcon color={colors.accent} size={20} />
-          </Pressable>
+            </Pressable>
+          </>
         )}
 
         <SectionTitle>Preparar</SectionTitle>

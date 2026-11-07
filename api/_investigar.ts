@@ -276,7 +276,7 @@ export async function searchVerses(query: string, books: Book[], testamento?: 'A
 // ---------------------------------------------------------------- Las herramientas
 
 export type Paso = {
-  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas';
+  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas' | 'web';
   texto: string;
 };
 

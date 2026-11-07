@@ -27,6 +27,15 @@ export type Exploracion = {
   /** Líneas de lo que aportan los comentarios y las teologías, en markdown con sus citas. */
   fuentes: string[];
   preguntas: string[];
+  // Solo en el Taller con borrador (src/lib/borrador.ts):
+  /** Donde los evangélicos leen distinto: la pregunta y las lecturas, con sus citas. */
+  vistas: { pregunta: string; texto: string }[];
+  /** Ideas de predicaciones y estudios de la web: el título y la idea, con su cita (el enlace va en la fuente). */
+  predicaciones: { titulo: string; idea: string }[];
+  /** Datos del contexto histórico, cultural o geográfico, con sus citas. */
+  contexto: string[];
+  /** Las direcciones posibles para el mensaje. */
+  enfoques: { titulo: string; cita: string; pasaje: Pasaje | null; idea: string }[];
 };
 
 const fold = (s: string) =>
@@ -52,10 +61,33 @@ const sinMarcas = (s: string) => s.replace(/(?:\s*⟦\d+⟧)+/g, '').replace(/\*
 
 /** Lee la investigación de un tema; mientras llega, devuelve lo que ya está completo. */
 export function leerExploracion(markdown: string, books: Book[]): Exploracion {
-  const out: Exploracion = { entiendo: '', pasajes: [], fuentes: [], preguntas: [] };
+  const out: Exploracion = { entiendo: '', pasajes: [], fuentes: [], preguntas: [], vistas: [], predicaciones: [], contexto: [], enfoques: [] };
+  const items = (lineas: string[]) => lineas.map(item).filter((x): x is string => !!x && !/^ninguna\.?$/i.test(sinMarcas(x)));
+  const dos = (x: string) => {
+    const i = x.indexOf('|');
+    return i < 0 ? ['', x.trim()] : [sinMarcas(x.slice(0, i)).replace(/[«»"]/g, ''), x.slice(i + 1).trim()];
+  };
   for (const { titulo, lineas } of apartados(markdown)) {
     const t = fold(titulo);
     if (t.startsWith('lo que entiendo')) out.entiendo = lineas.join(' ');
+    else if (t.includes('puntos de vista')) {
+      out.vistas = items(lineas).map((x) => {
+        const [pregunta, texto] = dos(x);
+        return { pregunta, texto };
+      });
+    } else if (t.startsWith('predicacion')) {
+      out.predicaciones = items(lineas).map((x) => {
+        const [titulo, idea] = dos(x);
+        return { titulo, idea };
+      });
+    } else if (t.startsWith('contexto')) out.contexto = items(lineas);
+    else if (t.startsWith('enfoque')) {
+      out.enfoques = items(lineas).map((x) => {
+        const [tit, cita, ...idea] = x.split('|');
+        const limpia = sinMarcas(cita ?? '').replace(/[«»"]/g, '').replace(/[.:,;]+$/, '');
+        return { titulo: sinMarcas(tit).replace(/[«»"]/g, ''), cita: limpia, pasaje: limpia ? parsePasaje(limpia, books) : null, idea: idea.join('|').trim() };
+      });
+    }
     else if (t.startsWith('pasaje')) {
       for (const l of lineas) {
         const x = item(l);

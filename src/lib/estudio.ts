@@ -12,7 +12,7 @@ const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 export type Source = { n: number; label: string; ref?: string; url?: string; nota?: string };
 /** Lo que la IA consultó para responder una pregunta (las herramientas de api/_investigar.ts). */
 export type Paso = {
-  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas';
+  tipo: 'leer' | 'buscar' | 'referencias' | 'comentarios' | 'original' | 'concordancia' | 'teologia' | 'diccionario' | 'temas' | 'web';
   texto: string;
 };
 export type Turn = {
@@ -34,7 +34,7 @@ type Event =
   | { type: 'error'; message: string };
 
 export type TallerRequest = {
-  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta' | 'corregir';
+  modo: 'preguntar' | 'sugerir' | 'revisar' | 'repaso' | 'ruleta' | 'maqueta' | 'corregir' | 'borrador' | 'cambiar' | 'practicar';
   tipo: 'reflexion' | 'encuentro' | 'sermon';
   paso: 'pasaje' | 'idea' | 'bosquejo' | 'revisar';
   plantilla?: string;
@@ -45,6 +45,12 @@ export type TallerRequest = {
   situacion?: string;
   /** Solo «corregir»: la revisión que las correcciones aplican. */
   revision?: string;
+  /** Solo «borrador» (src/lib/borrador.ts): lo marcado de la investigación, la dirección y los minutos. */
+  investigacion?: string;
+  direccion?: string;
+  minutos?: number;
+  /** Solo «cambiar»: lo que la persona pide cambiar. */
+  pedido?: string;
 };
 
 /** Herramientas de un capítulo inspiradas en NotebookLM: resumen en audio, tarjetas de repaso y mapa mental. */
@@ -66,7 +72,7 @@ type Request = {
   /** Del sermón a tu semana: las notas del sermón para preparar cinco días (src/lib/semanas.ts). */
   semana?: { notas: string; desde?: number; hasta?: number; predicador?: string };
   /** El Taller desde un tema, todavía sin pasaje: lo que la persona quiere tratar (src/lib/tallerTema.ts). */
-  tema?: { texto: string; tipo: 'reflexion' | 'encuentro' | 'sermon' };
+  tema?: { texto: string; tipo: 'reflexion' | 'encuentro' | 'sermon'; preparar?: boolean };
   /** La versión que lee la persona: la IA cita esa (o la RV1909 si es una con derechos; ver api/_investigar.ts). */
   version?: string;
   /** Una pregunta frecuente del pasaje (src/lib/senales.ts): su respuesta es la misma para todos. */
