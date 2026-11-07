@@ -1,0 +1,21 @@
+{
+  "fps": 30,
+  "voice": {
+    "name": "Abel",
+    "locale": "es",
+    "provider": "ElevenLabs API (direct)",
+    "voiceId": "452WrNT9o8dphaYW5YGU",
+    "model": "eleven_v4",
+    "endpoint": "POST /v1/text-to-speech/{voiceId}/with-timestamps (mp3_44100_128, previous_text/next_text context)"
+  },
+  "_": "at = segundo en que empieza cada frase en el corte 16:9 (FILM_VO redondea at*30). Las [etiquetas] son indicaciones de entonación para eleven_v4: nunca salen en los subtítulos.",
+  "lines": [
+    {"id": "hook", "at": 0.6, "text": "[calm] Hay libros que se leen… y hay uno que te lee a ti."},
+    {"id": "hoy", "at": 5.6, "text": "Zarza te espera cada mañana con una palabra para tu día."},
+    {"id": "original", "at": 11.6, "text": "Toca cualquier palabra, y baja hasta el griego o el hebreo en que se escribió."},
+    {"id": "preguntar", "at": 18.6, "text": "Pregúntale lo que quieras. La respuesta llega con la Biblia abierta, cita por cita."},
+    {"id": "escuchar", "at": 26.1, "text": "Escucha el capítulo de camino al trabajo, o un pódcast que te lo explica."},
+    {"id": "grupo", "at": 32.6, "text": "Y cuando estudias con tu iglesia, las preguntas llegan a cada teléfono, en vivo."},
+    {"id": "cta", "at": 39.6, "text": "[warm] Zarza. Arde… y no se consume. Gratis, en Google Play."}
+  ]
+}
