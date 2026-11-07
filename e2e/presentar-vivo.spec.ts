@@ -90,8 +90,10 @@ test('un sermón guardado se lleva con la célula parte por parte, con sus vers�
   await page.getByRole('button', { name: 'Empezar la parte 1' }).click();
   await expect(page.getByText('PARTE 1 DE 3')).toBeVisible();
   await expect(page.getByText(/Total 0:0\d de 20 min/)).toBeVisible();
-  await page.getByRole('button', { name: 'Mis notas de esta parte' }).click();
-  await expect(page.getByLabel(/Parte 1 de 3/).getByText('Contar lo del viaje a Cali')).toBeVisible();
+  // Las notas se ven abiertas, grandes y debajo de los mandos.
+  await expect(page.getByText('TUS NOTAS · SOLO TÚ LAS VES')).toBeVisible();
+  // (El documento del que se vino sigue detrás, oculto, con el mismo texto.)
+  await expect(page.getByText('Contar lo del viaje a Cali').filter({ visible: true })).toBeVisible();
   await expect(pb.getByText('PARTE 1 DE 3')).toBeVisible({ timeout: 10_000 });
   await expect(pb.getByText('Contar lo del viaje a Cali')).toHaveCount(0);
 

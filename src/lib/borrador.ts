@@ -9,7 +9,7 @@ import type { Source } from './estudio';
 import { type Mensaje, type Pasaje, type Seccion, type Tipo, ANUNCIOS, PLANTILLAS, actualizarMensaje, anunciosDe, crearMensaje, plantilla as plantillaDe } from './taller';
 import { conCitas } from './tallerTema';
 
-export type ParteBorrador = { titulo: string; minutos: number; texto: string; dinamica?: string; claves: string[] };
+export type ParteBorrador = { titulo: string; minutos: number; texto: string; dinamica?: string; pasos?: string[]; claves: string[] };
 export type Borrador = { titulo: string; idea?: { tema: string; complemento: string }; partes: ParteBorrador[] };
 
 const fold = (s: string) =>
@@ -65,6 +65,12 @@ export function leerBorrador(markdown: string): Borrador {
       if (dinamica(din[1].toLowerCase())) a.dinamica = din[1].toLowerCase();
       continue;
     }
+    // Los pasos de la dinámica para este mensaje: lo que hacen las personas.
+    const paso = line.match(/^>\s*(?:paso|hacen)\s*:\s*(.+)/i);
+    if (paso) {
+      if (a.dinamica) (a.pasos ??= []).push(sinMarcas(paso[1]));
+      continue;
+    }
     const clave = line.match(/^\*\s+(.+)/);
     if (clave) {
       a.claves.push(clave[1].trim());
@@ -104,6 +110,7 @@ export async function crearDesdeBorrador(o: {
       texto: conCitas(parte.texto, o.sources),
       minutos: parte.minutos || base?.minutos || 5,
       dinamica: parte.dinamica,
+      ...(parte.dinamica && parte.pasos?.length && { dinamicaPasos: parte.pasos.slice(0, 8) }),
       claves: parte.claves.map((c) => conCitas(c, o.sources)).join('\n') || undefined,
     };
   });

@@ -9,6 +9,7 @@ import { entrarCon, NOMBRE, Proveedor, proveedoresDisponibles, useViajePendiente
 import { verseHref } from '@/lib/routes';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { volverTrasEntrar } from '@/lib/volver';
 
 import { DevicesIcon, OpenBookIcon, PeopleIcon, SparkIcon } from './icons';
 import ProviderButtons from './ProviderButtons';
@@ -38,7 +39,9 @@ const BENEFITS = [
 
 /** Vuelve a la pantalla que pidió la cuenta; si se abrió el enlace directo, a Comunidad. */
 function leave() {
-  navigate(() => (router.canGoBack() ? router.back() : router.replace('/comunidades')), 'back');
+  // Si se pidió la cuenta desde una pantalla concreta (la lectura en vivo), se vuelve ahí aunque se perdiera el historial.
+  const volver = volverTrasEntrar();
+  navigate(() => (router.canGoBack() ? router.back() : router.replace((volver ?? '/comunidades') as never)), 'back');
 }
 
 /** Pantallas propias de entrar (/entrar) y crear la cuenta (/registro). Leer la Biblia nunca las pide. */

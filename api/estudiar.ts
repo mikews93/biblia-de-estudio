@@ -508,7 +508,7 @@ Formato estricto, sin nada antes ni después:
 
 Después, un título "## " por cada parte de la estructura, en su orden, en la forma "## Título de la parte | minutos" (por ejemplo "## Introducción | 5"), y bajo cada uno:
 - el texto de esa parte en párrafos, tal como se diría, con sus citas;
-- si encaja una dinámica, una línea "> dinámica: el id del catálogo";
+- si encaja una dinámica, una línea "> dinámica: el id del catálogo" y justo debajo de 3 a 5 líneas "> paso: …" que la expliquen para este mensaje y para quienes la hacen: lo que hace cada persona, dicho a ellos («Formen parejas…», «Cada uno lee Lucas 15:20 en silencio y…»), con el versículo y la pregunta concretos que van a usar y cuánto dura cada cosa; nunca «el líder hace…» ni «el predicador…»;
 - al final, de 1 a 3 líneas "* " con los puntos clave de esa parte para tenerlos a mano al presentar (máximo 12 palabras cada uno).
 
 Catálogo de dinámicas (id: nombre (minutos): para qué):
@@ -522,6 +522,8 @@ Reglas:
       : 'Los minutos de las partes suman más o menos el tiempo total; cada parte, de un largo que se pueda decir en sus minutos (unas 120 palabras por minuto).'
   }
 - Como mucho una dinámica por parte, y solo donde ayude.
+- Cada vez que leas o cites un versículo, escribe la cita completa con el libro (Lucas 15:20), nunca solo «v. 20»: así la app lo muestra en las pantallas de todos al llegar a esa parte.
+- Si en una parte le haces una pregunta a la gente, escríbela entre «¿» y «?»: la app la ofrece para mandarla a los teléfonos.
 - No escribas anuncios: los pongo yo.`;
 }
 

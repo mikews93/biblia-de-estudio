@@ -41,8 +41,9 @@ import {
   seccionesDelEstudio,
   toneOf,
 } from '@/lib/vivo';
+import { pedirCuenta } from '@/lib/volver';
 
-import { Faces, Segmented, Sheet, vivoText } from './piezas';
+import { EntrarParaParticipar, Faces, Segmented, Sheet, vivoText } from './piezas';
 
 // --- El estudio Profundo del capítulo (el mismo que se guarda para todos) ---
 
@@ -416,12 +417,7 @@ export function TarjetaRonda({
                 </Pressable>
               </View>
             ) : (
-              <Text style={{ color: colors.muted, fontSize: 14, marginTop: 4 }}>
-                <Text onPress={() => router.push('/entrar')} style={{ color: colors.accent, fontWeight: '700' }}>
-                  Entra con tu cuenta
-                </Text>{' '}
-                para responder.
-              </Text>
+              <EntrarParaParticipar para="Entra para responder con el grupo" compacto />
             )}
 
             <Progreso clave={t.id ?? ''} presentes={presentes} quienes={quienes} guia={guia} />
@@ -727,7 +723,7 @@ export function PreguntasSheet({
         </View>
       ) : (
         <Text style={{ color: colors.muted, fontSize: 14, marginBottom: 16 }}>
-          <Text onPress={() => router.push('/entrar')} style={{ color: colors.accent, fontWeight: '700' }}>
+          <Text onPress={() => pedirCuenta('entrar')} style={{ color: colors.accent, fontWeight: '700' }}>
             Entra con tu cuenta
           </Text>{' '}
           para dejar preguntas y apoyar las de otros.

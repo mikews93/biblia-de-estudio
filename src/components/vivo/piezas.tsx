@@ -5,11 +5,49 @@ import { AccessibilityInfo, Animated, KeyboardAvoidingView, Modal, Platform, Pre
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/comunidad/ui';
-import { CloseIcon } from '@/components/icons';
+import { CloseIcon, PersonIcon } from '@/components/icons';
 import { serif, useColors } from '@/lib/theme';
 import type { Persona } from '@/lib/vivo';
+import { pedirCuenta } from '@/lib/volver';
 
 export const LIVE_RED = '#C8462F';
+
+/**
+ * Para quien sigue sin cuenta: qué gana entrando (responder, jugar, iluminar versículos, que el grupo lo vea) y los
+ * botones para crearla o entrar. Al terminar vuelve a la lectura. `para` dice lo que quiere hacer ahora.
+ */
+export function EntrarParaParticipar({ para, compacto }: { para?: string; compacto?: boolean }) {
+  const colors = useColors();
+  return (
+    <View style={[piezas.entrar, { backgroundColor: colors.warmSoft, borderColor: colors.warm }, compacto && { padding: 12, marginTop: 12 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={[piezas.entrarIcono, { backgroundColor: colors.surface }]}>
+          <PersonIcon color={colors.warm} size={18} />
+        </View>
+        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 15.5, flex: 1 }}>{para ?? 'Entra para participar'}</Text>
+      </View>
+      {!compacto && (
+        <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20, opacity: 0.85 }}>
+          Con tu cuenta gratis respondes las preguntas, juegas en los repasos, iluminas versículos y el grupo ve que estás aquí.
+        </Text>
+      )}
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        <Pressable onPress={() => pedirCuenta('registro')} accessibilityRole="button" style={({ pressed }) => [piezas.entrarBoton, { backgroundColor: colors.warm }, pressed && { opacity: 0.85 }]}>
+          <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>Crear cuenta gratis</Text>
+        </Pressable>
+        <Pressable onPress={() => pedirCuenta('entrar')} accessibilityRole="button" style={({ pressed }) => [piezas.entrarBoton, { borderWidth: 1, borderColor: colors.warm }, pressed && { opacity: 0.75 }]}>
+          <Text style={{ color: colors.warm, fontWeight: '800', fontSize: 14 }}>Ya tengo cuenta</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const piezas = StyleSheet.create({
+  entrar: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10, marginBottom: 16 },
+  entrarIcono: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  entrarBoton: { borderRadius: 18, paddingHorizontal: 16, paddingVertical: 9 },
+});
 
 /** Punto que late suavemente: algo está pasando ahora. */
 export function Pulse({ color = LIVE_RED, size = 8 }: { color?: string; size?: number }) {
