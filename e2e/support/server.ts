@@ -20,6 +20,10 @@ const DIST = path.resolve(process.env.DIST ?? 'dist');
 
 process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${AI_PORT}`;
 process.env.ANTHROPIC_API_KEY = 'clave-de-prueba';
+// Los videos de YouTube (api/_videos.ts): título y transcripción con Gemini, simulados en el mismo servidor.
+process.env.YOUTUBE_OEMBED_URL = `http://127.0.0.1:${AI_PORT}/oembed`;
+process.env.GEMINI_BASE_URL = `http://127.0.0.1:${AI_PORT}`;
+process.env.GEMINI_API_KEY = 'clave-de-prueba';
 process.env.DATABASE_URL ??= 'postgres://postgres:postgres@127.0.0.1:5432/biblia_e2e';
 process.env.DATA_DIR = path.join(DIST, 'data');
 // Los avisos push van al servicio simulado de este mismo servidor (mock-push.ts).

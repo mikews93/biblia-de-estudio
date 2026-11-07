@@ -490,6 +490,53 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(evs.at(-1)).toEqual({ type: 'done' });
   });
 
+  it('un video de YouTube con su transcripción es una fuente más; sin ella, la IA sabe que no puede verlo', async () => {
+    const otra = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Con video' })).json.llave;
+    expect(await bad({ tema: { texto: 'Jóvenes ansiosos por el futuro', tipo: 'sermon', videos: [{ url: 'https://vimeo.com/1' }] } })).toBe('Tema no válido');
+    const before = aiRequests.length;
+    const videos = [
+      { url: 'https://youtu.be/abcdefghijk', transcripcion: '0:00\nPedro se hundió cuando dejó de mirar a Jesús.\n0:05\nEl Señor oraba por ellos.' },
+      { url: 'https://www.youtube.com/watch?v=zyxwvutsrqp' },
+    ];
+    const evs = await events(await ask({ tema: { texto: 'Jóvenes ansiosos por el futuro https://youtu.be/abcdefghijk', tipo: 'sermon', preparar: true, videos } }, otra));
+    expect(evs.at(-1)).toEqual({ type: 'done' });
+    const [first] = aiRequests.slice(before);
+    const content = first.messages[0].content as { type: string; title?: string; text?: string; source?: { content: { text: string }[] } }[];
+    const docs = content.filter((b) => b.type === 'document');
+    expect(docs).toHaveLength(1);
+    expect(docs[0].title).toContain('Transcripción del video «Cuando el viento sopla» (Iglesia de prueba)');
+    expect(docs[0].source!.content.map((b) => b.text)).toEqual(['Pedro se hundió cuando dejó de mirar a Jesús. El Señor oraba por ellos.']);
+    const encargo = content.at(-1)!.text!;
+    expect(encargo).toContain('Compartí estos videos de YouTube');
+    expect(encargo).toContain('su transcripción está en los documentos');
+    expect(encargo).toContain('no tienes su transcripción');
+  });
+
+  it('transcribe un video con Gemini solo si hay clave', async () => {
+    const otra = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Transcribe' })).json.llave;
+    expect(await bad({ video: 'https://example.com/x' })).toBe('Enlace de video no válido');
+    const sin = await ask({ video: 'https://youtu.be/abcdefghijk' }, otra);
+    expect(sin.status).toBe(501);
+    expect((await sin.json()).sinClave).toBe(true);
+    // Sin cuenta, la app pregunta si puede sacarla sola y lee el título del video para mostrarlo
+    expect(await (await ask({ videosSolos: true }, '')).json()).toEqual({ activo: false });
+    expect(await (await ask({ videoDatos: 'https://youtu.be/abcdefghijk' }, '')).json()).toEqual({ titulo: 'Cuando el viento sopla', canal: 'Iglesia de prueba' });
+    expect(await bad({ videoDatos: 'https://example.com/x' })).toBe('Enlace de video no válido');
+    process.env.GEMINI_API_KEY = 'clave-de-prueba';
+    try {
+      expect(await (await ask({ videosSolos: true })).json()).toEqual({ activo: true });
+      const res = await ask({ video: 'https://youtu.be/abcdefghijk' }, otra);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json).toMatchObject({ titulo: 'Cuando el viento sopla', canal: 'Iglesia de prueba' });
+      expect(json.transcripcion).toContain('Pedro no se hundió por el viento');
+      // A Gemini le llega el enlace del video
+      expect(JSON.stringify(aiRequests.at(-1))).toContain('https://www.youtube.com/watch?v=abcdefghijk');
+    } finally {
+      delete process.env.GEMINI_API_KEY;
+    }
+  });
+
   it('si la IA pide la búsqueda en la web y herramientas de la app a la vez, la búsqueda a medias no rompe la investigación', async () => {
     const before = aiRequests.length;
     // Con su propia cuenta, para no gastar las consultas de las demás pruebas
