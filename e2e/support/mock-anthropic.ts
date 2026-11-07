@@ -757,6 +757,19 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     requests.length = 0;
     return res.end();
   }
+  // El oEmbed de YouTube y Gemini (api/_videos.ts), simulados: el título del video y su transcripción.
+  if (req.method === 'GET' && req.url?.startsWith('/oembed')) {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({ title: 'Cuando el viento sopla', author_name: 'Iglesia de prueba' }));
+  }
+  if (req.method === 'POST' && /^\/v1beta\/models\/[^/]+:generateContent/.test(req.url ?? '')) {
+    const chunks: Buffer[] = [];
+    for await (const c of req) chunks.push(c as Buffer);
+    requests.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+    res.writeHead(200, { 'content-type': 'application/json' });
+    const texto = 'Pedro no se hundió por el viento, se hundió cuando dejó de mirar a Jesús.\n\nEl Señor lo mandó al barco y oraba por ellos en el monte.';
+    return res.end(JSON.stringify({ candidates: [{ content: { parts: [{ text: texto }] } }] }));
+  }
   if (req.method !== 'POST' || !req.url?.startsWith('/v1/messages')) {
     res.writeHead(404);
     return res.end();

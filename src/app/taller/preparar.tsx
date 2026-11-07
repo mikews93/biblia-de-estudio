@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router';
 import { ComponentRef, ReactNode, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import AmbienteBoton from '@/components/Ambiente';
 import Appear from '@/components/Appear';
@@ -24,6 +24,7 @@ import {
   StarIcon,
 } from '@/components/icons';
 import Investigacion from '@/components/Investigacion';
+import VideosFuente, { type VideoInfo, type Videos, videosParaPedir } from '@/components/taller/VideosFuente';
 import { NeedsConnection } from '@/components/SinConexion';
 import { Markdown, SourcePeek, Sources } from '@/components/StudyText';
 import { useAmbienteEnPantalla } from '@/lib/ambiente';
@@ -38,6 +39,7 @@ import { Source, askStudy } from '@/lib/estudio';
 import { chapterHref, verseHref } from '@/lib/routes';
 import { PLANTILLAS, Pasaje, TIPOS, Tipo, pasajeLabel, plantilla as plantillaDe, tipoInfo } from '@/lib/taller';
 import { borrarTallerIa, guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
+import { useTecladoWeb } from '@/lib/teclado';
 import { MAX_TEMA, MIN_TEMA, conCitas, estructuraParaIA, leerExploracion } from '@/lib/tallerTema';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -66,6 +68,8 @@ type Guardado = {
   pedido?: { pasaje: Pasaje; plantilla: string } | null;
   /** Un estudio profundo convertido en mensaje: la IA parte de él y de las preguntas que hizo la persona. */
   estudio?: EstudioGuardado | null;
+  /** Los videos de YouTube del texto, con la transcripción pegada o sacada (por id de YouTube). */
+  videos?: Videos;
 };
 
 /**
@@ -77,6 +81,8 @@ export default function PrepararScreen() {
   const colors = useColors();
   const { settings } = useSettings();
   useAmbienteEnPantalla();
+  // Que el teclado no tape la caja de pedir más ni lo que se escribe (como en Pregúntale a la Biblia, src/lib/teclado.ts).
+  const teclado = useTecladoWeb(false);
   const [books, setBooks] = useState<Book[]>([]);
   const [cargado, setCargado] = useState(false);
   const [texto, setTexto] = useState('');
@@ -90,6 +96,7 @@ export default function PrepararScreen() {
   const [peek, setPeek] = useState<Source | null>(null);
   const [creando, setCreando] = useState(false);
   const [estudio, setEstudio] = useState<EstudioGuardado | null>(null);
+  const [videos, setVideos] = useState<Videos>({});
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   // El pasaje y la estructura con que se pidió el borrador, y lo marcado y la dirección de ese momento.
   const pedido = useRef<{ pasaje: Pasaje; plantilla: string; investigacion: string; direccion: string } | null>(null);
@@ -98,7 +105,17 @@ export default function PrepararScreen() {
   const convs = useConversations<Clave>((clave, history, onUpdate, signal) => {
     if (clave === 'investigar')
       return askStudy(
-        { tema: { texto, tipo, preparar: true, ...(estudio && { estudio: paraLaIA(estudio) }) }, messages: history, version: settings.version },
+        {
+          tema: {
+            texto,
+            tipo,
+            preparar: true,
+            ...(estudio && { estudio: paraLaIA(estudio) }),
+            ...(videosParaPedir(texto, videos).length && { videos: videosParaPedir(texto, videos) }),
+          },
+          messages: history,
+          version: settings.version,
+        },
         onUpdate,
         signal,
       );
@@ -143,6 +160,7 @@ export default function PrepararScreen() {
         setEnfoque(g.enfoque ?? 0);
         setDireccion(g.direccion ?? '');
         setEstudio(g.estudio ?? null);
+        setVideos(g.videos ?? {});
         if (e?.convs?.investigar?.length) convs.set('investigar', e.convs.investigar);
         if (g.pedido && e?.convs?.borrador?.length) {
           pedido.current = { ...g.pedido, investigacion: '', direccion: g.direccion ?? '' };
@@ -159,10 +177,10 @@ export default function PrepararScreen() {
 
   useEffect(() => {
     if (!cargado || creando) return;
-    const vista: Guardado = { texto, tipo, etapa, marcadas, enfoque, direccion, plantilla: plantillaId, pedido: pedidoVisto, estudio };
+    const vista: Guardado = { texto, tipo, etapa, marcadas, enfoque, direccion, plantilla: plantillaId, pedido: pedidoVisto, estudio, videos };
     guardarTallerIa(CLAVE, { vista, convs: paraGuardar(convs.all) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [texto, tipo, etapa, marcadas, enfoque, direccion, plantillaId, pedidoVisto, estudio, convs.all, cargado]);
+  }, [texto, tipo, etapa, marcadas, enfoque, direccion, plantillaId, pedidoVisto, estudio, videos, convs.all, cargado]);
 
   const inv = convs.get('investigar');
   const ultima = [...inv.turns].reverse().find((t) => t.role === 'assistant');
@@ -288,7 +306,7 @@ export default function PrepararScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background, paddingBottom: teclado }} behavior="padding">
       <Stack.Screen options={{ title: 'Preparar un mensaje', headerRight: () => <View style={{ marginRight: 12 }}><AmbienteBoton colors={colors} label={false} /></View> }} />
       <Pasos etapa={etapa} disponibles={disponibles} onIr={irA} colors={colors} />
       <ScrollView ref={scroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
@@ -304,6 +322,13 @@ export default function PrepararScreen() {
             onVolver={() => irA('investigar')}
             estudio={estudio}
             onQuitarEstudio={() => setEstudio(null)}
+            videos={videos}
+            onVideo={(id: string, v: VideoInfo | null) =>
+              setVideos((vs) => {
+                const { [id]: _, ...resto } = vs;
+                return v ? { ...resto, [id]: v } : resto;
+              })
+            }
             onAbrirEstudio={() => estudio && navigate(() => router.push(estudio.verse ? verseHref(estudio.book, estudio.chapter, estudio.verse) : chapterHref(estudio.book, estudio.chapter)), 'forward')}
           />
         )}
@@ -552,7 +577,7 @@ export default function PrepararScreen() {
           colors={colors}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -568,6 +593,8 @@ function Orar({
   estudio,
   onQuitarEstudio,
   onAbrirEstudio,
+  videos,
+  onVideo,
 }: {
   texto: string;
   setTexto: (t: string | ((t: string) => string)) => void;
@@ -580,6 +607,8 @@ function Orar({
   estudio: EstudioGuardado | null;
   onQuitarEstudio: () => void;
   onAbrirEstudio: () => void;
+  videos: Videos;
+  onVideo: (id: string, v: VideoInfo | null) => void;
 }) {
   return (
     <>
@@ -634,6 +663,7 @@ function Orar({
         dictarLabel="Grabar"
         minHeight={170}
       />
+      <VideosFuente texto={texto} videos={videos} onCambiar={onVideo} colors={colors} />
       <Button label="Investigar esto" icon={SparkIcon} onPress={onInvestigar} disabled={texto.trim().length < MIN_TEMA} style={{ marginTop: 16 }} />
       {hayInvestigacion && <Button label="Volver a lo que encontré" kind="quiet" onPress={onVolver} style={{ marginTop: 6 }} />}
     </>

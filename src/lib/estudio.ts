@@ -78,6 +78,8 @@ type Request = {
     preparar?: boolean;
     /** Un estudio profundo convertido en mensaje (src/lib/estudioASermon.ts). */
     estudio?: { cita: string; texto: string; preguntas: { pregunta: string; respuesta: string }[] };
+    /** Videos de YouTube que compartió, con la transcripción si la tiene (src/lib/videos.ts). */
+    videos?: { url: string; transcripcion?: string }[];
   };
   /** La versión que lee la persona: la IA cita esa (o la RV1909 si es una con derechos; ver api/_investigar.ts). */
   version?: string;
