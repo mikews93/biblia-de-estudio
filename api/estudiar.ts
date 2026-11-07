@@ -1682,8 +1682,23 @@ function detalle(err: unknown) {
  * conexión, «sin pensamiento» cuando rechaza el razonamiento devuelto de vueltas anteriores (entonces se quita del
  * historial, como pide la API), o null si no tiene arreglo.
  */
-function reintento(err: unknown, history: Anthropic.Beta.BetaMessageParam[]): 'esperar' | 'sin pensamiento' | null {
+function reintento(err: unknown, history: Anthropic.Beta.BetaMessageParam[]): 'esperar' | 'sin pensamiento' | 'sin pendientes' | null {
   if (err instanceof Anthropic.APIUserAbortError) return null;
+  // Una llamada del servidor que quedó sin resultado en el historial: se quita (con lo que pidió) y se repite.
+  const pendiente = err instanceof Anthropic.APIError && err.status === 400 ? /tool use with id `([^`]+)` was found without a corresponding/.exec(err.message) : null;
+  if (pendiente) {
+    let quitado = false;
+    for (const m of history) {
+      if (m.role !== 'assistant' || typeof m.content === 'string') continue;
+      const sin = sinPendientes(m.content, [pendiente[1]]);
+      if (sin.length !== m.content.length) {
+        m.content = sin;
+        quitado = true;
+      }
+    }
+    if (!quitado) console.warn('estudiar: llamada sin resultado que no está en el historial', pendiente[1], history.map((m) => (typeof m.content === 'string' ? 'texto' : m.content.map((b) => b.type).join(','))));
+    return quitado ? 'sin pendientes' : null;
+  }
   if (err instanceof Anthropic.APIError && err.status === 400 && /thinking|signature/i.test(err.message)) {
     let quitado = false;
     for (const m of history) {
@@ -1737,6 +1752,34 @@ export function paraDevolver(content: Anthropic.Beta.BetaContentBlock[]): Anthro
       !(i < corte && (b.type === 'thinking' || b.type === 'redacted_thinking' || b.type === 'tool_use')) &&
       !(b.type === 'text' && !b.text),
   );
+}
+
+type Bloque = { type: string; id?: string; tool_use_id?: string; caller?: { tool_id?: string } | null };
+
+/**
+ * Quita de la respuesta las llamadas de la IA a herramientas del servidor (la búsqueda en la web y el código con que
+ * la filtra) que se quedaron sin su resultado, con lo que esas llamadas pidieron dentro. Pasa cuando la IA pide a la
+ * vez la búsqueda y herramientas de la app: la vuelta termina para que respondamos las nuestras y la búsqueda queda a
+ * medias; al devolverla así, la API respondía 400 («code_execution tool use … without a corresponding
+ * code_execution_tool_result block») e Investigar fallaba en producción. «ids» quita además las que nombre la API.
+ * Tras una pausa («pause_turn») no se usa: ahí la llamada pendiente al final es la que la API retoma.
+ */
+export function sinPendientes<T>(content: T[], ids: string[] = []): T[] {
+  const bloques = content as unknown as Bloque[];
+  const conResultado = new Set(bloques.filter((b) => b.type.endsWith('_tool_result') && b.tool_use_id).map((b) => b.tool_use_id!));
+  const fuera = new Set([...ids, ...bloques.filter((b) => b.type === 'server_tool_use' && b.id && !conResultado.has(b.id)).map((b) => b.id!)]);
+  // Lo que pidió una llamada que se quita (dentro de su código) se va con ella.
+  for (let cambio = true; cambio; ) {
+    cambio = false;
+    for (const b of bloques) {
+      if (b.id && !fuera.has(b.id) && b.caller?.tool_id && fuera.has(b.caller.tool_id)) {
+        fuera.add(b.id);
+        cambio = true;
+      }
+    }
+  }
+  if (!fuera.size) return content;
+  return content.filter((_, i) => !fuera.has(bloques[i].id ?? '') && !fuera.has(bloques[i].tool_use_id ?? ''));
 }
 
 /**
@@ -1903,7 +1946,9 @@ function streamAnswer(
           sumarRespuesta(history, content);
           continue;
         }
-        const calls = content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
+        const completa = sinPendientes(content);
+        if (completa.length !== content.length) console.warn('estudiar: llamadas del servidor sin resultado', round, final.stop_reason, content.map((b) => b.type).join(','));
+        const calls = completa.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
         if (biblia && final.stop_reason === 'tool_use' && calls.length) {
           // Separa lo que hubiera escrito antes de investigar de la respuesta que viene después.
           if (texto && !texto.endsWith('\n\n')) {
@@ -1914,7 +1959,7 @@ function streamAnswer(
           calls.forEach((call, i) => send({ type: 'paso', ...pasoDe(call.name, inputs[i], biblia) }));
           const done = await Promise.all(calls.map((call, i) => investigar(call.name, inputs[i], biblia)));
           done.forEach((d) => results.push(...d.results));
-          sumarRespuesta(history, content);
+          sumarRespuesta(history, completa);
           history.push({ role: 'user', content: respuestas(calls, done) });
           continue;
         }
