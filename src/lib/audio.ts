@@ -251,6 +251,23 @@ function playRecording(kind: 'dramatizado' | 'podcast', book: string, chapter: n
 export const playDramatized = (book: string, chapter: number, title: string) =>
   playRecording('dramatizado', book, chapter, title, 'Audio dramatizado');
 
+/** Un dramatizado hecho a pedido (api/dramatizado.ts): el MP3 está en Vercel Blob y sus tiempos llegan con él. */
+export function playDramatizedRemote(
+  book: string,
+  chapter: number,
+  title: string,
+  rec: { url: string; duracion: number; tiempos: [number, number][]; credito: string },
+) {
+  anotar('dramatizado', `${book}.${chapter}`, title);
+  const id = start('dramatizado', book, chapter, title);
+  return playFile(id, async () => ({
+    label: 'Audio dramatizado',
+    tracks: [{ url: rec.url, duration: rec.duracion }],
+    timestamps: rec.tiempos,
+    credit: rec.credito,
+  }));
+}
+
 /** Lo que guarda la acción de audio original junto a cada capítulo (pipeline/audio_original/alinear.py). */
 type OriginalTimings = {
   idioma: 'hebreo' | 'griego';

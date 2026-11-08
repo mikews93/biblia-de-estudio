@@ -117,7 +117,9 @@ function Bar() {
       ? audio.versions.filter((v) => v.id !== file.version!.id && v[file.testament ?? 'nt'])
       : [];
   const id = audio.book ? recordingId(audio.book, audio.chapter) : '';
-  const hasDrama = catalog.dramatizado.includes(id);
+  // Un dramatizado hecho a pedido no está en el catálogo: mientras suena, su modo sigue a la vista.
+  const handMade = catalog.dramatizado.includes(id);
+  const hasDrama = handMade || audio.kind === 'dramatizado';
   const hasOriginal = catalog.original.includes(id);
   const ready = !!speech || (!!file && !audio.loading);
   const Icon = KIND_ICON[audio.kind];
@@ -126,7 +128,7 @@ function Bar() {
   const rates = audio.kind === 'original' ? ORIGINAL_RATES : RATES;
   const modes = [
     ['lectura', 'Lectura', () => playChapter(audio.book!, audio.chapter, audio.title)] as const,
-    ...(hasDrama ? [['dramatizado', 'Dramatizado', () => playDramatized(audio.book!, audio.chapter, audio.title)] as const] : []),
+    ...(hasDrama ? [['dramatizado', 'Dramatizado', () => handMade && playDramatized(audio.book!, audio.chapter, audio.title)] as const] : []),
     ...(hasOriginal
       ? [['original', isHebrew(audio.book) ? 'Hebreo' : 'Griego', () => playOriginal(audio.book!, audio.chapter, audio.title)] as const]
       : []),
