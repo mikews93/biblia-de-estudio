@@ -201,6 +201,10 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
       'Notas de estudio abiertas de Tyndale, Tyndale House Publishers (2022) · comentario sobre Juan 3',
       'Comentario de toda la Biblia, Matthew Henry (1706-1721) · comentario sobre Juan 3',
       'Personas, lugares y momento histórico de Juan 3 (fichas y línea de tiempo de la app; descripciones en inglés)',
+      // El estudio profundo detallado (api/_detalle.ts): diccionario Tyndale, léxico UBS y Treasury
+      'Diccionario bíblico Tyndale (moderno, evangélico, en español): artículos sobre Juan 3',
+      'Diccionario de las Sociedades Bíblicas Unidas (en español): las palabras del original de Juan 3',
+      'Más referencias de Juan 3 (Treasury of Scripture Knowledge, 1836)',
     ]);
     // Las fichas de quienes aparecen (Nicodemo, de los fariseos) y el momento del ministerio de Jesús
     const fichas = JSON.stringify(docs[5].source.content);
@@ -218,7 +222,9 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     const rv = JSON.parse(readFileSync(path.join(DATA_DIR, 'text/rv1909/jhn/3.json'), 'utf8')) as [number, string][];
     expect(docs[0].source.content).toHaveLength(rv.length);
     expect(docs[0].source.content[15].text).toBe(`3:16 ${rv[15][1]}`);
-    expect(sent.messages[0].content.at(-1).text).toContain('Prepara un estudio de Juan 3');
+    expect(sent.messages[0].content.at(-1).text).toContain('Prepara un estudio detallado de Juan 3');
+    expect(sent.messages[0].content.at(-1).text).toContain('## Costumbres y trasfondo');
+    expect(sent.messages[0].content.at(-1).text).toContain('## La Biblia sobre este tema');
     expect(sent.system).not.toContain('Taller');
   });
 
@@ -327,9 +333,17 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(titles.every((t: string) => !/Hodge|Strong|Calvino/.test(t))).toBe(true);
   });
 
-  it('el primer estudio no investiga: se basta con el pasaje', async () => {
+  it('el estudio profundo investiga antes de escribir (costumbres, temas, doctrina); el devocional no', async () => {
     await events(await ask({ book: 'jhn', chapter: 2 }));
+    const profundo = aiRequests.at(-1)!;
+    expect(profundo.tools.map((t: { name: string }) => t.name)).toEqual(expect.arrayContaining(['teologia', 'temas_biblicos', 'diccionario']));
+    expect(profundo.system).toContain('Antes de escribir el estudio investiga');
+    // Juan 2:6: las tinajas de dos o tres cántaros, con su medida
+    const docs = profundo.messages[0].content.filter((b: { type: string }) => b.type === 'document');
+    expect(JSON.stringify(docs.find((d: { title: string }) => d.title.startsWith('Medidas antiguas')))).toContain('litros');
+    await events(await ask({ book: 'jhn', chapter: 2, enfoque: 'devocional' }));
     expect(aiRequests.at(-1)!.tools).toBeUndefined();
+    expect(aiRequests.at(-1)!.system).not.toContain('Estudio profundo:');
   });
 
   it('con otra versión libre, la IA lee y cita esa versión', async () => {
@@ -726,7 +740,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     let guardado = false;
     for (let i = 0; i < 50 && !guardado; i++) {
       await new Promise((r) => setTimeout(r, 100));
-      guardado = (await sql`select 1 from estudios_ia where clave = 'c2:profundo:jhn:6:35:'`).length > 0;
+      guardado = (await sql`select 1 from estudios_ia where clave = 'c2:profundo-detallado:jhn:6:35:'`).length > 0;
     }
     await sql.end();
     expect(guardado).toBe(true);
