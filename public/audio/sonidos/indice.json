@@ -84,18 +84,6 @@
     "duracion": 75.6
   },
   {
-    "id": "mercado",
-    "tipo": "ambiente",
-    "descripcion": "busy outdoor market crowd murmuring",
-    "titulo": "Cardiff Indoor Market",
-    "autor": "odilonmarcenaro",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/odilonmarcenaro/sounds/275371/",
-    "freesound": 275371,
-    "duracion": 122
-  },
-  {
     "id": "multitud",
     "tipo": "ambiente",
     "descripcion": "large crowd murmuring outdoors",
@@ -118,18 +106,6 @@
     "enlace": "https://freesound.org/people/Dokuta_Gerovv/sounds/661732/",
     "freesound": 661732,
     "duracion": 23.3
-  },
-  {
-    "id": "casa-noche",
-    "tipo": "ambiente",
-    "descripcion": "quiet house at night, small fire crackling",
-    "titulo": "Orange peels crackle",
-    "autor": "Valerie-Vivegnis",
-    "licencia": "CC0",
-    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
-    "enlace": "https://freesound.org/people/Valerie-Vivegnis/sounds/759128/",
-    "freesound": 759128,
-    "duracion": 65.8
   },
   {
     "id": "cueva",
@@ -276,18 +252,6 @@
     "duracion": 6.3
   },
   {
-    "id": "barca-cruje",
-    "tipo": "sonido",
-    "descripcion": "a wooden boat creaking",
-    "titulo": "Walking Down Wooden Steps.wav",
-    "autor": "F.M.Audio",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/F.M.Audio/sounds/555298/",
-    "freesound": 555298,
-    "duracion": 4.9
-  },
-  {
     "id": "red-pesca",
     "tipo": "sonido",
     "descripcion": "a fishing net pulled out of the water",
@@ -408,18 +372,6 @@
     "duracion": 4.3
   },
   {
-    "id": "terremoto",
-    "tipo": "sonido",
-    "descripcion": "an earthquake rumbling",
-    "titulo": "Cups tinkling",
-    "autor": "Moggi",
-    "licencia": "CC BY",
-    "licenciaUrl": "http://creativecommons.org/licenses/by/3.0/",
-    "enlace": "https://freesound.org/people/Moggi/sounds/233586/",
-    "freesound": 233586,
-    "duracion": 7
-  },
-  {
     "id": "cuerno-shofar",
     "tipo": "sonido",
     "descripcion": "a ram's horn (shofar) blown",
@@ -442,17 +394,5 @@
     "enlace": "https://freesound.org/people/ZIP.Creates/sounds/726317/",
     "freesound": 726317,
     "duracion": 7.8
-  },
-  {
-    "id": "pan-partir",
-    "tipo": "sonido",
-    "descripcion": "bread being broken",
-    "titulo": "bread kick.m4a",
-    "autor": "marmunne13",
-    "licencia": "CC0",
-    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
-    "enlace": "https://freesound.org/people/marmunne13/sounds/681099/",
-    "freesound": 681099,
-    "duracion": 3.6
   }
 ]
