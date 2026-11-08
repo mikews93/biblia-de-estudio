@@ -2,7 +2,8 @@
 // desde ahí queda listo para todos los que leen esa versión.
 //   GET  ?book=mrk&chapter=2[&version=bes] → {estado: 'listo', url, duracion, credito, tiempos} |
 //        {estado: 'grabando', fase, hechas, total} | {estado: 'ninguno'} | {estado: 'error'}
-//   POST {book, chapter, version}          → lo empieza (necesita cuenta) y responde como GET.
+//   POST {book, chapter, version, rehacer?} → lo empieza (necesita cuenta) y responde como GET. «rehacer» (solo quien
+//                                           cuida la app) vuelve a grabar un capítulo que ya estaba listo.
 //
 // Se hace en tres fases, cada una en su propia llamada a la función (Vercel corta a los 300 s):
 //   1. guion: la IA escribe una hoja de dirección por escena y reparte el texto del capítulo entre el narrador y los
@@ -790,7 +791,8 @@ function answer(row: Row | undefined) {
       duracion: row.duracion,
       credito: row.credito,
       tiempos: row.tiempos ?? [],
-      ...(row.url_voces ? { soloVoces: row.url_voces } : {}),
+      // Sin «solo voces» es una grabación de antes de la dirección nueva: quien cuida la app puede rehacerla.
+      ...(row.url_voces ? { soloVoces: row.url_voces } : { anterior: true }),
     };
   }
   if (row?.estado === 'grabando') return { estado: 'grabando', fase: row.fase, hechas: row.hechas, total: row.total };
@@ -1368,7 +1370,7 @@ export async function POST(request: Request) {
   if (!s) return json({ error: 'Falta conectar la base de datos en el servidor.' }, 503);
   const user = await account(s, request);
   if (!user) return json({ error: 'Necesitas una cuenta', cuenta: true }, 401);
-  let body: { book?: unknown; chapter?: unknown; version?: unknown };
+  let body: { book?: unknown; chapter?: unknown; version?: unknown; rehacer?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -1379,16 +1381,18 @@ export async function POST(request: Request) {
 
   const [current] = await s<Row[]>`select estado, fase, hechas, total, url, duracion, credito, tiempos, url_voces
     from drama_grabado where libro = ${where.clave} and capitulo = ${where.chapter}`;
-  if (current && current.estado !== 'error') return json(answer(current));
+  const [{ correo }] = await s<{ correo: string | null }[]>`select (select correo from usuarios where id = ${user}) as correo`;
+  const cuida = esCuidador(correo);
+  // Quien cuida la app puede rehacer un capítulo ya listo (por ejemplo, uno grabado antes de la dirección nueva).
+  const rehacer = body.rehacer === true && cuida && current?.estado === 'listo';
+  if (current && current.estado !== 'error' && !rehacer) return json(answer(current));
   if (!process.env.ELEVENLABS_API_KEY || !process.env.ANTHROPIC_API_KEY || (!STORE_DIR && !BLOB_TOKEN)) {
     return json({ error: 'El audio dramatizado todavía no está activado en el servidor.' }, 503);
   }
 
-  const [{ mias, todas, correo }] = await s<{ mias: number; todas: number; correo: string | null }[]>`select
-      count(*) filter (where pedido_por = ${user})::int as mias, count(*)::int as todas,
-      (select correo from usuarios where id = ${user}) as correo
+  const [{ mias, todas }] = await s<{ mias: number; todas: number }[]>`select
+      count(*) filter (where pedido_por = ${user})::int as mias, count(*)::int as todas
     from drama_grabado where creado > now() - interval '1 day'`;
-  const cuida = esCuidador(correo);
   if (!cuida && mias >= PER_ACCOUNT) {
     return json({ error: PER_ACCOUNT === 1 ? 'Puedes dramatizar un capítulo al día. Vuelve mañana.' : `Puedes dramatizar hasta ${PER_ACCOUNT} capítulos al día. Vuelve mañana.` }, 429);
   }
@@ -1409,7 +1413,7 @@ export async function POST(request: Request) {
     on conflict (libro, capitulo) do update
       set estado = 'grabando', fase = 'guion', hechas = 0, total = 0, fallos = 0, error = null, trabajando = null,
         pedido_por = excluded.pedido_por, creado = now(), actualizado = now()
-      where drama_grabado.estado = 'error'
+      where drama_grabado.estado = 'error' or (${rehacer} and drama_grabado.estado = 'listo')
     returning 1`;
   if (!mine) {
     const [row] = await s<Row[]>`select estado, fase, hechas, total, url, duracion, credito, tiempos, url_voces

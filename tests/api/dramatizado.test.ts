@@ -235,6 +235,30 @@ describe.skipIf(!DB_URL)('/api/dramatizado', () => {
     expect(otro.status).toBe(429);
     expect((await otro.json()).error).toMatch(/un capítulo al día/);
   });
+
+  it('quien cuida la app puede rehacer un capítulo grabado antes de la dirección nueva; nadie más', async () => {
+    process.env.CUIDADORES = 'cuida-drama@zarza.test';
+    const call = client(comunidades, '2026-11-08');
+    await sql`delete from usuarios where correo = 'cuida-drama@zarza.test'`;
+    const cuida = (await call('registrarse', { nombre: 'Rut', correo: 'cuida-drama@zarza.test', clave: 'una clave larga' })).json.llave as string;
+    // Una grabación de antes: sin «solo voces».
+    await sql`update drama_grabado set url_voces = null where libro = 'oba' and capitulo = 1`;
+    expect(await get()).toMatchObject({ estado: 'listo', anterior: true });
+    const antes = calls.length;
+    expect(await (await post({ book: 'oba', chapter: 1, rehacer: true }, llaves[1])).json()).toMatchObject({ estado: 'listo' });
+    expect(calls.length).toBe(antes);
+    const res = await post({ book: 'oba', chapter: 1, rehacer: true }, cuida);
+    expect(await res.json()).toMatchObject({ estado: 'grabando', fase: 'guion' });
+    for (let i = 0; i < 60 && (await get()).estado === 'grabando'; i++) {
+      await api.avanzar(sql, where, ctx);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    const nuevo = await get();
+    expect(nuevo.estado).toBe('listo');
+    expect(nuevo.soloVoces).toBeTruthy();
+    expect(nuevo.anterior).toBeUndefined();
+    delete process.env.CUIDADORES;
+  });
 });
 
 describe('el reparto de voces', () => {
