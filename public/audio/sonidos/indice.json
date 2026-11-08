@@ -1,29 +1,5 @@
 [
   {
-    "id": "desierto-viento",
-    "tipo": "ambiente",
-    "descripcion": "dry desert wind, open wilderness",
-    "titulo": "Wind in Cottonwood Trees Utah MP3.mp3",
-    "autor": "Danjocross",
-    "licencia": "CC0",
-    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
-    "enlace": "https://freesound.org/people/Danjocross/sounds/579250/",
-    "freesound": 579250,
-    "duracion": 155.4
-  },
-  {
-    "id": "campo-dia",
-    "tipo": "ambiente",
-    "descripcion": "open countryside by day, distant birds, light breeze",
-    "titulo": "spring field NL 06 200529_0183.wav",
-    "autor": "klankbeeld",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/klankbeeld/sounds/547438/",
-    "freesound": 547438,
-    "duracion": 125.5
-  },
-  {
     "id": "campo-noche",
     "tipo": "ambiente",
     "descripcion": "quiet night in the fields, crickets",
@@ -48,30 +24,6 @@
     "duracion": 123.9
   },
   {
-    "id": "mar-tormenta",
-    "tipo": "ambiente",
-    "descripcion": "stormy sea, strong wind and crashing waves",
-    "titulo": "Schelde river ambiance 11.23 AM 220905_0526",
-    "autor": "klankbeeld",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/klankbeeld/sounds/712943/",
-    "freesound": 712943,
-    "duracion": 72.2
-  },
-  {
-    "id": "rio",
-    "tipo": "ambiente",
-    "descripcion": "flowing river, steady current",
-    "titulo": "Big waterfall in forest.wav",
-    "autor": "BonnyOrbit",
-    "licencia": "CC0",
-    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
-    "enlace": "https://freesound.org/people/BonnyOrbit/sounds/442475/",
-    "freesound": 442475,
-    "duracion": 115.2
-  },
-  {
     "id": "lluvia",
     "tipo": "ambiente",
     "descripcion": "steady rain",
@@ -82,18 +34,6 @@
     "enlace": "https://freesound.org/people/hz37/sounds/393728/",
     "freesound": 393728,
     "duracion": 75.6
-  },
-  {
-    "id": "patio-piedra",
-    "tipo": "ambiente",
-    "descripcion": "stone courtyard with people murmuring, echo",
-    "titulo": "city-canal ambiance Verwersstroom Waterstraat s-Hertogenbosch Netherlands 1218 pm 251001_0044",
-    "autor": "klankbeeld",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/klankbeeld/sounds/828663/",
-    "freesound": 828663,
-    "duracion": 120
   },
   {
     "id": "cueva",
@@ -216,18 +156,6 @@
     "duracion": 6.3
   },
   {
-    "id": "barca-cruje",
-    "tipo": "sonido",
-    "descripcion": "a wooden boat creaking",
-    "titulo": "Walking Down Wooden Steps.wav",
-    "autor": "F.M.Audio",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/F.M.Audio/sounds/555298/",
-    "freesound": 555298,
-    "duracion": 4.9
-  },
-  {
     "id": "chapoteo",
     "tipo": "sonido",
     "descripcion": "splashing in water",
@@ -264,18 +192,6 @@
     "duracion": 1.3
   },
   {
-    "id": "cadenas",
-    "tipo": "sonido",
-    "descripcion": "chains rattling",
-    "titulo": "plastic in wind take take  234 240812_0898",
-    "autor": "klankbeeld",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/klankbeeld/sounds/815876/",
-    "freesound": 815876,
-    "duracion": 7
-  },
-  {
     "id": "martillo-clavos",
     "tipo": "sonido",
     "descripcion": "hammering nails into wood",
@@ -298,53 +214,5 @@
     "enlace": "https://freesound.org/people/xUMR/sounds/486558/",
     "freesound": 486558,
     "duracion": 4.3
-  },
-  {
-    "id": "terremoto",
-    "tipo": "sonido",
-    "descripcion": "an earthquake rumbling",
-    "titulo": "Rocks Texture 09",
-    "autor": "Uminari",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/Uminari/sounds/389738/",
-    "freesound": 389738,
-    "duracion": 10.7
-  },
-  {
-    "id": "cuerno-shofar",
-    "tipo": "sonido",
-    "descripcion": "a ram's horn (shofar) blown",
-    "titulo": "Distorted Animal Horn Shofar 1",
-    "autor": "Sabacky",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/Sabacky/sounds/767805/",
-    "freesound": 767805,
-    "duracion": 14.5
-  },
-  {
-    "id": "viento-fuerte",
-    "tipo": "sonido",
-    "descripcion": "a strong gust of wind",
-    "titulo": "Adriana Lopez - Air Draft",
-    "autor": "Acekat13X31",
-    "licencia": "CC BY",
-    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
-    "enlace": "https://freesound.org/people/Acekat13X31/sounds/515687/",
-    "freesound": 515687,
-    "duracion": 9.1
-  },
-  {
-    "id": "pan-partir",
-    "tipo": "sonido",
-    "descripcion": "bread being broken",
-    "titulo": "dry crackle",
-    "autor": "cognito perceptu",
-    "licencia": "CC0",
-    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
-    "enlace": "https://freesound.org/people/cognito%20perceptu/sounds/723851/",
-    "freesound": 723851,
-    "duracion": 2.3
   }
 ]
