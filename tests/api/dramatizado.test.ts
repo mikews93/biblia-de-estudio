@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { codificarMp3 } from '../../api/_mp3';
 import { muestrasA16 } from '../../src/lib/nivelarVoces';
 import { client, DB_URL, ensureSchema, Post, prepareEnv, request } from './helpers';
+import { requests as aiRequests } from '../../e2e/support/mock-anthropic';
 
 type Handler = {
   GET: (r: Request) => Promise<Response>;
@@ -82,6 +83,15 @@ beforeAll(async () => {
   await writeFile(path.join(data, 'books.json'), JSON.stringify([{ id: 'oba', name: 'Abdías', chapters: 1 }]));
   await writeFile(path.join(data, 'versions.json'), JSON.stringify([]));
   await writeFile(path.join(data, 'text', 'rv1909', 'oba', '1.json'), JSON.stringify(VERSOS));
+  // El trasfondo para ambientar: un lugar y una medida del capítulo.
+  await mkdir(path.join(data, 'contexto', 'oba'), { recursive: true });
+  await writeFile(
+    path.join(data, 'contexto', 'oba', '1.json'),
+    JSON.stringify({
+      imagenes: [{ id: 'jordan', kind: 'lugar', title: 'Río Jordán', caption: 'Río de aguas lentas entre juncos, al pie del desierto de Judea.', verses: [1] }],
+      medidas: [{ name: 'Cuarenta días', kind: 'Tiempo', value: 'unas seis semanas', note: 'Número de prueba en la Biblia.', verses: [4] }],
+    }),
+  );
   process.env.DATA_DIR = data;
   api = (await import('../../api/dramatizado')) as unknown as Handler;
   if (!DB_URL) return;
@@ -125,7 +135,11 @@ describe.skipIf(!DB_URL)('/api/dramatizado', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ estado: 'grabando', fase: 'guion' });
     // En Vercel cada fase se pide a sí misma la siguiente; aquí se avanzan a mano.
-    for (let i = 0; i < 6 && (await get()).estado === 'grabando'; i++) await api.avanzar(sql, where, ctx);
+    // El POST ya empezó la primera fase por su cuenta: mientras la trabaja, avanzar no hace nada y hay que esperarla.
+    for (let i = 0; i < 60 && (await get()).estado === 'grabando'; i++) {
+      await api.avanzar(sql, where, ctx);
+      await new Promise((r) => setTimeout(r, 50));
+    }
     const listo = await get();
     expect(listo.estado).toBe('listo');
     expect(listo.url).toMatch(/^file:.*oba-1-\w+\.mp3$/);
@@ -148,6 +162,14 @@ describe.skipIf(!DB_URL)('/api/dramatizado', () => {
     expect(deDios).toHaveLength(3);
     // Las voces en inglés de la cuenta no entran al reparto.
     expect(Object.values(row.voces).flat()).not.toContain('voz-ingles');
+    // La IA recibió el trasfondo del capítulo para ambientarlo, antes del texto, y las reglas para usarlo.
+    const pedido = aiRequests.find((r) => JSON.stringify(r.system).includes('Escribes el guion de un capítulo dramatizado'))!;
+    const mensaje = pedido.messages[0].content as string;
+    expect(mensaje).toContain('Trasfondo de Abdías 1 para ambientarlo');
+    expect(mensaje).toContain('- Río Jordán (lugar, v. 1): Río de aguas lentas entre juncos');
+    expect(mensaje).toContain('- Cuarenta días (v. 4): unas seis semanas');
+    expect(mensaje.indexOf('Trasfondo')).toBeLessThan(mensaje.indexOf('Capítulo: Abdías 1'));
+    expect(JSON.stringify(pedido.system)).toContain('Úsalo para ambientar');
     // Ambiente, efecto y capa de trueno.
     expect(calls.filter((c) => c.path.startsWith('/v1/sound-generation')).map((c) => c.body.text)).toEqual(
       expect.arrayContaining(['flowing river, gentle current', 'splashing water', 'very distant low rolling thunder, soft and deep, no rain']),
