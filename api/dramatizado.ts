@@ -6,7 +6,8 @@
 //
 // Se hace en tres fases, cada una en su propia llamada a la función (Vercel corta a los 300 s):
 //   1. guion: la IA reparte el texto del capítulo entre el narrador y los personajes, con indicaciones de voz,
-//      ambientes y efectos (src/lib/dramaGuion.ts). Cada versículo tiene que decir el texto exacto de la versión; el
+//      ambientes y efectos (src/lib/dramaGuion.ts). Para ambientarlo recibe el trasfondo del capítulo (comentarios,
+//      diccionario Tyndale, fichas, momento histórico, lugares, objetos y medidas), como el estudio y el pódcast. Cada versículo tiene que decir el texto exacto de la versión; el
 //      que no, lo lee el narrador tal cual.
 //   2. voces: cada versículo se graba con Text to Dialogue (eleven_v4) y cada sonido con Sound Effects. Cada pieza
 //      se guarda en Vercel Blob por su contenido: si la función se corta, la siguiente sigue donde quedó.
@@ -42,7 +43,8 @@ import {
 } from '../src/lib/dramaGuion';
 import { OBJETIVO_DB, muestrasA16, pcmAMuestras, tramosPorSilencio, volumenHabla } from '../src/lib/nivelarVoces';
 import { conVersion, versionPodcast } from '../src/lib/podcastVersion';
-import { load } from './_investigar';
+import { diccionarioDelPasaje } from './_detalle';
+import { type Book as LibroCompleto, Biblia, commentaryBlocks, fichasDe, load, RV1909 } from './_investigar';
 import { codificarMp3, decodificarMp3 } from './_mp3';
 import { esCuidador } from './_senales';
 import { waitUntil } from './_seguir';
@@ -476,6 +478,51 @@ async function versiculos(where: Target, origen: string, cookie: string | null):
   return (await res.json()) as [number, string][];
 }
 
+/** Palabras de cada fuente del trasfondo: lo justo para ambientar, sin pasarse del tiempo de la función. */
+const TRASFONDO = { comentarios: 1400, fichas: 90 };
+
+type Lugar = { kind: string; title: string; caption: string; verses: number[] };
+type ContextoCap = { medidas?: { name: string; kind: string; value: string; note: string; verses: number[] }[]; imagenes?: Lugar[] };
+
+/**
+ * Lo que la app sabe del capítulo para ambientarlo, como en el estudio profundo y el pódcast: comentarios, el
+ * diccionario Tyndale, las fichas de personas y lugares con el momento histórico, y los lugares, objetos y medidas.
+ * Cada fuente que falta o falla se deja fuera: el guion se escribe igual con el texto.
+ */
+export async function trasfondo(where: Target, ctx: { origen: string; cookie: string | null }): Promise<string> {
+  const books = await load<LibroCompleto[]>('books.json', []);
+  const book = books.find((b) => b.id === where.book);
+  if (!book) return '';
+  const request = new Request(new URL('/api/dramatizado', ctx.origen), { headers: ctx.cookie ? { cookie: ctx.cookie } : {} });
+  const biblia = new Biblia(request, RV1909, books);
+  const plano = (t: string) => t.replace(/\s+/g, ' ').trim();
+  const seccion = (titulo: string, lineas: string[]) => (lineas.length ? `## ${titulo}\n${lineas.map((l) => `- ${plano(l)}`).join('\n')}` : '');
+  const nada = (err: unknown) => {
+    console.error('dramatizado: trasfondo', where.book, where.chapter, err);
+    return null;
+  };
+  const [comentarios, diccionario, fichas, contexto] = await Promise.all([
+    commentaryBlocks(request, book, where.chapter, undefined, books, TRASFONDO.comentarios).catch(nada),
+    diccionarioDelPasaje(biblia, book, where.chapter).catch(nada),
+    fichasDe(biblia, { book, chapter: where.chapter }, '', 6, TRASFONDO.fichas).catch(nada),
+    load<ContextoCap | null>(`contexto/${book.id}/${where.chapter}.json`, null).catch(nada),
+  ]);
+  const partes = [
+    seccion('Comentarios (costumbres, escena, quiénes son)', (comentarios ?? []).flatMap((c) => c.blocks.map((b) => `[${b.meta.label}] ${b.text}`))),
+    // Sin el índice de los artículos largos («Sumário», «• Contexto», «## Contexto»): solo el texto.
+    seccion(
+      'Diccionario bíblico Tyndale',
+      (diccionario?.blocks ?? []).filter((b) => !/^(•|#)|: Sum[áa]rio$/.test(b.text.trim())).map((b) => `[${b.meta.label}] ${b.text}`),
+    ),
+    seccion('Personas, lugares y momento histórico (fichas de la app; descripciones en inglés)', (fichas ?? []).flatMap((f) => f.blocks.map((b) => `[${b.meta.label}] ${b.text}`))),
+    seccion('Lugares, objetos y medidas del capítulo', [
+      ...(contexto?.imagenes ?? []).map((i) => `${i.title} (${i.kind}, v. ${i.verses.join(', ')}): ${i.caption}`),
+      ...(contexto?.medidas ?? []).map((m) => `${m.name} (v. ${m.verses.join(', ')}): ${m.value}. ${m.note}`),
+    ]),
+  ].filter(Boolean);
+  return partes.join('\n\n');
+}
+
 async function fichas(): Promise<string> {
   const leer = (f: string) => readFile(path.join(ROOT, 'pipeline', 'audio_dramatizado', f), 'utf8').catch(() => '');
   const [personajes, dios] = await Promise.all([leer('personajes.md'), leer('voz-de-dios.md')]);
@@ -489,8 +536,9 @@ Reglas del guion dramatizado:
 - Cuando Dios habla por medio de un profeta o de Jesús, lo dice esa persona (He 1:1-2). Usa DIOS solo cuando el texto dice que la voz viene de Dios mismo (del cielo, la nube, la zarza, el monte, la tormenta, una visión), con uno de estos registros: aprobacion (la voz desde el cielo o la nube sobre el Hijo), llamado (Dios llama a alguien por su nombre o le habla a solas), poder (fuego, monte, tormenta, juicio), gloria (visiones de gloria). Las palabras de Jesús las dice JESUS.
 - Los demás personajes se declaran arriba con PERSONAJE, en mayúsculas sin tildes (PEDRO, MARIA, GENTE_1), con su género y edad según la Biblia y los comentarios (las fichas de abajo ayudan). Una multitud o un grupo es un personaje (GENTE_1).
 - Indicaciones de voz: entre corchetes, en inglés y cortas, antes del texto, solo cuando ayudan: [slow, solemn], [whispering], [firm, then humble], [crying out]. Jesús sereno, sin sonar teatral. Nada de risas ni ruidos de boca para Dios.
-- Escenas: divide el capítulo en 1 a 4 escenas según cambian el lugar o el momento. Cada escena puede llevar un ambiente de fondo en inglés que el texto justifique (dry desert wind, open wilderness; calm lake shore, gentle waves). Sin música ni pájaros si el texto no lo pide.
-- Efectos: como mucho 3 en el capítulo, cortos, en inglés y solo si el texto los nombra (a person being immersed in a river, splashing | 3). La cifra son segundos (1 a 6). Nunca un efecto para Dios (no se oye un cuerpo: Dt 4:12).
+- Trasfondo: junto al capítulo recibes lo que dicen los comentarios, el diccionario, las fichas de personas y lugares, el momento histórico y los objetos y medidas. Úsalo para ambientar: dónde y cuándo ocurre cada escena (hora, clima, campo, ciudad, templo, mar), cómo suena ese lugar, qué edad y oficio tiene cada personaje y con qué ánimo habla. Nunca para añadir palabras al texto ni hechos que el trasfondo no diga; si las fuentes no coinciden, elige lo más sobrio.
+- Escenas: divide el capítulo en 1 a 4 escenas según cambian el lugar o el momento. Cada escena lleva un ambiente de fondo en inglés que el texto o el trasfondo justifiquen, concreto y tranquilo (murmuring crowd in a stone temple courtyard, distant sheep; calm lake shore at dawn, gentle waves, fishing boats creaking). Sin música; pájaros solo si la escena es al aire libre de día.
+- Efectos: como mucho 4 en el capítulo, cortos, en inglés, solo para lo que el texto nombra y con el detalle que da el trasfondo (stone water jars being filled, water pouring | 3). La cifra son segundos (1 a 6). Nunca un efecto para Dios (no se oye un cuerpo: Dt 4:12).
 
 Formato (una cosa por línea, sin nada más):
 PERSONAJE <ID> | <hombre|mujer> | <niño|joven|adulto|mayor> | <nombre>
@@ -510,7 +558,7 @@ EFECTO a person being immersed in a river and coming up out of the water, splash
 
 Escribe todos los versículos del capítulo, en orden.`;
 
-async function escribirGuion(where: Target, versos: [number, string][]): Promise<string> {
+async function escribirGuion(where: Target, versos: [number, string][], fondoTexto: string): Promise<string> {
   const [books, versions] = await Promise.all([load<Book[]>('books.json', []), load<Version[]>('versions.json', [])]);
   const libro = books.find((b) => b.id === where.book)?.name ?? where.book;
   const version = versions.find((v) => v.id === where.version) ?? { abbr: where.version.toUpperCase(), name: where.version };
@@ -527,7 +575,9 @@ async function escribirGuion(where: Target, versos: [number, string][]): Promise
       messages: [
         {
           role: 'user',
-          content: `Capítulo: ${libro} ${where.chapter} (${version.name}, ${version.abbr}).\n\n${versos.map(([n, t]) => `${n} ${t}`).join('\n')}`,
+          content:
+            (fondoTexto ? `Trasfondo de ${libro} ${where.chapter} para ambientarlo (no se lee en voz alta):\n\n${fondoTexto}\n\n---\n\n` : '') +
+            `Capítulo: ${libro} ${where.chapter} (${version.name}, ${version.abbr}).\n\n${versos.map(([n, t]) => `${n} ${t}`).join('\n')}`,
         },
       ],
     })
@@ -550,7 +600,7 @@ async function faseGuion(s: Sql, where: Target, ctx: Contexto, fallos: number) {
   const versos = await versiculos(where, ctx.origen, ctx.cookie);
   if (!versos.length) throw new Error('Capítulo sin texto');
   // Si la IA falló dos veces, el capítulo se graba igual, leído entero por el narrador con su fondo.
-  const guion = fallos >= MAX_FALLOS - 1 ? '' : await escribirGuion(where, versos);
+  const guion = fallos >= MAX_FALLOS - 1 ? '' : await escribirGuion(where, versos, await trasfondo(where, ctx).catch(() => ''));
   const { plan, corregidos } = revisarGuion(guion, versos);
   const voces = repartir(plan, await vocesDeCuenta(), `${where.clave}:${where.chapter}`);
   const total = piezasDe(plan, voces).length;
