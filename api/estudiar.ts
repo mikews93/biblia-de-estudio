@@ -205,6 +205,16 @@ Estudio profundo: además de lo de siempre, recibes los artículos del diccionar
   4. Si una costumbre, objeto o grupo importante no está en el diccionario de los documentos, «diccionario».
 - Edersheim y Josefo dan contexto histórico; Josefo no es Escritura y a veces exagera cifras. Si el texto bíblico y ellos no coinciden, manda el texto.`;
 
+// El pódcast del capítulo (pedido de Mike, 2026-11-08): las mismas fuentes que el estudio profundo y una
+// investigación corta antes de escribir el guion. Los guiones ya guardados no cambian (ni sus grabaciones); los
+// nuevos y los de «Preparar otra versión» salen con todo.
+const PODCAST_SYSTEM = `
+
+Pódcast: además de lo de siempre, recibes los artículos del diccionario bíblico Tyndale sobre el capítulo (en español), el léxico de las Sociedades Bíblicas Unidas de las palabras del original, más referencias del Treasury of Scripture Knowledge y las medidas y objetos del capítulo.
+- Antes de escribir el guion investiga, pidiendo a la vez lo que no dependa de otra cosa y sin pasar de cuatro consultas: «teologia» con el área «historia» para las costumbres y el trasfondo del capítulo (búsqueda en inglés con sus personas, lugares, grupos o costumbres) y «temas_biblicos» con el tema central del capítulo. Antes de nombrar un pasaje que no esté en los documentos, léelo con «leer_pasaje».
+- Edersheim y Josefo dan contexto histórico; Josefo no es Escritura y a veces exagera cifras. Si el texto bíblico y ellos no coinciden, manda el texto.
+- No escribas nada antes de terminar de investigar: el guion empieza por la primera línea del diálogo.`;
+
 // La búsqueda en la web del Taller con borrador: predicaciones y estudios evangélicos. Se dejan fuera los sitios de
 // grupos que niegan doctrinas centrales y los católicos (decisiones de Mike del 2026-10-18 y 2026-10-27).
 const WEB_BLOQUEADOS = [
@@ -676,9 +686,12 @@ Formato estricto: cada intervención en su propia línea, empezando por «ANA:»
 Contenido:
 - Abran con una frase que despierte interés por el capítulo; no se presenten ni saluden a la audiencia con fórmulas de radio.
 - Recorran el capítulo en orden: qué pasa, quién habla y a quién, qué se repite, qué sorprende.${
-    hasGreek ? `\n- Detengan la conversación en 1 o 2 palabras del ${lenguaOriginal(book)} que aclaren algo, dichas de forma que se entiendan al oído.` : ''
+    hasGreek
+      ? `\n- Detengan la conversación en 1 o 2 palabras del ${lenguaOriginal(book)} que aclaren algo, con el sentido que les da el léxico, dichas de forma que se entiendan al oído.`
+      : ''
   }
-- Relacionen el capítulo con 2 o 3 pasajes de las referencias cruzadas.
+- Detengan la conversación en 1 o 2 costumbres, objetos o medidas del capítulo que el oyente de hoy no conoce (del diccionario bíblico, las medidas de la app o lo que investigaron del trasfondo histórico) y digan cómo cambian lo que se entiende.
+- Relacionen el capítulo con 2 o 3 pasajes de las referencias cruzadas, y digan en una o dos intervenciones cómo sigue el tema central en el resto de la Biblia (de los índices por temas).
 - Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
 - No es un sermón: expliquen el texto, no prediquen ni den consejos largos.
 - Cierren con una conclusión, no con preguntas sueltas: cada uno dice en una o dos frases lo que se lleva. Si en el cierre alguien plantea una pregunta de estudio, el otro la responde ahí mismo desde el texto.
@@ -1639,6 +1652,8 @@ export async function POST(request: Request) {
   // El estudio profundo de un pasaje (y sus preguntas): con todas las fuentes de la app y una investigación antes de
   // escribir. No el devocional, el Taller, la semana, las herramientas, «¿Por qué esta palabra?» ni las frecuentes.
   const detallado = !devocional && !frecuente && !semana && !taller && !herramienta && word === undefined;
+  // El guion del pódcast del capítulo también, con su propia investigación (PODCAST_SYSTEM).
+  const podcast = herramienta === 'podcast';
 
   // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos. La semana es de cada persona.
   const clave = frecuente
@@ -1687,7 +1702,7 @@ export async function POST(request: Request) {
   let focus;
   let hasOriginal = false;
   try {
-    ({ docs, focus, hasOriginal } = await buildSources(biblia, book, chapter, focusVerse, word, detallado));
+    ({ docs, focus, hasOriginal } = await buildSources(biblia, book, chapter, focusVerse, word, detallado || podcast));
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
@@ -1722,14 +1737,14 @@ export async function POST(request: Request) {
 
   // Investigar otros pasajes y fuentes: en las preguntas de la persona y en el estudio profundo, que antes de escribir
   // busca costumbres, temas y doctrina. La maqueta de un tema también lee los pasajes de apoyo que propone.
-  const investiga = turns.length > 0 || detallado || taller?.modo === 'maqueta' || taller?.modo === 'borrador' || taller?.modo === 'cambiar';
+  const investiga = turns.length > 0 || detallado || podcast || taller?.modo === 'maqueta' || taller?.modo === 'borrador' || taller?.modo === 'cambiar';
   const tallerSystem = taller && ESCRIBE.includes(taller.modo) ? BORRADOR_SYSTEM : TALLER_SYSTEM;
   const system =
     (frecuente ? SYSTEM : semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + tallerSystem : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) +
     // Las marcas de versículo se leen donde la respuesta es texto libre: no en el Taller ni en la semana, que tienen su formato.
     versionSystem(version, !taller && !semana) +
     (investiga ? TOOLS_SYSTEM : '') +
-    (detallado ? PROFUNDO_SYSTEM : '') +
+    (detallado ? PROFUNDO_SYSTEM : podcast ? PODCAST_SYSTEM : '') +
     (jovenes ? JOVENES_SYSTEM : '');
   return streamAnswer(
     request,

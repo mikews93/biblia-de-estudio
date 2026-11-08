@@ -644,6 +644,13 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     await events(await ask(base));
     expect(aiRequests.length).toBe(before + 2);
     expect(aiRequests.at(-1)!.messages[0].content[0].title).toBe('Juan 6 · Reina-Valera 1909');
+    // Con las mismas fuentes que el estudio profundo, y una investigación corta antes del guion
+    const pod = aiRequests.at(-1)!;
+    const titulos = pod.messages[0].content.filter((b: { type: string }) => b.type === 'document').map((d: { title: string }) => d.title);
+    expect(titulos).toEqual(expect.arrayContaining([expect.stringContaining('Diccionario bíblico Tyndale'), expect.stringContaining('Treasury')]));
+    expect(pod.tools.map((t: { name: string }) => t.name)).toEqual(expect.arrayContaining(['teologia', 'temas_biblicos']));
+    expect(pod.system).toContain('Antes de escribir el guion investiga');
+    expect(pod.messages[0].content.at(-1).text).toContain('costumbres, objetos o medidas');
     await events(await ask({ ...base, version: 'bes' }));
     expect(aiRequests.length).toBe(before + 2);
 
