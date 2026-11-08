@@ -1,0 +1,45 @@
+name: Cortinas del dramatizado
+
+# Compone con Eleven Music las cortinas de música del audio dramatizado a pedido (pipeline/audio_dramatizado/
+# cortinas.mjs) y las sube a public/audio/cortinas en la misma rama, para escucharlas y aprobarlas en el PR. Solo
+# compone las que faltan. Necesita el secreto ELEVENLABS_API_KEY.
+
+on:
+  push:
+    paths:
+      - pipeline/audio_dramatizado/cortinas.mjs
+      - .github/workflows/cortinas-dramatizado.yml
+  workflow_dispatch:
+    inputs:
+      tonos:
+        description: Tonos a componer (separados por espacios; vacío = todos los que falten)
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cortinas-dramatizado
+  cancel-in-progress: false
+
+jobs:
+  componer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Componer
+        run: node pipeline/audio_dramatizado/cortinas.mjs ${{ github.event.inputs.tonos }}
+      - name: Subir a la rama
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/audio/cortinas
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(audio): compose dramatized-audio music cues"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done

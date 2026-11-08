@@ -38,6 +38,8 @@ export type ChapterAudio = {
   language?: 'hebreo' | 'griego';
   /** Pódcast grabado: las intervenciones del guion (los tiempos marcan dónde empieza cada una). */
   lines?: Line[];
+  /** Dramatizado a pedido: la mezcla completa y la de solo voces, en los mismos tiempos (para cambiar sin perder el sitio). */
+  variantes?: { mezcla: string; voces: string };
 };
 /** El pódcast con la voz del dispositivo no tiene archivo: se lee intervención por intervención. */
 export type SpeechAudio = { lines: Line[]; index: number; playing: boolean };
@@ -58,6 +60,8 @@ export type AudioState = {
   versions: AudioVersion[];
   rate: number;
   catalog: Catalog;
+  /** En el dramatizado, solo las voces: sin música, ambientes ni efectos (se guarda en el dispositivo). */
+  soloVoces: boolean;
 };
 
 let state: AudioState = {
@@ -74,7 +78,16 @@ let state: AudioState = {
   versions: [],
   rate: 1,
   catalog: { dramatizado: [], podcast: [], original: [] },
+  soloVoces: false,
 };
+const SOLO_VOCES_KEY = 'drama-solo-voces';
+let soloVocesLeido: Promise<void> | null = null;
+const leerSoloVoces = () =>
+  (soloVocesLeido ??= AsyncStorage.getItem(SOLO_VOCES_KEY)
+    .then((v) => {
+      if (v === '1') set({ soloVoces: true });
+    })
+    .catch(() => {}));
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<AudioState>) {
@@ -256,16 +269,39 @@ export function playDramatizedRemote(
   book: string,
   chapter: number,
   title: string,
-  rec: { url: string; duracion: number; tiempos: [number, number][]; credito: string },
+  rec: { url: string; duracion: number; tiempos: [number, number][]; credito: string; soloVoces?: string },
 ) {
   anotar('dramatizado', `${book}.${chapter}`, title);
   const id = start('dramatizado', book, chapter, title);
-  return playFile(id, async () => ({
-    label: 'Audio dramatizado',
-    tracks: [{ url: rec.url, duration: rec.duracion }],
-    timestamps: rec.tiempos,
-    credit: rec.credito,
-  }));
+  return playFile(id, async () => {
+    await leerSoloVoces();
+    const variantes = rec.soloVoces ? { mezcla: rec.url, voces: rec.soloVoces } : undefined;
+    return {
+      label: 'Audio dramatizado',
+      tracks: [{ url: variantes && state.soloVoces ? variantes.voces : rec.url, duration: rec.duracion }],
+      timestamps: rec.tiempos,
+      credit: rec.credito,
+      variantes,
+    };
+  });
+}
+
+/** Cambia entre la mezcla completa y solo las voces sin perder el sitio ni la pausa. La elección queda guardada. */
+export function setSoloVoces(on: boolean) {
+  AsyncStorage.setItem(SOLO_VOCES_KEY, on ? '1' : '0').catch(() => {});
+  set({ soloVoces: on });
+  const audio = state.audio;
+  if (!audio?.variantes) return;
+  const url = on ? audio.variantes.voces : audio.variantes.mezcla;
+  if (audio.tracks[0]?.url === url) return;
+  const p = getPlayer();
+  const at = p.currentTime;
+  const sonando = p.playing;
+  set({ audio: { ...audio, tracks: [{ ...audio.tracks[0], url }] } });
+  p.replace({ uri: url });
+  p.setPlaybackRate(state.rate);
+  if (at > 0) p.seekTo(at);
+  if (sonando) p.play();
 }
 
 /** Lo que guarda la acción de audio original junto a cada capítulo (pipeline/audio_original/alinear.py). */

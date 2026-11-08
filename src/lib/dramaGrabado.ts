@@ -7,7 +7,8 @@ import { aiDenied, aiHeaders } from './comunidad';
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const POLL_MS = 6000;
 
-export type Dramatizado = { url: string; duracion: number; credito: string; tiempos: [number, number][] };
+/** `soloVoces`: la misma grabación sin música, ambientes ni efectos (las hechas antes de noviembre de 2026 no la tienen). */
+export type Dramatizado = { url: string; duracion: number; credito: string; tiempos: [number, number][]; soloVoces?: string };
 export type FaseDrama = 'guion' | 'voces' | 'mezcla';
 export type EstadoDrama =
   | { estado: 'cargando' }

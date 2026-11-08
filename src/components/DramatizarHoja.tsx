@@ -17,9 +17,9 @@ import { Colors } from '@/lib/theme';
 type Props = { book: string; chapter: number; title: string; colors: Colors; onClose: () => void };
 
 const PASOS: { fase: FaseDrama; titulo: string; detalle: string }[] = [
-  { fase: 'guion', titulo: 'Guion', detalle: 'Reparte el texto entre el narrador y los personajes, sin cambiar una palabra' },
-  { fase: 'voces', titulo: 'Voces y sonidos', detalle: 'Graba cada versículo y el ambiente de cada escena' },
-  { fase: 'mezcla', titulo: 'Mezcla', detalle: 'Une todo con un fondo musical suave' },
+  { fase: 'guion', titulo: 'Guion', detalle: 'Dirige cada escena y reparte el texto entre el narrador y los personajes, sin cambiar una palabra' },
+  { fase: 'voces', titulo: 'Voces y sonidos', detalle: 'Graba cada escena de corrido, con el ambiente, los sonidos y los efectos' },
+  { fase: 'mezcla', titulo: 'Mezcla', detalle: 'Pone cada voz en su lugar, con el eco del sitio y la música de entrada y cierre' },
 ];
 
 export default function DramatizarHoja({ book, chapter, title, colors, onClose }: Props) {
@@ -70,9 +70,9 @@ export default function DramatizarHoja({ book, chapter, title, colors, onClose }
               Este capítulo todavía no está dramatizado. Prepáralo y quedará listo para todos los que leen la {version.sigla}.
             </Text>
             <View style={styles.features}>
-              <Feature colors={colors} icon={<PeopleIcon color={colors.accent} size={17} />} text="Narrador y personajes con su propia voz" />
-              <Feature colors={colors} icon={<WavesIcon color={colors.accent} size={17} />} text="El ambiente de cada escena" />
-              <Feature colors={colors} icon={<MusicIcon color={colors.accent} size={17} />} text="Un fondo musical suave" />
+              <Feature colors={colors} icon={<PeopleIcon color={colors.accent} size={17} />} text="Narrador y personajes con su propia voz, la misma en toda la Biblia" />
+              <Feature colors={colors} icon={<WavesIcon color={colors.accent} size={17} />} text="El lugar de cada escena: su eco, su ambiente y sus sonidos" />
+              <Feature colors={colors} icon={<MusicIcon color={colors.accent} size={17} />} text="Música de entrada y de cierre (o solo voces, si lo prefieres)" />
             </View>
             <Pressable
               onPress={drama.record}
