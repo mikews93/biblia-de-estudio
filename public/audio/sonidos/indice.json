@@ -168,18 +168,6 @@
     "duracion": 9.8
   },
   {
-    "id": "camello",
-    "tipo": "sonido",
-    "descripcion": "a camel grunting",
-    "titulo": "camel loop.wav",
-    "autor": "John Rayson",
-    "licencia": "CC0",
-    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
-    "enlace": "https://freesound.org/people/John%20Rayson/sounds/29515/",
-    "freesound": 29515,
-    "duracion": 3.1
-  },
-  {
     "id": "gallo",
     "tipo": "sonido",
     "descripcion": "a rooster crowing",

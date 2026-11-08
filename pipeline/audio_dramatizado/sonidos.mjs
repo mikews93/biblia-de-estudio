@@ -33,7 +33,6 @@ const LISTA = [
   { id: 'fogata', tipo: 'ambiente', consultas: ['campfire', 'campfire crackling'], palabras: ['campfire', 'fire', 'bonfire'], descripcion: 'campfire crackling', dur: [15, 180] },
   { id: 'cabras', tipo: 'sonido', consultas: ['goats bleating', 'goat'], palabras: ['goat'], descripcion: 'goats bleating', dur: [2, 20] },
   { id: 'burro', tipo: 'sonido', consultas: ['donkey bray', 'donkey'], palabras: ['donkey'], descripcion: 'a donkey braying', dur: [1, 12] },
-  { id: 'camello', tipo: 'sonido', consultas: ['camel', 'camel grunt', 'camel growl'], palabras: ['camel'], descripcion: 'a camel grunting', dur: [1, 20] },
   { id: 'gallo', tipo: 'sonido', consultas: ['rooster crowing', 'rooster'], palabras: ['rooster', 'cock'], descripcion: 'a rooster crowing', dur: [1, 10] },
   { id: 'palomas', tipo: 'sonido', consultas: ['doves cooing', 'pigeon cooing'], palabras: ['dove', 'pigeon', 'cooing'], descripcion: 'doves cooing', dur: [2, 15] },
   { id: 'caballos', tipo: 'sonido', consultas: ['horses galloping', 'horse gallop'], palabras: ['horse', 'gallop'], descripcion: 'horses galloping', dur: [2, 15] },
