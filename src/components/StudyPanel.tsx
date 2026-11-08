@@ -485,6 +485,15 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
               {!word && (
                 <StudyBackground book={book.id} bookName={book.name} chapter={chapter} verse={verse} />
               )}
+              {/* El estudio profundo investiga antes de escribir (costumbres, temas, doctrina): se ve qué consulta. */}
+              {!!first?.pasos?.length && (
+                <Investigacion
+                  pasos={first.pasos}
+                  working={!first.text && busy && turns.length <= 1}
+                  colors={colors}
+                  hint="Escribirá el estudio cuando termine de investigar."
+                />
+              )}
               {first?.text ? (
                 <View>
                   <Markdown text={first.text} colors={colors} ornate sources={first.sources} onCite={setPeek} onOpenRef={open} />
@@ -498,7 +507,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
                 </View>
               ) : null}
 
-              {waiting && turns.length <= 1 && (
+              {waiting && turns.length <= 1 && !first?.pasos?.length && (
                 <View style={styles.waiting}>
                   <ActivityIndicator color={colors.accent} />
                   <Text
@@ -510,7 +519,9 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
                   >
                     {word
                       ? `Comparando el ${original(book).name} con la traducción y buscando dónde más aparece…`
-                      : `Preparando el estudio con el texto, el ${original(book).name} y las referencias…`}
+                      : mode === 'profundo'
+                        ? `Preparando el estudio con el texto, el ${original(book).name}, el diccionario y las referencias…`
+                        : `Preparando el estudio con el texto, el ${original(book).name} y las referencias…`}
                   </Text>
                 </View>
               )}
@@ -650,7 +661,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
 
 const MODES: { value: Enfoque; icon: (p: IconProps) => ReactNode; label: string; hint: string }[] = [
   { value: 'devocional', icon: HeartIcon, label: 'Devocional', hint: 'Lee, medita, vive y ora · unos 10 minutos' },
-  { value: 'profundo', icon: SparkIcon, label: 'Profundo', hint: 'Texto original, contexto y pasajes relacionados' },
+  { value: 'profundo', icon: SparkIcon, label: 'Profundo', hint: 'Original, costumbres, diccionario y pasajes de toda la Biblia' },
 ];
 
 /** Selector entre el devocional guiado y el estudio profundo: una píldora con el modo activo resaltado. */

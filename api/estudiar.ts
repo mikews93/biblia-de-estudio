@@ -46,6 +46,7 @@ import {
   versionSystem,
 } from './_investigar';
 import { corregirRespuesta } from './_corregir';
+import { fuentesDetalladas } from './_detalle';
 import { guardarPregunta } from './_preguntas';
 import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
 import { Registro, detener, reanudar } from './_reanudar';
@@ -191,6 +192,28 @@ Herramientas: puedes investigar más allá del pasaje abierto: leer otros pasaje
 - Para explicar algo concreto de la Biblia (un lugar como Getsemaní, un objeto como el efod, un grupo como los fariseos, una costumbre o una palabra como «propiciación») consulta «diccionario». Para reunir lo que la Biblia dice de un tema (la oración, el perdón, el matrimonio) consulta «temas_biblicos» y lee los pasajes más fuertes antes de usarlos.
 - Lo que encuentres con ellas se cita igual que los documentos. Si algo no está en ninguna fuente de la app, márcalo como «contexto general», breve y sin inventar fechas ni citas.
 - Antes de nombrar o copiar un versículo que no está en los documentos, léelo con «leer_pasaje» (o encuéntralo con «buscar_en_la_biblia»): nunca des una referencia de memoria.`;
+
+// El estudio profundo (api/_detalle.ts): qué trae de más y qué investigar antes de escribir.
+const PROFUNDO_SYSTEM = `
+
+Estudio profundo: además de lo de siempre, recibes los artículos del diccionario bíblico Tyndale sobre el pasaje (moderno y ya en español), el léxico de las Sociedades Bíblicas Unidas de las palabras del original (en español, con el sentido que tiene cada palabra en este pasaje), más referencias del Treasury of Scripture Knowledge y las medidas y objetos del capítulo que la app enseña con imágenes.
+- Para «Palabras del original» apóyate primero en el léxico UBS: su definición en español es más precisa que la glosa.
+- Antes de escribir el estudio investiga, pidiendo a la vez lo que no dependa de otra cosa y sin pasar de cinco consultas:
+  1. «teologia» con el área «historia» para el trasfondo y las costumbres del pasaje (búsqueda en inglés con las personas, lugares, grupos o costumbres que aparecen: «Zacharias priest incense temple course», «Pharisees Sabbath», «threshing floor harvest Boaz»).
+  2. «temas_biblicos» con el tema central del pasaje, para «La Biblia sobre este tema»; antes de usar un pasaje que no esté en los documentos, léelo con «leer_pasaje».
+  3. Si el pasaje toca doctrina (la gracia, la justificación, la Trinidad, la persona de Cristo, la elección, el bautismo), «teologia» con el área «sistematicas» o «credos».
+  4. Si una costumbre, objeto o grupo importante no está en el diccionario de los documentos, «diccionario».
+- Edersheim y Josefo dan contexto histórico; Josefo no es Escritura y a veces exagera cifras. Si el texto bíblico y ellos no coinciden, manda el texto.`;
+
+// El pódcast del capítulo (pedido de Mike, 2026-11-08): las mismas fuentes que el estudio profundo y una
+// investigación corta antes de escribir el guion. Los guiones ya guardados no cambian (ni sus grabaciones); los
+// nuevos y los de «Preparar otra versión» salen con todo.
+const PODCAST_SYSTEM = `
+
+Pódcast: además de lo de siempre, recibes los artículos del diccionario bíblico Tyndale sobre el capítulo (en español), el léxico de las Sociedades Bíblicas Unidas de las palabras del original, más referencias del Treasury of Scripture Knowledge y las medidas y objetos del capítulo.
+- Antes de escribir el guion investiga, pidiendo a la vez lo que no dependa de otra cosa y sin pasar de cuatro consultas: «teologia» con el área «historia» para las costumbres y el trasfondo del capítulo (búsqueda en inglés con sus personas, lugares, grupos o costumbres) y «temas_biblicos» con el tema central del capítulo. Antes de nombrar un pasaje que no esté en los documentos, léelo con «leer_pasaje».
+- Edersheim y Josefo dan contexto histórico; Josefo no es Escritura y a veces exagera cifras. Si el texto bíblico y ellos no coinciden, manda el texto.
+- No escribas nada antes de terminar de investigar: el guion empieza por la primera línea del diálogo.`;
 
 // La búsqueda en la web del Taller con borrador: predicaciones y estudios evangélicos. Se dejan fuera los sitios de
 // grupos que niegan doctrinas centrales y los católicos (decisiones de Mike del 2026-10-18 y 2026-10-27).
@@ -663,9 +686,12 @@ Formato estricto: cada intervención en su propia línea, empezando por «ANA:»
 Contenido:
 - Abran con una frase que despierte interés por el capítulo; no se presenten ni saluden a la audiencia con fórmulas de radio.
 - Recorran el capítulo en orden: qué pasa, quién habla y a quién, qué se repite, qué sorprende.${
-    hasGreek ? `\n- Detengan la conversación en 1 o 2 palabras del ${lenguaOriginal(book)} que aclaren algo, dichas de forma que se entiendan al oído.` : ''
+    hasGreek
+      ? `\n- Detengan la conversación en 1 o 2 palabras del ${lenguaOriginal(book)} que aclaren algo, con el sentido que les da el léxico, dichas de forma que se entiendan al oído.`
+      : ''
   }
-- Relacionen el capítulo con 2 o 3 pasajes de las referencias cruzadas.
+- Detengan la conversación en 1 o 2 costumbres, objetos o medidas del capítulo que el oyente de hoy no conoce (del diccionario bíblico, las medidas de la app o lo que investigaron del trasfondo histórico) y digan cómo cambian lo que se entiende.
+- Relacionen el capítulo con 2 o 3 pasajes de las referencias cruzadas, y digan en una o dos intervenciones cómo sigue el tema central en el resto de la Biblia (de los índices por temas).
 - Que uno pregunte y el otro explique, y que se alternen; intervenciones de 1 a 4 frases, en un español hablado y natural.
 - No es un sermón: expliquen el texto, no prediquen ni den consejos largos.
 - Cierren con una conclusión, no con preguntas sueltas: cada uno dice en una o dos frases lo que se lleva. Si en el cierre alguien plantea una pregunta de estudio, el otro la responde ahí mismo desde el texto.
@@ -972,7 +998,15 @@ async function commentaryDocs(request: Request, book: Book, chapter: number, ver
   return found.map((f) => doc(f.title, f.blocks));
 }
 
-async function buildSources(biblia: Biblia, book: Book, chapter: number, verse: number | undefined, word?: number) {
+async function buildSources(
+  biblia: Biblia,
+  book: Book,
+  chapter: number,
+  verse: number | undefined,
+  word?: number,
+  /** El estudio profundo: además, diccionario, léxico UBS, Treasury, medidas y objetos (api/_detalle.ts). */
+  detallado = false,
+) {
   const { request, books } = biblia;
   const [verses, interlinear, xrefs] = await Promise.all([
     biblia.chapter(book.id, chapter),
@@ -1049,6 +1083,9 @@ async function buildSources(biblia: Biblia, book: Book, chapter: number, verse: 
       ),
     );
   }
+  if (detallado) {
+    for (const f of await fuentesDetalladas(biblia, book, chapter, verse, interlinear, refs)) docs.push(doc(f.title, f.blocks));
+  }
   return { docs, focus, hasOriginal: greek.length > 0 };
 }
 
@@ -1071,32 +1108,41 @@ Si los especialistas o las tradiciones cristianas entienden la palabra de manera
 function studyTask(book: Book, chapter: number, verse: number | undefined, hasGreek: boolean) {
   const lang = original(book).name;
   const target = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
-  // Estudio inductivo: observar, interpretar, relacionar y aplicar.
+  // Estudio inductivo: observar, interpretar, relacionar y aplicar. Desde 2026-11-08 más detallado (pedido de Mike):
+  // costumbres y trasfondo, el léxico en español, más referencias, el tema por toda la Biblia y la doctrina.
   const sections = verse
     ? [
         '## Panorama: dónde está el versículo dentro del capítulo y qué ocurre alrededor.',
         '## Su mundo: quiénes son las personas del pasaje (de dónde vienen, su pueblo o tribu, su ciudad y si era grande o pequeña, su familia) y qué pasaba en ese momento de la historia, con las fichas y la línea de tiempo de la app. Si el pasaje no tiene personas ni lugares, el momento histórico en dos o tres frases.',
+        '## Costumbres y trasfondo: las costumbres, los objetos, las medidas, los grupos y las instituciones que el versículo da por sabidos, y cómo cambian lo que entendemos (del diccionario bíblico, las medidas y objetos de la app y lo que investigaste sobre el trasfondo histórico). Si no hay nada que explicar, dilo en una frase.',
         '## Observa: quién habla y a quién, qué se afirma, palabras repetidas y conectores («pero», «por tanto», «para que»).',
-        hasGreek && `## Palabras del ${lang}: 2 a 4 palabras clave, con su significado y lo que aporta su gramática.`,
+        hasGreek &&
+          `## Palabras del ${lang}: 3 a 5 palabras clave, cada una con su forma original transliterada, su significado según el léxico (el sentido que tiene aquí), lo que aporta su gramática y, si ayuda, otro pasaje donde aparece.`,
         '## Interpreta: qué significaba para sus primeros lectores y, si las tradiciones cristianas lo leen distinto, cómo.',
-        '## Pasajes relacionados: 3 o 4 referencias y lo que cada una aporta.',
+        '## Lo que enseña: la verdad sobre Dios, Cristo, el ser humano o la salvación que el versículo enseña o supone, y cómo la resumen los credos o las teologías clásicas, solo si de verdad la toca; si no toca doctrina, quita esta sección.',
+        '## Pasajes relacionados: 4 a 6 referencias (de OpenBible y del Treasury) y lo que aporta cada una.',
+        '## La Biblia sobre este tema: el tema central del versículo y cómo lo desarrolla el resto de la Biblia, con 3 o 4 pasajes de otras partes (de los índices por temas), en orden de la historia bíblica.',
         '## Hacia Cristo: cómo se relaciona con el evangelio, solo si el texto o sus referencias lo sostienen, sin forzarlo.',
         '## Para aplicar: 2 o 3 preguntas personales o para un grupo.',
       ]
     : [
         '## Panorama: de qué trata el capítulo y dónde encaja en el libro.',
         '## Su mundo: quiénes son las personas del capítulo (de dónde vienen, su pueblo o tribu, su ciudad y si era grande o pequeña, su familia) y qué pasaba en ese momento de la historia, con las fichas y la línea de tiempo de la app. Si no tiene personas ni lugares, el momento histórico en dos o tres frases.',
+        '## Costumbres y trasfondo: las costumbres, los objetos, las medidas, los grupos y las instituciones que el capítulo da por sabidos, y cómo cambian lo que entendemos (del diccionario bíblico, las medidas y objetos de la app y lo que investigaste sobre el trasfondo histórico). Una lista de 3 a 5 puntos, cada uno con su versículo.',
         '## Cómo avanza: las partes del capítulo por grupos de versículos.',
         '## Observa: palabras y temas que se repiten, contrastes y conectores importantes.',
-        hasGreek && `## Palabras del ${lang}: 3 a 5 palabras importantes en el capítulo.`,
+        hasGreek &&
+          `## Palabras del ${lang}: 4 a 6 palabras importantes en el capítulo, cada una con su forma original transliterada, su versículo y su significado según el léxico.`,
         '## Interpreta: la idea central del capítulo para sus primeros lectores y, si las tradiciones cristianas lo leen distinto, cómo.',
-        '## Pasajes relacionados: 3 o 4 referencias y lo que aportan.',
+        '## Lo que enseña: las verdades sobre Dios, Cristo, el ser humano o la salvación que el capítulo enseña, y cómo las resumen los credos o las teologías clásicas, solo si de verdad las toca; si no toca doctrina, quita esta sección.',
+        '## Pasajes relacionados: 4 a 6 referencias (de OpenBible y del Treasury) y lo que aportan.',
+        '## La Biblia sobre este tema: el tema central del capítulo y cómo lo desarrolla el resto de la Biblia, con 3 o 4 pasajes de otras partes (de los índices por temas), en orden de la historia bíblica.',
         '## Hacia Cristo: cómo se relaciona con el evangelio, solo si el texto o sus referencias lo sostienen, sin forzarlo.',
         '## Para aplicar: 2 o 3 preguntas personales o para un grupo.',
       ];
-  return `Prepara un estudio de ${target} con estas secciones:\n${sections.filter(Boolean).join('\n')}\n\nExtensión: ${
-    verse ? '500 a 700' : '650 a 900'
-  } palabras. Empieza directamente por la primera sección.`;
+  return `Prepara un estudio detallado de ${target} con estas secciones:\n${sections.filter(Boolean).join('\n')}\n\nExtensión: ${
+    verse ? '900 a 1.200' : '1.100 a 1.500'
+  } palabras. Antes de escribir, investiga lo que te falta con las herramientas; después empieza directamente por la primera sección.`;
 }
 
 function frecuenteTask(book: Book, chapter: number, verse: number | null, pregunta: string) {
@@ -1603,6 +1649,11 @@ export async function POST(request: Request) {
     if (!frecuente) return badRequest('Esa pregunta ya no está', 404);
   }
   const focusVerse = frecuente ? (frecuente.versiculo ?? undefined) : verse;
+  // El estudio profundo de un pasaje (y sus preguntas): con todas las fuentes de la app y una investigación antes de
+  // escribir. No el devocional, el Taller, la semana, las herramientas, «¿Por qué esta palabra?» ni las frecuentes.
+  const detallado = !devocional && !frecuente && !semana && !taller && !herramienta && word === undefined;
+  // El guion del pódcast del capítulo también, con su propia investigación (PODCAST_SYSTEM).
+  const podcast = herramienta === 'podcast';
 
   // El primer estudio de un pasaje (sin preguntas ni Taller) se guarda para todos. La semana es de cada persona.
   const clave = frecuente
@@ -1610,7 +1661,8 @@ export async function POST(request: Request) {
     : !herramienta && !taller && !semana && turns.length === 0
       ? [
           STUDY_VERSION + (version.id === 'rv1909' ? '' : `-${version.id}`) + (version.licensed ? `-${MARCAS}` : ''),
-          (devocional ? 'devocional' : 'profundo') + (jovenes ? '-jovenes' : ''),
+          // «profundo-detallado» (2026-11-08): con diccionario, léxico, Treasury, costumbres y temas; se prepara de nuevo.
+          (devocional ? 'devocional' : detallado ? 'profundo-detallado' : 'profundo') + (jovenes ? '-jovenes' : ''),
           book.id,
           chapter,
           verse ?? '',
@@ -1650,7 +1702,7 @@ export async function POST(request: Request) {
   let focus;
   let hasOriginal = false;
   try {
-    ({ docs, focus, hasOriginal } = await buildSources(biblia, book, chapter, focusVerse, word));
+    ({ docs, focus, hasOriginal } = await buildSources(biblia, book, chapter, focusVerse, word, detallado || podcast));
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
@@ -1683,15 +1735,16 @@ export async function POST(request: Request) {
     ...turns.map((t) => ({ role: t.role, content: t.text })),
   ];
 
-  // Investigar otros pasajes y fuentes: en las preguntas de la persona. El primer estudio se basta con el pasaje.
-  // La maqueta de un tema también lee los pasajes de apoyo que propone.
-  const investiga = turns.length > 0 || taller?.modo === 'maqueta' || taller?.modo === 'borrador' || taller?.modo === 'cambiar';
+  // Investigar otros pasajes y fuentes: en las preguntas de la persona y en el estudio profundo, que antes de escribir
+  // busca costumbres, temas y doctrina. La maqueta de un tema también lee los pasajes de apoyo que propone.
+  const investiga = turns.length > 0 || detallado || podcast || taller?.modo === 'maqueta' || taller?.modo === 'borrador' || taller?.modo === 'cambiar';
   const tallerSystem = taller && ESCRIBE.includes(taller.modo) ? BORRADOR_SYSTEM : TALLER_SYSTEM;
   const system =
     (frecuente ? SYSTEM : semana ? SYSTEM + SEMANA_SYSTEM : taller ? SYSTEM + tallerSystem : devocional ? SYSTEM + DEVOCIONAL_SYSTEM : SYSTEM) +
     // Las marcas de versículo se leen donde la respuesta es texto libre: no en el Taller ni en la semana, que tienen su formato.
     versionSystem(version, !taller && !semana) +
     (investiga ? TOOLS_SYSTEM : '') +
+    (detallado ? PROFUNDO_SYSTEM : podcast ? PODCAST_SYSTEM : '') +
     (jovenes ? JOVENES_SYSTEM : '');
   return streamAnswer(
     request,

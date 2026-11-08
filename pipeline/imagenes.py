@@ -22,8 +22,16 @@ THUMB_STEPS = (250, 330, 500, 960, 1280, 1920)
 THUMB = 960
 
 
+def normalize(url):
+    """upload.wikimedia.org sin parámetros: desde noviembre de 2026 la API da las miniaturas en thumb.wikimedia.org
+    con ?utm_… al final (el mismo archivo); la app y su servidor de imágenes esperan la dirección de siempre."""
+    m = re.match(r"https://(?:upload|thumb)\.wikimedia\.org/([^?#]+)", url or "")
+    return "https://upload.wikimedia.org/" + m.group(1) if m else url
+
+
 def standard_thumb(url):
     """La misma miniatura de upload.wikimedia.org en el ancho estándar más cercano por arriba."""
+    url = normalize(url)
     m = re.search(r"/thumb/.+/(\d+)px-[^/]+$", url or "")
     if not m:
         return url

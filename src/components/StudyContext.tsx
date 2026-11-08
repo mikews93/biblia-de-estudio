@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import ImagenCommons from '@/components/ImagenCommons';
 import { SparkIcon } from '@/components/icons';
 import { Measure, Picture, getStudyContext } from '@/lib/data';
 import { Colors, serif, useColors } from '@/lib/theme';
-import { standardThumb } from '@/lib/wikimedia';
 
 type Props = {
   book: string;
@@ -138,9 +138,11 @@ function Thumb({ picture: p, colors }: { picture: Picture; colors: Colors }) {
     );
   }
   return (
-    <Image
-      source={{ uri: standardThumb(p.img) }}
-      onError={() => setFailed(true)}
+    <ImagenCommons
+      url={p.img}
+      width={500}
+      originalWidth={p.w}
+      onFail={() => setFailed(true)}
       style={[styles.thumb, { backgroundColor: colors.accentSoft }]}
       resizeMode={p.kind === 'mapa' ? 'contain' : 'cover'}
       accessibilityLabel={p.title}
@@ -155,8 +157,8 @@ function Viewer({ picture: p, colors, onClose }: { picture: Picture; colors: Col
     <Modal transparent animationType="fade" visible onRequestClose={onClose}>
       <Pressable style={styles.viewerBackdrop} onPress={onClose} accessibilityLabel="Cerrar imagen">
         <Pressable style={[styles.viewer, { backgroundColor: colors.background }]} onPress={() => {}}>
-          <Image
-            source={{ uri: standardThumb(p.img) }}
+          <ImagenCommons
+            url={p.img}
             style={{ width: '100%', aspectRatio: p.w && p.h ? Math.max(p.w / p.h, 0.6) : 4 / 3 }}
             resizeMode="contain"
             accessibilityLabel={p.title}

@@ -19,6 +19,14 @@ export const DB_URL = process.env.DATABASE_URL;
 export const DATA_DIR = path.resolve(import.meta.dirname, '../../public/data');
 /** public/data lo genera `npm run data`; sin él se saltan las pruebas que leen el texto bíblico. */
 export const HAS_DATA = existsSync(path.join(DATA_DIR, 'books.json'));
+/** El diccionario Tyndale, los léxicos UBS (npm run fuentes) y el Treasury (npm run libros): Vercel los genera al
+ * compilar; la CI no, y entonces se saltan las comprobaciones que los necesitan. */
+export const FUENTES = {
+  diccionario: HAS_DATA && existsSync(path.join(DATA_DIR, 'diccionario-es/indice.json')),
+  lexico: HAS_DATA && existsSync(path.join(DATA_DIR, 'lexico')),
+  tsk: HAS_DATA && existsSync(path.join(DATA_DIR, 'tsk')),
+};
+export const HAS_FUENTES = FUENTES.diccionario && FUENTES.lexico && FUENTES.tsk;
 
 export type Post = (request: Request) => Promise<Response>;
 

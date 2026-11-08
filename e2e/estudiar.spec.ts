@@ -138,7 +138,7 @@ test('una pregunta de seguimiento lleva la conversación anterior a la IA', asyn
   // El servidor mandó el pasaje y los turnos anteriores, en orden
   const [recibida] = await peticionesIA(request, pregunta);
   expect(recibida.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
-  expect(JSON.stringify(recibida.messages[0].content)).toContain('Prepara un estudio de Juan 3:16');
+  expect(JSON.stringify(recibida.messages[0].content)).toContain('Prepara un estudio detallado de Juan 3:16');
   expect(recibida.messages[1].content).toContain(ESTUDIO);
   expect(recibida.messages[2].content).toBe(pregunta);
 });
