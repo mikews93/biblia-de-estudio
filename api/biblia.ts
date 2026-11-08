@@ -2,8 +2,11 @@
 // Las claves (API_BIBLE_KEY, YVP_APP_KEY) solo viven aquí. Condiciones de las licencias en src/lib/licenciadas.ts.
 //   GET /api/biblia?versiones=1               versiones a las que alguna clave tiene acceso
 //   GET /api/biblia?v=nbla&book=jhn&chapter=3 versículos del capítulo, aviso de derechos y ficha FUMS (API.Bible)
+//   GET /api/biblia?imagen=https://upload.wikimedia.org/…  una imagen de Wikimedia Commons servida desde la app
+//                                              (src/lib/wikimedia.ts), guardada un año en la caché de Vercel
 
 import { LICENSED, chapterHtml, chapterVerses, licensedById, type ApiNode, type Licensed } from '../src/lib/licenciadas';
+import { isCommons } from '../src/lib/wikimedia';
 
 const API = 'https://rest.api.bible/v1';
 const KEY = process.env.API_BIBLE_KEY;
@@ -132,8 +135,41 @@ type ChapterResponse = {
   meta?: { fumsToken?: string };
 };
 
+// Wikimedia pide un agente que diga quién es (https://w.wiki/4wJS); sin él responde 403.
+const WIKIMEDIA_AGENT = 'Zarza/1.0 (https://zarzabiblia.com; soporte@zarzabiblia.com) imagenes-del-estudio';
+// Vercel no deja responder más de 4,5 MB; las miniaturas de la app pesan menos de 1 MB.
+const MAX_IMAGE = 4 * 1024 * 1024;
+
+/** Trae de Wikimedia Commons una imagen del estudio o de una ficha y la sirve con caché larga. */
+async function commonsImage(url: string): Promise<Response> {
+  const fail = (status: number, error: string) =>
+    new Response(error, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+  if (!isCommons(url)) return fail(400, 'Solo imágenes de Wikimedia Commons.');
+  let res: Response;
+  try {
+    res = await fetch(url, { headers: { 'User-Agent': WIKIMEDIA_AGENT, Accept: 'image/avif,image/webp,image/*' } });
+  } catch {
+    return fail(502, 'Wikimedia no respondió.');
+  }
+  const type = res.headers.get('content-type') ?? '';
+  if (!res.ok || !type.startsWith('image/')) return fail(res.status === 404 ? 404 : 502, `Wikimedia respondió ${res.status}.`);
+  const body = await res.arrayBuffer();
+  if (body.byteLength > MAX_IMAGE) return fail(413, 'Imagen demasiado grande.');
+  // Los archivos de Commons no cambian con la misma dirección: un año en el navegador y en el CDN de Vercel.
+  return new Response(body, {
+    headers: {
+      'Content-Type': type,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'CDN-Cache-Control': 'public, max-age=31536000, immutable',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+}
+
 export async function GET(request: Request) {
   const query = new URL(request.url).searchParams;
+  const imagen = query.get('imagen');
+  if (imagen) return commonsImage(imagen);
   try {
     if (query.get('diagnostico')) {
       // Qué ve cada clave, sin mostrar las claves: para revisar desde el navegador por qué falta una versión.

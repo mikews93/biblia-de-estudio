@@ -45,7 +45,18 @@ function Icon({ tipo, color, size = 14 }: { tipo: Paso['tipo']; color: string; s
  * Lo que la IA consultó para responder una pregunta (otros pasajes, búsquedas, comentarios…). Mientras investiga,
  * la lista va creciendo con el paso en curso; con la respuesta escrita queda plegada en una línea que se abre.
  */
-export default function Investigacion({ pasos, working, colors }: { pasos: Paso[]; working: boolean; colors: Colors }) {
+export default function Investigacion({
+  pasos,
+  working,
+  colors,
+  hint = 'Responderá cuando termine de leer.',
+}: {
+  pasos: Paso[];
+  working: boolean;
+  colors: Colors;
+  /** Lo que pasa después de investigar: responder una pregunta o escribir el estudio. */
+  hint?: string;
+}) {
   const [open, setOpen] = useState(false);
   if (!pasos.length) return null;
 
@@ -71,7 +82,7 @@ export default function Investigacion({ pasos, working, colors }: { pasos: Paso[
             </Appear>
           );
         })}
-        <Text style={[styles.hint, { color: colors.muted }]}>Responderá cuando termine de leer.</Text>
+        <Text style={[styles.hint, { color: colors.muted }]}>{hint}</Text>
       </Appear>
     );
   }

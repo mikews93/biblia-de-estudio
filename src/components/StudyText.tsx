@@ -8,12 +8,15 @@ import {
   CloseIcon,
   CompassIcon,
   CrossIcon,
+  DictionaryIcon,
   ExternalIcon,
   EyeIcon,
+  GlobeIcon,
   type IconProps,
   LampIcon,
   LinkIcon,
   SparkIcon,
+  TopicIcon,
 } from '@/components/icons';
 import Appear from '@/components/Appear';
 import { citaLabel, parseCita } from '@/lib/cita';
@@ -38,6 +41,11 @@ const SECTION_ICONS: [RegExp, ((p: IconProps) => ReactNode) | string][] = [
   [/^interpreta/i, LampIcon],
   [/^pasajes/i, LinkIcon],
   [/^hacia cristo/i, CrossIcon],
+  // Las del estudio detallado (2026-11-08)
+  [/^su mundo/i, GlobeIcon],
+  [/^costumbres/i, DictionaryIcon],
+  [/^lo que enseña/i, BooksIcon],
+  [/^la biblia sobre/i, TopicIcon],
   [/^(para aplicar|para reflexionar|para pensar)/i, ArrowRightIcon],
   [/^(cómo la traduce|dónde más)/i, BooksIcon],
 ];
