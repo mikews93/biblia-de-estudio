@@ -69,7 +69,14 @@ test.describe('Reproductor único', () => {
       { estado: 'grabando', fase: 'guion', hechas: 0, total: 0 },
       { estado: 'grabando', fase: 'voces', hechas: 12, total: 30 },
       { estado: 'grabando', fase: 'mezcla', hechas: 30, total: 30 },
-      { estado: 'listo', url: '/prueba/drama.mp3', duracion: 12, credito: 'Dramatizado de prueba', tiempos: [[1, 0], [2, 4], [3, 8]] },
+      {
+        estado: 'listo',
+        url: '/prueba/drama.mp3',
+        soloVoces: '/prueba/drama-voces.mp3',
+        duracion: 12,
+        credito: 'Dramatizado de prueba',
+        tiempos: [[1, 0], [2, 4], [3, 8]],
+      },
     ];
     let paso = -1;
     let pedido: Record<string, unknown> | null = null;
@@ -80,7 +87,11 @@ test.describe('Reproductor único', () => {
       } else if (paso >= 0 && paso < pasos.length - 1) paso++;
       await r.fulfill({ json: paso < 0 ? { estado: 'ninguno' } : pasos[paso] });
     });
-    await page.route('**/prueba/drama.mp3', (r) => r.fulfill({ body: TONO, contentType: 'audio/mpeg' }));
+    const pedidos: string[] = [];
+    await page.route('**/prueba/drama*.mp3', (r) => {
+      pedidos.push(new URL(r.request().url()).pathname);
+      return r.fulfill({ body: TONO, contentType: 'audio/mpeg' });
+    });
     await conSesion(page, await cuentaNueva(request, 'Oyente'));
 
     await page.goto('/marcos/2');
@@ -97,6 +108,11 @@ test.describe('Reproductor único', () => {
     await expect(v(page.getByText('Audio dramatizado', { exact: true }))).toBeVisible();
     await expect(v(page.getByRole('tab', { name: 'Dramatizado', selected: true }))).toBeVisible();
     await expect(v(page.getByText('Dramatizado de prueba'))).toBeVisible();
+    // Se puede escuchar solo las voces, sin música ni ambiente: cambia de archivo en el mismo punto.
+    await expect(v(page.getByRole('tab', { name: 'Con música y ambiente', selected: true }))).toBeVisible();
+    await v(page.getByRole('tab', { name: 'Solo voces' })).click();
+    await expect(v(page.getByRole('tab', { name: 'Solo voces', selected: true }))).toBeVisible();
+    await expect.poll(() => pedidos.includes('/prueba/drama-voces.mp3')).toBe(true);
 
     // Otra vez en el mismo capítulo, ya listo: suena sin abrir la hoja de pedirlo.
     await v(page.getByRole('button', { name: 'Cerrar el reproductor' })).click();

@@ -151,11 +151,24 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
       const m = l.match(/^(\d+) (.+)$/);
       return m ? [[Number(m[1]), m[2]] as const] : [];
     });
-    const out = ['PERSONAJE JUAN | hombre | joven | Juan el Bautista', 'ESCENA A la orilla del río | ambiente: flowing river, gentle current'];
+    const out = [
+      'TONO esperanza',
+      'PERSONAJE JUAN_BAUTISTA | hombre | joven | Juan el Bautista',
+      'ESCENA A la orilla del río | ambiente: flowing river, gentle current | espacio: abierto | ritmo: lento',
+      'DIRECCION Juan proclama ante la gente; el narrador cuenta despacio.',
+    ];
     for (const [n, t] of versos) {
       if (n === 1) {
+        // La segunda mitad la dice Juan con una pausa dentro; el gesto [smiling] no se oye y la app lo quita.
         const corte = t.indexOf(' ', Math.floor(t.length / 2));
-        out.push(`1 NARRADOR [slow, solemn]: ${t.slice(0, corte)}`, `1 JUAN [proclaiming]: ${t.slice(corte + 1)}`, 'EFECTO splashing water | 2');
+        const [primera, ...resto] = t.slice(corte + 1).split(' ');
+        out.push(
+          `1 NARRADOR [slow, solemn]: ${t.slice(0, corte)}`,
+          'SONIDO crowd murmuring by the water | 3',
+          `1 JUAN_BAUTISTA [proclaiming] [smiling]: ${primera} [short pause] ${resto.join(' ')}`,
+          'EFECTO splashing water | 2',
+          'PAUSA 1',
+        );
       } else if (n === 2) out.push(`2 DIOS aprobacion: ${t}`);
       else if (n === 3) out.push(`3 NARRADOR: ${t} y algo que no dice la Biblia`);
       else out.push(`${n} NARRADOR: ${t}`);
