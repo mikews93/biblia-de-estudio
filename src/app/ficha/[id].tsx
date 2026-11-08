@@ -2,9 +2,10 @@
 // vivió, dónde, sus versículos clave y en qué libros aparece. Junta las genealogías, los mapas y la línea de tiempo.
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import Appear from '@/components/Appear';
+import ImagenCommons from '@/components/ImagenCommons';
 import { Rich } from '@/components/Commentary';
 import { Icono } from '@/components/FichaChips';
 import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, ClockIcon, TreeIcon } from '@/components/icons';
@@ -206,7 +207,7 @@ function Hero({ ficha, colors, wide }: { ficha: Ficha; colors: Colors; wide: boo
 function Foto({ foto, nombre, colors, height }: { foto: NonNullable<Ficha['foto']>; nombre: string; colors: Colors; height: number }) {
   return (
     <View style={[styles.photo, { backgroundColor: colors.accentSoft }]}>
-      <Image source={{ uri: foto.img }} style={{ width: '100%', height }} resizeMode="cover" accessibilityLabel={`Foto de la zona de ${nombre}`} />
+      <ImagenCommons url={foto.img} style={{ width: '100%', height }} resizeMode="cover" accessibilityLabel={`Foto de la zona de ${nombre}`} />
       <Text
         style={[styles.photoCredit, { color: colors.muted }]}
         onPress={() => Linking.openURL(foto.page)}

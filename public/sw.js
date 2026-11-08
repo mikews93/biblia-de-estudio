@@ -52,6 +52,12 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/audio/') && url.pathname !== '/audio/index.json') return;
   // De las funciones solo se guardan los comentarios ya abiertos; la IA y la comunidad necesitan red.
   if (url.pathname.startsWith('/api/')) {
+    // Las imágenes de Wikimedia que sirve la app (src/lib/wikimedia.ts) no cambian: las ya vistas salen de la caché,
+    // también sin conexión.
+    if (url.pathname === '/api/biblia' && url.searchParams.has('imagen')) {
+      event.respondWith(caches.match(request).then((saved) => saved ?? networkFirst(event, request)));
+      return;
+    }
     if (url.pathname === '/api/comentario') event.respondWith(networkFirst(event, request));
     return;
   }
