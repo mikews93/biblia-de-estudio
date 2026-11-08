@@ -1,5 +1,29 @@
 [
   {
+    "id": "desierto-viento",
+    "tipo": "ambiente",
+    "descripcion": "dry desert wind, open wilderness",
+    "titulo": "Chergui wind in Agadir",
+    "autor": "clement.bernardeau",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/clement.bernardeau/sounds/718973/",
+    "freesound": 718973,
+    "duracion": 145.4
+  },
+  {
+    "id": "campo-dia",
+    "tipo": "ambiente",
+    "descripcion": "open countryside by day, distant birds, light breeze",
+    "titulo": "ambient pond big birds eurasian reed warbler seagulls and eurasian bittern with subtle wind stereo M10.wav",
+    "autor": "Soundholder",
+    "licencia": "CC BY",
+    "licenciaUrl": "http://creativecommons.org/licenses/by/3.0/",
+    "enlace": "https://freesound.org/people/Soundholder/sounds/425372/",
+    "freesound": 425372,
+    "duracion": 138.5
+  },
+  {
     "id": "campo-noche",
     "tipo": "ambiente",
     "descripcion": "quiet night in the fields, crickets",
@@ -24,6 +48,30 @@
     "duracion": 123.9
   },
   {
+    "id": "mar-tormenta",
+    "tipo": "ambiente",
+    "descripcion": "stormy sea, strong wind and crashing waves",
+    "titulo": "porto 22-05-14 large waves during a storm, wind .aif",
+    "autor": "bpayri",
+    "licencia": "CC BY",
+    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "enlace": "https://freesound.org/people/bpayri/sounds/245149/",
+    "freesound": 245149,
+    "duracion": 77.5
+  },
+  {
+    "id": "rio",
+    "tipo": "ambiente",
+    "descripcion": "flowing river, steady current",
+    "titulo": "Mountain River 001.wav",
+    "autor": "Auxide_Audio",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/Auxide_Audio/sounds/588179/",
+    "freesound": 588179,
+    "duracion": 46.7
+  },
+  {
     "id": "lluvia",
     "tipo": "ambiente",
     "descripcion": "steady rain",
@@ -34,6 +82,54 @@
     "enlace": "https://freesound.org/people/hz37/sounds/393728/",
     "freesound": 393728,
     "duracion": 75.6
+  },
+  {
+    "id": "mercado",
+    "tipo": "ambiente",
+    "descripcion": "busy outdoor market crowd murmuring",
+    "titulo": "Cardiff Indoor Market",
+    "autor": "odilonmarcenaro",
+    "licencia": "CC BY",
+    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "enlace": "https://freesound.org/people/odilonmarcenaro/sounds/275371/",
+    "freesound": 275371,
+    "duracion": 122
+  },
+  {
+    "id": "multitud",
+    "tipo": "ambiente",
+    "descripcion": "large crowd murmuring outdoors",
+    "titulo": "S11-22 Courtroom pre-trial murmuring.wav",
+    "autor": "craigsmith",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/craigsmith/sounds/675054/",
+    "freesound": 675054,
+    "duracion": 20.8
+  },
+  {
+    "id": "patio-piedra",
+    "tipo": "ambiente",
+    "descripcion": "large stone hall or temple interior, distant murmur, echo",
+    "titulo": "Church_Indistinct_Chatter.wav",
+    "autor": "Dokuta_Gerovv",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/Dokuta_Gerovv/sounds/661732/",
+    "freesound": 661732,
+    "duracion": 23.3
+  },
+  {
+    "id": "casa-noche",
+    "tipo": "ambiente",
+    "descripcion": "quiet house at night, small fire crackling",
+    "titulo": "Orange peels crackle",
+    "autor": "Valerie-Vivegnis",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/Valerie-Vivegnis/sounds/759128/",
+    "freesound": 759128,
+    "duracion": 65.8
   },
   {
     "id": "cueva",
@@ -96,6 +192,18 @@
     "duracion": 9.8
   },
   {
+    "id": "camello",
+    "tipo": "sonido",
+    "descripcion": "a camel grunting",
+    "titulo": "camel loop.wav",
+    "autor": "John Rayson",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/John%20Rayson/sounds/29515/",
+    "freesound": 29515,
+    "duracion": 3.1
+  },
+  {
     "id": "gallo",
     "tipo": "sonido",
     "descripcion": "a rooster crowing",
@@ -132,6 +240,18 @@
     "duracion": 14.2
   },
   {
+    "id": "pasos-piedra",
+    "tipo": "sonido",
+    "descripcion": "footsteps on stone",
+    "titulo": "Footsteps on Large Stones 1.wav",
+    "autor": "F.M.Audio",
+    "licencia": "CC BY",
+    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "enlace": "https://freesound.org/people/F.M.Audio/sounds/572752/",
+    "freesound": 572752,
+    "duracion": 13.1
+  },
+  {
     "id": "pasos-arena",
     "tipo": "sonido",
     "descripcion": "footsteps on sand and gravel",
@@ -154,6 +274,42 @@
     "enlace": "https://freesound.org/people/pugaeme/sounds/389237/",
     "freesound": 389237,
     "duracion": 6.3
+  },
+  {
+    "id": "barca-cruje",
+    "tipo": "sonido",
+    "descripcion": "a wooden boat creaking",
+    "titulo": "Walking Down Wooden Steps.wav",
+    "autor": "F.M.Audio",
+    "licencia": "CC BY",
+    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "enlace": "https://freesound.org/people/F.M.Audio/sounds/555298/",
+    "freesound": 555298,
+    "duracion": 4.9
+  },
+  {
+    "id": "red-pesca",
+    "tipo": "sonido",
+    "descripcion": "a fishing net pulled out of the water",
+    "titulo": "Fish Being Netted on River.wav",
+    "autor": "paulprit",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/paulprit/sounds/581580/",
+    "freesound": 581580,
+    "duracion": 5
+  },
+  {
+    "id": "agua-vasija",
+    "tipo": "sonido",
+    "descripcion": "water poured into a clay jar",
+    "titulo": "Water - Pour above a puddle",
+    "autor": "Vrymaa",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/Vrymaa/sounds/802711/",
+    "freesound": 802711,
+    "duracion": 11.8
   },
   {
     "id": "chapoteo",
@@ -180,6 +336,18 @@
     "duracion": 2.6
   },
   {
+    "id": "piedra-rueda",
+    "tipo": "sonido",
+    "descripcion": "a heavy stone rolled away, grinding",
+    "titulo": "Hard_Ball_Rolling_Fast_Mono_1.wav",
+    "autor": "Stagno",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/Stagno/sounds/705774/",
+    "freesound": 705774,
+    "duracion": 10.8
+  },
+  {
     "id": "monedas",
     "tipo": "sonido",
     "descripcion": "coins falling and jingling",
@@ -190,6 +358,18 @@
     "enlace": "https://freesound.org/people/Anthousai/sounds/336580/",
     "freesound": 336580,
     "duracion": 1.3
+  },
+  {
+    "id": "cadenas",
+    "tipo": "sonido",
+    "descripcion": "chains rattling",
+    "titulo": "Dog Chain Rattling (2)",
+    "autor": "Theatre_Veritas",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/Theatre_Veritas/sounds/763084/",
+    "freesound": 763084,
+    "duracion": 7.7
   },
   {
     "id": "martillo-clavos",
@@ -204,6 +384,18 @@
     "duracion": 4
   },
   {
+    "id": "espadas",
+    "tipo": "sonido",
+    "descripcion": "swords drawn and clashing",
+    "titulo": "SwordClash03",
+    "autor": "32cheeseman32",
+    "licencia": "CC BY",
+    "licenciaUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "enlace": "https://freesound.org/people/32cheeseman32/sounds/180818/",
+    "freesound": 180818,
+    "duracion": 1.2
+  },
+  {
     "id": "trueno",
     "tipo": "sonido",
     "descripcion": "distant thunder rumbling",
@@ -214,5 +406,53 @@
     "enlace": "https://freesound.org/people/xUMR/sounds/486558/",
     "freesound": 486558,
     "duracion": 4.3
+  },
+  {
+    "id": "terremoto",
+    "tipo": "sonido",
+    "descripcion": "an earthquake rumbling",
+    "titulo": "Cups tinkling",
+    "autor": "Moggi",
+    "licencia": "CC BY",
+    "licenciaUrl": "http://creativecommons.org/licenses/by/3.0/",
+    "enlace": "https://freesound.org/people/Moggi/sounds/233586/",
+    "freesound": 233586,
+    "duracion": 7
+  },
+  {
+    "id": "cuerno-shofar",
+    "tipo": "sonido",
+    "descripcion": "a ram's horn (shofar) blown",
+    "titulo": "shofar blast medium length two tone.m4a",
+    "autor": "Sonicsheep",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/Sonicsheep/sounds/479310/",
+    "freesound": 479310,
+    "duracion": 6.3
+  },
+  {
+    "id": "viento-fuerte",
+    "tipo": "sonido",
+    "descripcion": "a strong gust of wind",
+    "titulo": "wind 6",
+    "autor": "ZIP.Creates",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/ZIP.Creates/sounds/726317/",
+    "freesound": 726317,
+    "duracion": 7.8
+  },
+  {
+    "id": "pan-partir",
+    "tipo": "sonido",
+    "descripcion": "bread being broken",
+    "titulo": "bread kick.m4a",
+    "autor": "marmunne13",
+    "licencia": "CC0",
+    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
+    "enlace": "https://freesound.org/people/marmunne13/sounds/681099/",
+    "freesound": 681099,
+    "duracion": 3.6
   }
 ]
