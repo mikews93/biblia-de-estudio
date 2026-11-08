@@ -2,7 +2,7 @@
 // objetos. Necesitan public/data (npm run data && npm run fuentes && npm run libros).
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { HAS_DATA, prepareEnv } from './helpers';
+import { HAS_DATA, HAS_FUENTES, prepareEnv } from './helpers';
 
 const conDatos = HAS_DATA ? describe : describe.skip;
 
@@ -23,7 +23,7 @@ beforeAll(async () => {
 });
 
 conDatos('fuentes del estudio profundo', () => {
-  it('Lucas 1:9: el diccionario explica el incienso o el templo, y el léxico da el sentido en español', async () => {
+  it.runIf(HAS_FUENTES)('Lucas 1:9: el diccionario explica el incienso o el templo, y el léxico da el sentido en español', async () => {
     const interlinear = await load<Record<string, import('../../api/_investigar').Word[]>>('interlinear/luk/1.json');
     const fuentes = await mod.fuentesDetalladas(biblia, lucas, 1, 9, interlinear, []);
     const titulos = fuentes.map((f) => f.title).join(' | ');
@@ -47,7 +47,7 @@ conDatos('fuentes del estudio profundo', () => {
     expect(await mod.contextoDelPasaje(biblia, juan, 2, 1)).toBeNull();
   });
 
-  it('un capítulo entero trae más artículos y no repite las referencias de OpenBible', async () => {
+  it.runIf(HAS_FUENTES)('un capítulo entero trae más artículos y no repite las referencias de OpenBible', async () => {
     const interlinear = await load<Record<string, import('../../api/_investigar').Word[]>>('interlinear/luk/1.json');
     const xrefs = await load<Record<string, [string, number][]>>('xrefs/luk/1.json');
     const ya = Object.values(xrefs).flatMap((l) => l.slice(0, 2).map(([r]) => r));

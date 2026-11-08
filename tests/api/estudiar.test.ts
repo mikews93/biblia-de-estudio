@@ -8,7 +8,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { parseMindMap } from '../../src/lib/mapaMental';
 import { parseScript } from '../../src/lib/podcast';
 import { parseCards } from '../../src/lib/tarjetas';
-import { client, DATA_DIR, DB_URL, ensureSchema, HAS_DATA, Post, prepareEnv, request } from './helpers';
+import { client, DATA_DIR, DB_URL, ensureSchema, FUENTES, HAS_DATA, HAS_FUENTES, Post, prepareEnv, request } from './helpers';
 
 type Event = { type: string; text?: string; n?: number; label?: string; ref?: string; url?: string; nota?: string; message?: string };
 
@@ -202,9 +202,9 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
       'Comentario de toda la Biblia, Matthew Henry (1706-1721) · comentario sobre Juan 3',
       'Personas, lugares y momento histórico de Juan 3 (fichas y línea de tiempo de la app; descripciones en inglés)',
       // El estudio profundo detallado (api/_detalle.ts): diccionario Tyndale, léxico UBS y Treasury
-      'Diccionario bíblico Tyndale (moderno, evangélico, en español): artículos sobre Juan 3',
-      'Diccionario de las Sociedades Bíblicas Unidas (en español): las palabras del original de Juan 3',
-      'Más referencias de Juan 3 (Treasury of Scripture Knowledge, 1836)',
+      ...(FUENTES.diccionario ? ['Diccionario bíblico Tyndale (moderno, evangélico, en español): artículos sobre Juan 3'] : []),
+      ...(FUENTES.lexico ? ['Diccionario de las Sociedades Bíblicas Unidas (en español): las palabras del original de Juan 3'] : []),
+      ...(FUENTES.tsk ? ['Más referencias de Juan 3 (Treasury of Scripture Knowledge, 1836)'] : []),
     ]);
     // Las fichas de quienes aparecen (Nicodemo, de los fariseos) y el momento del ministerio de Jesús
     const fichas = JSON.stringify(docs[5].source.content);
@@ -647,7 +647,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     // Con las mismas fuentes que el estudio profundo, y una investigación corta antes del guion
     const pod = aiRequests.at(-1)!;
     const titulos = pod.messages[0].content.filter((b: { type: string }) => b.type === 'document').map((d: { title: string }) => d.title);
-    expect(titulos).toEqual(expect.arrayContaining([expect.stringContaining('Diccionario bíblico Tyndale'), expect.stringContaining('Treasury')]));
+    if (HAS_FUENTES) expect(titulos).toEqual(expect.arrayContaining([expect.stringContaining('Diccionario bíblico Tyndale'), expect.stringContaining('Treasury')]));
     expect(pod.tools.map((t: { name: string }) => t.name)).toEqual(expect.arrayContaining(['teologia', 'temas_biblicos']));
     expect(pod.system).toContain('Antes de escribir el guion investiga');
     expect(pod.messages[0].content.at(-1).text).toContain('costumbres, objetos o medidas');
