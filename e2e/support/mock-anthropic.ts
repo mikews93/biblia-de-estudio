@@ -143,6 +143,25 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
   const last = body.messages[body.messages.length - 1];
   const followUp = body.messages.length > 1 ? text(last.content) : '';
 
+  // El guion del audio dramatizado (api/dramatizado.ts): una escena con ambiente y un efecto; el versículo 1 lo
+  // reparte entre el narrador y un personaje, el 2 lo dice Dios desde el cielo, el 3 lo cambia (la app lo corrige) y
+  // los demás los lee el narrador.
+  if (system.startsWith('Escribes el guion de un capítulo dramatizado')) {
+    const versos = first.split('\n').flatMap((l) => {
+      const m = l.match(/^(\d+) (.+)$/);
+      return m ? [[Number(m[1]), m[2]] as const] : [];
+    });
+    const out = ['PERSONAJE JUAN | hombre | joven | Juan el Bautista', 'ESCENA A la orilla del río | ambiente: flowing river, gentle current'];
+    for (const [n, t] of versos) {
+      if (n === 1) {
+        const corte = t.indexOf(' ', Math.floor(t.length / 2));
+        out.push(`1 NARRADOR [slow, solemn]: ${t.slice(0, corte)}`, `1 JUAN [proclaiming]: ${t.slice(corte + 1)}`, 'EFECTO splashing water | 2');
+      } else if (n === 2) out.push(`2 DIOS aprobacion: ${t}`);
+      else if (n === 3) out.push(`3 NARRADOR: ${t} y algo que no dice la Biblia`);
+      else out.push(`${n} NARRADOR: ${t}`);
+    }
+    return { text: out.join('\n'), cite: false };
+  }
   if (system.startsWith('Traduces al español las fichas')) {
     // Conserva las marcas de referencia del original, como pide la traducción
     const marks = first.match(/⟦[^⟧]+⟧/g) ?? [];

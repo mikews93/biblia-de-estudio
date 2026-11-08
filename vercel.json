@@ -34,6 +34,11 @@
     "api/podcast-grabado.ts": {
       "maxDuration": 300
     },
+    "api/dramatizado.ts": {
+      "includeFiles": "{dist/data/{books.json,versions.json,text/rv1909/**},pipeline/audio_dramatizado/{personajes,voz-de-dios}.md,public/audio/ambiente/quietud.mp3}",
+      "maxDuration": 300,
+      "excludeFiles": "dist/**"
+    },
     "api/notificaciones.ts": {
       "maxDuration": 60
     },

@@ -78,6 +78,7 @@ import { hilosEn } from '@/lib/promesas';
 import { chrome, setChromeHidden, useAutoHide } from '@/lib/chrome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePantallaEncendida } from '@/lib/pantalla';
+import DramatizarHoja from '@/components/DramatizarHoja';
 
 export default function Reader() {
   const params = useLocalSearchParams<{ book: string; chapter: string; verse?: string; v?: string }>();
@@ -98,6 +99,7 @@ export default function Reader() {
   const [books, setBooks] = useState<Book[]>([]);
   const [versions, setVersions] = useState<Version[]>([]);
   const [showVersions, setShowVersions] = useState(false);
+  const [dramatizar, setDramatizar] = useState(false);
   const [verses, setVerses] = useState<Verse[] | null>(null);
   // Versiones con derechos: aviso del editor y notas al pie que hay que mostrar con el texto
   const [extras, setExtras] = useState<{ copyright: string | null; notes: Record<number, string[]> } | null>(null);
@@ -334,17 +336,22 @@ export default function Reader() {
       icon: (c: string) => <ListenIcon color={c} size={20} />,
       onPress: () => playChapter(bookId, chapter, title),
     },
-    ...(catalog.dramatizado.includes(recordingId(bookId, chapter))
-      ? [
-          {
-            key: 'dramatizado',
-            label: 'Dramatizado',
-            hint: 'Escuchar el capítulo dramatizado, con voces, efectos y música',
-            icon: (c: string) => <DramaIcon color={c} size={20} />,
-            onPress: () => playDramatized(bookId, chapter, title),
-          },
-        ]
-      : []),
+    // Las grabaciones hechas a mano suenan en seguida; los demás capítulos se dramatizan a pedido (DramatizarHoja).
+    catalog.dramatizado.includes(recordingId(bookId, chapter))
+      ? {
+          key: 'dramatizado',
+          label: 'Dramatizado',
+          hint: 'Escuchar el capítulo dramatizado, con voces, efectos y música',
+          icon: (c: string) => <DramaIcon color={c} size={20} />,
+          onPress: () => playDramatized(bookId, chapter, title),
+        }
+      : {
+          key: 'dramatizado',
+          label: 'Dramatizado',
+          hint: 'Dramatizado: narrador, personajes, ambiente y música',
+          icon: (c: string) => <DramaIcon color={c} size={20} />,
+          onPress: () => setDramatizar(true),
+        },
     {
       key: 'podcast',
       label: 'Pódcast',
@@ -500,6 +507,7 @@ export default function Reader() {
         onSettings={() => setShowSettings(true)}
         toolbar={book ? <ChapterTools groups={toolGroups} onStudy={() => setStudy({})} colors={colors} /> : undefined}
       />
+      {dramatizar && book && <DramatizarHoja book={bookId} chapter={chapter} title={title} colors={colors} onClose={() => setDramatizar(false)} />}
 
       <ScrollView
         ref={scroll}
