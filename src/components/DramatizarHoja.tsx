@@ -1,7 +1,7 @@
 // La hoja de «Dramatizado» en un capítulo que no viene grabado con la app. Si alguien ya lo dramatizó, suena en
 // seguida; si no, cuenta qué se va a preparar y lo prepara a pedido (api/dramatizado.ts), mostrando cada paso: el
 // guion, las voces y sonidos y la mezcla. Mientras tanto se puede cerrar y seguir leyendo: queda listo para todos.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import Appear from '@/components/Appear';
@@ -27,11 +27,20 @@ export default function DramatizarHoja({ book, chapter, title, colors, onClose }
   const wide = width >= 700;
   const version = useVersionPodcast();
   const drama = useDramaGrabado(book, chapter, version.id);
-  const { cuidador } = useAccount();
+  const { ready, usuario, cuidador } = useAccount();
+  // Si la cuenta todavía no sabe si cuida la app (la respuesta llega después de abrir), se espera un momento antes de
+  // reproducir: si no, a quien cuida le sonaría la grabación vieja sin dejarle rehacerla.
+  const [esperado, setEsperado] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setEsperado(true), 4000);
+    return () => clearTimeout(t);
+  }, []);
+  const sabeSiCuida = (ready && (!usuario || cuidador !== undefined)) || esperado;
   // Quien cuida la app, ante una grabación de antes de la dirección nueva, puede escucharla o rehacerla.
   const puedeRehacer = drama.estado === 'listo' && drama.inicial && !!drama.anterior && !!cuidador;
   // Si ya estaba listo al abrir, suena directamente; si se preparó con la hoja abierta, se ofrece «Escuchar».
-  const yaListo = drama.estado === 'listo' && drama.inicial && !puedeRehacer ? drama : null;
+  const esperandoCuenta = drama.estado === 'listo' && drama.inicial && !!drama.anterior && !puedeRehacer && !sabeSiCuida;
+  const yaListo = drama.estado === 'listo' && drama.inicial && !puedeRehacer && !esperandoCuenta ? drama : null;
   useEffect(() => {
     if (!yaListo) return;
     playDramatizedRemote(book, chapter, title, yaListo);
@@ -61,7 +70,7 @@ export default function DramatizarHoja({ book, chapter, title, colors, onClose }
           </View>
         </View>
 
-        {drama.estado === 'cargando' && (
+        {(drama.estado === 'cargando' || esperandoCuenta) && (
           <View style={styles.center}>
             <ActivityIndicator color={colors.accent} />
           </View>
