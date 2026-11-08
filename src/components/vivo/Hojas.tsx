@@ -360,7 +360,7 @@ export function PersonasSheet({
 
   return (
     <Sheet
-      title={`${sala.presentes.length} ${sala.presentes.length === 1 ? 'persona' : 'personas'} leyendo`}
+      title={`${sala.presentes.length + (sala.invitados ?? 0)} ${sala.presentes.length + (sala.invitados ?? 0) === 1 ? 'persona' : 'personas'} leyendo`}
       kicker={sala.sala.titulo.toUpperCase()}
       onClose={onClose}
       footer={
@@ -393,6 +393,19 @@ export function PersonasSheet({
           </View>
         );
       })}
+      {!!sala.invitados && (
+        <View style={[styles.person, { borderColor: colors.border }]}>
+          <View style={[styles.invitados, { backgroundColor: colors.accentSoft }]}>
+            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 14 }}>+{sala.invitados}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>
+              {sala.invitados === 1 ? '1 persona sigue sin cuenta' : `${sala.invitados} personas siguen sin cuenta`}
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 12.5 }}>Leen contigo; para responder o jugar, la app les pide entrar.</Text>
+          </View>
+        </View>
+      )}
       <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 14 }}>
         Quien guía pasa la hoja y pone las dinámicas. Sirve para que cada co-líder lleve su parte del encuentro.
       </Text>
@@ -415,5 +428,6 @@ const styles = StyleSheet.create({
   encuentro: { fontFamily: serif, fontSize: 19, fontWeight: '700', marginBottom: 10 },
   guiando: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, padding: 12, marginBottom: 12 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  invitados: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   give: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
 });

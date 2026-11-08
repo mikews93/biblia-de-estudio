@@ -444,7 +444,7 @@ const actions: Record<string, Handler> = {
       const n = (body.nueva ?? {}) as Json;
       if (n.tipo !== 'pregunta' && n.tipo !== 'repaso' && n.tipo !== 'dinamica') throw new Fail('Interacción no válida');
       const ruleta = n.tipo === 'repaso' && n.juego === 'ruleta';
-      // La dinámica sale del catálogo (src/lib/dinamicas.ts), no de lo que mande el teléfono.
+      // La dinámica sale del catálogo (src/lib/dinamicas.ts); sus pasos pueden venir escritos para el mensaje.
       const d = n.tipo === 'dinamica' ? dinamica(typeof n.dinamica === 'string' ? n.dinamica : '') : undefined;
       if (n.tipo === 'dinamica' && !d) throw new Fail('Dinámica no válida');
       const minutos = Number(n.minutos);
@@ -455,7 +455,8 @@ const actions: Record<string, Handler> = {
           titulo: d.nombre,
           dinamica: d.id,
           objetivo: d.objetivo,
-          pasos: d.pasos,
+          // Los pasos escritos para el mensaje (lo que hace cada persona) si quien predica los trae; si no, los del catálogo.
+          pasos: Array.isArray(n.pasos) && n.pasos.length ? n.pasos.slice(0, 8).map((p) => text(p, 400, 'un paso')) : d.pasos,
           paso: 0,
           reveladas: [],
           minutos: Number.isInteger(minutos) && minutos > 0 && minutos <= 60 ? minutos : d.minutos,

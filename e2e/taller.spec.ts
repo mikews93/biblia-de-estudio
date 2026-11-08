@@ -330,9 +330,9 @@ test('el catálogo de dinámicas se filtra por momento y muestra los pasos', asy
   await page.getByRole('radio', { name: 'Para aplicar y orar' }).click();
   await expect(page.getByText('Dos verdades y un deseo')).toHaveCount(0);
   const silla = page.getByRole('button', { name: /^Silla vacía/ });
-  await expect(page.getByText('El líder señala una silla vacía (o un espacio en el círculo).')).toHaveCount(0);
+  await expect(page.getByText('Miren la silla vacía (o el espacio libre en el círculo): representa a quien todavía no está.')).toHaveCount(0);
   await silla.click();
-  await expect(page.getByText('El líder señala una silla vacía (o un espacio en el círculo).')).toBeVisible();
+  await expect(page.getByText('Miren la silla vacía (o el espacio libre en el círculo): representa a quien todavía no está.')).toBeVisible();
   await expect(page.getByText('Idea de: Dinámica popular')).toBeVisible();
 });
 
