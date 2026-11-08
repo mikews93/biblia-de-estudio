@@ -35,7 +35,7 @@
       "maxDuration": 300
     },
     "api/dramatizado.ts": {
-      "includeFiles": "{dist/data/{books.json,versions.json,text/rv1909/**},pipeline/audio_dramatizado/{personajes,voz-de-dios}.md,public/audio/ambiente/quietud.mp3,public/audio/cortinas/**}",
+      "includeFiles": "{dist/data/{books.json,versions.json,text/rv1909/**},pipeline/audio_dramatizado/{personajes,voz-de-dios}.md,public/audio/ambiente/quietud.mp3,public/audio/cortinas/**,public/audio/sonidos/**}",
       "maxDuration": 300,
       "excludeFiles": "dist/**"
     },

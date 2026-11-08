@@ -34,6 +34,7 @@ import { put } from '@vercel/blob';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import postgres from 'postgres';
 
 import {
@@ -47,6 +48,7 @@ import {
   DIOS,
   JESUS,
   NARRADOR,
+  PREFIJO_BIBLIOTECA,
   revisarGuion,
   sinTags,
 } from '../src/lib/dramaGuion';
@@ -344,7 +346,8 @@ export function piezasDe(plan: Plan, voces: Record<string, string[]>): Pieza[] {
       } else if (b.tipo === 'efecto') add(b.pieza);
     }
   }
-  return [...todas.values()];
+  // Los sonidos de la biblioteca de Freesound ya están en la app: no se graban.
+  return [...todas.values()].filter((p) => !(p.tipo === 'sonido' && p.prompt.startsWith(PREFIJO_BIBLIOTECA)));
 }
 
 // ---------------------------------------------------------------- audio
@@ -388,6 +391,15 @@ function eco(m: Float32Array, taps: [number, number][]): Float32Array {
     const d = Math.round(s * RATE);
     for (let i = 0; i < m.length; i++) out[i + d] += m[i] * 0.8 * g;
   }
+  return out;
+}
+
+/** Los primeros `seg` segundos de un sonido, con medio segundo de salida suave. */
+function cortar(m: Float32Array, seg: number): Float32Array {
+  const n = Math.min(m.length, Math.round(seg * RATE));
+  const out = m.slice(0, n);
+  const f = Math.min(n, Math.round(0.5 * RATE));
+  for (let i = 0; i < f; i++) out[n - 1 - i] *= i / f;
   return out;
 }
 
@@ -853,6 +865,51 @@ export async function trasfondo(where: Target, ctx: { origen: string; cookie: st
   return partes.join('\n\n');
 }
 
+/** Un sonido real de la biblioteca (pipeline/audio_dramatizado/sonidos.mjs). */
+export type SonidoBiblioteca = { id: string; tipo: 'ambiente' | 'sonido'; descripcion: string; titulo: string; autor: string; licencia: 'CC0' | 'CC BY'; enlace: string };
+const SONIDOS_DIR = () => process.env.DRAMA_SONIDOS_DIR ?? path.join(ROOT, 'public', 'audio', 'sonidos');
+let biblioteca: Promise<SonidoBiblioteca[]> | null = null;
+export const bibliotecaSonidos = () =>
+  (biblioteca ??= readFile(path.join(SONIDOS_DIR(), 'indice.json'), 'utf8')
+    .then((t) => (JSON.parse(t) as SonidoBiblioteca[]).filter((x) => x.licencia === 'CC0' || x.licencia === 'CC BY'))
+    .catch(() => []));
+const deBiblioteca = (prompt: string) => (prompt.startsWith(PREFIJO_BIBLIOTECA) ? prompt.slice(PREFIJO_BIBLIOTECA.length) : null);
+
+/** Quita del plan los sonidos de la biblioteca que no existen (la IA pudo inventar un nombre). */
+export function conBiblioteca(plan: Plan, ids: Set<string>): Plan {
+  const vale = (p: string) => {
+    const id = deBiblioteca(p);
+    return id === null || ids.has(id);
+  };
+  return {
+    ...plan,
+    escenas: plan.escenas.map((e) => ({
+      ...e,
+      ...(e.ambiente && !vale(e.ambiente) ? { ambiente: undefined } : {}),
+      pasos: e.pasos.filter((p) => !(('efecto' in p && !vale(p.efecto)) || ('sonido' in p && !vale(p.sonido)))),
+    })),
+  };
+}
+
+/** La lista de sonidos reales que la IA puede pedir. */
+function textoBiblioteca(lista: SonidoBiblioteca[]): string {
+  if (!lista.length) return '';
+  return `\n\nBiblioteca de sonidos reales (grabaciones de Freesound). Cuando uno encaja con lo que el texto nombra, úsalo en vez de describirlo: escribe lib:<id> como ambiente de la ESCENA (los de tipo ambiente) o en SONIDO y EFECTO (los de tipo sonido), con sus segundos como siempre. Si ninguno encaja, describe el sonido en inglés como de costumbre.\n${lista
+    .map((x) => `- lib:${x.id} (${x.tipo}): ${x.descripcion}`)
+    .join('\n')}`;
+}
+
+/** Quién grabó los sonidos de la biblioteca que usa el capítulo (CC BY pide citarlo). */
+export function creditoSonidos(plan: Plan, lista: SonidoBiblioteca[]): string {
+  const usados = new Set(
+    plan.escenas.flatMap((e) => [e.ambiente ?? '', ...e.pasos.map((p) => ('efecto' in p ? p.efecto : 'sonido' in p ? p.sonido : ''))]).map(deBiblioteca).filter(Boolean),
+  );
+  const fichas = lista.filter((x) => usados.has(x.id));
+  if (!fichas.length) return '';
+  const citas = fichas.filter((x) => x.licencia === 'CC BY').map((x) => `«${x.titulo}» de ${x.autor} (CC BY)`);
+  return citas.length ? ` Sonidos de Freesound: ${citas.join(', ')}${citas.length < fichas.length ? ' y otros CC0' : ''}.` : ' Sonidos CC0 de Freesound.';
+}
+
 async function fichas(): Promise<string> {
   const leer = (f: string) => readFile(path.join(ROOT, 'pipeline', 'audio_dramatizado', f), 'utf8').catch(() => '');
   const [personajes, dios] = await Promise.all([leer('personajes.md'), leer('voz-de-dios.md')]);
@@ -921,7 +978,7 @@ async function escribirGuion(where: Target, versos: [number, string][], fondoTex
   const libro = books.find((b) => b.id === where.book)?.name ?? where.book;
   const version = versions.find((v) => v.id === where.version) ?? { abbr: where.version.toUpperCase(), name: where.version };
   const client = new Anthropic({ maxRetries: 1, timeout: 260_000 });
-  const fichasTexto = await fichas();
+  const [fichasTexto, lista] = await Promise.all([fichas(), bibliotecaSonidos()]);
   const message = await client.messages
     .stream({
       model: MODELO_IA,
@@ -929,7 +986,11 @@ async function escribirGuion(where: Target, versos: [number, string][], fondoTex
       // Un capítulo corto se piensa más (la hoja de dirección); uno largo, con menos, para no pasarse del tiempo.
       output_config: { effort: versos.length <= ESFUERZO_HASTA ? 'medium' : 'low' },
       system: [
-        { type: 'text', text: SYSTEM + (fichasTexto ? `\n\nFichas de personajes y de la voz de Dios:\n\n${fichasTexto}` : ''), cache_control: { type: 'ephemeral' } },
+        {
+          type: 'text',
+          text: SYSTEM + textoBiblioteca(lista) + (fichasTexto ? `\n\nFichas de personajes y de la voz de Dios:\n\n${fichasTexto}` : ''),
+          cache_control: { type: 'ephemeral' },
+        },
       ],
       messages: [
         {
@@ -960,7 +1021,9 @@ async function faseGuion(s: Sql, where: Target, ctx: Contexto, fallos: number) {
   if (!versos.length) throw new Error('Capítulo sin texto');
   // Si la IA falló dos veces, el capítulo se graba igual, leído entero por el narrador con su fondo.
   const guion = fallos >= MAX_FALLOS - 1 ? '' : await escribirGuion(where, versos, await trasfondo(where, ctx).catch(() => ''));
-  const { plan, corregidos } = revisarGuion(guion, versos);
+  const revisado = revisarGuion(guion, versos);
+  const corregidos = revisado.corregidos;
+  const plan = conBiblioteca(revisado.plan, new Set((await bibliotecaSonidos()).map((x) => x.id)));
   const fijas = Object.fromEntries(
     (await s<{ personaje: string; edad: string; voz: string }[]>`select personaje, edad, voz from drama_voz
       where personaje in ${s(plan.personajes.map((p) => p.id).concat(['-']))}`).map((r) => [vozFija({ id: r.personaje, edad: r.edad }), r.voz]),
@@ -1093,8 +1156,16 @@ export async function mezclar(
   const audio = (p: Pieza) => {
     let a = cache.get(p.clave);
     if (!a) {
-      const url = piezas[p.clave];
-      a = url ? bajar(url) : Promise.resolve(null);
+      const lib = p.tipo === 'sonido' ? deBiblioteca(p.prompt) : null;
+      if (lib && p.tipo === 'sonido') {
+        // Un sonido real de la biblioteca: un ambiente suena entero (en bucle); un detalle o efecto, lo que pide el guion.
+        a = bajar(pathToFileURL(path.join(SONIDOS_DIR(), `${lib}.mp3`)).href)
+          .then((m) => (p.loop ? m : cortar(m, p.dur)))
+          .catch(() => null);
+      } else {
+        const url = piezas[p.clave];
+        a = url ? bajar(url) : Promise.resolve(null);
+      }
       cache.set(p.clave, a);
     }
     return a;
@@ -1230,7 +1301,7 @@ async function faseMezcla(s: Sql, where: Target, plan: Plan, voces: Record<strin
   const base = `${where.clave.replace(':', '-')}-${where.chapter}-${tag}`;
   const [url, urlVoces] = await Promise.all([guardar(`${base}.mp3`, mp3), guardar(`${base}-voces.mp3`, soloVoces)]);
   await s`update drama_grabado set estado = 'listo', url = ${url}, url_voces = ${urlVoces}, tiempos = ${s.json(tiempos)},
-      duracion = ${Math.round(duracion)}, credito = ${CREDITO(where.version)}, trabajando = null, fallos = 0, error = null,
+      duracion = ${Math.round(duracion)}, credito = ${CREDITO(where.version) + creditoSonidos(plan, await bibliotecaSonidos())}, trabajando = null, fallos = 0, error = null,
       actualizado = now()
     where libro = ${where.clave} and capitulo = ${where.chapter}`;
 }

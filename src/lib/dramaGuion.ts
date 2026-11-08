@@ -117,7 +117,13 @@ const numero = (s: string | undefined, def: number, min: number, max: number) =>
   Math.min(max, Math.max(min, Number((s ?? '').replace(',', '.')) || def));
 
 /** Los sonidos se piden en inglés a ElevenLabs: texto corto sin saltos ni signos raros. */
-const sonido = (s: string) => s.replace(/[^\p{L}\p{N} ,.'-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+/** Un sonido de la biblioteca de Freesound (public/audio/sonidos) se pide como «lib:ovejas». */
+export const PREFIJO_BIBLIOTECA = 'lib:';
+const sonido = (s: string) => {
+  const lib = s.match(/^\s*lib\s*:\s*([a-z0-9-]{2,40})\b/i);
+  if (lib) return `${PREFIJO_BIBLIOTECA}${lib[1].toLowerCase()}`;
+  return s.replace(/[^\p{L}\p{N} ,.'-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+};
 
 type Item =
   | { tipo: 'escena'; titulo: string; ambiente?: string; espacio?: Espacio; ritmo?: Ritmo }
