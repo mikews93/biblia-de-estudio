@@ -114,13 +114,22 @@ export function nivelar(m: Float32Array, rate: number, tramos: Tramo[], objetivo
  * muestras, suavizada con una media del mismo largo. Así baja antes del pico y vuelve después, sin recortar la onda.
  */
 function limitar(m: Float32Array, w: number) {
+  const g = gananciasLimite(m, w);
+  for (let i = 0; i < m.length; i++) m[i] *= g[i];
+}
+
+/**
+ * Las ganancias del limitador para la señal `m` (o, en estéreo, para el mayor de los dos canales en cada muestra): así
+ * los dos canales bajan juntos.
+ */
+export function gananciasLimite(m: Float32Array, w: number, techo = TECHO): Float32Array {
   const n = m.length;
   const minimo = new Float32Array(n);
   // Mínimo en la ventana [i − w, i + w] con una cola monótona: O(n).
   const cola = new Int32Array(n);
   let ini = 0;
   let fin = 0;
-  const pide = (k: number) => Math.min(1, TECHO / (Math.abs(m[k]) || 1e-9));
+  const pide = (k: number) => Math.min(1, techo / (Math.abs(m[k]) || 1e-9));
   for (let i = 0, k = 0; i < n; i++) {
     for (; k < n && k <= i + w; k++) {
       while (fin > ini && pide(cola[fin - 1]) >= pide(k)) fin--;
@@ -138,7 +147,7 @@ function limitar(m: Float32Array, w: number) {
     const c = i - (w >> 1);
     if (c >= 0 && c < n) g[c] = suma / Math.min(i + 1, w, n - (i - w + 1));
   }
-  for (let i = 0; i < n; i++) m[i] *= g[i];
+  return g;
 }
 
 /** PCM de 16 bits (little endian), como lo entrega ElevenLabs, a muestras entre −1 y 1. */

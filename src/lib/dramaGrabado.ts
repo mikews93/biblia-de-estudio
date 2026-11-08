@@ -7,7 +7,9 @@ import { aiDenied, aiHeaders } from './comunidad';
 const API = process.env.EXPO_PUBLIC_API_URL ?? '';
 const POLL_MS = 6000;
 
-export type Dramatizado = { url: string; duracion: number; credito: string; tiempos: [number, number][] };
+/** `soloVoces`: la misma grabación sin música, ambientes ni efectos (las hechas antes de noviembre de 2026 no la tienen). */
+/** `anterior`: grabado antes de la dirección nueva (sin «solo voces»); quien cuida la app puede rehacerlo. */
+export type Dramatizado = { url: string; duracion: number; credito: string; tiempos: [number, number][]; soloVoces?: string; anterior?: boolean };
 export type FaseDrama = 'guion' | 'voces' | 'mezcla';
 export type EstadoDrama =
   | { estado: 'cargando' }
@@ -30,11 +32,11 @@ export async function consultarDrama(book: string, chapter: number, version?: st
   return body.estado === 'error' ? { estado: 'ninguno' } : body;
 }
 
-async function pedir(book: string, chapter: number, version?: string): Promise<Answer> {
+async function pedir(book: string, chapter: number, version?: string, rehacer = false): Promise<Answer> {
   const res = await fetch(`${API}/api/dramatizado`, {
     method: 'POST',
     headers: await aiHeaders(),
-    body: JSON.stringify({ book, chapter, ...(version && version !== 'rv1909' && { version }) }),
+    body: JSON.stringify({ book, chapter, ...(version && version !== 'rv1909' && { version }), ...(rehacer && { rehacer }) }),
   });
   if (res.status === 401) aiDenied();
   const body = await res.json().catch(() => null);
@@ -71,15 +73,15 @@ export function useDramaGrabado(book: string, chapter: number, version?: string)
     return () => clearInterval(timer);
   }, [grabando, book, chapter, version]);
 
-  const record = useCallback(async () => {
+  const record = useCallback(async (rehacer = false) => {
     setState({ estado: 'grabando', fase: 'guion', hechas: 0, total: 0 });
     try {
-      const a = await pedir(book, chapter, version);
+      const a = await pedir(book, chapter, version, rehacer);
       if (alive.current) setState(a);
     } catch (e) {
       if (alive.current) setState({ estado: 'error', error: e instanceof Error ? e.message : 'No se pudo dramatizar.' });
     }
   }, [book, chapter, version]);
 
-  return { ...state, record } as EstadoDrama & { record: () => Promise<void> };
+  return { ...state, record } as EstadoDrama & { record: (rehacer?: boolean) => Promise<void> };
 }

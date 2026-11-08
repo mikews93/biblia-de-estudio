@@ -19,6 +19,7 @@ import {
   seekChapter,
   setLocation,
   setRate,
+  setSoloVoces,
   setVersion,
   speakerNow,
   toggle,
@@ -315,6 +316,35 @@ function Bar() {
           </View>
           {file?.note && <Text style={[styles.note, { color: colors.muted }]}>{file.note}</Text>}
           {audio.kind === 'podcast' && <PodcastAjustes colors={colors} dispositivo={!!speech} extras={extras} />}
+          {audio.kind === 'dramatizado' && file?.variantes && (
+            <View style={styles.mezcla}>
+              <View
+                style={[styles.switch, styles.switchMezcla, { backgroundColor: colors.background, borderColor: colors.border }]}
+                accessibilityRole="tablist"
+                accessibilityLabel="Qué se oye en el dramatizado"
+              >
+                {(
+                  [
+                    [false, 'Con música y ambiente'],
+                    [true, 'Solo voces'],
+                  ] as const
+                ).map(([solo, label]) => {
+                  const on = audio.soloVoces === solo;
+                  return (
+                    <Pressable
+                      key={label}
+                      onPress={() => !on && setSoloVoces(solo)}
+                      accessibilityRole="tab"
+                      aria-selected={on}
+                      style={[styles.segment, on && { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    >
+                      <Text style={{ color: on ? colors.accent : colors.muted, fontWeight: '700', fontSize: 12.5 }}>{label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
           <Text style={[styles.credit, { color: colors.muted }]} numberOfLines={2}>
             {speech ? 'Voz del dispositivo · guion preparado con IA a partir de las fuentes de la app' : file?.credit}
           </Text>
@@ -425,6 +455,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
+  mezcla: { alignItems: 'center' },
+  switchMezcla: { alignSelf: 'center', marginTop: 6 },
   versions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   version: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 5 },
   message: { fontSize: 13, marginVertical: 10 },

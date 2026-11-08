@@ -9,7 +9,7 @@ import { DramaIcon, PlayIcon } from '@/components/audioIcons';
 import Welcome from '@/components/comunidad/Welcome';
 import { CheckIcon, MusicIcon, PeopleIcon, WavesIcon } from '@/components/icons';
 import { playDramatizedRemote } from '@/lib/audio';
-import { NEEDS_ACCOUNT } from '@/lib/comunidad';
+import { NEEDS_ACCOUNT, useAccount } from '@/lib/comunidad';
 import { type FaseDrama, useDramaGrabado } from '@/lib/dramaGrabado';
 import { useVersionPodcast } from '@/lib/herramientas';
 import { Colors } from '@/lib/theme';
@@ -17,9 +17,9 @@ import { Colors } from '@/lib/theme';
 type Props = { book: string; chapter: number; title: string; colors: Colors; onClose: () => void };
 
 const PASOS: { fase: FaseDrama; titulo: string; detalle: string }[] = [
-  { fase: 'guion', titulo: 'Guion', detalle: 'Reparte el texto entre el narrador y los personajes, sin cambiar una palabra' },
-  { fase: 'voces', titulo: 'Voces y sonidos', detalle: 'Graba cada versículo y el ambiente de cada escena' },
-  { fase: 'mezcla', titulo: 'Mezcla', detalle: 'Une todo con un fondo musical suave' },
+  { fase: 'guion', titulo: 'Guion', detalle: 'Dirige cada escena y reparte el texto entre el narrador y los personajes, sin cambiar una palabra' },
+  { fase: 'voces', titulo: 'Voces y sonidos', detalle: 'Graba cada escena de corrido, con el ambiente, los sonidos y los efectos' },
+  { fase: 'mezcla', titulo: 'Mezcla', detalle: 'Pone cada voz en su lugar, con el eco del sitio y la música de entrada y cierre' },
 ];
 
 export default function DramatizarHoja({ book, chapter, title, colors, onClose }: Props) {
@@ -27,8 +27,11 @@ export default function DramatizarHoja({ book, chapter, title, colors, onClose }
   const wide = width >= 700;
   const version = useVersionPodcast();
   const drama = useDramaGrabado(book, chapter, version.id);
+  const { cuidador } = useAccount();
+  // Quien cuida la app, ante una grabación de antes de la dirección nueva, puede escucharla o rehacerla.
+  const puedeRehacer = drama.estado === 'listo' && drama.inicial && !!drama.anterior && !!cuidador;
   // Si ya estaba listo al abrir, suena directamente; si se preparó con la hoja abierta, se ofrece «Escuchar».
-  const yaListo = drama.estado === 'listo' && drama.inicial ? drama : null;
+  const yaListo = drama.estado === 'listo' && drama.inicial && !puedeRehacer ? drama : null;
   useEffect(() => {
     if (!yaListo) return;
     playDramatizedRemote(book, chapter, title, yaListo);
@@ -70,12 +73,12 @@ export default function DramatizarHoja({ book, chapter, title, colors, onClose }
               Este capítulo todavía no está dramatizado. Prepáralo y quedará listo para todos los que leen la {version.sigla}.
             </Text>
             <View style={styles.features}>
-              <Feature colors={colors} icon={<PeopleIcon color={colors.accent} size={17} />} text="Narrador y personajes con su propia voz" />
-              <Feature colors={colors} icon={<WavesIcon color={colors.accent} size={17} />} text="El ambiente de cada escena" />
-              <Feature colors={colors} icon={<MusicIcon color={colors.accent} size={17} />} text="Un fondo musical suave" />
+              <Feature colors={colors} icon={<PeopleIcon color={colors.accent} size={17} />} text="Narrador y personajes con su propia voz, la misma en toda la Biblia" />
+              <Feature colors={colors} icon={<WavesIcon color={colors.accent} size={17} />} text="El lugar de cada escena: su eco, su ambiente y sus sonidos" />
+              <Feature colors={colors} icon={<MusicIcon color={colors.accent} size={17} />} text="Música de entrada y de cierre (o solo voces, si lo prefieres)" />
             </View>
             <Pressable
-              onPress={drama.record}
+              onPress={() => drama.record()}
               accessibilityRole="button"
               style={({ pressed }) => [styles.primary, { backgroundColor: colors.accent }, pressed && styles.pressed]}
             >
@@ -121,13 +124,33 @@ export default function DramatizarHoja({ book, chapter, title, colors, onClose }
           </>
         )}
 
+        {drama.estado === 'listo' && puedeRehacer && (
+          <>
+            <Text style={[styles.body, { color: colors.text }]}>
+              Este capítulo se grabó antes de la dirección nueva. Puedes escucharlo así o rehacerlo con escenas de corrido, voces fijas,
+              sonidos reales y música; mientras se rehace, nadie lo puede escuchar.
+            </Text>
+            <Pressable onPress={escuchar} accessibilityRole="button" style={({ pressed }) => [styles.primary, { backgroundColor: colors.accent }, pressed && styles.pressed]}>
+              <PlayIcon color={colors.surface} size={20} />
+              <Text style={[styles.primaryText, { color: colors.surface }]}>Escuchar · {Math.max(1, Math.round(drama.duracion / 60))} min</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => drama.record(true)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.secondary, { borderColor: colors.border }, pressed && styles.pressed]}
+            >
+              <Text style={[styles.secondaryText, { color: colors.text }]}>Rehacer con la dirección nueva</Text>
+            </Pressable>
+          </>
+        )}
+
         {drama.estado === 'error' &&
           (drama.error === NEEDS_ACCOUNT ? (
             <Welcome
               kind="ia"
               title="Dramatiza este capítulo"
               intro="Preparar un capítulo con voces naturales cuesta, así que se hace con una cuenta gratuita. Al terminar, queda para todos."
-              onReady={drama.record}
+              onReady={() => drama.record()}
             />
           ) : (
             <>
