@@ -48,7 +48,6 @@ const LISTA = [
   { id: 'cadenas', tipo: 'sonido', consultas: ['chains rattle', 'metal chain', 'chain'], palabras: ['chain', 'chains', 'shackle'], descripcion: 'chains rattling', dur: [1, 10] },
   { id: 'martillo-clavos', tipo: 'sonido', consultas: ['hammer nail', 'hammering nails'], palabras: ['hammer', 'nail'], descripcion: 'hammering nails into wood', dur: [1, 8] },
   { id: 'espadas', tipo: 'sonido', consultas: ['sword clash', 'sword unsheath', 'sword'], palabras: ['sword', 'blade'], descripcion: 'swords drawn and clashing', dur: [1, 10] },
-  { id: 'trueno', tipo: 'sonido', consultas: ['thunder rumble', 'distant thunder', 'thunder'], palabras: ['thunder'], descripcion: 'distant thunder rumbling', dur: [3, 25] },
   { id: 'cuerno-shofar', tipo: 'sonido', consultas: ['shofar', 'ram horn', 'horn blow'], palabras: ['shofar', 'horn'], descripcion: "a ram's horn (shofar) blown", dur: [2, 15] },
   { id: 'viento-fuerte', tipo: 'sonido', consultas: ['wind gust', 'strong wind', 'howling wind'], palabras: ['wind', 'gust'], descripcion: 'a strong gust of wind', dur: [2, 15] },
 ];

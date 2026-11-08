@@ -348,18 +348,6 @@
     "duracion": 1.2
   },
   {
-    "id": "trueno",
-    "tipo": "sonido",
-    "descripcion": "distant thunder rumbling",
-    "titulo": "thunder.rumble.loop.ogg",
-    "autor": "xUMR",
-    "licencia": "CC0",
-    "licenciaUrl": "http://creativecommons.org/publicdomain/zero/1.0/",
-    "enlace": "https://freesound.org/people/xUMR/sounds/486558/",
-    "freesound": 486558,
-    "duracion": 4.3
-  },
-  {
     "id": "cuerno-shofar",
     "tipo": "sonido",
     "descripcion": "a ram's horn (shofar) blown",
