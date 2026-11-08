@@ -38,7 +38,7 @@ process.env.AUTH_SECRET ??= 'secreto-de-prueba-para-auth-js';
 
 type Handler = (request: Request) => Promise<Response>;
 const handlers = new Map<string, Promise<Record<string, Handler>>>();
-const FUNCTIONS = ['audio', 'buscar', 'comentario', 'auth', 'comunidades', 'estudiar', 'notificaciones', 'podcast-grabado', 'sincronizar', 'vivo'];
+const FUNCTIONS = ['audio', 'buscar', 'comentario', 'auth', 'comunidades', 'estudiar', 'notificaciones', 'podcast-grabado', 'dramatizado', 'sincronizar', 'vivo'];
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

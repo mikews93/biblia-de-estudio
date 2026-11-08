@@ -62,11 +62,48 @@ test.describe('Reproductor único', () => {
     await expect(v(page.getByText('Audio dramatizado', { exact: true }))).toHaveCount(0);
   });
 
-  test('sin dramatizado publicado, el capítulo solo ofrece la lectura', async ({ page }) => {
+  test('un capítulo sin dramatizado se dramatiza a pedido, se ve cada paso y luego suena en la barra', async ({ page, request }) => {
     await page.route('**/audio/index.json', (r) => r.fulfill({ json: { dramatizado: [], podcast: [] } }));
-    await page.goto('/marcos/1');
-    await expect(v(page.getByRole('button', { name: 'Escuchar la lectura del capítulo' }))).toBeVisible();
-    await expect(page.getByRole('button', { name: /dramatizado/ })).toHaveCount(0);
+    // El servidor simulado: nada, luego el guion, las voces a medias, la mezcla y listo (cada consulta avanza).
+    const pasos = [
+      { estado: 'grabando', fase: 'guion', hechas: 0, total: 0 },
+      { estado: 'grabando', fase: 'voces', hechas: 12, total: 30 },
+      { estado: 'grabando', fase: 'mezcla', hechas: 30, total: 30 },
+      { estado: 'listo', url: '/prueba/drama.mp3', duracion: 12, credito: 'Dramatizado de prueba', tiempos: [[1, 0], [2, 4], [3, 8]] },
+    ];
+    let paso = -1;
+    let pedido: Record<string, unknown> | null = null;
+    await page.route('**/api/dramatizado**', async (r) => {
+      if (r.request().method() === 'POST') {
+        pedido = r.request().postDataJSON();
+        paso = 0;
+      } else if (paso >= 0 && paso < pasos.length - 1) paso++;
+      await r.fulfill({ json: paso < 0 ? { estado: 'ninguno' } : pasos[paso] });
+    });
+    await page.route('**/prueba/drama.mp3', (r) => r.fulfill({ body: TONO, contentType: 'audio/mpeg' }));
+    await conSesion(page, await cuentaNueva(request, 'Oyente'));
+
+    await page.goto('/marcos/2');
+    await abrirHoja(page, 'escuchar');
+    await v(page.getByRole('button', { name: /^Dramatizado: narrador, personajes/ })).click();
+    await expect(v(page.getByText('Este capítulo todavía no está dramatizado.', { exact: false }))).toBeVisible();
+    await v(page.getByRole('button', { name: 'Dramatizar este capítulo' })).click();
+    expect(pedido).toMatchObject({ book: 'mrk', chapter: 2 });
+    await expect(v(page.getByLabel('Guion: en curso'))).toBeVisible();
+    await expect(v(page.getByLabel('Voces y sonidos: en curso'))).toBeVisible({ timeout: 15_000 });
+    await expect(v(page.getByText('40 %'))).toBeVisible();
+    await expect(v(page.getByText(/¡Listo!/))).toBeVisible({ timeout: 20_000 });
+    await v(page.getByRole('button', { name: /^Escuchar · 1 min/ })).click();
+    await expect(v(page.getByText('Audio dramatizado', { exact: true }))).toBeVisible();
+    await expect(v(page.getByRole('tab', { name: 'Dramatizado', selected: true }))).toBeVisible();
+    await expect(v(page.getByText('Dramatizado de prueba'))).toBeVisible();
+
+    // Otra vez en el mismo capítulo, ya listo: suena sin abrir la hoja de pedirlo.
+    await v(page.getByRole('button', { name: 'Cerrar el reproductor' })).click();
+    await abrirHoja(page, 'escuchar');
+    await v(page.getByRole('button', { name: /^Dramatizado: narrador, personajes/ })).click();
+    await expect(v(page.getByText('Audio dramatizado', { exact: true }))).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Dramatizar este capítulo' })).toHaveCount(0);
   });
 
   test('el pódcast con voces naturales se graba al pedirlo y suena en la barra', async ({ page, request }, info) => {
