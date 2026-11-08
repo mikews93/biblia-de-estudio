@@ -99,7 +99,7 @@ const AMBIENTE_DB = -24;
 const SONIDO_DB = -17;
 const EFECTO_DB = -10;
 const FONDO_DB = -28;
-const MUSICA_DB = -9;
+const MUSICA_DB = -5;
 /** Cuánto se apartan el fondo y la música cuando alguien habla. */
 const APARTA_FONDO_DB = -4;
 const APARTA_MUSICA_DB = -11;
@@ -1041,8 +1041,39 @@ export type Cortinas = { entrada: Estereo | null; paso: Estereo | null; cierre: 
 async function cortinas(tono: string | undefined): Promise<Cortinas> {
   const dir = process.env.DRAMA_CORTINAS_DIR ?? path.join(ROOT, 'public', 'audio', 'cortinas');
   const t = tono ?? 'paz';
-  const [entrada, paso, cierre] = await Promise.all(['entrada', 'paso', 'cierre'].map((k) => leerEstereo(path.join(dir, `${t}-${k}.mp3`))));
+  const [entrada, paso, cierre] = await Promise.all(
+    ['entrada', 'paso', 'cierre'].map((k) =>
+      leerEstereo(path.join(dir, `${t}-${k}.mp3`)).then((m) => {
+        const x = m && sinBordes(m);
+        return x && estereoARms(x);
+      }),
+    ),
+  );
   return { entrada, paso, cierre };
+}
+
+/** Las dos pistas a −20 dBFS de RMS juntas (Eleven Music entrega cortinas de volúmenes muy distintos). */
+function estereoARms(m: Estereo, db = -20): Estereo {
+  let suma = 0;
+  for (let i = 0; i < m.l.length; i++) suma += m.l[i] * m.l[i] + m.r[i] * m.r[i];
+  const rms = Math.sqrt(suma / Math.max(1, 2 * m.l.length));
+  if (rms < 1e-5) return m;
+  const g = lineal(db) / rms;
+  return { l: m.l.map((x) => x * g), r: m.r.map((x) => x * g) };
+}
+
+/** Sin el silencio del principio y del final (Eleven Music deja hasta un segundo): así se ajustan bien a la voz. */
+export function sinBordes(m: Estereo, db = -45): Estereo | null {
+  const umbral = lineal(db);
+  const suena = (i: number) => Math.abs(m.l[i]) > umbral || Math.abs(m.r[i]) > umbral;
+  let a = 0;
+  while (a < m.l.length && !suena(a)) a++;
+  let b = m.l.length - 1;
+  while (b > a && !suena(b)) b--;
+  if (b - a < Math.round(0.5 * RATE)) return null;
+  const de = Math.max(0, a - Math.round(0.02 * RATE));
+  const hasta = Math.min(m.l.length, b + Math.round(0.1 * RATE));
+  return { l: m.l.subarray(de, hasta), r: m.r.subarray(de, hasta) };
 }
 const SIN_CORTINAS: Cortinas = { entrada: null, paso: null, cierre: null };
 
@@ -1140,8 +1171,9 @@ export async function mezclar(
     }
     const ultima = ie === plan.escenas.length - 1;
     if (!ultima && musica.paso) {
-      clips.push({ at: t, m: musica.paso, gain: lineal(MUSICA_DB), bus: 'musica' });
-      t += Math.max(s(PAUSA_ESCENA[ritmo]), musica.paso.l.length - s(0.8));
+      // El paso entra cuando se apaga la última voz y la escena siguiente empieza mientras se va.
+      clips.push({ at: Math.max(0, t - s(0.6)), m: musica.paso, gain: lineal(MUSICA_DB), bus: 'musica' });
+      t += Math.max(s(PAUSA_ESCENA[ritmo]), musica.paso.l.length - s(2.5));
     } else if (!ultima) t += s(PAUSA_ESCENA[ritmo]);
   }
   if (musica.cierre) {
