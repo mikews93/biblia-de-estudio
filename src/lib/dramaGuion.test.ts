@@ -94,3 +94,15 @@ describe('la hoja de dirección', () => {
     expect('linea' in items[0] && items[0].linea.tag).toBeUndefined();
   });
 });
+
+describe('la voz descrita de cada personaje', () => {
+  it('lee la descripción en inglés y la limpia', () => {
+    const { personajes } = leerGuion(
+      'PERSONAJE ZACARIAS | hombre | mayor | Zacarías | voz: old priest, tired, gentle\nPERSONAJE MARIA | mujer | joven | María\nPERSONAJE X | hombre | adulto | X | voz: <script>deep!</script>',
+    );
+    expect(personajes[0]).toMatchObject({ id: 'ZACARIAS', nombre: 'Zacarías', voz: 'old priest, tired, gentle' });
+    expect(personajes[1].nombre).toBe('María');
+    expect(personajes[1].voz).toBeUndefined();
+    expect(personajes[2].voz).not.toMatch(/[<>!]/);
+  });
+});

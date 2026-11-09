@@ -1,0 +1,41 @@
+name: Catálogo de voces para el dramatizado
+
+# Cuenta en la biblioteca de ElevenLabs las voces en español (pipeline/audio_dramatizado/
+# voces-catalogo.mjs): cuántas voces bien calificadas hay por género y edad. No gasta créditos. Necesita el secreto
+# ELEVENLABS_API_KEY.
+
+on:
+  push:
+    paths:
+      - pipeline/audio_dramatizado/voces-catalogo.mjs
+      - .github/workflows/voces-catalogo-dramatizado.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: voces-catalogo-dramatizado
+  cancel-in-progress: false
+
+jobs:
+  buscar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Buscar
+        run: node pipeline/audio_dramatizado/voces-catalogo.mjs
+      - name: Subir a la rama
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pipeline/audio_dramatizado/voces-catalogo.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(audio): count well-rated Spanish voices for the dramatized audio"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done

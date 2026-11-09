@@ -3,7 +3,7 @@
 //
 // Formato que escribe la IA (una cosa por línea):
 //   TONO esperanza
-//   PERSONAJE JUAN | hombre | joven | Juan el Bautista
+//   PERSONAJE JUAN | hombre | joven | Juan el Bautista | voz: young prophet, strong, rough
 //   ESCENA El desierto y el Jordán | ambiente: dry desert wind, open wilderness | espacio: abierto | ritmo: lento
 //   DIRECCION Juan grita a la multitud; el narrador cuenta despacio, con asombro contenido.
 //   SONIDO distant crowd murmuring by the river | 4
@@ -39,7 +39,8 @@ export const ESPACIOS: Espacio[] = ['abierto', 'interior', 'grande', 'cueva'];
 export type Tono = 'paz' | 'esperanza' | 'tension' | 'duelo' | 'gloria';
 export const TONOS: Tono[] = ['paz', 'esperanza', 'tension', 'duelo', 'gloria'];
 
-export type Personaje = { id: string; genero: Genero; edad: Edad; nombre: string };
+/** `voz`: cómo suena, en pocas palabras en inglés («old priest, tired, gentle»), para buscarle voz en la biblioteca. */
+export type Personaje = { id: string; genero: Genero; edad: Edad; nombre: string; voz?: string };
 /** `texto` puede llevar hasta dos indicaciones dentro («Sal de aquí, [short pause] Satanás»). */
 export type Linea = { voz: string; texto: string; tag?: string; registro?: Registro };
 export type Paso = { v: number; lineas: Linea[] } | { efecto: string; dur: number } | { sonido: string; dur: number } | { pausa: number };
@@ -157,6 +158,12 @@ function leerEscena(resto: string): Extract<Item, { tipo: 'escena' }> {
 }
 
 /** Lee el texto de la IA. Las líneas que no entiende se ignoran (los versículos que falten los lee el narrador). */
+/** La descripción de la voz, sin el «voz:» delante y solo con letras, comas y espacios. */
+function vozDescrita(texto: string | undefined): { voz?: string } {
+  const v = (texto ?? '').replace(/^\s*voz\s*:/i, '').replace(/[^\p{L}, -]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return v ? { voz: v } : {};
+}
+
 export function leerGuion(texto: string): { personajes: Personaje[]; items: Item[]; tono?: Tono } {
   const personajes: Personaje[] = [];
   const items: Item[] = [];
@@ -174,7 +181,8 @@ export function leerGuion(texto: string): { personajes: Personaje[]; items: Item
         id,
         genero: g.startsWith('m') ? 'mujer' : 'hombre',
         edad: EDADES.find((x) => normalizar(x) === e) ?? (e.startsWith('nin') ? 'niño' : e.startsWith('anc') || e.startsWith('viej') ? 'mayor' : 'adulto'),
-        nombre: (m[4] ?? m[1]).trim().slice(0, 60),
+        nombre: (m[4]?.split('|')[0] || m[1]).trim().slice(0, 60),
+        ...vozDescrita(m[4]?.split('|').slice(1).join(' ')),
       });
       continue;
     }
