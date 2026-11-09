@@ -167,6 +167,167 @@ async function vocesDeCuenta(): Promise<Voz[]> {
   }
 }
 
+/**
+ * Biblioteca de ElevenLabs: cuando el capítulo pide una voz que el reparto no tiene (una anciana, un niño, un tercer
+ * hombre mayor…), se busca una en español de ese género y edad, se añade a la cuenta y se apunta en drama_biblioteca.
+ * Si la cuenta ya no tiene sitio, se quita la añadida que lleva más tiempo sin usarse (se puede volver a añadir gratis
+ * cuando un personaje que la tenía vuelva a hablar).
+ */
+const EDAD_ELEVEN: Record<string, string> = { niño: 'young', joven: 'young', adulto: 'middle_aged', mayor: 'old' };
+const MAX_NUEVAS = Number(process.env.DRAMA_VOCES_NUEVAS ?? 6);
+// Ni una «voz de Dios» (la de Dios nunca es una sola), ni caricaturas ni voces de anuncios.
+const VOZ_DESCARTADA = /\b(god|dios|jesus|jes[uú]s|cartoon|caricatur|villain|villano|robot|asmr|sexy|seductive|news|noticias|commercial|anuncio)/i;
+
+type Biblio = { voz: string; dueno: string; genero: Genero; edad: Voz['edad']; nombre: string };
+
+async function eleven(ruta: string, init: RequestInit = {}) {
+  return fetch(`${ELEVEN_URL}${ruta}`, {
+    ...init,
+    headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY ?? '', 'Content-Type': 'application/json', ...(init.headers ?? {}) },
+    signal: AbortSignal.timeout(15_000),
+  });
+}
+
+type BiblioVoz = {
+  voice_id: string;
+  public_owner_id: string;
+  name?: string;
+  description?: string;
+  category?: string;
+  cloned_by_count?: number;
+  usage_character_count_1y?: number;
+  preview_url?: string | null;
+};
+/** Cuántas personas tienen que haber usado una voz de la biblioteca para darla por buena (DRAMA_VOZ_MIN_CLONES). */
+const MIN_CLONES = Number(process.env.DRAMA_VOZ_MIN_CLONES) || 200;
+/** Bien calificada: grabada por un profesional (o de alta calidad) y usada por muchos, con muestra para escucharla. */
+export const bienCalificada = (v: BiblioVoz) =>
+  !!v.preview_url && (v.category === 'professional' || v.category === 'high_quality') && (v.cloned_by_count ?? 0) >= MIN_CLONES;
+const calidad = (v: BiblioVoz) => Math.log10(1 + (v.cloned_by_count ?? 0)) * 2 + Math.log10(1 + (v.usage_character_count_1y ?? 0));
+const aBiblio = (v: BiblioVoz, genero: Genero, edad: string): Biblio => ({
+  voz: v.voice_id,
+  dueno: v.public_owner_id,
+  genero,
+  edad: edad === 'mayor' ? 'mayor' : edad === 'adulto' ? 'adulto' : 'joven',
+  nombre: v.name ?? v.voice_id,
+});
+
+async function buscarEnBiblioteca(genero: Genero, edad: string, evitar: Set<string>, descripcion?: string): Promise<Biblio | null> {
+  const base = { page_size: '100', language: 'es', gender: genero === 'mujer' ? 'female' : 'male', age: EDAD_ELEVEN[edad] ?? 'middle_aged', sort: 'usage_character_count_1y' };
+  // Primero lo que la IA describió (cada palabra por separado, de la más concreta a la más general) con acento
+  // latinoamericano como Abel; si no hay, sin descripción; y al final cualquier acento en español.
+  const palabras = (descripcion ?? '').split(/[ ,]+/).filter((w) => w.length > 3).slice(0, 3);
+  const intentos: Record<string, string>[] = [
+    ...palabras.map((w) => ({ accent: 'latin american', search: w })),
+    { accent: 'latin american' },
+    ...palabras.slice(0, 1).map((w) => ({ search: w })),
+    {},
+  ];
+  // Dos pasadas: primero solo voces bien calificadas (profesionales, usadas por muchos y con muestra); si ninguna encaja,
+  // cualquiera que no esté descartada, para no quedarnos nunca sin voz.
+  const vistas: BiblioVoz[][] = [];
+  for (const extra of intentos) {
+    const res = await eleven(`/v1/shared-voices?${new URLSearchParams({ ...base, ...extra })}`).catch(() => null);
+    if (!res?.ok) continue;
+    const body = (await res.json()) as { voices?: BiblioVoz[] };
+    const validas = (body.voices ?? []).filter((x) => !evitar.has(x.voice_id) && !VOZ_DESCARTADA.test(`${x.name ?? ''} ${x.description ?? ''}`));
+    vistas.push(validas);
+    const v = validas.filter(bienCalificada).sort((a, b) => calidad(b) - calidad(a))[0];
+    if (v) return aBiblio(v, genero, edad);
+  }
+  const v = vistas.flat()[0];
+  if (v) return aBiblio(v, genero, edad);
+  return null;
+}
+
+/** Añade a la cuenta una voz de la biblioteca; si no hay sitio, libera la añadida menos usada y lo intenta otra vez. */
+async function anadirACuenta(s: Sql, b: Biblio, enUso: Set<string>): Promise<boolean> {
+  for (let intento = 0; intento < 3; intento++) {
+    const res = await eleven(`/v1/voices/add/${encodeURIComponent(b.dueno)}/${encodeURIComponent(b.voz)}`, {
+      method: 'POST',
+      body: JSON.stringify({ new_name: `Zarza · ${b.nombre}`.slice(0, 100) }),
+    }).catch(() => null);
+    if (res?.ok) {
+      await s`insert into drama_biblioteca (voz, dueno, genero, edad, nombre, en_cuenta, usada) values
+          (${b.voz}, ${b.dueno}, ${b.genero}, ${b.edad}, ${b.nombre}, true, now())
+        on conflict (voz) do update set en_cuenta = true, usada = now()`;
+      return true;
+    }
+    const texto = res ? await res.text().catch(() => '') : '';
+    if (/already|exists/i.test(texto)) return true;
+    if (!/limit|slot|maximum|quota/i.test(texto)) {
+      console.error('dramatizado: no se pudo añadir la voz', b.voz, res?.status, texto.slice(0, 200));
+      return false;
+    }
+    const [vieja] = await s<{ voz: string }[]>`select voz from drama_biblioteca where en_cuenta and voz not in ${s(['-', ...enUso])}
+      order by usada asc limit 1`;
+    if (!vieja) return false;
+    await eleven(`/v1/voices/${encodeURIComponent(vieja.voz)}`, { method: 'DELETE' }).catch(() => null);
+    await s`update drama_biblioteca set en_cuenta = false where voz = ${vieja.voz}`;
+  }
+  return false;
+}
+
+/**
+ * Lo que le falta al reparto para este capítulo: vuelve a poner en la cuenta las voces fijas que se quitaron y busca
+ * en la biblioteca una voz por cada personaje que no encontraría una libre de su género y edad.
+ */
+export async function completarReparto(
+  s: Sql,
+  plan: Plan,
+  disponibles: Voz[],
+  fijas: Record<string, string>,
+): Promise<{ disponibles: Voz[]; elegidas: Record<string, string> }> {
+  const pool = [...new Map([...CONOCIDAS, ...disponibles].map((v) => [v.id, v])).values()].filter((v) => v.id !== NARRADOR_VOZ && v.id !== JESUS_VOZ);
+  const ids = new Set(pool.map((v) => v.id));
+  const extra: Voz[] = [];
+  // Las voces fijas de estos personajes que se quitaron de la cuenta para hacer sitio.
+  const fueras = Object.values(fijas).filter((v) => !ids.has(v));
+  if (fueras.length) {
+    const guardadas = await s<Biblio[]>`select voz, dueno, genero, edad, nombre from drama_biblioteca where voz in ${s(fueras)}`;
+    for (const b of guardadas) {
+      if (await anadirACuenta(s, b, new Set(Object.values(fijas)))) {
+        extra.push({ id: b.voz, genero: b.genero, edad: b.edad });
+        ids.add(b.voz);
+      }
+    }
+  }
+  // Cuántas voces de cada género y edad hacen falta y cuántas hay sin dueño en este capítulo.
+  const libres = [...pool, ...extra];
+  const edadVoz = (p: Plan['personajes'][number]) => (p.edad === 'niño' ? 'joven' : p.edad);
+  // Una voz fija vale si sigue en la cuenta y es del género y la edad del personaje (la misma regla que repartir).
+  const fijaValida = (p: Plan['personajes'][number]) => libres.some((v) => v.id === fijas[vozFija(p)] && v.genero === p.genero && v.edad === edadVoz(p));
+  const falta: { genero: Genero; edad: string; voz?: string; para?: string }[] = [];
+  const elegidas: Record<string, string> = {};
+  const usadas = new Set<string>(plan.personajes.filter(fijaValida).map((p) => fijas[vozFija(p)]));
+  for (const p of plan.personajes) {
+    if (p.id === NARRADOR || p.id === JESUS || p.id === DIOS) continue;
+    if (fijaValida(p)) continue;
+    // Un personaje con nombre que habla por primera vez recibe una voz buscada para él con lo que describió la IA (y la
+    // conserva en toda la Biblia); los papeles sin nombre usan las del reparto si hay una de su género y edad.
+    if (persistente(p.id) && p.voz) {
+      falta.push({ genero: p.genero, edad: p.edad, voz: p.voz, para: vozFija(p) });
+      continue;
+    }
+    const libre = libres.find((v) => v.genero === p.genero && v.edad === edadVoz(p) && !usadas.has(v.id));
+    if (libre) usadas.add(libre.id);
+    else falta.push({ genero: p.genero, edad: p.edad, voz: p.voz });
+  }
+  const evitar = new Set([...ids, NARRADOR_VOZ, JESUS_VOZ]);
+  for (const f of falta.slice(0, MAX_NUEVAS)) {
+    const b = await buscarEnBiblioteca(f.genero, f.edad, evitar, f.voz).catch(() => null);
+    if (!b) continue;
+    evitar.add(b.voz);
+    if (await anadirACuenta(s, b, usadas)) {
+      extra.push({ id: b.voz, genero: b.genero, edad: b.edad });
+      usadas.add(b.voz);
+      if (f.para) elegidas[f.para] = b.voz;
+    }
+  }
+  if (extra.length) await s`update drama_biblioteca set usada = now() where voz in ${s(extra.map((v) => v.id))}`;
+  return { disponibles: [...disponibles, ...extra], elegidas };
+}
+
 const hash = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Clave de la voz de un personaje en toda la Biblia: el mismo personaje a la misma edad suena igual. */
@@ -210,7 +371,8 @@ export function repartir(plan: Plan, disponibles: Voz[], semilla: string, fijas:
   const voces: Record<string, string[]> = { [NARRADOR]: [NARRADOR_VOZ], [JESUS]: [JESUS_VOZ] };
   // Primero los que ya tienen voz de otros capítulos (si esa voz sigue en el reparto y es de su género).
   for (const p of plan.personajes) {
-    const fija = pool.find((v) => v.id === fijas[vozFija(p)] && v.genero === p.genero);
+    // Una voz fija que no es de la edad del personaje (p. ej. un anciano con voz de adulto) se cambia por una que sí.
+    const fija = pool.find((v) => v.id === fijas[vozFija(p)] && v.genero === p.genero && v.edad === (p.edad === 'niño' ? 'joven' : p.edad));
     if (fija && !usos.has(fija.id)) {
       usos.set(fija.id, 1);
       voces[p.id] = [fija.id];
@@ -762,6 +924,17 @@ async function db() {
         primary key (personaje, edad)
       )`,
     )
+    .then(
+      () => sql!`create table if not exists drama_biblioteca (
+        voz text primary key,
+        dueno text not null,
+        genero text not null,
+        edad text not null,
+        nombre text not null,
+        en_cuenta boolean not null default true,
+        usada timestamptz not null default now()
+      )`,
+    )
     .catch((err) => {
     ready = null;
     throw err;
@@ -925,7 +1098,7 @@ Reglas del texto:
 - Cuando Dios habla por medio de un profeta o de Jesús, lo dice esa persona (He 1:1-2). Usa DIOS solo cuando el texto dice que la voz viene de Dios mismo (del cielo, la nube, la zarza, el monte, la tormenta, una visión), con uno de estos registros: aprobacion (la voz desde el cielo o la nube sobre el Hijo), llamado (Dios llama a alguien por su nombre o le habla a solas), poder (fuego, monte, tormenta, juicio), gloria (visiones de gloria). Las palabras de Jesús las dice JESUS.
 
 Personajes:
-- Se declaran arriba con PERSONAJE, en mayúsculas sin tildes, con su género y la edad que tienen en ese momento según la Biblia y los comentarios (las fichas de abajo ayudan).
+- Se declaran arriba con PERSONAJE, en mayúsculas sin tildes, con su género y la edad que tienen en ese momento según la Biblia y los comentarios (las fichas de abajo ayudan), y cómo suena su voz en 3 a 6 palabras en inglés según quién es y lo que vive (por ejemplo Zacarías: «old priest, tired, gentle»; un pescador: «rough fisherman, plain»): con eso se le busca voz.
 - Un personaje con nombre que aparece en otros libros lleva siempre el mismo ID, para que suene con la misma voz en toda la Biblia: PEDRO, JUAN_APOSTOL, JUAN_BAUTISTA, SANTIAGO_ZEBEDEO, MARIA_MADRE, MARIA_MAGDALENA, MARTA, LAZARO, PABLO, MOISES, AARON, DAVID, ELIAS, ABRAHAM, SARA… (el nombre más conocido, sin títulos). Un grupo o alguien sin nombre lleva número: GENTE_1, SOLDADO_1, CRIADA_1, FARISEO_1.
 
 Hoja de dirección:
@@ -951,7 +1124,7 @@ Ritmo y sonido:
 
 Formato (una cosa por línea, sin nada más):
 TONO <paz|esperanza|tension|duelo|gloria>
-PERSONAJE <ID> | <hombre|mujer> | <niño|joven|adulto|mayor> | <nombre>
+PERSONAJE <ID> | <hombre|mujer> | <niño|joven|adulto|mayor> | <nombre> | voz: <cómo suena, 3 a 6 palabras en inglés>
 ESCENA <título corto> | ambiente: <sonido en inglés o -> | espacio: <abierto|interior|grande|cueva> | ritmo: <lento|normal|vivo>
 DIRECCION <la hoja de dirección de la escena>
 SONIDO <sonido en inglés> | <segundos>
@@ -962,7 +1135,7 @@ PAUSA <segundos>
 
 Ejemplo:
 TONO esperanza
-PERSONAJE JUAN_BAUTISTA | hombre | joven | Juan el Bautista
+PERSONAJE JUAN_BAUTISTA | hombre | joven | Juan el Bautista | voz: young prophet, strong, rough
 ESCENA El desierto y el Jordán | ambiente: dry desert wind, open wilderness, no birds | espacio: abierto | ritmo: lento
 DIRECCION Juan clama con fuerza ante la multitud que bajó al río; el narrador abre la historia con asombro contenido, despacio.
 1 NARRADOR [slow, warm]: Las primeras palabras de las buenas nuevas de Jesucristo, el Hijo de Dios.
@@ -1030,12 +1203,19 @@ async function faseGuion(s: Sql, where: Target, ctx: Contexto, fallos: number) {
     (await s<{ personaje: string; edad: string; voz: string }[]>`select personaje, edad, voz from drama_voz
       where personaje in ${s(plan.personajes.map((p) => p.id).concat(['-']))}`).map((r) => [vozFija({ id: r.personaje, edad: r.edad }), r.voz]),
   );
-  const voces = repartir(plan, await vocesDeCuenta(), `${where.clave}:${where.chapter}`, fijas);
+  const cuenta = await vocesDeCuenta();
+  const { disponibles, elegidas } = await completarReparto(s, plan, cuenta, fijas).catch((err) => {
+    console.error('dramatizado: biblioteca de voces', err);
+    return { disponibles: cuenta, elegidas: {} as Record<string, string> };
+  });
+  // Las voces recién buscadas para un personaje van a ese personaje, como si ya fueran suyas.
+  const voces = repartir(plan, disponibles, `${where.clave}:${where.chapter}`, { ...fijas, ...elegidas });
+  await s`update drama_biblioteca set usada = now() where voz in ${s(Object.values(voces).flat().concat(['-']))}`.catch(() => {});
   // Los personajes con nombre guardan su voz para los capítulos que vengan.
-  const nuevos = plan.personajes.filter((p) => persistente(p.id) && !fijas[vozFija(p)] && voces[p.id]?.[0]);
+  const nuevos = plan.personajes.filter((p) => persistente(p.id) && voces[p.id]?.[0] && fijas[vozFija(p)] !== voces[p.id][0]);
   for (const p of nuevos) {
     await s`insert into drama_voz (personaje, edad, genero, voz) values (${p.id}, ${p.edad}, ${p.genero}, ${voces[p.id][0]})
-      on conflict do nothing`;
+      on conflict (personaje, edad) do update set voz = excluded.voz, genero = excluded.genero`;
   }
   const total = piezasDe(plan, voces).length;
   await s`update drama_grabado set guion = ${guion}, plan = ${s.json(plan)}, voces = ${s.json(voces)},

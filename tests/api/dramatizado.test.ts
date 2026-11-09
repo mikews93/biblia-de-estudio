@@ -19,6 +19,8 @@ type Handler = {
   avanzar: (s: ReturnType<typeof postgres>, where: object, ctx: object) => Promise<void>;
   repartir: (plan: object, disponibles: object[], semilla: string, fijas?: Record<string, string>) => Record<string, string[]>;
   persistente: (id: string) => boolean;
+  completarReparto: (s: ReturnType<typeof postgres>, plan: object, disponibles: object[], fijas: Record<string, string>) => Promise<{ disponibles: object[]; elegidas: Record<string, string> }>;
+  bienCalificada: (v: object) => boolean;
 };
 
 const RATE = 24000;
@@ -28,6 +30,11 @@ const tono = (seg: number, rate = RATE, amp = 0.3) =>
 const calls: { path: string; body: Record<string, unknown> }[] = [];
 let creditosQuedan = 500000;
 let mudaDada = false;
+const bibliotecaPedidos: string[] = [];
+const anadidas: string[] = [];
+const borradas: string[] = [];
+let sinSitio = 0;
+let soloFlojas = false;
 const eleven = createServer((req, res) => {
   let raw = '';
   req.on('data', (c) => (raw += c));
@@ -42,6 +49,30 @@ const eleven = createServer((req, res) => {
         { voice_id: 'voz-ingles', labels: { gender: 'male', age: 'old', language: 'en', accent: 'british' } },
       ];
       return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ voices }));
+    }
+    if (url.startsWith('/v1/shared-voices')) {
+      // La biblioteca: por género y edad; la primera de mujer mayor se presenta como «la voz de Dios» y no vale.
+      const q = new URL(url, 'http://x').searchParams;
+      bibliotecaPedidos.push(`${q.get('gender')}|${q.get('age')}|${q.get('accent') ?? ''}`);
+      const voices = [
+        { voice_id: `lib-dios-${q.get('gender')}-${q.get('age')}`, public_owner_id: 'dueno-1', name: 'God - Deep and Powerful', category: 'professional', cloned_by_count: 9000, preview_url: 'x' },
+        // Una voz poco usada y sin calificar va antes, pero no se escoge mientras haya una bien calificada.
+        { voice_id: `lib-flojo-${q.get('gender')}-${q.get('age')}`, public_owner_id: 'dueno-3', name: 'Mi voz', category: 'generated', cloned_by_count: 3, preview_url: 'x' },
+        ...(soloFlojas ? [] : [{ voice_id: `lib-${q.get('gender')}-${q.get('age')}`, public_owner_id: 'dueno-2', name: 'Abuela Rosa', category: 'professional', cloned_by_count: 5000, usage_character_count_1y: 900000, preview_url: 'x' }]),
+      ];
+      return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ voices }));
+    }
+    if (url.startsWith('/v1/voices/add/')) {
+      if (sinSitio > 0) {
+        sinSitio--;
+        return res.writeHead(400, { 'Content-Type': 'application/json' }).end(JSON.stringify({ detail: { status: 'voice_limit_reached', message: 'You have reached your maximum amount of custom voices' } }));
+      }
+      anadidas.push(url.split('/').at(-1)!);
+      return res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ voice_id: url.split('/').at(-1) }));
+    }
+    if (req.method === 'DELETE' && url.startsWith('/v1/voices/')) {
+      borradas.push(url.split('/').at(-1)!);
+      return res.writeHead(200, { 'Content-Type': 'application/json' }).end('{}');
     }
     const body = JSON.parse(raw || '{}');
     calls.push({ path: url, body });
@@ -261,6 +292,73 @@ describe.skipIf(!DB_URL)('/api/dramatizado', () => {
   });
 });
 
+describe.skipIf(!DB_URL)('voces de la biblioteca de ElevenLabs', () => {
+  const plan = {
+    personajes: [
+      { id: 'ZACARIAS', genero: 'hombre', edad: 'mayor', nombre: 'Zacarías' },
+      { id: 'ELISABET', genero: 'mujer', edad: 'mayor', nombre: 'Elisabet' },
+      { id: 'MARIA_MADRE', genero: 'mujer', edad: 'joven', nombre: 'María' },
+    ],
+    escenas: [],
+  };
+  it('busca en la biblioteca la voz que falta (una anciana), sin «voces de Dios», y la añade a la cuenta', async () => {
+    await sql`delete from drama_biblioteca`;
+    anadidas.length = 0;
+    bibliotecaPedidos.length = 0;
+    const { disponibles, elegidas } = await api.completarReparto(sql, plan, [], {});
+    expect(elegidas).toEqual({});
+    // Zacarías tiene voces de hombre mayor entre las conocidas; María, la joven de la cuenta (voz-mujer-es) no está
+    // aquí porque pasamos la cuenta vacía: faltan una mujer mayor y una mujer joven.
+    expect(bibliotecaPedidos).toContain('female|old|latin american');
+    expect(anadidas).toEqual(['lib-female-old', 'lib-female-young']);
+    expect(disponibles).toEqual(expect.arrayContaining([{ id: 'lib-female-old', genero: 'mujer', edad: 'mayor' }]));
+    const v = api.repartir(plan, disponibles, 'luk:1', {});
+    expect(v.ELISABET).toEqual(['lib-female-old']);
+    expect(['Yb8JGzcZyW5YYzenhRCm', 'wfTWLJ20rcMqvU8gIiAB']).toContain(v.ZACARIAS[0]);
+    expect((await sql`select voz from drama_biblioteca order by voz`).map((r) => r.voz)).toEqual(['lib-female-old', 'lib-female-young']);
+  });
+  it('si la cuenta no tiene sitio, quita la añadida menos usada y vuelve a poner las fijas cuando hacen falta', async () => {
+    await sql`delete from drama_biblioteca`;
+    await sql`insert into drama_biblioteca (voz, dueno, genero, edad, nombre, en_cuenta, usada) values
+      ('lib-vieja', 'd', 'hombre', 'adulto', 'Vieja', true, now() - interval '30 days'),
+      ('lib-elisabet', 'd', 'mujer', 'mayor', 'Elisabet', false, now() - interval '10 days')`;
+    anadidas.length = 0;
+    borradas.length = 0;
+    sinSitio = 1;
+    // Elisabet ya tenía voz (quitada de la cuenta): se vuelve a añadir, liberando la menos usada.
+    const { disponibles } = await api.completarReparto(sql, plan, [{ id: 'voz-mujer-es', genero: 'mujer', edad: 'joven' }], { 'ELISABET|mayor': 'lib-elisabet' });
+    expect(borradas).toEqual(['lib-vieja']);
+    expect(anadidas).toEqual(['lib-elisabet']);
+    expect(api.repartir(plan, disponibles, 'luk:1', { 'ELISABET|mayor': 'lib-elisabet' }).ELISABET).toEqual(['lib-elisabet']);
+    expect((await sql`select en_cuenta from drama_biblioteca where voz = 'lib-vieja'`)[0].en_cuenta).toBe(false);
+  });
+  it('un personaje con voz descrita por la IA recibe su propia voz buscada con esa descripción', async () => {
+    await sql`delete from drama_biblioteca`;
+    anadidas.length = 0;
+    bibliotecaPedidos.length = 0;
+    const descrito = { personajes: [{ id: 'ZACARIAS', genero: 'hombre', edad: 'mayor', nombre: 'Zacarías', voz: 'old priest, tired, gentle' }], escenas: [] };
+    const { disponibles, elegidas } = await api.completarReparto(sql, descrito, [], { 'ZACARIAS|mayor': 'ByVRQtaK1WDOvTmP1PKO' });
+    expect(bibliotecaPedidos[0]).toBe('male|old|latin american');
+    expect(elegidas).toEqual({ 'ZACARIAS|mayor': 'lib-male-old' });
+    expect(api.repartir(descrito, disponibles, 'luk:1', { 'ZACARIAS|mayor': 'ByVRQtaK1WDOvTmP1PKO', ...elegidas }).ZACARIAS).toEqual(['lib-male-old']);
+  });
+  it('si no hay voces bien calificadas, usa la mejor que haya para no quedarse sin voz', async () => {
+    await sql`delete from drama_biblioteca`;
+    anadidas.length = 0;
+    soloFlojas = true;
+    const uno = { personajes: [{ id: 'ANA_PROFETISA', genero: 'mujer', edad: 'mayor', nombre: 'Ana', voz: 'old widow, warm' }], escenas: [] };
+    const { elegidas } = await api.completarReparto(sql, uno, [], {});
+    soloFlojas = false;
+    expect(elegidas).toEqual({ 'ANA_PROFETISA|mayor': 'lib-flojo-female-old' });
+  });
+  it('solo cuenta como bien calificada una voz profesional, usada por muchos y con muestra', () => {
+    expect(api.bienCalificada({ voice_id: 'a', public_owner_id: 'd', category: 'professional', cloned_by_count: 5000, preview_url: 'x' })).toBe(true);
+    expect(api.bienCalificada({ voice_id: 'a', public_owner_id: 'd', category: 'professional', cloned_by_count: 10, preview_url: 'x' })).toBe(false);
+    expect(api.bienCalificada({ voice_id: 'a', public_owner_id: 'd', category: 'generated', cloned_by_count: 5000, preview_url: 'x' })).toBe(false);
+    expect(api.bienCalificada({ voice_id: 'a', public_owner_id: 'd', category: 'professional', cloned_by_count: 5000 })).toBe(false);
+  });
+});
+
 describe('el reparto de voces', () => {
   const plan = {
     personajes: [
@@ -271,11 +369,16 @@ describe('el reparto de voces', () => {
   };
   it('un personaje con nombre conserva la voz que tuvo en otros capítulos', () => {
     for (const semilla of ['mrk:1', 'jhn:21', 'act:2']) {
-      expect(api.repartir(plan, [], semilla, { 'PEDRO|adulto': 'Yb8JGzcZyW5YYzenhRCm' }).PEDRO).toEqual(['Yb8JGzcZyW5YYzenhRCm']);
+      expect(api.repartir(plan, [], semilla, { 'PEDRO|adulto': 'CE9m1PQE2E76CKUkNL7C' }).PEDRO).toEqual(['CE9m1PQE2E76CKUkNL7C']);
     }
     // Una voz guardada que ya no está en el reparto, o de otro género, no se usa.
     expect(api.repartir(plan, [], 'mrk:1', { 'PEDRO|adulto': 'no-existe' }).PEDRO[0]).not.toBe('no-existe');
     expect(api.repartir(plan, [], 'mrk:1', { 'PEDRO|adulto': 'iBGVhgcEZS6A5gTOjqSJ' }).PEDRO[0]).not.toBe('iBGVhgcEZS6A5gTOjqSJ');
+  });
+  it('una voz guardada que no es de la edad del personaje se cambia por una de su edad', () => {
+    const anciano = { personajes: [{ id: 'ZACARIAS', genero: 'hombre', edad: 'mayor', nombre: 'Zacarías' }], escenas: [] };
+    const v = api.repartir(anciano, [], 'luk:1', { 'ZACARIAS|mayor': 'ByVRQtaK1WDOvTmP1PKO' }).ZACARIAS[0];
+    expect(['Yb8JGzcZyW5YYzenhRCm', 'wfTWLJ20rcMqvU8gIiAB']).toContain(v);
   });
   it('los grupos y los papeles sin nombre no guardan voz', () => {
     expect(['PEDRO', 'MARIA_MAGDALENA', 'JUAN_BAUTISTA'].every(api.persistente)).toBe(true);
