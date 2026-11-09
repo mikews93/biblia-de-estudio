@@ -1,0 +1,41 @@
+name: Voces de ancianos para el dramatizado
+
+# Busca en la biblioteca de ElevenLabs voces en español de hombres y mujeres mayores (pipeline/audio_dramatizado/
+# voces-mayores.mjs) y sube la lista a la misma rama para escucharlas y elegir. No gasta créditos. Necesita el secreto
+# ELEVENLABS_API_KEY.
+
+on:
+  push:
+    paths:
+      - pipeline/audio_dramatizado/voces-mayores.mjs
+      - .github/workflows/voces-mayores-dramatizado.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: voces-mayores-dramatizado
+  cancel-in-progress: false
+
+jobs:
+  buscar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Buscar
+        run: node pipeline/audio_dramatizado/voces-mayores.mjs
+      - name: Subir a la rama
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pipeline/audio_dramatizado/voces-mayores.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(audio): list elderly Spanish voices for the dramatized audio"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done
