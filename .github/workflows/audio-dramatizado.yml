@@ -9,6 +9,7 @@ on:
   push:
     paths:
       - pipeline/audio_dramatizado/*.json
+      - "!pipeline/audio_dramatizado/voces-*.json"
       - pipeline/audio_dramatizado/grabar.py
       - .github/workflows/audio-dramatizado.yml
   workflow_dispatch:
