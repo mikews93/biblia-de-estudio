@@ -60,7 +60,7 @@
           "id": "gJEfHTTiifXEDmO687lC",
           "nombre": "Prince Nur - Deep, Rich and Balanced",
           "acento": "standard",
-          "clonada": 683435,
+          "clonada": 683496,
           "descripcion": "Fragrant velvet voice. A tempting combination of low shades with hot notes will emphasize the depth and richness of your reel, shorts or audiobook.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/fdf00c0e5bee40abad820eb9de6a0acc/voices/gJEfHTTiifXEDmO687lC/bvLjXgefFonQ8qV9UFjN.mp3"
         },
@@ -108,7 +108,7 @@
           "id": "nzFihrBIvB34imQBuxub",
           "nombre": "Josh - Teacher for Kids",
           "acento": "american",
-          "clonada": 376801,
+          "clonada": 376826,
           "descripcion": "Sweet energetic and encouraging. A super cool big brother to read children’s books. Learning fun audiobooks and happy social media content for optimistic readin",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/b2109416c7514449a5f06540d10f0e73/voices/nzFihrBIvB34imQBuxub/PGPEgmq9nbilpoico1PI.mp3"
         },
@@ -134,7 +134,7 @@
       "genero": "hombre",
       "edad": "adulto",
       "revisadas": 1000,
-      "bienCalificadas": 768,
+      "bienCalificadas": 769,
       "latinoamericanas": 204,
       "mejores": [
         {
@@ -294,7 +294,7 @@
           "id": "7p1Ofvcwsv7UBPoFNcpI",
           "nombre": "Julian - Deep, Rich and Mature",
           "acento": "british",
-          "clonada": 353223,
+          "clonada": 353242,
           "descripcion": "A mature British male voice with a hint of roughness  - yet soothing enough to melt butter. Works well for Narrations.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/7p1Ofvcwsv7UBPoFNcpI/f86HRr1i6v8ZOCi6Dt4a.mp3"
         },
@@ -334,7 +334,7 @@
           "id": "9TcPbUAhHnAV8mzFDAWU",
           "nombre": "El Faraón - Powerful and Resonant",
           "acento": "latin american",
-          "clonada": 209824,
+          "clonada": 209854,
           "descripcion": "Un abuelo cálido y cercano que cautiva con sus historias y su voz.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/90876024874e40ea85f2cfb45b7670c5/voices/9TcPbUAhHnAV8mzFDAWU/iEBnqaTXyJ8kEnzAeU1D.mp3"
         },
@@ -382,7 +382,7 @@
           "id": "orF2qy9215xjwqqxqsWW",
           "nombre": "Rafael - Expressive and Theatrical",
           "acento": "peninsular",
-          "clonada": 138824,
+          "clonada": 138853,
           "descripcion": "Spanish Mature Storytelling, Expressive and Colourful voice, a bit raspy, ideal for inspiring epic tales and legends.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/70aeebf22b3d4b519e6b9d205612971d/voices/orF2qy9215xjwqqxqsWW/Ebnx2lg8i00UFK1bDKXe.mp3"
         }
@@ -503,7 +503,7 @@
           "id": "n4x17EKVqyxfey8QMqvy",
           "nombre": "Mauro - Neutral, Friendly, Balanced",
           "acento": "latin american",
-          "clonada": 260865,
+          "clonada": 260869,
           "descripcion": "A cheerful and vibrant young Latin American woman, with a natural, warm, and engaging tone. Perfect for content that needs an authentic, energetic, and friendly",
           "muestra": "https://api.us.elevenlabs.io/v1/voices/n4x17EKVqyxfey8QMqvy/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI0NzRmODgwOGExMjI0NjE1YTBlYjcyMGQxNTIwZmY5MSIsImZpbGVuYW1lIjoiOEE5enhpajZDVUN2MnNlV1d6NnQubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
         },
@@ -560,7 +560,7 @@
           "id": "g6xIsTj2HwM6VR4iXFCw",
           "nombre": "Jessica Anne Bogart - Chatty and Friendly",
           "acento": "american",
-          "clonada": 321497,
+          "clonada": 321519,
           "descripcion": "Friendly and Conversational Female voice. Articulate, Confident and Helpful. Works well for Conversations.",
           "muestra": "https://api.us.elevenlabs.io/v1/voices/g6xIsTj2HwM6VR4iXFCw/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJmYjFiZDE4NzA4MDE0ZDhkODBlNzcwZGY1ZWExMWJiNyIsImZpbGVuYW1lIjoiMU9xazlTZXNReFVNeG9wZmdMYjcubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
         },
@@ -705,7 +705,7 @@
           "id": "efcRUax7uSa9kpBwtDPe",
           "nombre": "Luisa - Friendly, Calm, Versatile",
           "acento": "latin american",
-          "clonada": 36941,
+          "clonada": 36965,
           "descripcion": "Storyteller with a deep, measured voice, ideal for narrations, stories, tales, reflective messages, and more.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/cac61574323345ac9dd4471d2c2bcbe1/voices/efcRUax7uSa9kpBwtDPe/KaIF9TYMegiYrPsYQ5d7.mp3"
         },
