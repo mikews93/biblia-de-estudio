@@ -68,7 +68,7 @@ jobs:
         run: |
           guiones="${{ github.event.inputs.guiones }}"
           if [ -z "$guiones" ]; then
-            guiones=$(ls pipeline/audio_dramatizado/*.json | xargs -n1 basename | sed 's/\.json$//')
+            guiones=$(ls pipeline/audio_dramatizado/*.json | xargs -n1 basename | grep -v '^voces-' | sed 's/\.json$//')
           fi
           audicion="${{ github.event.inputs.audicion }}"
           pruebas="${{ github.event.inputs.pruebas }}"
