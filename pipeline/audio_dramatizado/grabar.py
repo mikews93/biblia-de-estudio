@@ -506,7 +506,8 @@ def god_voices_elsewhere(guion_id: str) -> set[str]:
     """Voces usadas para Dios en otros capítulos: no se repiten, para que no haya «una voz de Dios» (Dt 4:15-16)."""
     ids: set[str] = set()
     for path in HERE.glob('*.json'):
-        if path.stem == guion_id:
+        # Los catálogos de voces (voces-*.json) no son guiones.
+        if path.stem == guion_id or path.stem.startswith('voces-'):
             continue
         for cfg in json.loads(path.read_text()).get('voces', {}).values():
             if cfg.get('dios'):
