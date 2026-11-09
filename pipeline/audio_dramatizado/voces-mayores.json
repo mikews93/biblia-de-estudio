@@ -44,7 +44,7 @@
     "acento": "latin american",
     "idioma": "es",
     "descripcion": "A representation of the voice of GOD, deep, powerful, mature, masculine, with great authority and strength, ideal for portraying the voice of God.",
-    "uso": 341025917,
+    "uso": 341170256,
     "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/5fbe56840dc24f63819981231aa9cf97/voices/HNSF1CTQmub252yhXROX/zYF6sdtzFc0Wze2IcJs4.mp3"
   },
   {
@@ -152,7 +152,7 @@
     "acento": "mexican",
     "idioma": "es",
     "descripcion": "Soft, clear voice, with a slight natural roughness that adds character without sounding raspy.\nSlow and thoughtful rhythm, with a calm tempo that suggests calm or narrative intent. Intonation: Neutral to slightly melancholic, with gentle drops at the ends of sentences. Conveys serenity and a touch o",
-    "uso": 122840038,
+    "uso": 122862690,
     "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/d62c3103d27d4af99d04a86aa22eb394/voices/D3ws14YxTqcjPaXEOehR/GgqrKUSTG6A7LZQ1EoTI.mp3"
   },
   {
@@ -165,7 +165,7 @@
     "idioma": "es",
     "descripcion": "A warm, smooth, and expressive voice with a trustworthy, narrative tone. Versatile enough for younger to mature characters, perfect for audiobooks and storytelling.",
     "uso": 103210134,
-    "muestra": "https://api.us.elevenlabs.io/v1/voices/HRi5Prm2B3PevwpDmVLP/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJjYTBlY2FmMTcyZGI0N2YxYjBkYjEzOGExOTAyN2E2NCIsImZpbGVuYW1lIjoiSFlvNlJpUmhEdVJnMWRFZjdCQVIubXAzIiwidGltZXN0YW1wIjoxNzk0MTgyNDAwMDAwMDAwfQ%3D%3D"
+    "muestra": "https://api.us.elevenlabs.io/v1/voices/HRi5Prm2B3PevwpDmVLP/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJjYTBlY2FmMTcyZGI0N2YxYjBkYjEzOGExOTAyN2E2NCIsImZpbGVuYW1lIjoiSFlvNlJpUmhEdVJnMWRFZjdCQVIubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
   },
   {
     "id": "efcRUax7uSa9kpBwtDPe",
@@ -201,7 +201,7 @@
     "idioma": "es",
     "descripcion": "Mature voice, optimal for providing certainty in conversations.",
     "uso": 36396112,
-    "muestra": "https://api.us.elevenlabs.io/v1/voices/9oWKy782oltLmeuOUdq7/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJlY2MzZjMxODRlMzY0NGZiYWUxZDI5YTIxY2U3ZTdkMyIsImZpbGVuYW1lIjoiYk4zSXdkTjh1aHpLZnh0UEFYSFoubXAzIiwidGltZXN0YW1wIjoxNzk0MTgyNDAwMDAwMDAwfQ%3D%3D"
+    "muestra": "https://api.us.elevenlabs.io/v1/voices/9oWKy782oltLmeuOUdq7/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJlY2MzZjMxODRlMzY0NGZiYWUxZDI5YTIxY2U3ZTdkMyIsImZpbGVuYW1lIjoiYk4zSXdkTjh1aHpLZnh0UEFYSFoubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
   },
   {
     "id": "UOxKeHS7lixzgw35mtAR",
@@ -212,7 +212,7 @@
     "acento": "latin american",
     "idioma": "es",
     "descripcion": "Grandmother is a natural storyteller and works well in Spanish , English, French and Italian. try it in every language.",
-    "uso": 22941556,
+    "uso": 22944009,
     "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/4018df99925c44d991724dbdb1d0ef8b/voices/UOxKeHS7lixzgw35mtAR/IJjF3VKsBQ9S7UyUZACH.mp3"
   },
   {
@@ -236,7 +236,7 @@
     "acento": "peninsular",
     "idioma": "es",
     "descripcion": "Spanish from Spain with Neutral Accent of an Old Woman with  a calm and peaceful voice. Excellent for narrative, books, tales, storytelling, ASMR , etc",
-    "uso": 14854271,
+    "uso": 14871185,
     "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/ypIbR1aohyRSdDv25DPr/pwTUKYxrmFPl0kglwrfb.mp3"
   },
   {
@@ -249,7 +249,7 @@
     "idioma": "es",
     "descripcion": "A slow voice with the soft echo of the years lived, a mixture of tenderness and memory.",
     "uso": 11987915,
-    "muestra": "https://api.us.elevenlabs.io/v1/voices/RTuKyXJgRGAQSx8Qz8Mf/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiIxN2VkYjhlYThlMjY0YzlmOTBkMThmODc3ZGRlMmQ0MiIsImZpbGVuYW1lIjoiSEhjZHh3aHZRY0hoc0JDMWxsQlQubXAzIiwidGltZXN0YW1wIjoxNzk0MTgyNDAwMDAwMDAwfQ%3D%3D"
+    "muestra": "https://api.us.elevenlabs.io/v1/voices/RTuKyXJgRGAQSx8Qz8Mf/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiIxN2VkYjhlYThlMjY0YzlmOTBkMThmODc3ZGRlMmQ0MiIsImZpbGVuYW1lIjoiSEhjZHh3aHZRY0hoc0JDMWxsQlQubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
   },
   {
     "id": "aYQAm4rWuigkeuRA5i92",
@@ -273,7 +273,7 @@
     "idioma": "es",
     "descripcion": "Granny La Witch is an old hispanic lady who is perfect for language courses,  audiobooks, conversations and character creation for animations and story telling - She can be a good or bad character. Frightening or endearing.",
     "uso": 6761158,
-    "muestra": "https://api.us.elevenlabs.io/v1/voices/M9RTtrzRACmbUzsEMq8p/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiIwOWU3MWQ3ZDNhOWI0YjEyYTcxOWMzNDE2OWZjZjNmMSIsImZpbGVuYW1lIjoibDJOZW9kYlBia0V6SlpwTmFXbHoubXAzIiwidGltZXN0YW1wIjoxNzk0MTgyNDAwMDAwMDAwfQ%3D%3D"
+    "muestra": "https://api.us.elevenlabs.io/v1/voices/M9RTtrzRACmbUzsEMq8p/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiIwOWU3MWQ3ZDNhOWI0YjEyYTcxOWMzNDE2OWZjZjNmMSIsImZpbGVuYW1lIjoibDJOZW9kYlBia0V6SlpwTmFXbHoubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
   },
   {
     "id": "pPM4mM2SeUKR5pdrzgwS",
