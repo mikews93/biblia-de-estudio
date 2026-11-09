@@ -167,6 +167,112 @@ async function vocesDeCuenta(): Promise<Voz[]> {
   }
 }
 
+/**
+ * Biblioteca de ElevenLabs: cuando el capítulo pide una voz que el reparto no tiene (una anciana, un niño, un tercer
+ * hombre mayor…), se busca una en español de ese género y edad, se añade a la cuenta y se apunta en drama_biblioteca.
+ * Si la cuenta ya no tiene sitio, se quita la añadida que lleva más tiempo sin usarse (se puede volver a añadir gratis
+ * cuando un personaje que la tenía vuelva a hablar).
+ */
+const EDAD_ELEVEN: Record<string, string> = { niño: 'young', joven: 'young', adulto: 'middle_aged', mayor: 'old' };
+const MAX_NUEVAS = Number(process.env.DRAMA_VOCES_NUEVAS ?? 6);
+// Ni una «voz de Dios» (la de Dios nunca es una sola), ni caricaturas ni voces de anuncios.
+const VOZ_DESCARTADA = /\b(god|dios|jesus|jes[uú]s|cartoon|caricatur|villain|villano|robot|asmr|sexy|seductive|news|noticias|commercial|anuncio)/i;
+
+type Biblio = { voz: string; dueno: string; genero: Genero; edad: Voz['edad']; nombre: string };
+
+async function eleven(ruta: string, init: RequestInit = {}) {
+  return fetch(`${ELEVEN_URL}${ruta}`, {
+    ...init,
+    headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY ?? '', 'Content-Type': 'application/json', ...(init.headers ?? {}) },
+    signal: AbortSignal.timeout(15_000),
+  });
+}
+
+async function buscarEnBiblioteca(genero: Genero, edad: string, evitar: Set<string>): Promise<Omit<Biblio, 'edad'> & { edad: Voz['edad'] } | null> {
+  const base = { page_size: '50', language: 'es', gender: genero === 'mujer' ? 'female' : 'male', age: EDAD_ELEVEN[edad] ?? 'middle_aged', sort: 'usage_character_count_1y' };
+  // Primero con acento latinoamericano (como Abel, el narrador); si no hay, cualquiera en español.
+  for (const extra of [{ accent: 'latin american' }, {}] as Record<string, string>[]) {
+    const res = await eleven(`/v1/shared-voices?${new URLSearchParams({ ...base, ...extra })}`).catch(() => null);
+    if (!res?.ok) continue;
+    const body = (await res.json()) as { voices?: { voice_id: string; public_owner_id: string; name?: string; description?: string; free_users_allowed?: boolean }[] };
+    const v = (body.voices ?? []).find((x) => !evitar.has(x.voice_id) && !VOZ_DESCARTADA.test(`${x.name ?? ''} ${x.description ?? ''}`));
+    if (v) return { voz: v.voice_id, dueno: v.public_owner_id, genero, edad: edad === 'mayor' ? 'mayor' : edad === 'adulto' ? 'adulto' : 'joven', nombre: v.name ?? v.voice_id };
+  }
+  return null;
+}
+
+/** Añade a la cuenta una voz de la biblioteca; si no hay sitio, libera la añadida menos usada y lo intenta otra vez. */
+async function anadirACuenta(s: Sql, b: Biblio, enUso: Set<string>): Promise<boolean> {
+  for (let intento = 0; intento < 3; intento++) {
+    const res = await eleven(`/v1/voices/add/${encodeURIComponent(b.dueno)}/${encodeURIComponent(b.voz)}`, {
+      method: 'POST',
+      body: JSON.stringify({ new_name: `Zarza · ${b.nombre}`.slice(0, 100) }),
+    }).catch(() => null);
+    if (res?.ok) {
+      await s`insert into drama_biblioteca (voz, dueno, genero, edad, nombre, en_cuenta, usada) values
+          (${b.voz}, ${b.dueno}, ${b.genero}, ${b.edad}, ${b.nombre}, true, now())
+        on conflict (voz) do update set en_cuenta = true, usada = now()`;
+      return true;
+    }
+    const texto = res ? await res.text().catch(() => '') : '';
+    if (/already|exists/i.test(texto)) return true;
+    if (!/limit|slot|maximum|quota/i.test(texto)) {
+      console.error('dramatizado: no se pudo añadir la voz', b.voz, res?.status, texto.slice(0, 200));
+      return false;
+    }
+    const [vieja] = await s<{ voz: string }[]>`select voz from drama_biblioteca where en_cuenta and voz not in ${s(['-', ...enUso])}
+      order by usada asc limit 1`;
+    if (!vieja) return false;
+    await eleven(`/v1/voices/${encodeURIComponent(vieja.voz)}`, { method: 'DELETE' }).catch(() => null);
+    await s`update drama_biblioteca set en_cuenta = false where voz = ${vieja.voz}`;
+  }
+  return false;
+}
+
+/**
+ * Lo que le falta al reparto para este capítulo: vuelve a poner en la cuenta las voces fijas que se quitaron y busca
+ * en la biblioteca una voz por cada personaje que no encontraría una libre de su género y edad.
+ */
+export async function completarReparto(s: Sql, plan: Plan, disponibles: Voz[], fijas: Record<string, string>): Promise<Voz[]> {
+  const pool = [...new Map([...CONOCIDAS, ...disponibles].map((v) => [v.id, v])).values()].filter((v) => v.id !== NARRADOR_VOZ && v.id !== JESUS_VOZ);
+  const ids = new Set(pool.map((v) => v.id));
+  const extra: Voz[] = [];
+  // Las voces fijas de estos personajes que se quitaron de la cuenta para hacer sitio.
+  const fueras = Object.values(fijas).filter((v) => !ids.has(v));
+  if (fueras.length) {
+    const guardadas = await s<Biblio[]>`select voz, dueno, genero, edad, nombre from drama_biblioteca where voz in ${s(fueras)}`;
+    for (const b of guardadas) {
+      if (await anadirACuenta(s, b, new Set(Object.values(fijas)))) {
+        extra.push({ id: b.voz, genero: b.genero, edad: b.edad });
+        ids.add(b.voz);
+      }
+    }
+  }
+  // Cuántas voces de cada género y edad hacen falta y cuántas hay sin dueño en este capítulo.
+  const libres = [...pool, ...extra];
+  const edadVoz = (p: Plan['personajes'][number]) => (p.edad === 'niño' ? 'joven' : p.edad);
+  // Una voz fija vale si sigue en la cuenta y es del género y la edad del personaje (la misma regla que repartir).
+  const fijaValida = (p: Plan['personajes'][number]) => libres.some((v) => v.id === fijas[vozFija(p)] && v.genero === p.genero && v.edad === edadVoz(p));
+  const falta: { genero: Genero; edad: string }[] = [];
+  const usadas = new Set<string>(plan.personajes.filter(fijaValida).map((p) => fijas[vozFija(p)]));
+  for (const p of plan.personajes) {
+    if (p.id === NARRADOR || p.id === JESUS || p.id === DIOS) continue;
+    if (fijaValida(p)) continue;
+    const libre = libres.find((v) => v.genero === p.genero && v.edad === edadVoz(p) && !usadas.has(v.id));
+    if (libre) usadas.add(libre.id);
+    else falta.push({ genero: p.genero, edad: p.edad });
+  }
+  const evitar = new Set([...ids, NARRADOR_VOZ, JESUS_VOZ]);
+  for (const f of falta.slice(0, MAX_NUEVAS)) {
+    const b = await buscarEnBiblioteca(f.genero, f.edad, evitar).catch(() => null);
+    if (!b) continue;
+    evitar.add(b.voz);
+    if (await anadirACuenta(s, b, usadas)) extra.push({ id: b.voz, genero: b.genero, edad: b.edad });
+  }
+  if (extra.length) await s`update drama_biblioteca set usada = now() where voz in ${s(extra.map((v) => v.id))}`;
+  return [...disponibles, ...extra];
+}
+
 const hash = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Clave de la voz de un personaje en toda la Biblia: el mismo personaje a la misma edad suena igual. */
@@ -210,7 +316,8 @@ export function repartir(plan: Plan, disponibles: Voz[], semilla: string, fijas:
   const voces: Record<string, string[]> = { [NARRADOR]: [NARRADOR_VOZ], [JESUS]: [JESUS_VOZ] };
   // Primero los que ya tienen voz de otros capítulos (si esa voz sigue en el reparto y es de su género).
   for (const p of plan.personajes) {
-    const fija = pool.find((v) => v.id === fijas[vozFija(p)] && v.genero === p.genero);
+    // Una voz fija que no es de la edad del personaje (p. ej. un anciano con voz de adulto) se cambia por una que sí.
+    const fija = pool.find((v) => v.id === fijas[vozFija(p)] && v.genero === p.genero && v.edad === (p.edad === 'niño' ? 'joven' : p.edad));
     if (fija && !usos.has(fija.id)) {
       usos.set(fija.id, 1);
       voces[p.id] = [fija.id];
@@ -762,6 +869,17 @@ async function db() {
         primary key (personaje, edad)
       )`,
     )
+    .then(
+      () => sql!`create table if not exists drama_biblioteca (
+        voz text primary key,
+        dueno text not null,
+        genero text not null,
+        edad text not null,
+        nombre text not null,
+        en_cuenta boolean not null default true,
+        usada timestamptz not null default now()
+      )`,
+    )
     .catch((err) => {
     ready = null;
     throw err;
@@ -1030,12 +1148,17 @@ async function faseGuion(s: Sql, where: Target, ctx: Contexto, fallos: number) {
     (await s<{ personaje: string; edad: string; voz: string }[]>`select personaje, edad, voz from drama_voz
       where personaje in ${s(plan.personajes.map((p) => p.id).concat(['-']))}`).map((r) => [vozFija({ id: r.personaje, edad: r.edad }), r.voz]),
   );
-  const voces = repartir(plan, await vocesDeCuenta(), `${where.clave}:${where.chapter}`, fijas);
+  const disponibles = await completarReparto(s, plan, await vocesDeCuenta(), fijas).catch(async (err) => {
+    console.error('dramatizado: biblioteca de voces', err);
+    return vocesDeCuenta();
+  });
+  const voces = repartir(plan, disponibles, `${where.clave}:${where.chapter}`, fijas);
+  await s`update drama_biblioteca set usada = now() where voz in ${s(Object.values(voces).flat().concat(['-']))}`.catch(() => {});
   // Los personajes con nombre guardan su voz para los capítulos que vengan.
-  const nuevos = plan.personajes.filter((p) => persistente(p.id) && !fijas[vozFija(p)] && voces[p.id]?.[0]);
+  const nuevos = plan.personajes.filter((p) => persistente(p.id) && voces[p.id]?.[0] && fijas[vozFija(p)] !== voces[p.id][0]);
   for (const p of nuevos) {
     await s`insert into drama_voz (personaje, edad, genero, voz) values (${p.id}, ${p.edad}, ${p.genero}, ${voces[p.id][0]})
-      on conflict do nothing`;
+      on conflict (personaje, edad) do update set voz = excluded.voz, genero = excluded.genero`;
   }
   const total = piezasDe(plan, voces).length;
   await s`update drama_grabado set guion = ${guion}, plan = ${s.json(plan)}, voces = ${s.json(voces)},
