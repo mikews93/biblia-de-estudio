@@ -24,6 +24,11 @@ export const plan = (d: Datos) => {
   for (const id of ids) {
     at[id] = Math.round(t * FPS);
     t += d.timing[id].speechEnd + GAP;
+    // Un trozo del audio real de la app (el pódcast, el dramatizado) suena después de esta frase.
+    if (d.clip?.after === id) {
+      at['@clip'] = Math.round(t * FPS);
+      t += d.clip.dur + GAP;
+    }
   }
   const last = ids[ids.length - 1];
   const total = at[last] + Math.ceil((d.timing[last].duration + 1.6) * FPS);
@@ -51,13 +56,17 @@ export const Funcion = ({id}: {id: string}) => {
   const breathe = 1 + Math.min(1, Math.max(0, (f - phoneIn) / 900)) * 0.035;
 
   const shots: Shot[] = d.pantallas.map((p) => {
-    const base = at[p.line] + Math.round((p.word ? wordAt(d.timing[p.line], p.word) : 0) * FPS) + (p.delay ?? 0);
+    const offset = p.t ?? (p.word ? wordAt(d.timing[p.line], p.word) : 0);
+    const base = at[p.line] + Math.round(offset * FPS) + (p.delay ?? 0);
     return {at: base, src: `funciones/${id}/${p.src}`, tap: d.taps[p.src] ?? undefined};
   });
   shots[0] = {...shots[0], at: phoneIn};
   // El último toque no lleva a otra pantalla: se quita.
   shots[shots.length - 1] = {...shots[shots.length - 1], tap: undefined};
 
+  // La música baja también bajo el audio real.
+  const timing: Record<string, VoTiming> = {...d.timing, ...(d.clip ? {'@clip': {duration: d.clip.dur, speechStart: 0, speechEnd: d.clip.dur, method: 'clip', words: []}} : {})};
+  const cues = [...ids, ...(d.clip ? ['@clip'] : [])].map((x) => ({id: x, at: at[x]}));
   const glowOn = progress(f, phoneIn, 40) - progress(f, cta, 30);
   const titulares = d.titulares.map((h, i) => {
     const from = at[h.line] - 4;
@@ -81,7 +90,13 @@ export const Funcion = ({id}: {id: string}) => {
       </div>
       {f >= cta && <Cta at={cta} />}
       {f >= phoneIn && f < cta && <Subtitulos d={d} at={at} ids={ids.slice(1, -1)} />}
-      {has(MUSIC) && <Html5Audio src={staticFile(MUSIC)} volume={(fr) => bedVolume(fr, ids.map((x) => ({id: x, at: at[x]})), total, 4, 30, d.timing)} />}
+      {d.clip && <ClipSubtitulos clip={d.clip} at={at['@clip']} />}
+      {has(MUSIC) && <Html5Audio src={staticFile(MUSIC)} volume={(fr) => bedVolume(fr, cues, total, 4, 30, timing)} />}
+      {d.clip && (
+        <Sequence from={at['@clip']} durationInFrames={Math.round(d.clip.dur * FPS)} layout="none">
+          <Html5Audio src={staticFile(d.clip.src)} trimBefore={Math.round(d.clip.from * FPS)} volume={(fr) => interpolate(fr, [0, 6, d.clip!.dur * FPS - 10, d.clip!.dur * FPS], [0, 1, 1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})} />
+        </Sequence>
+      )}
       {ids.map((line) => (
         <Sequence key={line} from={at[line]} durationInFrames={Math.ceil(d.timing[line].duration * FPS) + 2} layout="none">
           <Html5Audio src={staticFile(`vo/funciones/${id}/${line}.mp3`)} />
@@ -142,6 +157,20 @@ const Subtitulos = ({d, at, ids}: {d: Datos; at: Record<string, number>; ids: st
     );
   }
   return null;
+};
+
+/** Lo que se oye del audio real, con quién habla: «Ana — …». */
+const ClipSubtitulos = ({clip, at}: {clip: NonNullable<Datos['clip']>; at: number}) => {
+  const f = useCurrentFrame();
+  const rel = (f - at) / FPS;
+  const linea = [...clip.lineas].reverse().find((l) => rel >= l.t);
+  if (rel < 0 || rel > clip.dur || !linea) return null;
+  return (
+    <div style={{position: 'absolute', left: 60, right: 60, bottom: 34, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, zIndex: 9}}>
+      <span style={{fontFamily: fonts.sans, fontWeight: 600, fontSize: 26, letterSpacing: 3, color: c.warm}}>{linea.quien.toUpperCase()}</span>
+      <span style={{fontFamily: fonts.display, fontStyle: 'italic', fontSize: 40, lineHeight: 1.12, textAlign: 'center', color: c.text, textShadow: '0 2px 18px rgba(0,0,0,0.85)'}}>{linea.texto}</span>
+    </div>
+  );
 };
 
 const Cta = ({at: start}: {at: number}) => {
