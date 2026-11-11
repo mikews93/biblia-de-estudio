@@ -1,9 +1,9 @@
-// Trazas hacia Lupa, la plataforma propia donde se revisa lo que responde la IA de cada app.
-// Con LUPA_KEY y LUPA_URL cada respuesta de la IA sale como una traza (la pregunta, cada vuelta con su modelo y
-// tokens, cada herramienta). Sin ellas no hace nada. Nada de lo que le pase a Lupa frena ni tumba la app.
+// Trazas hacia Quilate, la plataforma propia donde se revisa lo que responde la IA de cada app.
+// Con QUILATE_KEY y QUILATE_URL cada respuesta de la IA sale como una traza (la pregunta, cada vuelta con su modelo y
+// tokens, cada herramienta). Sin ellas no hace nada. Nada de lo que le pase a Quilate frena ni tumba la app.
 //
-// La clase es una copia de la librería de Lupa (sdk-ts/src/index.ts): cuando Lupa la publique como paquete, este
-// archivo se queda solo con la parte de «Zarza» del final. No se edita aquí: se cambia en Lupa y se vuelve a copiar.
+// La clase es una copia de la librería de Quilate (sdk-ts/src/index.ts): cuando Quilate la publique como paquete, este
+// archivo se queda solo con la parte de «Zarza» del final. No se edita aquí: se cambia en Quilate y se vuelve a copiar.
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 
@@ -27,7 +27,7 @@ export interface SpanOptions {
   sessionId?: string; fn?: string; appVersion?: string; environment?: string;
   model?: string; input?: unknown; promptHash?: string;
 }
-export interface LupaOptions {
+export interface QuilateOptions {
   key: string | undefined; url: string | undefined; transport?: Transport;
   flushIntervalMs?: number; maxBatch?: number; maxQueue?: number; maxRetries?: number; retryDelayMs?: number;
   appVersion?: string; environment?: string;
@@ -72,9 +72,9 @@ export class Span {
   ) {}
 }
 
-export class Lupa {
+export class Quilate {
   readonly enabled: boolean;
-  /** Pasos que no llegaron a Lupa: cola llena, cliente cerrado o Lupa caído tras los reintentos. */
+  /** Pasos que no llegaron a Quilate: cola llena, cliente cerrado o Quilate caído tras los reintentos. */
   dropped = 0;
   private readonly key: string;
   private readonly url: string;
@@ -92,7 +92,7 @@ export class Lupa {
   private closing = false;
   private lastStart = 0;
 
-  constructor(options: LupaOptions) {
+  constructor(options: QuilateOptions) {
     this.enabled = Boolean(options.key && options.url);
     this.key = options.key ?? '';
     this.url = (options.url ?? '').replace(/\/+$/, '') + INGEST_PATH;
@@ -105,9 +105,9 @@ export class Lupa {
     this.defaults = { appVersion: options.appVersion ?? null, environment: options.environment ?? null };
   }
 
-  /** Lee LUPA_KEY y LUPA_URL. Si falta alguna, el cliente queda apagado y no hace nada. */
-  static fromEnv(options: Omit<LupaOptions, 'key' | 'url'> = {}, env: Record<string, string | undefined> = process.env): Lupa {
-    return new Lupa({ ...options, key: env.LUPA_KEY, url: env.LUPA_URL });
+  /** Lee QUILATE_KEY y QUILATE_URL. Si falta alguna, el cliente queda apagado y no hace nada. */
+  static fromEnv(options: Omit<QuilateOptions, 'key' | 'url'> = {}, env: Record<string, string | undefined> = process.env): Quilate {
+    return new Quilate({ ...options, key: env.QUILATE_KEY, url: env.QUILATE_URL });
   }
 
   /** Corre `work` como un paso. Los pasos que se abran adentro quedan como sus hijos. El error de `work` sigue su camino. */
@@ -147,7 +147,7 @@ export class Lupa {
     await this.sending;
   }
 
-  /** Lupa ordena los pasos por su inicio, al milisegundo: dos seguidos en el mismo milisegundo perderían su orden. */
+  /** Quilate ordena los pasos por su inicio, al milisegundo: dos seguidos en el mismo milisegundo perderían su orden. */
   private nextStart(): Date {
     this.lastStart = Math.max(Date.now(), this.lastStart + 1);
     return new Date(this.lastStart);
@@ -202,10 +202,10 @@ export class Lupa {
 // ── Zarza ──
 
 /** El cliente de todas las funciones. En Vercel el temporizador no llega a correr: cada función llama a `enviarTrazas()` al terminar. */
-export const lupa = Lupa.fromEnv({ environment: process.env.VERCEL_ENV, appVersion: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7), maxRetries: 2 });
+export const quilate = Quilate.fromEnv({ environment: process.env.VERCEL_ENV, appVersion: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7), maxRetries: 2 });
 
 /** Manda lo pendiente después de responder, sin hacer esperar a la persona. */
-export const enviarTrazas = () => waitUntil(lupa.flush());
+export const enviarTrazas = () => waitUntil(quilate.flush());
 
 /** Lo más largo que se guarda de un texto: un encargo o una respuesta caben de sobra. */
 export const MAX_TEXTO_TRAZA = 12_000;

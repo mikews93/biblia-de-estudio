@@ -1,5 +1,5 @@
 {
-  "//": "Primeros casos de «Preguntar» para Lupa (conjunto «preguntar»). Son borradores: en Lupa se revisan y se aprueban antes de que el CI los corra. «response» dice lo que una buena respuesta tiene que cumplir; lo califica el juez. «tools» es lo que la IA tuvo que consultar (nombres de PASOS en objetivo.py).",
+  "//": "Primeros casos de «Preguntar» para Quilate (conjunto «preguntar»). Son borradores: en Quilate se revisan y se aprueban antes de que el CI los corra. «response» dice lo que una buena respuesta tiene que cumplir; lo califica el juez. «tools» es lo que la IA tuvo que consultar (nombres de PASOS en objetivo.py).",
   "conjunto": "Preguntar",
   "casos": [
     {
