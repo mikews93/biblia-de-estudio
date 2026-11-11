@@ -59,6 +59,12 @@ Variables en Vercel:
 
 En el teléfono, `EXPO_PUBLIC_API_URL` apunta a la web publicada.
 
+### Trazas en Lupa
+
+Lupa es la plataforma propia donde se revisa lo que responde la IA de cada app. Con `LUPA_KEY` y `LUPA_URL` en Vercel, cada respuesta de «Estudiar con IA» sale como una traza (`api/_lupa.ts`): lo que escribió la persona o el encargo, cada vuelta con su modelo y sus tokens, y cada herramienta que consultó. Los documentos del pasaje no viajan. Sin esas dos variables no hace nada, y si Lupa está caído la persona recibe su respuesta igual.
+
+Los primeros casos de «Preguntar» están en `pipeline/lupa/casos.json`; en Lupa se revisan y se aprueban. `pipeline/lupa/objetivo.py` es lo que `lupa run` llama para correrlos contra la app (cada caso es una pregunta real a la IA: cuesta dinero).
+
 ### Herramientas del capítulo (ideas de NotebookLM)
 
 Debajo de los botones de la cabecera del capítulo, con las mismas fuentes y citas que el estudio (`herramienta` en `api/estudiar.ts`). Lo que prepara la IA se guarda en el dispositivo, con la opción de pedir otra versión.
