@@ -1,69 +1,69 @@
 {
  "hook": {
-  "duration": 4.049,
+  "duration": 4.127,
   "speechStart": 0.067,
-  "speechEnd": 3.92,
+  "speechEnd": 3.84,
   "method": "elevenlabs alignment (with-timestamps, per character)",
   "words": [
    {
-    "w": "¿Cómo",
+    "w": "¿Qué",
     "start": 0.067,
-    "end": 0.24
+    "end": 0.16
    },
    {
-    "w": "sonaba",
-    "start": 0.32,
-    "end": 0.72
+    "w": "decía",
+    "start": 0.24,
+    "end": 0.64
    },
    {
     "w": "Juan",
-    "start": 0.8,
-    "end": 1.04
+    "start": 0.72,
+    "end": 0.96
    },
    {
     "w": "tres",
-    "start": 1.12,
-    "end": 1.28
+    "start": 1.04,
+    "end": 1.2
    },
    {
     "w": "dieciséis…",
-    "start": 1.36,
+    "start": 1.28,
     "end": 2.16
    },
    {
     "w": "en",
-    "start": 2.56,
-    "end": 2.64
+    "start": 2.48,
+    "end": 2.56
    },
    {
     "w": "el",
-    "start": 2.68,
-    "end": 2.72
+    "start": 2.64,
+    "end": 2.68
    },
    {
     "w": "idioma",
-    "start": 2.8,
-    "end": 3.12
+    "start": 2.72,
+    "end": 3.04
    },
    {
     "w": "en",
+    "start": 3.08,
+    "end": 3.12
+   },
+   {
+    "w": "que",
     "start": 3.16,
     "end": 3.2
    },
    {
-    "w": "que",
-    "start": 3.24,
-    "end": 3.28
-   },
-   {
     "w": "se",
-    "start": 3.36,
-    "end": 3.4
+    "start": 3.28,
+    "end": 3.36
    },
    {
     "w": "escribió?",
     "start": 3.44,
-    "end": 3.92
+    "end": 3.84
    }
   ]
  },
