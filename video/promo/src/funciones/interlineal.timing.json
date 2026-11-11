@@ -259,9 +259,9 @@
   ]
  },
  "historia": {
-  "duration": 5.251,
+  "duration": 5.721,
   "speechStart": 0,
-  "speechEnd": 5.2,
+  "speechEnd": 5.12,
   "method": "elevenlabs alignment (with-timestamps, per character)",
   "words": [
    {
@@ -270,89 +270,69 @@
     "end": 0.08
    },
    {
-    "w": "si",
+    "w": "para",
     "start": 0.16,
-    "end": 0.24
-   },
-   {
-    "w": "quieres",
-    "start": 0.32,
-    "end": 0.48
+    "end": 0.32
    },
    {
     "w": "ir",
-    "start": 0.56,
-    "end": 0.72
+    "start": 0.4,
+    "end": 0.48
    },
    {
     "w": "más",
-    "start": 0.8,
-    "end": 0.96
+    "start": 0.52,
+    "end": 0.64
    },
    {
     "w": "hondo,",
-    "start": 1,
-    "end": 1.6
+    "start": 0.72,
+    "end": 1.04
    },
    {
     "w": "la",
-    "start": 1.68,
-    "end": 1.72
+    "start": 1.36,
+    "end": 1.44
    },
    {
     "w": "historia",
-    "start": 1.76,
-    "end": 2.16
+    "start": 1.64,
+    "end": 2
    },
    {
     "w": "de",
-    "start": 2.2,
-    "end": 2.24
+    "start": 2.04,
+    "end": 2.08
    },
    {
     "w": "esa",
-    "start": 2.32,
-    "end": 2.56
+    "start": 2.16,
+    "end": 2.32
    },
    {
-    "w": "palabra",
-    "start": 2.64,
-    "end": 2.96
-   },
-   {
-    "w": "a",
-    "start": 3,
-    "end": 3.04
-   },
-   {
-    "w": "lo",
-    "start": 3.12,
-    "end": 3.2
-   },
-   {
-    "w": "largo",
-    "start": 3.24,
-    "end": 3.52
+    "w": "palabra…",
+    "start": 2.4,
+    "end": 2.8
    },
    {
     "w": "de",
-    "start": 3.64,
-    "end": 3.76
+    "start": 3.36,
+    "end": 3.52
    },
    {
-    "w": "toda",
-    "start": 3.8,
-    "end": 4
+    "w": "Génesis",
+    "start": 3.56,
+    "end": 4.16
    },
    {
-    "w": "la",
-    "start": 4.04,
-    "end": 4.08
+    "w": "a",
+    "start": 4.2,
+    "end": 4.24
    },
    {
-    "w": "Escritura.",
-    "start": 4.16,
-    "end": 5.2
+    "w": "Apocalipsis.",
+    "start": 4.32,
+    "end": 5.12
    }
   ]
  },
