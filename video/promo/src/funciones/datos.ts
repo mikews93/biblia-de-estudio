@@ -5,6 +5,8 @@ import interlinealTaps from './interlineal.taps.json';
 import interlinealTiming from './interlineal.timing.json';
 import podcastTaps from './podcast.taps.json';
 import podcastTiming from './podcast.timing.json';
+import prepararTaps from './preparar.taps.json';
+import prepararTiming from './preparar.timing.json';
 import preguntarTaps from './preguntar.taps.json';
 import preguntarTiming from './preguntar.timing.json';
 
@@ -131,5 +133,28 @@ export const FUNCIONES: Record<string, Funcion> = {
         {t: 9.4, quien: 'La voz del cielo', texto: 'Tú eres mi Hijo amado, a quien he elegido, en quien descansa mi favor.'},
       ],
     },
+  },
+  preparar: {
+    id: 'preparar',
+    timing: prepararTiming as Record<string, VoTiming>,
+    taps: prepararTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-taller', line: 'orar'},
+      {src: '2-orar', line: 'orar', word: 'cuéntale'},
+      {src: '3-investigacion', line: 'investigar'},
+      {src: '4-fuentes', line: 'investigar', word: 'teologías,'},
+      {src: '5-direccion', line: 'borrador'},
+      {src: '6-escribiendo', line: 'borrador', word: 'borrador'},
+      {src: '7-borrador', line: 'borrador', word: 'idea'},
+      {src: '8-partes', line: 'borrador', word: 'dinámicas.'},
+      {src: '9-cambios', line: 'cambios', word: 'pides'},
+    ],
+    titulares: [
+      {line: 'orar', eyebrow: 'TALLER', title: 'Empieza con lo que Dios te puso'},
+      {line: 'investigar', eyebrow: 'INVESTIGA CONTIGO', title: 'Pasajes, comentarios y teologías'},
+      {line: 'borrador', eyebrow: 'BORRADOR COMPLETO', title: 'Tu mensaje, listo para revisar'},
+      {line: 'cambios', eyebrow: 'TÚ DECIDES', title: 'Hasta que sea tuyo'},
+    ],
   },
 };
