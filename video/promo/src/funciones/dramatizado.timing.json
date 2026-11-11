@@ -1,0 +1,382 @@
+{
+ "hook": {
+  "duration": 3.396,
+  "speechStart": 0.114,
+  "speechEnd": 3.12,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Has",
+    "start": 0.114,
+    "end": 0.16
+   },
+   {
+    "w": "escuchado",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "Marcos",
+    "start": 0.72,
+    "end": 1.12
+   },
+   {
+    "w": "uno…",
+    "start": 1.2,
+    "end": 1.44
+   },
+   {
+    "w": "como",
+    "start": 2,
+    "end": 2.16
+   },
+   {
+    "w": "si",
+    "start": 2.24,
+    "end": 2.32
+   },
+   {
+    "w": "estuvieras",
+    "start": 2.4,
+    "end": 2.8
+   },
+   {
+    "w": "allí?",
+    "start": 2.88,
+    "end": 3.12
+   }
+  ]
+ },
+ "abrir": {
+  "duration": 8.594,
+  "speechStart": 0,
+  "speechEnd": 8.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.16,
+    "end": 0.56
+   },
+   {
+    "w": "toca",
+    "start": 0.92,
+    "end": 1.12
+   },
+   {
+    "w": "Escuchar",
+    "start": 1.24,
+    "end": 1.92
+   },
+   {
+    "w": "y",
+    "start": 2,
+    "end": 2.04
+   },
+   {
+    "w": "elige",
+    "start": 2.08,
+    "end": 2.4
+   },
+   {
+    "w": "el",
+    "start": 2.44,
+    "end": 2.48
+   },
+   {
+    "w": "dramatizado:",
+    "start": 2.56,
+    "end": 3.84
+   },
+   {
+    "w": "un",
+    "start": 3.92,
+    "end": 4
+   },
+   {
+    "w": "narrador,",
+    "start": 4.08,
+    "end": 4.88
+   },
+   {
+    "w": "una",
+    "start": 4.96,
+    "end": 5.12
+   },
+   {
+    "w": "voz",
+    "start": 5.2,
+    "end": 5.4
+   },
+   {
+    "w": "para",
+    "start": 5.44,
+    "end": 5.6
+   },
+   {
+    "w": "cada",
+    "start": 5.64,
+    "end": 5.84
+   },
+   {
+    "w": "personaje,",
+    "start": 6.04,
+    "end": 6.72
+   },
+   {
+    "w": "música",
+    "start": 6.88,
+    "end": 7.44
+   },
+   {
+    "w": "y",
+    "start": 7.48,
+    "end": 7.52
+   },
+   {
+    "w": "sonidos.",
+    "start": 7.6,
+    "end": 8.56
+   }
+  ]
+ },
+ "seguir": {
+  "duration": 4.911,
+  "speechStart": 0,
+  "speechEnd": 4.88,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "La",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "barra",
+    "start": 0.16,
+    "end": 0.4
+   },
+   {
+    "w": "te",
+    "start": 0.44,
+    "end": 0.48
+   },
+   {
+    "w": "dice",
+    "start": 0.56,
+    "end": 0.8
+   },
+   {
+    "w": "en",
+    "start": 0.88,
+    "end": 1.04
+   },
+   {
+    "w": "qué",
+    "start": 1.08,
+    "end": 1.12
+   },
+   {
+    "w": "versículo",
+    "start": 1.2,
+    "end": 1.68
+   },
+   {
+    "w": "vas,",
+    "start": 1.76,
+    "end": 2.32
+   },
+   {
+    "w": "y",
+    "start": 2.4,
+    "end": 2.48
+   },
+   {
+    "w": "sigue",
+    "start": 2.56,
+    "end": 2.72
+   },
+   {
+    "w": "sonando",
+    "start": 2.8,
+    "end": 3.2
+   },
+   {
+    "w": "aunque",
+    "start": 3.28,
+    "end": 3.52
+   },
+   {
+    "w": "cambies",
+    "start": 3.6,
+    "end": 3.92
+   },
+   {
+    "w": "de",
+    "start": 3.96,
+    "end": 4
+   },
+   {
+    "w": "pantalla.",
+    "start": 4.04,
+    "end": 4.88
+   }
+  ]
+ },
+ "pedir": {
+  "duration": 7.549,
+  "speechStart": 0,
+  "speechEnd": 6.96,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Y",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "si",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "tu",
+    "start": 0.28,
+    "end": 0.32
+   },
+   {
+    "w": "capítulo",
+    "start": 0.44,
+    "end": 0.8
+   },
+   {
+    "w": "todavía",
+    "start": 0.88,
+    "end": 1.36
+   },
+   {
+    "w": "no",
+    "start": 1.4,
+    "end": 1.44
+   },
+   {
+    "w": "está,",
+    "start": 1.56,
+    "end": 1.76
+   },
+   {
+    "w": "pídelo:",
+    "start": 2.24,
+    "end": 2.64
+   },
+   {
+    "w": "Zarza",
+    "start": 3.2,
+    "end": 3.52
+   },
+   {
+    "w": "lo",
+    "start": 3.56,
+    "end": 3.6
+   },
+   {
+    "w": "dramatiza",
+    "start": 3.68,
+    "end": 4.24
+   },
+   {
+    "w": "en",
+    "start": 4.32,
+    "end": 4.4
+   },
+   {
+    "w": "unos",
+    "start": 4.52,
+    "end": 4.64
+   },
+   {
+    "w": "minutos…",
+    "start": 4.72,
+    "end": 5.2
+   },
+   {
+    "w": "y",
+    "start": 5.76,
+    "end": 5.84
+   },
+   {
+    "w": "queda",
+    "start": 5.92,
+    "end": 6.24
+   },
+   {
+    "w": "para",
+    "start": 6.36,
+    "end": 6.48
+   },
+   {
+    "w": "todos.",
+    "start": 6.72,
+    "end": 6.96
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.206,
+  "speechStart": 0.14,
+  "speechEnd": 4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.08,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.2,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.56,
+    "end": 1.6
+   },
+   {
+    "w": "estudio…",
+    "start": 1.72,
+    "end": 2.16
+   },
+   {
+    "w": "gratis",
+    "start": 2.64,
+    "end": 3.12
+   },
+   {
+    "w": "en",
+    "start": 3.2,
+    "end": 3.36
+   },
+   {
+    "w": "Google",
+    "start": 3.48,
+    "end": 3.6
+   },
+   {
+    "w": "Play.",
+    "start": 3.68,
+    "end": 4
+   }
+  ]
+ }
+}
