@@ -1,5 +1,5 @@
-// Trazas de /api/estudiar hacia Lupa (api/_lupa.ts): cada respuesta de la IA sale como una traza con sus vueltas y
-// las herramientas que usó. Lupa se simula con un servidor local que guarda lo que recibe.
+// Trazas de /api/estudiar hacia Quilate (api/_quilate.ts): cada respuesta de la IA sale como una traza con sus vueltas y
+// las herramientas que usó. Quilate se simula con un servidor local que guarda lo que recibe.
 // Necesita DATABASE_URL (ver tests/api/helpers.ts) y public/data.
 import { createServer, Server } from 'node:http';
 import { AddressInfo } from 'node:net';
@@ -17,7 +17,7 @@ type Paso = {
 let estudiar: Post;
 let llave: string;
 let servidor: Server;
-/** Lo que responde el Lupa simulado: 202 lo acepta, 503 es Lupa caído. */
+/** Lo que responde el Quilate simulado: 202 lo acepta, 503 es Quilate caído. */
 let estado = 202;
 const recibidos: Paso[] = [];
 const llaves: string[] = [];
@@ -35,8 +35,8 @@ beforeAll(async () => {
     });
   });
   await new Promise<void>((listo) => servidor.listen(0, '127.0.0.1', listo));
-  process.env.LUPA_URL = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`;
-  process.env.LUPA_KEY = 'lupa_sk_prueba';
+  process.env.QUILATE_URL = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`;
+  process.env.QUILATE_KEY = 'quilate_sk_prueba';
   process.env.VERCEL_ENV = 'preview';
   await prepareEnv({ ai: true });
   process.env.COMENTARIOS_DIR = path.resolve(import.meta.dirname, '../fixtures/comentarios');
@@ -51,7 +51,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   servidor.close();
-  for (const variable of ['LUPA_URL', 'LUPA_KEY', 'VERCEL_ENV']) delete process.env[variable];
+  for (const variable of ['QUILATE_URL', 'QUILATE_KEY', 'VERCEL_ENV']) delete process.env[variable];
 });
 
 const canon = { book: 'jhn', chapter: 3, verse: 16, messages: [{ role: 'assistant', text: 'Estudio anterior' }, { role: 'user', text: '¿Cómo se definió el canon?' }] };
@@ -60,17 +60,17 @@ const preguntar = async (body: unknown) => {
   expect(res.status).toBe(200);
   return (await res.text()).split('\n').filter(Boolean).map((linea) => JSON.parse(linea) as { type: string; text?: string });
 };
-/** Lupa recibe después de que la persona tiene su respuesta: se espera a que llegue la traza completa. */
+/** Quilate recibe después de que la persona tiene su respuesta: se espera a que llegue la traza completa. */
 async function traza(desde: number) {
   for (let espera = 0; espera < 200; espera++) {
     const nuevos = recibidos.slice(desde);
     if (nuevos.some((paso) => paso.parentId === null)) return nuevos;
     await new Promise((sigue) => setTimeout(sigue, 25));
   }
-  throw new Error('La traza no llegó a Lupa');
+  throw new Error('La traza no llegó a Quilate');
 }
 
-describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar deja su traza en Lupa', () => {
+describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar deja su traza en Quilate', () => {
   it('una pregunta que investiga llega como una traza: la pregunta, cada vuelta con su modelo y tokens, y cada herramienta', async () => {
     const eventos = await preguntar(canon);
     const respuesta = eventos.filter((evento) => evento.type === 'text').map((evento) => evento.text).join('');
@@ -79,7 +79,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar deja su traza en Lupa', () 
     const raiz = pasos.find((paso) => paso.parentId === null)!;
     expect(raiz).toMatchObject({ kind: 'chain', name: 'Pregunta sobre Juan 3:16', fn: 'seguimiento', input: '¿Cómo se definió el canon?', output: respuesta, error: null, environment: 'preview' });
     expect(new Set(pasos.map((paso) => paso.traceId))).toEqual(new Set([raiz.traceId]));
-    expect(llaves[0]).toBe('Bearer lupa_sk_prueba');
+    expect(llaves[0]).toBe('Bearer quilate_sk_prueba');
 
     // Dos vueltas con la IA: la que pide las herramientas y la que responde con lo que encontró
     const vueltas = pasos.filter((paso) => paso.kind === 'model');
@@ -95,7 +95,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar deja su traza en Lupa', () 
     expect((leer.output as { resultados: number }).resultados).toBeGreaterThan(0);
   });
 
-  it('los documentos del pasaje no viajan a Lupa: del estudio solo va el encargo', async () => {
+  it('los documentos del pasaje no viajan a Quilate: del estudio solo va el encargo', async () => {
     const desde = recibidos.length;
     // Un estudio guardado de otra pasada se devolvería sin llamar a la IA, y entonces no hay traza
     const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
@@ -110,7 +110,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar deja su traza en Lupa', () 
     expect(JSON.stringify(pasos)).not.toContain('"type":"document"');
   });
 
-  it('con Lupa caído la persona recibe su respuesta igual', async () => {
+  it('con Quilate caído la persona recibe su respuesta igual', async () => {
     estado = 503;
     const desde = recibidos.length;
     const eventos = await preguntar(canon);

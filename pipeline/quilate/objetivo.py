@@ -1,11 +1,11 @@
-"""Lo que `lupa run` llama para correr un caso contra Zarza: hace la pregunta del caso en «Preguntar» y devuelve lo que
+"""Lo que `quilate run` llama para correr un caso contra Zarza: hace la pregunta del caso en «Preguntar» y devuelve lo que
 respondió la IA y lo que consultó.
 
-    ZARZA_URL=https://… ZARZA_LLAVE=… LUPA_KEY=… LUPA_URL=… python -m lupa run --set preguntar --version 1 --target objetivo:responder
+    ZARZA_URL=https://… ZARZA_LLAVE=… QUILATE_KEY=… QUILATE_URL=… python -m quilate run --set preguntar --version 1 --target objetivo:responder
 
 ZARZA_URL es la app contra la que se corre (la vista previa del PR, nunca producción si se puede evitar) y ZARZA_LLAVE
 la llave de una cuenta de pruebas. Cada caso es una pregunta real a la IA: cuesta dinero y gasta la lámpara de esa cuenta.
-Los casos se escriben en casos.json y se aprueban en Lupa.
+Los casos se escriben en casos.json y se aprueban en Quilate.
 """
 from __future__ import annotations
 

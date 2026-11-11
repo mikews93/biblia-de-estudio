@@ -47,7 +47,7 @@ import {
 } from './_investigar';
 import { corregirRespuesta } from './_corregir';
 import { fuentesDetalladas } from './_detalle';
-import { Span, enviarTrazas, lupa, textoDe } from './_lupa';
+import { Span, enviarTrazas, quilate, textoDe } from './_quilate';
 import { guardarPregunta } from './_preguntas';
 import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
 import { Registro, detener, reanudar } from './_reanudar';
@@ -1907,7 +1907,7 @@ export function sumarRespuesta(history: Anthropic.Beta.BetaMessageParam[], conte
  */
 function streamAnswer(
   request: Request,
-  /** Cómo se llama esta respuesta en Lupa (api/_lupa.ts) y qué función de la app la pidió. */
+  /** Cómo se llama esta respuesta en Quilate (api/_quilate.ts) y qué función de la app la pidió. */
   traza: { fn: string; nombre: string },
   docs: Doc[],
   messages: Anthropic.Beta.BetaMessageParam[],
@@ -1955,7 +1955,7 @@ function streamAnswer(
 
   // La respuesta entera es una traza: de la persona va lo que escribió (o el encargo), nunca los documentos del pasaje.
   function generate(send: (event: object) => void) {
-    return lupa.span(traza.nombre, { kind: 'chain', fn: traza.fn, input: textoDe(messages.at(-1)?.content) }, (raiz) => responder(send, raiz));
+    return quilate.span(traza.nombre, { kind: 'chain', fn: traza.fn, input: textoDe(messages.at(-1)?.content) }, (raiz) => responder(send, raiz));
   }
 
   async function responder(send: (event: object) => void, raiz: Span) {
@@ -1982,7 +1982,7 @@ function streamAnswer(
     const history = [...messages];
     // Una vuelta con la IA. «enviado» dice si ya llegó texto a la persona: entonces no se puede repetir.
     let enviado = false;
-    const vuelta = (last: boolean, round: number) => lupa.span(`Vuelta ${round + 1}`, { kind: 'model', model, input: textoDe(history.at(-1)?.content) }, async (paso) => {
+    const vuelta = (last: boolean, round: number) => quilate.span(`Vuelta ${round + 1}`, { kind: 'model', model, input: textoDe(history.at(-1)?.content) }, async (paso) => {
       const pending = new Map<number, Set<number>>();
       const response = client.beta.messages.stream(
         {
@@ -2074,7 +2074,7 @@ function streamAnswer(
           calls.forEach((call, i) => send({ type: 'paso', ...pasoDe(call.name, inputs[i], biblia) }));
           const done = await Promise.all(
             calls.map((call, i) =>
-              lupa.span(call.name, { kind: 'tool', input: inputs[i] }, async (paso) => {
+              quilate.span(call.name, { kind: 'tool', input: inputs[i] }, async (paso) => {
                 const hecho = await investigar(call.name, inputs[i], biblia);
                 paso.output = { resultados: hecho.results.length };
                 return hecho;

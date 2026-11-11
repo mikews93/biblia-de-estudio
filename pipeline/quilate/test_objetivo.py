@@ -1,4 +1,4 @@
-"""Pruebas de objetivo.py con un Zarza de mentira: `python3 -m unittest discover -s pipeline/lupa`."""
+"""Pruebas de objetivo.py con un Zarza de mentira: `python3 -m unittest discover -s pipeline/quilate`."""
 import json
 import os
 import threading
