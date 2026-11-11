@@ -16,9 +16,14 @@ import {createHash} from 'node:crypto';
 import {join} from 'node:path';
 
 const ROOT = join(import.meta.dir, '..');
-const VO = join(ROOT, 'public/vo');
+// VO_SCRIPT=funciones/<id>.json graba la voz de un video de función (public/vo/funciones/<id>/ y
+// src/funciones/<id>.timing.json); sin él, la del video promocional.
+const SCRIPT = process.env.VO_SCRIPT ?? 'script.json';
+const FN = SCRIPT.match(/^funciones\/([\w-]+)\.json$/)?.[1];
+const VO = join(ROOT, FN ? `public/vo/funciones/${FN}` : 'public/vo');
+const TIMING = join(ROOT, FN ? `src/funciones/${FN}.timing.json` : 'src/vo-timing.json');
 type Line = {id: string; at: number; text: string};
-const script = JSON.parse(readFileSync(join(ROOT, 'script.json'), 'utf8')) as {voice: {voiceId: string; model: string}; lines: Line[]};
+const script = JSON.parse(readFileSync(join(ROOT, SCRIPT), 'utf8')) as {voice: {voiceId: string; model: string}; lines: Line[]};
 const {voiceId, model} = script.voice;
 const manifestPath = join(VO, 'manifest.json');
 const manifest: Record<string, string> = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : {};
@@ -118,6 +123,7 @@ const timing = (line: Line) => {
 
 if (import.meta.main) {
   mkdirSync(VO, {recursive: true});
+  mkdirSync(join(TIMING, '..'), {recursive: true});
   if (!process.argv.includes('--timing')) {
     const todo = script.lines.map((l, i) => i).filter((i) => {
       const l = script.lines[i];
@@ -141,5 +147,5 @@ if (import.meta.main) {
     const t = result[line.id];
     console.log(`${line.id.padEnd(9)} ${t.duration.toFixed(2)} s  speech ${t.speechStart}–${t.speechEnd}  ${t.words.length} words`);
   }
-  writeFileSync(join(ROOT, 'src/vo-timing.json'), JSON.stringify(result, null, 1) + '\n');
+  writeFileSync(TIMING, JSON.stringify(result, null, 1) + '\n');
 }

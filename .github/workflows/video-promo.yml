@@ -10,6 +10,7 @@ on:
   push:
     paths:
       - video/promo/script.json
+      - video/promo/funciones/*.json
       - video/promo/scripts/vo.ts
       - video/promo/scripts/musica.ts
       - .github/workflows/video-promo.yml
@@ -50,6 +51,15 @@ jobs:
           fi
       - name: Grabar la voz (solo lo que cambió)
         run: bun scripts/vo.ts
+      - name: Voz de los videos de funciones (solo lo que cambió)
+        run: |
+          for f in funciones/*.json; do
+            id=$(basename "$f" .json)
+            mkdir -p "public/vo/funciones/$id"
+            gh release download "$TAG" -D "public/vo/funciones/$id" -p "fn-$id--*" --clobber 2>/dev/null || true
+            (cd "public/vo/funciones/$id" && for a in fn-*; do [ -e "$a" ] && mv "$a" "${a#fn-$id--}"; done; true)
+            VO_SCRIPT="$f" bun scripts/vo.ts
+          done
       - name: Componer la música (si falta)
         continue-on-error: true
         run: test -f public/music/zarza-promo.mp3 || bun scripts/musica.ts
@@ -59,14 +69,18 @@ jobs:
             --title "Video promocional (audios)" \
             --notes "Voz de Abel y música del video promocional de Zarza. Se reemplazan en cada grabación."
           mkdir -p ../../salida-vo
-          for f in public/vo/*; do cp "$f" "../../salida-vo/vo-$(basename "$f")"; done
+          for f in public/vo/*; do if [ -f "$f" ]; then cp "$f" "../../salida-vo/vo-$(basename "$f")"; fi; done
+          for d in public/vo/funciones/*/; do
+            id=$(basename "$d")
+            for f in "$d"*; do cp "$f" "../../salida-vo/fn-$id--$(basename "$f")"; done
+          done
           gh release upload "$TAG" ../../salida-vo/* --clobber
           if [ -f public/music/zarza-promo.mp3 ]; then gh release upload "$TAG" public/music/zarza-promo.mp3 --clobber; fi
       - name: Guardar la sincronía en la rama
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/vo-timing.json
+          git add src/vo-timing.json src/funciones/*.timing.json
           git diff --cached --quiet && exit 0
           git commit -m "Video promocional: sincronía de la voz"
           for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done

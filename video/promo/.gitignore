@@ -4,3 +4,5 @@ public/vo/*.mp3
 public/vo/*.align.json
 public/music/
 public/capturas/
+public/vo/funciones/
+out-funciones/
