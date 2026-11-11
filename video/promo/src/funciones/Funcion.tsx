@@ -58,7 +58,9 @@ export const Funcion = ({id}: {id: string}) => {
   const shots: Shot[] = d.pantallas.map((p) => {
     const offset = p.t ?? (p.word ? wordAt(d.timing[p.line], p.word) : 0);
     const base = at[p.line] + Math.round(offset * FPS) + (p.delay ?? 0);
-    return {at: base, src: `funciones/${id}/${p.src}`, tap: d.taps[p.src] ?? undefined};
+    const tap = d.taps[p.src];
+    // Un toque fuera de la pantalla (un botón al fondo de la página) no se marca.
+    return {at: base, src: `funciones/${id}/${p.src}`, tap: tap && tap.y < 2402 ? tap : undefined};
   });
   shots[0] = {...shots[0], at: phoneIn};
   // El último toque no lleva a otra pantalla: se quita.
