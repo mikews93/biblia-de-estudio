@@ -1,0 +1,11 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical del pódcast del capítulo (src/funciones/Funcion.tsx). Después de «abrir» suena el pódcast real de Juan 3.",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[curious] ¿Y si alguien te explicara el capítulo… mientras vas de camino?"},
+    {"id": "abrir", "at": 0, "text": "En Zarza, cada capítulo tiene su pódcast: Ana y Tomás lo conversan, con su contexto y el original."},
+    {"id": "barra", "at": 0, "text": "Suena en la barra de abajo mientras sigues leyendo, y con un toque pasas al capítulo siguiente."},
+    {"id": "grabar", "at": 0, "text": "Y si un capítulo aún no tiene voces naturales, lo grabas tú… y queda para todos."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}
