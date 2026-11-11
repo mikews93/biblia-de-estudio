@@ -1,4 +1,6 @@
 import type {VoTiming} from '../audio';
+import dramatizadoTaps from './dramatizado.taps.json';
+import dramatizadoTiming from './dramatizado.timing.json';
 import interlinealTaps from './interlineal.taps.json';
 import interlinealTiming from './interlineal.timing.json';
 import podcastTaps from './podcast.taps.json';
@@ -95,6 +97,38 @@ export const FUNCIONES: Record<string, Funcion> = {
       lineas: [
         {t: 0, quien: 'Ana', texto: 'Un maestro de la ley, respetado por todos, va a ver a Jesús de noche. ¿Por qué a escondidas?'},
         {t: 6.6, quien: 'Tomás', texto: 'Juan no lo explica, y eso ya dice algo.'},
+      ],
+    },
+  },
+  dramatizado: {
+    id: 'dramatizado',
+    timing: dramatizadoTiming as Record<string, VoTiming>,
+    taps: dramatizadoTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-lector', line: 'abrir', word: 'Escuchar', delay: -14},
+      {src: '2-hoja', line: 'abrir', word: 'Escuchar', delay: 6},
+      {src: '3-sonando', line: '@clip'},
+      {src: '4-sonando-v11', line: '@clip', t: 7.3},
+      {src: '5-pedir', line: 'pedir'},
+      {src: '6-guion', line: 'pedir', word: 'pídelo:', delay: 6},
+      {src: '7-voces', line: 'pedir', word: 'minutos…'},
+      {src: '8-listo', line: 'pedir', word: 'queda'},
+    ],
+    titulares: [
+      {line: 'abrir', eyebrow: 'AUDIO DRAMATIZADO', title: 'La Biblia, como si estuvieras allí'},
+      {line: 'seguir', eyebrow: 'VERSÍCULO A VERSÍCULO', title: 'Sabes siempre por dónde vas'},
+      {line: 'pedir', eyebrow: 'A PEDIDO', title: 'Tu capítulo, en unos minutos'},
+    ],
+    clip: {
+      after: 'abrir',
+      src: 'clips/dramatizado-mrk-1.mp3',
+      from: 80.6,
+      dur: 17.3,
+      lineas: [
+        {t: 0, quien: 'Narrador', texto: 'Y luego, saliendo del agua, vio los cielos abiertos y el Espíritu descendía sobre él como una paloma.'},
+        {t: 7.3, quien: 'Narrador', texto: 'Y una voz salió del cielo:'},
+        {t: 9.4, quien: 'La voz del cielo', texto: 'Tú eres mi Hijo amado, a quien he elegido, en quien descansa mi favor.'},
       ],
     },
   },
