@@ -1,0 +1,19 @@
+{
+ "1-lector": {
+  "x": 331,
+  "y": 210
+ },
+ "2-hoja": {
+  "x": 541,
+  "y": 2040
+ },
+ "3-sonando": null,
+ "4-sonando-v11": null,
+ "5-pedir": {
+  "x": 541,
+  "y": 2137
+ },
+ "6-guion": null,
+ "7-voces": null,
+ "8-listo": null
+}
