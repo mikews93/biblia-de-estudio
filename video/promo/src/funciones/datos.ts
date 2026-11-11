@@ -1,6 +1,8 @@
 import type {VoTiming} from '../audio';
 import interlinealTaps from './interlineal.taps.json';
 import interlinealTiming from './interlineal.timing.json';
+import preguntarTaps from './preguntar.taps.json';
+import preguntarTiming from './preguntar.timing.json';
 
 /**
  * Los videos verticales de cada función (src/funciones/Funcion.tsx). La voz es de funciones/<id>.json
@@ -37,6 +39,27 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'activar', eyebrow: 'INTERLINEAL', title: 'El griego, bajo cada versículo'},
       {line: 'tocar', eyebrow: 'CADA PALABRA', title: 'Su raíz, su gramática, sus usos'},
       {line: 'historia', eyebrow: 'LA HISTORIA DE UNA PALABRA', title: 'De Génesis a Apocalipsis'},
+    ],
+  },
+  preguntar: {
+    id: 'preguntar',
+    timing: preguntarTiming as Record<string, VoTiming>,
+    taps: preguntarTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-hoy', line: 'buscar'},
+      {src: '2-buscador', line: 'buscar', word: 'buscador,', delay: 4},
+      {src: '3-escrita', line: 'buscar', word: 'preguntarías'},
+      {src: '4-tarjeta', line: 'respuesta'},
+      {src: '5-respuesta', line: 'respuesta', word: 'versículo,'},
+      {src: '6-respuesta-abajo', line: 'fuentes', word: 'revisa'},
+      {src: '7-para-pensar', line: 'pensar', word: 'pregunta'},
+    ],
+    titulares: [
+      {line: 'buscar', eyebrow: 'PREGÚNTALE A LA BIBLIA', title: 'Como se lo preguntarías a alguien'},
+      {line: 'respuesta', eyebrow: 'CITA POR CITA', title: 'Respuestas con la Biblia abierta'},
+      {line: 'fuentes', eyebrow: 'CITAS REVISADAS', title: 'Cada cita, comprobada'},
+      {line: 'pensar', eyebrow: 'PARA PENSAR', title: 'Y una pregunta para ti'},
     ],
   },
 };
