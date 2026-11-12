@@ -15,6 +15,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { needsAccount } from './_cuenta';
+import { conClaude, enviarTrazas, quilate } from './_quilate';
 import { Biblia, type Lectura, lectura } from './_investigar';
 import { quickSearch, warm } from './_semantica';
 import { tipoDe } from './_tipo';
@@ -53,16 +54,18 @@ async function load<T>(rel: string, fallback?: T): Promise<T> {
   }
 }
 
-async function ask<T>(system: string, prompt: string, schema: Record<string, unknown>): Promise<T> {
-  const response = await client.beta.messages.create({
-    model: MODEL,
-    max_tokens: 8000,
-    system,
-    messages: [{ role: 'user', content: prompt }],
-    output_config: { effort: 'low', format: { type: 'json_schema', schema } },
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-  });
+async function ask<T>(nombre: string, system: string, prompt: string, schema: Record<string, unknown>): Promise<T> {
+  const response = await conClaude(nombre, { fn: 'buscar', model: MODEL, input: prompt }, () =>
+    client.beta.messages.create({
+      model: MODEL,
+      max_tokens: 8000,
+      system,
+      messages: [{ role: 'user', content: prompt }],
+      output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+    }),
+  );
   if (response.stop_reason === 'refusal') throw new Error('refusal');
   const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
   return JSON.parse(text) as T;
@@ -140,61 +143,70 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 1. Propuesta
-    const proposal = await ask<{ candidates: string[] }>(
-      system,
-      `Búsqueda de la persona: «${query}»
+    // Una búsqueda es una traza en Quilate: lo buscado, la propuesta y la revisión, y los pasajes que quedaron.
+    return await quilate.span('Buscar con IA', { kind: 'chain', fn: 'buscar', input: query }, async (raiz) => {
+      // 1. Propuesta
+      const proposal = await ask<{ candidates: string[] }>(
+        'Proponer pasajes',
+        system,
+        `Búsqueda de la persona: «${query}»
 
 Propón hasta ${MAX_CANDIDATES} pasajes de la Biblia que traten esa idea, del más al menos claro. Si parece un fragmento recordado de un versículo, pon primero ese versículo. Escribe cada uno como libro.capítulo.versículo con estos códigos de libro: ${ids}. Para un tramo corto del mismo capítulo usa libro.c.v-libro.c.v (máximo ${MAX_VERSES} versículos). Ejemplos: php.4.6 o mat.6.33-mat.6.34.`,
-      {
-        type: 'object',
-        properties: { candidates: { type: 'array', items: { type: 'string' } } },
-        required: ['candidates'],
-        additionalProperties: false,
-      },
-    );
+        {
+          type: 'object',
+          properties: { candidates: { type: 'array', items: { type: 'string' } } },
+          required: ['candidates'],
+          additionalProperties: false,
+        },
+      );
 
-    // 2. Comprobación contra el texto real
-    const unique = [...new Set(proposal.candidates)].slice(0, MAX_CANDIDATES);
-    const found = (await Promise.all(unique.map((r) => verify(r, books, biblia, rv)))).filter(
-      (x): x is NonNullable<typeof x> => x !== null,
-    );
-    if (!found.length) return Response.json({ results: [] });
+      // 2. Comprobación contra el texto real
+      const unique = [...new Set(proposal.candidates)].slice(0, MAX_CANDIDATES);
+      const found = (await Promise.all(unique.map((r) => verify(r, books, biblia, rv)))).filter(
+        (x): x is NonNullable<typeof x> => x !== null,
+      );
+      if (!found.length) {
+        raiz.output = [];
+        return Response.json({ results: [] });
+      }
 
-    // 3. Lectura del texto: solo quedan los pasajes que de verdad hablan de la idea
-    const review = await ask<{ keep: { n: number; reason: string }[]; note: string }>(
-      system,
-      `Búsqueda de la persona: «${query}»
+      // 3. Lectura del texto: solo quedan los pasajes que de verdad hablan de la idea
+      const review = await ask<{ keep: { n: number; reason: string }[]; note: string }>(
+        'Revisar pasajes',
+        system,
+        `Búsqueda de la persona: «${query}»
 
 Estos son los textos reales de la versión «${version.name}»${found.some((f) => f.version !== version.id) ? ' (los marcados con [RV1909] son de la Reina-Valera 1909)' : ''}:
 ${found.map((f, i) => `[${i + 1}]${f.version !== version.id ? ' [RV1909]' : ''} ${f.label}: ${f.text}`).join('\n')}
 
 Quédate solo con los que, leídos tal como están, hablan de verdad de esa idea, o son el versículo del que viene el fragmento que la persona recuerda aunque la ${version.abbr} lo diga con otras palabras (máximo ${MAX_RESULTS}), ordenados del más al menos claro, con ese versículo primero. Para cada uno escribe en "reason" una frase breve en español que explique qué dice el texto sobre la idea, basada solo en sus palabras; si es el versículo del fragmento recordado, dilo («Es el versículo que recuerdas…»). En "note" escribe una frase si las tradiciones cristianas entienden el tema de maneras distintas, sin tomar partido; si no, deja "note" vacío.`,
-      {
-        type: 'object',
-        properties: {
-          keep: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: { n: { type: 'integer' }, reason: { type: 'string' } },
-              required: ['n', 'reason'],
-              additionalProperties: false,
+        {
+          type: 'object',
+          properties: {
+            keep: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: { n: { type: 'integer' }, reason: { type: 'string' } },
+                required: ['n', 'reason'],
+                additionalProperties: false,
+              },
             },
+            note: { type: 'string' },
           },
-          note: { type: 'string' },
+          required: ['keep', 'note'],
+          additionalProperties: false,
         },
-        required: ['keep', 'note'],
-        additionalProperties: false,
-      },
-    );
+      );
 
-    const seen = new Set<number>();
-    const results: Result[] = review.keep
-      .filter(({ n }) => n >= 1 && n <= found.length && !seen.has(n) && seen.add(n))
-      .slice(0, MAX_RESULTS)
-      .map(({ n, reason }) => ({ ...found[n - 1], reason }));
-    return Response.json({ results, note: review.note || undefined }, { headers: { 'Cache-Control': 'no-store' } });
+      const seen = new Set<number>();
+      const results: Result[] = review.keep
+        .filter(({ n }) => n >= 1 && n <= found.length && !seen.has(n) && seen.add(n))
+        .slice(0, MAX_RESULTS)
+        .map(({ n, reason }) => ({ ...found[n - 1], reason }));
+      raiz.output = results.map((r) => r.ref);
+      return Response.json({ results, note: review.note || undefined }, { headers: { 'Cache-Control': 'no-store' } });
+    });
   } catch (err) {
     console.error('buscar', err);
     if (err instanceof Error && err.message === 'refusal') {
@@ -207,5 +219,7 @@ Quédate solo con los que, leídos tal como están, hablan de verdad de esa idea
           ? 'Falta configurar la clave de la IA en el servidor.'
           : 'No se pudo hacer la búsqueda. Inténtalo de nuevo.';
     return badRequest(message, 502);
+  } finally {
+    enviarTrazas();
   }
 }

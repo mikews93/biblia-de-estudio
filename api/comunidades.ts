@@ -30,6 +30,7 @@ import { ERRORES_SCHEMA, erroresActions } from './_errores';
 import { iglesiaActions, iglesiaDe } from './_iglesias';
 import { PAREJA_SCHEMA, parejaActions } from './_pareja';
 import { type Aviso, notifyUser, PUSH_SCHEMA } from './_push';
+import { conClaude } from './_quilate';
 import { RECUPERAR_SCHEMA, recuperarActions } from './_recuperar';
 import { esCuidador } from './_senales';
 import { DIAS_VISIBLE, MAX_ANIMO, PETICIONES_DIA } from '../src/lib/pedirOracion';
@@ -657,20 +658,22 @@ async function passageText(book: Book, chapter: number) {
 let anthropic: Anthropic | null = null;
 
 async function suggestQuestions(book: Book, chapter: number) {
-  anthropic ??= new Anthropic();
+  const ia = (anthropic ??= new Anthropic());
   const passage = await passageText(book, chapter);
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 4000,
-    system: QUESTIONS_SYSTEM,
-    output_config: { effort: 'low' },
-    messages: [
-      {
-        role: 'user',
-        content: `Pasaje para la reunión: ${book.name} ${chapter} (Reina-Valera 1909)\n\n${passage}\n\nPropón las preguntas.`,
-      },
-    ],
-  });
+  const response = await conClaude('Preguntas para la reunión', { fn: 'comunidades', model: MODEL, input: `${book.name} ${chapter}` }, () =>
+    ia.messages.create({
+      model: MODEL,
+      max_tokens: 4000,
+      system: QUESTIONS_SYSTEM,
+      output_config: { effort: 'low' },
+      messages: [
+        {
+          role: 'user',
+          content: `Pasaje para la reunión: ${book.name} ${chapter} (Reina-Valera 1909)\n\n${passage}\n\nPropón las preguntas.`,
+        },
+      ],
+    }),
+  );
   if (response.stop_reason === 'refusal') throw new Fail('No se pudieron sugerir preguntas para este pasaje.', 502);
   return response.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
