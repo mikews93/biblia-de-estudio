@@ -365,9 +365,9 @@
   ]
  },
  "compartir": {
-  "duration": 4.911,
+  "duration": 4.127,
   "speechStart": 0,
-  "speechEnd": 4.4,
+  "speechEnd": 3.92,
   "method": "elevenlabs alignment (with-timestamps, per character)",
   "words": [
    {
@@ -376,66 +376,61 @@
     "end": 0.24
    },
    {
-    "w": "el",
-    "start": 0.28,
-    "end": 0.32
+    "w": "los",
+    "start": 0.32,
+    "end": 0.4
    },
    {
-    "w": "botón",
-    "start": 0.4,
+    "w": "tres",
+    "start": 0.48,
     "end": 0.64
    },
    {
-    "w": "de",
+    "w": "puntos,",
     "start": 0.72,
-    "end": 0.8
+    "end": 1.2
    },
    {
-    "w": "compartir…",
-    "start": 0.88,
-    "end": 1.44
+    "w": "abajo",
+    "start": 1.44,
+    "end": 1.76
    },
    {
-    "w": "y",
+    "w": "a",
+    "start": 1.8,
+    "end": 1.84
+   },
+   {
+    "w": "la",
     "start": 1.88,
     "end": 1.92
    },
    {
-    "w": "elige:",
-    "start": 2,
+    "w": "derecha,",
+    "start": 2.04,
     "end": 2.4
    },
    {
-    "w": "Añadir",
+    "w": "y",
+    "start": 2.68,
+    "end": 2.72
+   },
+   {
+    "w": "luego",
     "start": 2.8,
-    "end": 3.2
+    "end": 3.12
    },
    {
-    "w": "a",
-    "start": 3.24,
-    "end": 3.28
-   },
-   {
-    "w": "pantalla",
-    "start": 3.36,
-    "end": 3.76
-   },
-   {
-    "w": "de",
-    "start": 3.84,
-    "end": 3.88
-   },
-   {
-    "w": "inicio.",
-    "start": 3.92,
-    "end": 4.4
+    "w": "Compartir.",
+    "start": 3.28,
+    "end": 3.92
    }
   ]
  },
- "anadir": {
-  "duration": 7.001,
+ "vermas": {
+  "duration": 3.866,
   "speechStart": 0,
-  "speechEnd": 6.24,
+  "speechEnd": 3.76,
   "method": "elevenlabs alignment (with-timestamps, per character)",
   "words": [
    {
@@ -444,89 +439,137 @@
     "end": 0.32
    },
    {
-    "w": "Añadir,",
-    "start": 0.4,
-    "end": 0.88
+    "w": "Ver",
+    "start": 0.56,
+    "end": 0.8
+   },
+   {
+    "w": "más…",
+    "start": 0.88,
+    "end": 1.28
    },
    {
     "w": "y",
-    "start": 1.28,
-    "end": 1.32
+    "start": 1.72,
+    "end": 1.76
    },
    {
-    "w": "listo.",
-    "start": 1.36,
-    "end": 1.96
+    "w": "elige:",
+    "start": 1.84,
+    "end": 2.32
    },
    {
-    "w": "Zarza",
-    "start": 2.28,
-    "end": 2.64
-   },
-   {
-    "w": "queda",
-    "start": 2.76,
-    "end": 2.88
-   },
-   {
-    "w": "con",
-    "start": 2.96,
-    "end": 3.04
-   },
-   {
-    "w": "su",
-    "start": 3.12,
-    "end": 3.2
-   },
-   {
-    "w": "ícono,",
-    "start": 3.28,
-    "end": 3.84
-   },
-   {
-    "w": "y",
-    "start": 3.893,
-    "end": 3.92
-   },
-   {
-    "w": "se",
-    "start": 4,
-    "end": 4.08
-   },
-   {
-    "w": "abre",
-    "start": 4.16,
-    "end": 4.32
+    "w": "Agregar",
+    "start": 2.64,
+    "end": 3.12
    },
    {
     "w": "a",
-    "start": 4.36,
+    "start": 3.16,
+    "end": 3.2
+   },
+   {
+    "w": "Inicio.",
+    "start": 3.28,
+    "end": 3.76
+   }
+  ]
+ },
+ "agregar": {
+  "duration": 7.079,
+  "speechStart": 0,
+  "speechEnd": 6.4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Toca",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "Agregar,",
+    "start": 0.48,
+    "end": 1.04
+   },
+   {
+    "w": "y",
+    "start": 1.4,
+    "end": 1.44
+   },
+   {
+    "w": "listo.",
+    "start": 1.52,
+    "end": 1.84
+   },
+   {
+    "w": "Zarza",
+    "start": 2.36,
+    "end": 2.72
+   },
+   {
+    "w": "queda",
+    "start": 2.84,
+    "end": 2.96
+   },
+   {
+    "w": "con",
+    "start": 3.04,
+    "end": 3.12
+   },
+   {
+    "w": "su",
+    "start": 3.2,
+    "end": 3.28
+   },
+   {
+    "w": "ícono,",
+    "start": 3.36,
+    "end": 3.68
+   },
+   {
+    "w": "y",
+    "start": 3.96,
+    "end": 4
+   },
+   {
+    "w": "se",
+    "start": 4.08,
+    "end": 4.16
+   },
+   {
+    "w": "abre",
+    "start": 4.24,
     "end": 4.4
    },
    {
-    "w": "pantalla",
+    "w": "a",
     "start": 4.44,
-    "end": 4.8
+    "end": 4.48
+   },
+   {
+    "w": "pantalla",
+    "start": 4.52,
+    "end": 4.88
    },
    {
     "w": "completa,",
-    "start": 4.92,
-    "end": 5.52
+    "start": 4.96,
+    "end": 5.36
    },
    {
     "w": "como",
     "start": 5.68,
-    "end": 5.76
+    "end": 5.84
    },
    {
     "w": "una",
-    "start": 5.84,
-    "end": 6
+    "start": 5.92,
+    "end": 6.08
    },
    {
     "w": "app.",
-    "start": 6.12,
-    "end": 6.24
+    "start": 6.24,
+    "end": 6.4
    }
   ]
  },
