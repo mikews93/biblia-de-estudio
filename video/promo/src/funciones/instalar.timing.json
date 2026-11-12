@@ -1,0 +1,601 @@
+{
+ "hook": {
+  "duration": 3.239,
+  "speechStart": 0.057,
+  "speechEnd": 3.04,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Quieres",
+    "start": 0.057,
+    "end": 0.24
+   },
+   {
+    "w": "tener",
+    "start": 0.32,
+    "end": 0.56
+   },
+   {
+    "w": "Zarza",
+    "start": 0.6,
+    "end": 0.88
+   },
+   {
+    "w": "en",
+    "start": 0.92,
+    "end": 0.96
+   },
+   {
+    "w": "tu",
+    "start": 1,
+    "end": 1.04
+   },
+   {
+    "w": "teléfono?",
+    "start": 1.12,
+    "end": 1.52
+   },
+   {
+    "w": "Te",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "enseño",
+    "start": 2.12,
+    "end": 2.32
+   },
+   {
+    "w": "en",
+    "start": 2.4,
+    "end": 2.48
+   },
+   {
+    "w": "un",
+    "start": 2.52,
+    "end": 2.56
+   },
+   {
+    "w": "minuto.",
+    "start": 2.64,
+    "end": 3.04
+   }
+  ]
+ },
+ "android": {
+  "duration": 5.329,
+  "speechStart": 0,
+  "speechEnd": 5,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Si",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "tienes",
+    "start": 0.16,
+    "end": 0.48
+   },
+   {
+    "w": "Android,",
+    "start": 0.72,
+    "end": 0.96
+   },
+   {
+    "w": "búscala",
+    "start": 1.24,
+    "end": 1.6
+   },
+   {
+    "w": "en",
+    "start": 1.68,
+    "end": 1.76
+   },
+   {
+    "w": "Google",
+    "start": 1.88,
+    "end": 2
+   },
+   {
+    "w": "Play",
+    "start": 2.08,
+    "end": 2.32
+   },
+   {
+    "w": "como",
+    "start": 2.4,
+    "end": 2.56
+   },
+   {
+    "w": "Zarza,",
+    "start": 2.64,
+    "end": 3.04
+   },
+   {
+    "w": "o",
+    "start": 3.44,
+    "end": 3.52
+   },
+   {
+    "w": "abre",
+    "start": 3.6,
+    "end": 3.76
+   },
+   {
+    "w": "el",
+    "start": 3.84,
+    "end": 3.92
+   },
+   {
+    "w": "enlace",
+    "start": 4,
+    "end": 4.24
+   },
+   {
+    "w": "directo.",
+    "start": 4.32,
+    "end": 5
+   }
+  ]
+ },
+ "instalar": {
+  "duration": 5.956,
+  "speechStart": 0,
+  "speechEnd": 5.44,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Toca",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "Instalar…",
+    "start": 0.32,
+    "end": 0.96
+   },
+   {
+    "w": "y",
+    "start": 1.4,
+    "end": 1.44
+   },
+   {
+    "w": "cuando",
+    "start": 1.52,
+    "end": 1.76
+   },
+   {
+    "w": "termine,",
+    "start": 1.88,
+    "end": 2.24
+   },
+   {
+    "w": "Abrir.",
+    "start": 2.68,
+    "end": 3.04
+   },
+   {
+    "w": "Es",
+    "start": 3.6,
+    "end": 3.68
+   },
+   {
+    "w": "gratis,",
+    "start": 3.76,
+    "end": 4.24
+   },
+   {
+    "w": "y",
+    "start": 4.44,
+    "end": 4.48
+   },
+   {
+    "w": "se",
+    "start": 4.52,
+    "end": 4.56
+   },
+   {
+    "w": "actualiza",
+    "start": 4.64,
+    "end": 5.04
+   },
+   {
+    "w": "sola.",
+    "start": 5.12,
+    "end": 5.44
+   }
+  ]
+ },
+ "apk": {
+  "duration": 6.922,
+  "speechStart": 0,
+  "speechEnd": 6.24,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Si",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "antes",
+    "start": 0.24,
+    "end": 0.48
+   },
+   {
+    "w": "la",
+    "start": 0.52,
+    "end": 0.56
+   },
+   {
+    "w": "instalaste",
+    "start": 0.68,
+    "end": 1.12
+   },
+   {
+    "w": "desde",
+    "start": 1.2,
+    "end": 1.36
+   },
+   {
+    "w": "la",
+    "start": 1.44,
+    "end": 1.52
+   },
+   {
+    "w": "página",
+    "start": 1.56,
+    "end": 1.84
+   },
+   {
+    "w": "web,",
+    "start": 1.92,
+    "end": 2.16
+   },
+   {
+    "w": "desinstala",
+    "start": 2.56,
+    "end": 3.12
+   },
+   {
+    "w": "esa",
+    "start": 3.24,
+    "end": 3.36
+   },
+   {
+    "w": "primero,",
+    "start": 3.44,
+    "end": 3.84
+   },
+   {
+    "w": "y",
+    "start": 4.2,
+    "end": 4.24
+   },
+   {
+    "w": "luego",
+    "start": 4.32,
+    "end": 4.72
+   },
+   {
+    "w": "instálala",
+    "start": 4.88,
+    "end": 5.36
+   },
+   {
+    "w": "desde",
+    "start": 5.44,
+    "end": 5.6
+   },
+   {
+    "w": "Google",
+    "start": 5.68,
+    "end": 5.92
+   },
+   {
+    "w": "Play.",
+    "start": 6,
+    "end": 6.24
+   }
+  ]
+ },
+ "iphone": {
+  "duration": 5.642,
+  "speechStart": 0,
+  "speechEnd": 5.12,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Tienes",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "iPhone?",
+    "start": 0.4,
+    "end": 0.8
+   },
+   {
+    "w": "Mientras",
+    "start": 1.32,
+    "end": 1.68
+   },
+   {
+    "w": "llega",
+    "start": 1.733,
+    "end": 1.92
+   },
+   {
+    "w": "al",
+    "start": 2,
+    "end": 2.08
+   },
+   {
+    "w": "App",
+    "start": 2.16,
+    "end": 2.24
+   },
+   {
+    "w": "Store,",
+    "start": 2.32,
+    "end": 2.56
+   },
+   {
+    "w": "abre",
+    "start": 2.88,
+    "end": 3.12
+   },
+   {
+    "w": "zarzabiblia.com",
+    "start": 3.24,
+    "end": 4.48
+   },
+   {
+    "w": "en",
+    "start": 4.56,
+    "end": 4.64
+   },
+   {
+    "w": "Safari.",
+    "start": 4.72,
+    "end": 5.12
+   }
+  ]
+ },
+ "compartir": {
+  "duration": 4.911,
+  "speechStart": 0,
+  "speechEnd": 4.4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Toca",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "el",
+    "start": 0.28,
+    "end": 0.32
+   },
+   {
+    "w": "botón",
+    "start": 0.4,
+    "end": 0.64
+   },
+   {
+    "w": "de",
+    "start": 0.72,
+    "end": 0.8
+   },
+   {
+    "w": "compartir…",
+    "start": 0.88,
+    "end": 1.44
+   },
+   {
+    "w": "y",
+    "start": 1.88,
+    "end": 1.92
+   },
+   {
+    "w": "elige:",
+    "start": 2,
+    "end": 2.4
+   },
+   {
+    "w": "Añadir",
+    "start": 2.8,
+    "end": 3.2
+   },
+   {
+    "w": "a",
+    "start": 3.24,
+    "end": 3.28
+   },
+   {
+    "w": "pantalla",
+    "start": 3.36,
+    "end": 3.76
+   },
+   {
+    "w": "de",
+    "start": 3.84,
+    "end": 3.88
+   },
+   {
+    "w": "inicio.",
+    "start": 3.92,
+    "end": 4.4
+   }
+  ]
+ },
+ "anadir": {
+  "duration": 7.001,
+  "speechStart": 0,
+  "speechEnd": 6.24,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Toca",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "Añadir,",
+    "start": 0.4,
+    "end": 0.88
+   },
+   {
+    "w": "y",
+    "start": 1.28,
+    "end": 1.32
+   },
+   {
+    "w": "listo.",
+    "start": 1.36,
+    "end": 1.96
+   },
+   {
+    "w": "Zarza",
+    "start": 2.28,
+    "end": 2.64
+   },
+   {
+    "w": "queda",
+    "start": 2.76,
+    "end": 2.88
+   },
+   {
+    "w": "con",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "su",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "ícono,",
+    "start": 3.28,
+    "end": 3.84
+   },
+   {
+    "w": "y",
+    "start": 3.893,
+    "end": 3.92
+   },
+   {
+    "w": "se",
+    "start": 4,
+    "end": 4.08
+   },
+   {
+    "w": "abre",
+    "start": 4.16,
+    "end": 4.32
+   },
+   {
+    "w": "a",
+    "start": 4.36,
+    "end": 4.4
+   },
+   {
+    "w": "pantalla",
+    "start": 4.44,
+    "end": 4.8
+   },
+   {
+    "w": "completa,",
+    "start": 4.92,
+    "end": 5.52
+   },
+   {
+    "w": "como",
+    "start": 5.68,
+    "end": 5.76
+   },
+   {
+    "w": "una",
+    "start": 5.84,
+    "end": 6
+   },
+   {
+    "w": "app.",
+    "start": 6.12,
+    "end": 6.24
+   }
+  ]
+ },
+ "cta": {
+  "duration": 5.956,
+  "speechStart": 0.16,
+  "speechEnd": 5.68,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.16,
+    "end": 0.64
+   },
+   {
+    "w": "La",
+    "start": 1.08,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.2,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.56,
+    "end": 1.6
+   },
+   {
+    "w": "estudio…",
+    "start": 1.72,
+    "end": 2.16
+   },
+   {
+    "w": "gratis",
+    "start": 2.76,
+    "end": 2.96
+   },
+   {
+    "w": "en",
+    "start": 3.04,
+    "end": 3.12
+   },
+   {
+    "w": "Google",
+    "start": 3.2,
+    "end": 3.44
+   },
+   {
+    "w": "Play,",
+    "start": 3.52,
+    "end": 3.76
+   },
+   {
+    "w": "y",
+    "start": 4.04,
+    "end": 4.08
+   },
+   {
+    "w": "en",
+    "start": 4.16,
+    "end": 4.24
+   },
+   {
+    "w": "zarzabiblia.com.",
+    "start": 4.36,
+    "end": 5.68
+   }
+  ]
+ }
+}
