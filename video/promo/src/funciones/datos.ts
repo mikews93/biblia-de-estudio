@@ -5,6 +5,10 @@ import compararTaps from './comparar.taps.json';
 import compararTiming from './comparar.timing.json';
 import historiaTaps from './historia.taps.json';
 import historiaTiming from './historia.timing.json';
+import despertadorTaps from './despertador.taps.json';
+import despertadorTiming from './despertador.timing.json';
+import oracionTaps from './oracion.taps.json';
+import oracionTiming from './oracion.timing.json';
 import dramatizadoTaps from './dramatizado.taps.json';
 import dramatizadoTiming from './dramatizado.timing.json';
 import interlinealTaps from './interlineal.taps.json';
@@ -220,6 +224,42 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'linea', eyebrow: 'LÍNEA DE TIEMPO', title: 'La Biblia y la historia del mundo'},
       {line: 'familias', eyebrow: 'FAMILIAS DE LA BIBLIA', title: 'Padres, hijos y linaje'},
       {line: 'linaje', eyebrow: 'A UN TOQUE', title: 'De Jesús hasta Adán'},
+    ],
+  },
+  despertador: {
+    id: 'despertador',
+    timing: despertadorTiming as Record<string, VoTiming>,
+    taps: despertadorTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-ajustes', line: 'hora'},
+      {src: '2-que-suena', line: 'suena'},
+      {src: '4-amanece', line: 'amanece'},
+      {src: '6-abajo', line: 'amanece', word: 'leen'},
+    ],
+    titulares: [
+      {line: 'hora', eyebrow: 'DESPERTADOR', title: 'Despierta con la Biblia'},
+      {line: 'suena', eyebrow: 'A TU MANERA', title: 'Versículo, lectura o música'},
+      {line: 'amanece', eyebrow: 'CADA MAÑANA', title: 'Amanece en tu pantalla'},
+    ],
+  },
+  oracion: {
+    id: 'oracion',
+    timing: oracionTiming as Record<string, VoTiming>,
+    taps: oracionTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-lista', line: 'lista'},
+      {src: '2-camino', line: 'camino'},
+      {src: '4-abierta', line: 'grupo'},
+      {src: '5-pedir', line: 'grupo', word: 'ore'},
+      {src: '7-animos', line: 'animos'},
+    ],
+    titulares: [
+      {line: 'lista', eyebrow: 'DIARIO DE ORACIÓN', title: 'Lo que le pides a Dios'},
+      {line: 'camino', eyebrow: 'MI CAMINO', title: 'Lo que Dios ha respondido'},
+      {line: 'grupo', eyebrow: 'TU GRUPO', title: 'Que oren contigo'},
+      {line: 'animos', eyebrow: 'ÁNIMOS', title: 'Tu grupo te acompaña'},
     ],
   },
   presentar: {
