@@ -2,6 +2,7 @@ import {Composition} from 'remotion';
 import {Film, FILM_FRAMES} from './film/Film';
 import {duracion, Funcion} from './funciones/Funcion';
 import {FUNCIONES} from './funciones/datos';
+import {Ficha, FICHA} from './ficha/Ficha';
 
 export const Root = () => (
   <>
@@ -12,6 +13,10 @@ export const Root = () => (
     {/* Un video vertical por función (para Rvela) */}
     {Object.keys(FUNCIONES).map((id) => (
       <Composition key={id} id={`fn-${id}`} component={Funcion} defaultProps={{id}} durationInFrames={duracion(id)} fps={30} width={1080} height={1920} />
+    ))}
+    {/* Las capturas de la ficha de Google Play */}
+    {FICHA.map((_, n) => (
+      <Composition key={n} id={`ficha-${n + 1}`} component={Ficha} defaultProps={{n}} durationInFrames={1} fps={30} width={1080} height={1920} />
     ))}
   </>
 );

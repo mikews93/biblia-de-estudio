@@ -9,6 +9,8 @@ import despertadorTaps from './despertador.taps.json';
 import despertadorTiming from './despertador.timing.json';
 import oracionTaps from './oracion.taps.json';
 import oracionTiming from './oracion.timing.json';
+import parejaTaps from './pareja.taps.json';
+import parejaTiming from './pareja.timing.json';
 import dramatizadoTaps from './dramatizado.taps.json';
 import dramatizadoTiming from './dramatizado.timing.json';
 import interlinealTaps from './interlineal.taps.json';
@@ -260,6 +262,27 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'camino', eyebrow: 'MI CAMINO', title: 'Lo que Dios ha respondido'},
       {line: 'grupo', eyebrow: 'TU GRUPO', title: 'Que oren contigo'},
       {line: 'animos', eyebrow: 'ÁNIMOS', title: 'Tu grupo te acompaña'},
+    ],
+  },
+  pareja: {
+    id: 'pareja',
+    timing: parejaTiming as Record<string, VoTiming>,
+    taps: parejaTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-portada', line: 'invitar'},
+      {src: '2-invitacion', line: 'invitar', word: 'código,'},
+      {src: '3-inicio', line: 'dia'},
+      {src: '5-dia', line: 'dia', word: 'pasaje,'},
+      {src: '6-responder', line: 'revelar'},
+      {src: '7-revelado', line: 'revelar', word: 'abre'},
+      {src: '4-inicio-abajo', line: 'planes'},
+    ],
+    titulares: [
+      {line: 'invitar', eyebrow: 'EN PAREJA', title: 'Un rato con Dios, los dos'},
+      {line: 'dia', eyebrow: 'CINCO MINUTOS', title: 'Un pasaje, una pregunta, una oración'},
+      {line: 'revelar', eyebrow: 'A SOLAS Y JUNTOS', title: 'Lo que escribió el otro'},
+      {line: 'planes', eyebrow: 'NOVIOS Y CASADOS', title: 'Un plan para cada etapa'},
     ],
   },
   presentar: {
