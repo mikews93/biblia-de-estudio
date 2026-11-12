@@ -75,7 +75,7 @@
  "abrir": {
   "duration": 4.049,
   "speechStart": 0,
-  "speechEnd": 4,
+  "speechEnd": 3.44,
   "method": "elevenlabs alignment (with-timestamps, per character)",
   "words": [
    {
@@ -85,12 +85,12 @@
    },
    {
     "w": "Zarza,",
-    "start": 0.24,
-    "end": 0.88
+    "start": 0.2,
+    "end": 0.56
    },
    {
     "w": "compara",
-    "start": 0.96,
+    "start": 1,
     "end": 1.28
    },
    {
@@ -106,32 +106,32 @@
    {
     "w": "en",
     "start": 1.92,
-    "end": 2
+    "end": 2.08
    },
    {
     "w": "varias",
-    "start": 2.08,
+    "start": 2.16,
     "end": 2.4
    },
    {
     "w": "versiones",
-    "start": 2.6,
-    "end": 2.88
+    "start": 2.48,
+    "end": 2.96
    },
    {
     "w": "a",
-    "start": 2.96,
-    "end": 3
+    "start": 3,
+    "end": 3.04
    },
    {
     "w": "la",
-    "start": 3.04,
+    "start": 3.08,
     "end": 3.12
    },
    {
     "w": "vez.",
-    "start": 3.56,
-    "end": 4
+    "start": 3.28,
+    "end": 3.44
    }
   ]
  },

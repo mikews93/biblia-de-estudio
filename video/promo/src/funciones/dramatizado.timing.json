@@ -146,92 +146,92 @@
   ]
  },
  "seguir": {
-  "duration": 4.911,
+  "duration": 5.068,
   "speechStart": 0,
-  "speechEnd": 4.88,
+  "speechEnd": 4.56,
   "method": "elevenlabs alignment (with-timestamps, per character)",
   "words": [
    {
     "w": "La",
     "start": 0,
-    "end": 0.08
+    "end": 0.16
    },
    {
     "w": "barra",
-    "start": 0.16,
+    "start": 0.24,
     "end": 0.4
    },
    {
     "w": "te",
-    "start": 0.44,
-    "end": 0.48
+    "start": 0.48,
+    "end": 0.56
    },
    {
     "w": "dice",
-    "start": 0.56,
-    "end": 0.8
+    "start": 0.72,
+    "end": 0.88
    },
    {
     "w": "en",
-    "start": 0.88,
+    "start": 0.96,
     "end": 1.04
    },
    {
     "w": "qué",
-    "start": 1.08,
-    "end": 1.12
+    "start": 1.12,
+    "end": 1.2
    },
    {
     "w": "versículo",
-    "start": 1.2,
-    "end": 1.68
+    "start": 1.32,
+    "end": 1.76
    },
    {
     "w": "vas,",
-    "start": 1.76,
-    "end": 2.32
+    "start": 1.92,
+    "end": 2.08
    },
    {
     "w": "y",
-    "start": 2.4,
-    "end": 2.48
+    "start": 2.48,
+    "end": 2.56
    },
    {
     "w": "sigue",
-    "start": 2.56,
-    "end": 2.72
+    "start": 2.64,
+    "end": 2.8
    },
    {
     "w": "sonando",
-    "start": 2.8,
-    "end": 3.2
+    "start": 2.92,
+    "end": 3.28
    },
    {
     "w": "aunque",
-    "start": 3.28,
-    "end": 3.52
+    "start": 3.32,
+    "end": 3.6
    },
    {
     "w": "cambies",
-    "start": 3.6,
+    "start": 3.64,
     "end": 3.92
    },
    {
     "w": "de",
-    "start": 3.96,
-    "end": 4
+    "start": 4,
+    "end": 4.08
    },
    {
     "w": "pantalla.",
-    "start": 4.04,
-    "end": 4.88
+    "start": 4.16,
+    "end": 4.56
    }
   ]
  },
  "pedir": {
-  "duration": 7.549,
+  "duration": 7.471,
   "speechStart": 0,
-  "speechEnd": 6.96,
+  "speechEnd": 7.44,
   "method": "elevenlabs alignment (with-timestamps, per character)",
   "words": [
    {
@@ -256,73 +256,73 @@
    },
    {
     "w": "todavía",
-    "start": 0.88,
-    "end": 1.36
+    "start": 0.92,
+    "end": 1.28
    },
    {
     "w": "no",
-    "start": 1.4,
+    "start": 1.36,
     "end": 1.44
    },
    {
     "w": "está,",
     "start": 1.56,
-    "end": 1.76
+    "end": 2.08
    },
    {
     "w": "pídelo:",
-    "start": 2.24,
-    "end": 2.64
+    "start": 2.16,
+    "end": 3.04
    },
    {
     "w": "Zarza",
-    "start": 3.2,
-    "end": 3.52
+    "start": 3.12,
+    "end": 3.44
    },
    {
     "w": "lo",
-    "start": 3.56,
-    "end": 3.6
+    "start": 3.48,
+    "end": 3.52
    },
    {
     "w": "dramatiza",
-    "start": 3.68,
-    "end": 4.24
+    "start": 3.6,
+    "end": 4.16
    },
    {
     "w": "en",
-    "start": 4.32,
-    "end": 4.4
+    "start": 4.24,
+    "end": 4.32
    },
    {
     "w": "unos",
-    "start": 4.52,
-    "end": 4.64
+    "start": 4.44,
+    "end": 4.56
    },
    {
     "w": "minutos…",
-    "start": 4.72,
-    "end": 5.2
+    "start": 4.64,
+    "end": 5.52
    },
    {
     "w": "y",
-    "start": 5.76,
-    "end": 5.84
+    "start": 5.6,
+    "end": 5.68
    },
    {
     "w": "queda",
-    "start": 5.92,
-    "end": 6.24
+    "start": 5.76,
+    "end": 6.08
    },
    {
     "w": "para",
-    "start": 6.36,
-    "end": 6.48
+    "start": 6.2,
+    "end": 6.32
    },
    {
     "w": "todos.",
-    "start": 6.72,
-    "end": 6.96
+    "start": 6.88,
+    "end": 7.44
    }
   ]
  },
