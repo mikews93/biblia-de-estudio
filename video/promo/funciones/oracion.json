@@ -1,0 +1,12 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical del «Diario de oración» (src/funciones/Funcion.tsx).",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[soft] ¿Te acuerdas de lo que le pediste a Dios… hace un mes?"},
+    {"id": "lista", "at": 0, "text": "En Zarza, llevas tu diario de oración, con los versículos que te acompañan."},
+    {"id": "camino", "at": 0, "text": "Cuando Dios responde, lo anotas… y ves tu camino, mes a mes."},
+    {"id": "grupo", "at": 0, "text": "Y si quieres, pides a tu grupo que ore contigo, incluso sin tu nombre."},
+    {"id": "animos", "at": 0, "text": "Ellos te envían ánimo… y lo lees aquí."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}

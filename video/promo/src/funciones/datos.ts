@@ -1,4 +1,10 @@
 import type {VoTiming} from '../audio';
+import compartirTaps from './compartir.taps.json';
+import compartirTiming from './compartir.timing.json';
+import compararTaps from './comparar.taps.json';
+import compararTiming from './comparar.timing.json';
+import historiaTaps from './historia.taps.json';
+import historiaTiming from './historia.timing.json';
 import dramatizadoTaps from './dramatizado.taps.json';
 import dramatizadoTiming from './dramatizado.timing.json';
 import interlinealTaps from './interlineal.taps.json';
@@ -157,6 +163,63 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'investigar', eyebrow: 'INVESTIGA CONTIGO', title: 'Pasajes, comentarios y teologías'},
       {line: 'borrador', eyebrow: 'BORRADOR COMPLETO', title: 'Tu mensaje, listo para revisar'},
       {line: 'cambios', eyebrow: 'TÚ DECIDES', title: 'Hasta que sea tuyo'},
+    ],
+  },
+  compartir: {
+    id: 'compartir',
+    timing: compartirTiming as Record<string, VoTiming>,
+    taps: compartirTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-lector', line: 'tocar'},
+      {src: '2-acciones', line: 'tocar', word: 'Compartir.'},
+      {src: '3-amanecer', line: 'fondos'},
+      {src: '4-estrellas', line: 'fondos', word: 'letra,'},
+      {src: '5-dedicar', line: 'fondos', word: 'destaca'},
+      {src: '6-original-olivo', line: 'dedicar', word: 'griego'},
+      {src: '7-historia', line: 'enviar'},
+    ],
+    titulares: [
+      {line: 'tocar', eyebrow: 'COMPARTIR', title: 'Un versículo hecho imagen'},
+      {line: 'fondos', eyebrow: 'A TU GUSTO', title: 'Fondos, letras y palabras destacadas'},
+      {line: 'dedicar', eyebrow: 'MÁS QUE UNA FOTO', title: 'Dedicado, y con su palabra original'},
+      {line: 'enviar', eyebrow: 'LISTO', title: 'Para tu muro o tus historias'},
+    ],
+  },
+  comparar: {
+    id: 'comparar',
+    timing: compararTiming as Record<string, VoTiming>,
+    taps: compararTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-lector', line: 'abrir'},
+      {src: '2-capitulo', line: 'abrir', word: 'compara'},
+      {src: '3-versiculo', line: 'marcar'},
+      {src: '5-por-que', line: 'porque'},
+      {src: '4-versiculo-abajo', line: 'porque', word: 'explica'},
+    ],
+    titulares: [
+      {line: 'abrir', eyebrow: 'COMPARAR VERSIONES', title: 'Varias traducciones, lado a lado'},
+      {line: 'marcar', eyebrow: 'DE UN VISTAZO', title: 'Lo que cambia, marcado'},
+      {line: 'porque', eyebrow: 'POR QUÉ DIFIEREN', title: 'Explicado desde el original'},
+    ],
+  },
+  historia: {
+    id: 'historia',
+    timing: historiaTiming as Record<string, VoTiming>,
+    taps: historiaTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-linea', line: 'linea'},
+      {src: '2-reino-dividido', line: 'linea', word: 'mundo,'},
+      {src: '3-genealogia', line: 'familias'},
+      {src: '4-jesus', line: 'familias', word: 'persona:'},
+      {src: '5-jesus-abajo', line: 'linaje'},
+    ],
+    titulares: [
+      {line: 'linea', eyebrow: 'LÍNEA DE TIEMPO', title: 'La Biblia y la historia del mundo'},
+      {line: 'familias', eyebrow: 'FAMILIAS DE LA BIBLIA', title: 'Padres, hijos y linaje'},
+      {line: 'linaje', eyebrow: 'A UN TOQUE', title: 'De Jesús hasta Adán'},
     ],
   },
   presentar: {
