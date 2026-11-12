@@ -5,9 +5,10 @@ import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, Sty
 
 import Appear from '@/components/Appear';
 import { Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
-import { ArrowUpIcon, CheckIcon, CloudCheckIcon, CommentIcon, CopyIcon, DevicesIcon, FlagIcon, type IconProps, PhoneDownloadIcon, RefreshIcon } from '@/components/icons';
+import { ArrowUpIcon, CheckIcon, CloudCheckIcon, CommentIcon, CopyIcon, DevicesIcon, FlagIcon, type IconProps, PhoneDownloadIcon, RefreshIcon, TiendaIcon } from '@/components/icons';
 import { dispositivo, OFRECER_APK } from '@/lib/apk';
 import { reportarProblema } from '@/lib/errores';
+import { abrirFichaPlay } from '@/lib/resena';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 import {
   commitCorto,
@@ -95,6 +96,12 @@ export default function AcercaScreen() {
         <EstadoCard colors={colors} estado={publicada === undefined ? undefined : estadoDe(c, publicada)} publicada={publicada} nativa={c.plataforma !== 'web'} onComprobar={comprobar} />
       </Appear>
 
+      {(c.plataforma === 'android' || (OFRECER_APK && dispositivo() !== 'iphone')) && (
+        <Appear delay={50}>
+          <TarjetaPlay colors={colors} nativa={c.plataforma === 'android'} />
+        </Appear>
+      )}
+
       {OFRECER_APK && dispositivo() !== 'iphone' && (
         <Appear delay={55}>
           <Pressable
@@ -108,7 +115,7 @@ export default function AcercaScreen() {
             </View>
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={[styles.estadoTitulo, { color: colors.text }]}>Zarza en tu Android</Text>
-              <Text style={[text.small, { color: colors.muted, lineHeight: 19 }]}>Descarga la app para tu teléfono, sin esperar a Google Play.</Text>
+              <Text style={[text.small, { color: colors.muted, lineHeight: 19 }]}>El APK directo, para quien prefiere instalarla sin la tienda.</Text>
             </View>
             <Text style={{ color: colors.accent, fontSize: 22 }}>›</Text>
           </Pressable>
@@ -272,6 +279,38 @@ function EstadoCard({
   );
 }
 
+/**
+ * Zarza en Google Play. Dentro de la app de Android invita a dejar una reseña (sin la ventana de Google, que no se
+ * puede abrir con un botón: src/lib/resenaTexto.ts); en la web lleva a la ficha para instalarla desde la tienda.
+ */
+function TarjetaPlay({ colors, nativa }: { colors: Colors; nativa: boolean }) {
+  return (
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, shadow(colors)]} testID="acerca-play">
+      <View style={styles.playHead}>
+        <View style={[styles.estadoIcon, { backgroundColor: colors.accentSoft }]}>
+          <TiendaIcon color={colors.accent} size={22} />
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={[styles.estadoTitulo, { color: colors.text }]}>{nativa ? '¿Te está sirviendo Zarza?' : 'Zarza ya está en Google Play'}</Text>
+          <Text style={[text.small, { color: colors.muted, lineHeight: 19 }]}>
+            {nativa
+              ? 'Unas palabras tuyas en Google Play ayudan a que otros la encuentren. Lo que sientas de verdad, bueno o por mejorar.'
+              : 'Instálala desde la tienda y se actualiza sola. Si ya la usas, una reseña ayuda a que otros la encuentren.'}
+          </Text>
+        </View>
+      </View>
+      <Pressable
+        onPress={abrirFichaPlay}
+        accessibilityRole="link"
+        testID="acerca-play-abrir"
+        style={({ pressed }) => [styles.playBoton, { backgroundColor: colors.accentSoft }, pressed && { opacity: 0.8 }]}
+      >
+        <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 15 }}>{nativa ? 'Escribir una reseña' : 'Abrir en Google Play'}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function CardHead({ colors, Icon, titulo }: { colors: Colors; Icon: (p: IconProps) => React.ReactNode; titulo: string }) {
   return (
     <View style={styles.cardHead}>
@@ -301,6 +340,8 @@ const styles = StyleSheet.create({
   icon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { fontFamily: serif, fontSize: 20, flex: 1 },
   estado: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  playHead: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  playBoton: { borderRadius: 18, paddingVertical: 11, alignItems: 'center', marginTop: 14 },
   android: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   estadoIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   estadoTitulo: { fontSize: 16, fontWeight: '700' },

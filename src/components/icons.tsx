@@ -694,3 +694,12 @@ export const PhoneDownloadIcon = (p: Props) => (
     <Path d="M10.5 18.5h3" />
   </Line>
 );
+
+/** Un triángulo de «reproducir» redondeado dentro de una bolsa de tienda: Zarza en Google Play. */
+export const TiendaIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M5 8.5h14l-1.2 11a1.8 1.8 0 0 1-1.8 1.5H8a1.8 1.8 0 0 1-1.8-1.5L5 8.5z" />
+    <Path d="M9 8.5V7a3 3 0 0 1 6 0v1.5" />
+    <Path d="M10.6 12.4v5.2l4.2-2.6z" />
+  </Line>
+);
