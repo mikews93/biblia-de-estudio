@@ -1,0 +1,425 @@
+{
+ "hook": {
+  "duration": 4.598,
+  "speechStart": 0.067,
+  "speechEnd": 4.32,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Y",
+    "start": 0.067,
+    "end": 0.12
+   },
+   {
+    "w": "si",
+    "start": 0.16,
+    "end": 0.32
+   },
+   {
+    "w": "cada",
+    "start": 0.4,
+    "end": 0.56
+   },
+   {
+    "w": "persona",
+    "start": 0.64,
+    "end": 1.04
+   },
+   {
+    "w": "de",
+    "start": 1.08,
+    "end": 1.12
+   },
+   {
+    "w": "tu",
+    "start": 1.2,
+    "end": 1.28
+   },
+   {
+    "w": "grupo",
+    "start": 1.44,
+    "end": 1.6
+   },
+   {
+    "w": "pudiera",
+    "start": 1.68,
+    "end": 2
+   },
+   {
+    "w": "seguir",
+    "start": 2.08,
+    "end": 2.32
+   },
+   {
+    "w": "el",
+    "start": 2.36,
+    "end": 2.4
+   },
+   {
+    "w": "estudio…",
+    "start": 2.48,
+    "end": 3.12
+   },
+   {
+    "w": "desde",
+    "start": 3.52,
+    "end": 3.68
+   },
+   {
+    "w": "su",
+    "start": 3.76,
+    "end": 3.84
+   },
+   {
+    "w": "teléfono?",
+    "start": 3.92,
+    "end": 4.32
+   }
+  ]
+ },
+ "empezar": {
+  "duration": 4.598,
+  "speechStart": 0,
+  "speechEnd": 4.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Con",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.24,
+    "end": 0.8
+   },
+   {
+    "w": "empiezas",
+    "start": 0.88,
+    "end": 1.28
+   },
+   {
+    "w": "la",
+    "start": 1.32,
+    "end": 1.36
+   },
+   {
+    "w": "lectura",
+    "start": 1.44,
+    "end": 1.76
+   },
+   {
+    "w": "en",
+    "start": 1.84,
+    "end": 1.92
+   },
+   {
+    "w": "vivo,",
+    "start": 1.96,
+    "end": 2.56
+   },
+   {
+    "w": "y",
+    "start": 2.613,
+    "end": 2.64
+   },
+   {
+    "w": "tu",
+    "start": 2.72,
+    "end": 2.8
+   },
+   {
+    "w": "grupo",
+    "start": 2.96,
+    "end": 3.12
+   },
+   {
+    "w": "entra",
+    "start": 3.2,
+    "end": 3.44
+   },
+   {
+    "w": "con",
+    "start": 3.52,
+    "end": 3.6
+   },
+   {
+    "w": "un",
+    "start": 3.68,
+    "end": 3.76
+   },
+   {
+    "w": "código.",
+    "start": 3.8,
+    "end": 4.56
+   }
+  ]
+ },
+ "notas": {
+  "duration": 3.788,
+  "speechStart": 0,
+  "speechEnd": 3.76,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Tú",
+    "start": 0,
+    "end": 0.12
+   },
+   {
+    "w": "ves",
+    "start": 0.16,
+    "end": 0.32
+   },
+   {
+    "w": "tus",
+    "start": 0.373,
+    "end": 0.48
+   },
+   {
+    "w": "notas",
+    "start": 0.6,
+    "end": 0.8
+   },
+   {
+    "w": "en",
+    "start": 0.88,
+    "end": 0.96
+   },
+   {
+    "w": "grande,",
+    "start": 1.04,
+    "end": 1.68
+   },
+   {
+    "w": "con",
+    "start": 1.76,
+    "end": 1.84
+   },
+   {
+    "w": "el",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "reloj",
+    "start": 2.08,
+    "end": 2.4
+   },
+   {
+    "w": "de",
+    "start": 2.48,
+    "end": 2.56
+   },
+   {
+    "w": "cada",
+    "start": 2.6,
+    "end": 2.88
+   },
+   {
+    "w": "parte.",
+    "start": 3.04,
+    "end": 3.76
+   }
+  ]
+ },
+ "cita": {
+  "duration": 3.788,
+  "speechStart": 0,
+  "speechEnd": 3.76,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Tocas",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "una",
+    "start": 0.44,
+    "end": 0.56
+   },
+   {
+    "w": "cita…",
+    "start": 0.6,
+    "end": 1.28
+   },
+   {
+    "w": "y",
+    "start": 1.36,
+    "end": 1.4
+   },
+   {
+    "w": "aparece",
+    "start": 1.44,
+    "end": 1.92
+   },
+   {
+    "w": "en",
+    "start": 1.96,
+    "end": 2
+   },
+   {
+    "w": "la",
+    "start": 2.08,
+    "end": 2.16
+   },
+   {
+    "w": "pantalla",
+    "start": 2.2,
+    "end": 2.64
+   },
+   {
+    "w": "de",
+    "start": 2.72,
+    "end": 2.8
+   },
+   {
+    "w": "todos.",
+    "start": 3.28,
+    "end": 3.76
+   }
+  ]
+ },
+ "preguntas": {
+  "duration": 6.113,
+  "speechStart": 0,
+  "speechEnd": 6.08,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Mandas",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "una",
+    "start": 0.4,
+    "end": 0.56
+   },
+   {
+    "w": "pregunta",
+    "start": 0.68,
+    "end": 1.04
+   },
+   {
+    "w": "para",
+    "start": 1.12,
+    "end": 1.28
+   },
+   {
+    "w": "que",
+    "start": 1.36,
+    "end": 1.44
+   },
+   {
+    "w": "cada",
+    "start": 1.52,
+    "end": 1.76
+   },
+   {
+    "w": "uno",
+    "start": 1.84,
+    "end": 2
+   },
+   {
+    "w": "responda",
+    "start": 2.12,
+    "end": 2.48
+   },
+   {
+    "w": "en",
+    "start": 2.52,
+    "end": 2.56
+   },
+   {
+    "w": "secreto,",
+    "start": 2.64,
+    "end": 3.44
+   },
+   {
+    "w": "o",
+    "start": 3.52,
+    "end": 3.56
+   },
+   {
+    "w": "la",
+    "start": 3.6,
+    "end": 3.68
+   },
+   {
+    "w": "dinámica,",
+    "start": 3.8,
+    "end": 4.48
+   },
+   {
+    "w": "con",
+    "start": 4.56,
+    "end": 4.64
+   },
+   {
+    "w": "sus",
+    "start": 4.72,
+    "end": 4.88
+   },
+   {
+    "w": "pasos.",
+    "start": 5.04,
+    "end": 6.08
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.127,
+  "speechStart": 0.08,
+  "speechEnd": 3.84,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.08,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.16,
+    "end": 1.44
+   },
+   {
+    "w": "de",
+    "start": 1.48,
+    "end": 1.52
+   },
+   {
+    "w": "estudio…",
+    "start": 1.6,
+    "end": 2.08
+   },
+   {
+    "w": "gratis",
+    "start": 2.72,
+    "end": 2.96
+   },
+   {
+    "w": "en",
+    "start": 3.04,
+    "end": 3.2
+   },
+   {
+    "w": "Google",
+    "start": 3.32,
+    "end": 3.44
+   },
+   {
+    "w": "Play.",
+    "start": 3.6,
+    "end": 3.84
+   }
+  ]
+ }
+}

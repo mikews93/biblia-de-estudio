@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Comunidad» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Con quién compartes lo que Dios te habla?"
+  },
+  {
+   "id": "muro",
+   "at": 0,
+   "text": "En la comunidad de Zarza, ves lo que tus amigos resaltan y preguntan… y les respondes."
+  },
+  {
+   "id": "amigos",
+   "at": 0,
+   "text": "Agregas a tus amigos con un código, y tú decides quién ve lo que compartes."
+  },
+  {
+   "id": "grupo",
+   "at": 0,
+   "text": "Y con tu célula o tu familia, leen juntos un capítulo al día… y ven quién va al día."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

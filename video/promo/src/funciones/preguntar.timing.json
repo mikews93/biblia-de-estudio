@@ -1,0 +1,425 @@
+{
+ "hook": {
+  "duration": 2.847,
+  "speechStart": 0.114,
+  "speechEnd": 2.64,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Qué",
+    "start": 0.114,
+    "end": 0.16
+   },
+   {
+    "w": "dice",
+    "start": 0.28,
+    "end": 0.4
+   },
+   {
+    "w": "la",
+    "start": 0.48,
+    "end": 0.56
+   },
+   {
+    "w": "Biblia…",
+    "start": 0.64,
+    "end": 1.2
+   },
+   {
+    "w": "sobre",
+    "start": 1.64,
+    "end": 1.92
+   },
+   {
+    "w": "la",
+    "start": 1.96,
+    "end": 2
+   },
+   {
+    "w": "ansiedad?",
+    "start": 2.08,
+    "end": 2.64
+   }
+  ]
+ },
+ "buscar": {
+  "duration": 5.407,
+  "speechStart": 0,
+  "speechEnd": 5.36,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "escríbelo",
+    "start": 1.04,
+    "end": 1.68
+   },
+   {
+    "w": "o",
+    "start": 1.76,
+    "end": 1.84
+   },
+   {
+    "w": "díctalo",
+    "start": 1.92,
+    "end": 2.24
+   },
+   {
+    "w": "en",
+    "start": 2.28,
+    "end": 2.32
+   },
+   {
+    "w": "el",
+    "start": 2.36,
+    "end": 2.4
+   },
+   {
+    "w": "buscador,",
+    "start": 2.48,
+    "end": 3.2
+   },
+   {
+    "w": "como",
+    "start": 3.28,
+    "end": 3.44
+   },
+   {
+    "w": "se",
+    "start": 3.48,
+    "end": 3.52
+   },
+   {
+    "w": "lo",
+    "start": 3.6,
+    "end": 3.68
+   },
+   {
+    "w": "preguntarías",
+    "start": 3.76,
+    "end": 4.32
+   },
+   {
+    "w": "a",
+    "start": 4.36,
+    "end": 4.4
+   },
+   {
+    "w": "un",
+    "start": 4.44,
+    "end": 4.48
+   },
+   {
+    "w": "amigo.",
+    "start": 4.56,
+    "end": 5.36
+   }
+  ]
+ },
+ "respuesta": {
+  "duration": 6.609,
+  "speechStart": 0,
+  "speechEnd": 6.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "La",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "respuesta",
+    "start": 0.16,
+    "end": 0.64
+   },
+   {
+    "w": "llega",
+    "start": 0.68,
+    "end": 0.96
+   },
+   {
+    "w": "con",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "la",
+    "start": 1.2,
+    "end": 1.28
+   },
+   {
+    "w": "Biblia",
+    "start": 1.32,
+    "end": 1.6
+   },
+   {
+    "w": "abierta:",
+    "start": 1.68,
+    "end": 2.16
+   },
+   {
+    "w": "cada",
+    "start": 2.68,
+    "end": 2.88
+   },
+   {
+    "w": "idea",
+    "start": 2.96,
+    "end": 3.28
+   },
+   {
+    "w": "con",
+    "start": 3.36,
+    "end": 3.44
+   },
+   {
+    "w": "su",
+    "start": 3.48,
+    "end": 3.52
+   },
+   {
+    "w": "versículo,",
+    "start": 3.6,
+    "end": 4.48
+   },
+   {
+    "w": "y",
+    "start": 4.56,
+    "end": 4.6
+   },
+   {
+    "w": "lo",
+    "start": 4.64,
+    "end": 4.72
+   },
+   {
+    "w": "que",
+    "start": 4.8,
+    "end": 4.88
+   },
+   {
+    "w": "han",
+    "start": 4.96,
+    "end": 5.04
+   },
+   {
+    "w": "dicho",
+    "start": 5.08,
+    "end": 5.28
+   },
+   {
+    "w": "los",
+    "start": 5.36,
+    "end": 5.44
+   },
+   {
+    "w": "comentarios.",
+    "start": 5.52,
+    "end": 6.56
+   }
+  ]
+ },
+ "fuentes": {
+  "duration": 4.911,
+  "speechStart": 0,
+  "speechEnd": 4.88,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Antes",
+    "start": 0,
+    "end": 0.28
+   },
+   {
+    "w": "de",
+    "start": 0.32,
+    "end": 0.36
+   },
+   {
+    "w": "enseñártela,",
+    "start": 0.4,
+    "end": 1.12
+   },
+   {
+    "w": "Zarza",
+    "start": 1.52,
+    "end": 1.84
+   },
+   {
+    "w": "revisa",
+    "start": 1.92,
+    "end": 2.4
+   },
+   {
+    "w": "cada",
+    "start": 2.44,
+    "end": 2.72
+   },
+   {
+    "w": "cita",
+    "start": 2.76,
+    "end": 3.04
+   },
+   {
+    "w": "contra",
+    "start": 3.12,
+    "end": 3.28
+   },
+   {
+    "w": "el",
+    "start": 3.36,
+    "end": 3.44
+   },
+   {
+    "w": "texto",
+    "start": 3.6,
+    "end": 3.76
+   },
+   {
+    "w": "de",
+    "start": 3.8,
+    "end": 3.84
+   },
+   {
+    "w": "la",
+    "start": 3.88,
+    "end": 3.92
+   },
+   {
+    "w": "Biblia.",
+    "start": 4,
+    "end": 4.88
+   }
+  ]
+ },
+ "pensar": {
+  "duration": 4.911,
+  "speechStart": 0,
+  "speechEnd": 4.32,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Y",
+    "start": 0,
+    "end": 0.04
+   },
+   {
+    "w": "al",
+    "start": 0.08,
+    "end": 0.16
+   },
+   {
+    "w": "final,",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "una",
+    "start": 0.96,
+    "end": 1.12
+   },
+   {
+    "w": "pregunta",
+    "start": 1.2,
+    "end": 1.6
+   },
+   {
+    "w": "para",
+    "start": 1.68,
+    "end": 1.76
+   },
+   {
+    "w": "ti…",
+    "start": 1.84,
+    "end": 2
+   },
+   {
+    "w": "y",
+    "start": 2.64,
+    "end": 2.72
+   },
+   {
+    "w": "otras",
+    "start": 2.8,
+    "end": 3.12
+   },
+   {
+    "w": "para",
+    "start": 3.2,
+    "end": 3.36
+   },
+   {
+    "w": "seguir",
+    "start": 3.44,
+    "end": 3.68
+   },
+   {
+    "w": "conversando.",
+    "start": 3.76,
+    "end": 4.32
+   }
+  ]
+ },
+ "cta": {
+  "duration": 3.866,
+  "speechStart": 0.14,
+  "speechEnd": 3.68,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.2,
+    "end": 1.44
+   },
+   {
+    "w": "de",
+    "start": 1.48,
+    "end": 1.52
+   },
+   {
+    "w": "estudio…",
+    "start": 1.64,
+    "end": 2.32
+   },
+   {
+    "w": "gratis",
+    "start": 2.693,
+    "end": 2.88
+   },
+   {
+    "w": "en",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "Google",
+    "start": 3.12,
+    "end": 3.36
+   },
+   {
+    "w": "Play.",
+    "start": 3.44,
+    "end": 3.68
+   }
+  ]
+ }
+}

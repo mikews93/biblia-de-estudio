@@ -1,0 +1,470 @@
+{
+ "hook": {
+  "duration": 4.127,
+  "speechStart": 0.114,
+  "speechEnd": 3.92,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Te",
+    "start": 0.114,
+    "end": 0.16
+   },
+   {
+    "w": "toca",
+    "start": 0.2,
+    "end": 0.4
+   },
+   {
+    "w": "predicar",
+    "start": 0.48,
+    "end": 0.88
+   },
+   {
+    "w": "este",
+    "start": 1,
+    "end": 1.12
+   },
+   {
+    "w": "domingo…",
+    "start": 1.24,
+    "end": 1.76
+   },
+   {
+    "w": "y",
+    "start": 2.16,
+    "end": 2.32
+   },
+   {
+    "w": "no",
+    "start": 2.48,
+    "end": 2.56
+   },
+   {
+    "w": "sabes",
+    "start": 2.72,
+    "end": 3.04
+   },
+   {
+    "w": "por",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "dónde",
+    "start": 3.24,
+    "end": 3.44
+   },
+   {
+    "w": "empezar?",
+    "start": 3.52,
+    "end": 3.92
+   }
+  ]
+ },
+ "orar": {
+  "duration": 5.564,
+  "speechStart": 0,
+  "speechEnd": 5.52,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "el",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "Taller",
+    "start": 0.28,
+    "end": 0.56
+   },
+   {
+    "w": "de",
+    "start": 0.6,
+    "end": 0.64
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.72,
+    "end": 1.36
+   },
+   {
+    "w": "cuéntale",
+    "start": 1.44,
+    "end": 1.84
+   },
+   {
+    "w": "lo",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "que",
+    "start": 2.04,
+    "end": 2.08
+   },
+   {
+    "w": "Dios",
+    "start": 2.16,
+    "end": 2.4
+   },
+   {
+    "w": "te",
+    "start": 2.48,
+    "end": 2.56
+   },
+   {
+    "w": "puso",
+    "start": 2.68,
+    "end": 2.827
+   },
+   {
+    "w": "en",
+    "start": 2.853,
+    "end": 2.88
+   },
+   {
+    "w": "el",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "corazón,",
+    "start": 3.12,
+    "end": 3.84
+   },
+   {
+    "w": "escrito",
+    "start": 3.92,
+    "end": 4.56
+   },
+   {
+    "w": "o",
+    "start": 4.6,
+    "end": 4.64
+   },
+   {
+    "w": "grabado.",
+    "start": 4.76,
+    "end": 5.52
+   }
+  ]
+ },
+ "investigar": {
+  "duration": 6.426,
+  "speechStart": 0,
+  "speechEnd": 6.4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "investiga",
+    "start": 0.52,
+    "end": 0.88
+   },
+   {
+    "w": "los",
+    "start": 0.96,
+    "end": 1.04
+   },
+   {
+    "w": "pasajes,",
+    "start": 1.2,
+    "end": 1.84
+   },
+   {
+    "w": "los",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "comentarios",
+    "start": 2.08,
+    "end": 2.8
+   },
+   {
+    "w": "y",
+    "start": 2.84,
+    "end": 2.88
+   },
+   {
+    "w": "las",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "teologías,",
+    "start": 3.12,
+    "end": 4.16
+   },
+   {
+    "w": "y",
+    "start": 4.24,
+    "end": 4.32
+   },
+   {
+    "w": "tú",
+    "start": 4.4,
+    "end": 4.72
+   },
+   {
+    "w": "marcas",
+    "start": 4.84,
+    "end": 5.12
+   },
+   {
+    "w": "lo",
+    "start": 5.16,
+    "end": 5.2
+   },
+   {
+    "w": "que",
+    "start": 5.28,
+    "end": 5.36
+   },
+   {
+    "w": "te",
+    "start": 5.4,
+    "end": 5.44
+   },
+   {
+    "w": "sirve.",
+    "start": 5.52,
+    "end": 6.4
+   }
+  ]
+ },
+ "borrador": {
+  "duration": 7.158,
+  "speechStart": 0,
+  "speechEnd": 7.12,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Le",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "das",
+    "start": 0.28,
+    "end": 0.4
+   },
+   {
+    "w": "la",
+    "start": 0.44,
+    "end": 0.48
+   },
+   {
+    "w": "dirección,",
+    "start": 0.6,
+    "end": 1.36
+   },
+   {
+    "w": "y",
+    "start": 1.413,
+    "end": 1.44
+   },
+   {
+    "w": "te",
+    "start": 1.52,
+    "end": 1.56
+   },
+   {
+    "w": "escribe",
+    "start": 1.6,
+    "end": 1.92
+   },
+   {
+    "w": "un",
+    "start": 2,
+    "end": 2.08
+   },
+   {
+    "w": "borrador",
+    "start": 2.16,
+    "end": 2.56
+   },
+   {
+    "w": "completo:",
+    "start": 2.68,
+    "end": 3.52
+   },
+   {
+    "w": "con",
+    "start": 3.6,
+    "end": 3.68
+   },
+   {
+    "w": "su",
+    "start": 3.76,
+    "end": 3.84
+   },
+   {
+    "w": "idea",
+    "start": 3.96,
+    "end": 4.08
+   },
+   {
+    "w": "central,",
+    "start": 4.48,
+    "end": 4.88
+   },
+   {
+    "w": "sus",
+    "start": 4.96,
+    "end": 5.12
+   },
+   {
+    "w": "partes",
+    "start": 5.2,
+    "end": 5.76
+   },
+   {
+    "w": "y",
+    "start": 5.8,
+    "end": 5.84
+   },
+   {
+    "w": "sus",
+    "start": 5.92,
+    "end": 6
+   },
+   {
+    "w": "dinámicas.",
+    "start": 6.12,
+    "end": 7.12
+   }
+  ]
+ },
+ "cambios": {
+  "duration": 4.676,
+  "speechStart": 0,
+  "speechEnd": 4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Tú",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "lo",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "revisas",
+    "start": 0.32,
+    "end": 0.8
+   },
+   {
+    "w": "y",
+    "start": 0.84,
+    "end": 0.88
+   },
+   {
+    "w": "pides",
+    "start": 0.96,
+    "end": 1.2
+   },
+   {
+    "w": "cambios…",
+    "start": 1.28,
+    "end": 1.76
+   },
+   {
+    "w": "hasta",
+    "start": 2.2,
+    "end": 2.4
+   },
+   {
+    "w": "que",
+    "start": 2.48,
+    "end": 2.52
+   },
+   {
+    "w": "el",
+    "start": 2.56,
+    "end": 2.64
+   },
+   {
+    "w": "mensaje",
+    "start": 2.96,
+    "end": 3.28
+   },
+   {
+    "w": "sea",
+    "start": 3.36,
+    "end": 3.6
+   },
+   {
+    "w": "tuyo.",
+    "start": 3.68,
+    "end": 4
+   }
+  ]
+ },
+ "cta": {
+  "duration": 3.971,
+  "speechStart": 0.14,
+  "speechEnd": 3.76,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "Biblia",
+    "start": 1.24,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.56,
+    "end": 1.6
+   },
+   {
+    "w": "estudio…",
+    "start": 1.72,
+    "end": 2.48
+   },
+   {
+    "w": "gratis",
+    "start": 2.56,
+    "end": 3.04
+   },
+   {
+    "w": "en",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "Google",
+    "start": 3.32,
+    "end": 3.44
+   },
+   {
+    "w": "Play.",
+    "start": 3.52,
+    "end": 3.76
+   }
+  ]
+ }
+}

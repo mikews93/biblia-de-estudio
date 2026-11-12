@@ -1,0 +1,25 @@
+{
+ "1-empezar": {
+  "x": 541,
+  "y": 2415
+ },
+ "2-portada": {
+  "x": 630,
+  "y": 717
+ },
+ "3-notas": {
+  "x": 252,
+  "y": 2097
+ },
+ "4-todos-ven-la-cita": null,
+ "5-preguntas": {
+  "x": 393,
+  "y": 1727
+ },
+ "6-pregunta-en-el-telefono": null,
+ "7-dinamica-boton": {
+  "x": 432,
+  "y": 1327
+ },
+ "8-dinamica-para-todos": null
+}

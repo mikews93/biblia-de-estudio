@@ -1,0 +1,40 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Estudio profundo» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[curious] ¿Qué significaba estar desposada… en tiempos de María?"
+  },
+  {
+   "id": "tocar",
+   "at": 0,
+   "text": "En Zarza, toca un versículo y elige Estudiar."
+  },
+  {
+   "id": "investiga",
+   "at": 0,
+   "text": "Zarza investiga en diccionarios, comentarios y teologías clásicas… y te arma el estudio."
+  },
+  {
+   "id": "detalle",
+   "at": 0,
+   "text": "Con las costumbres de la época, las palabras del griego, y lo que enseña."
+  },
+  {
+   "id": "aplicar",
+   "at": 0,
+   "text": "Y al final, preguntas para tu vida… con cada fuente a la vista."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

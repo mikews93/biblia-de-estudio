@@ -1,0 +1,12 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical de «Preparar un mensaje» en el Taller (src/funciones/Funcion.tsx).",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[curious] ¿Te toca predicar este domingo… y no sabes por dónde empezar?"},
+    {"id": "orar", "at": 0, "text": "En el Taller de Zarza, cuéntale lo que Dios te puso en el corazón, escrito o grabado."},
+    {"id": "investigar", "at": 0, "text": "Zarza investiga los pasajes, los comentarios y las teologías, y tú marcas lo que te sirve."},
+    {"id": "borrador", "at": 0, "text": "Le das la dirección, y te escribe un borrador completo: con su idea central, sus partes y sus dinámicas."},
+    {"id": "cambios", "at": 0, "text": "Tú lo revisas y pides cambios… hasta que el mensaje sea tuyo."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}

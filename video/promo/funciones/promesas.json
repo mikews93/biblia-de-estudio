@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Promesa y cumplimiento» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[soft] ¿Cuántas promesas de Dios… ya se cumplieron?"
+  },
+  {
+   "id": "arcos",
+   "at": 0,
+   "text": "En Zarza, cada arco sale de una promesa y cae donde se cumplió… y casi todos llegan a Cristo."
+  },
+  {
+   "id": "hilo",
+   "at": 0,
+   "text": "Sigue un hilo, como la simiente de la mujer, desde el Edén hasta la cruz."
+  },
+  {
+   "id": "cumple",
+   "at": 0,
+   "text": "Cada paso con su versículo, lo que se cumplió… y lo que todavía esperamos."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

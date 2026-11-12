@@ -1,0 +1,12 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical de «Presentar en vivo» (src/funciones/Funcion.tsx): quien guía y un miembro del grupo.",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[curious] ¿Y si cada persona de tu grupo pudiera seguir el estudio… desde su teléfono?"},
+    {"id": "empezar", "at": 0, "text": "Con Zarza, empiezas la lectura en vivo, y tu grupo entra con un código."},
+    {"id": "notas", "at": 0, "text": "Tú ves tus notas en grande, con el reloj de cada parte."},
+    {"id": "cita", "at": 0, "text": "Tocas una cita… y aparece en la pantalla de todos."},
+    {"id": "preguntas", "at": 0, "text": "Mandas una pregunta para que cada uno responda en secreto, o la dinámica, con sus pasos."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}

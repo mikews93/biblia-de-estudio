@@ -1,0 +1,12 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical de «Compartir un versículo» (src/funciones/Funcion.tsx).",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[warm] ¿A quién le hace falta hoy… un versículo?"},
+    {"id": "tocar", "at": 0, "text": "En Zarza, toca el versículo y elige Compartir."},
+    {"id": "fondos", "at": 0, "text": "Escoge un fondo y una letra, y destaca las palabras que quieras."},
+    {"id": "dedicar", "at": 0, "text": "Puedes dedicárselo a alguien, o mostrar la palabra en griego que hay detrás."},
+    {"id": "enviar", "at": 0, "text": "Y lo envías como imagen, lista para tu muro o para tus historias."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}

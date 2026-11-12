@@ -1,0 +1,12 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical de «Pregúntale a la Biblia» (src/funciones/Funcion.tsx).",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[curious] ¿Qué dice la Biblia… sobre la ansiedad?"},
+    {"id": "buscar", "at": 0, "text": "En Zarza, escríbelo o díctalo en el buscador, como se lo preguntarías a un amigo."},
+    {"id": "respuesta", "at": 0, "text": "La respuesta llega con la Biblia abierta: cada idea con su versículo, y lo que han dicho los comentarios."},
+    {"id": "fuentes", "at": 0, "text": "Antes de enseñártela, Zarza revisa cada cita contra el texto de la Biblia."},
+    {"id": "pensar", "at": 0, "text": "Y al final, una pregunta para ti… y otras para seguir conversando."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}
