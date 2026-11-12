@@ -1,0 +1,372 @@
+{
+ "hook": {
+  "duration": 2.926,
+  "speechStart": 0.067,
+  "speechEnd": 2.64,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Qué",
+    "start": 0.067,
+    "end": 0.24
+   },
+   {
+    "w": "era",
+    "start": 0.32,
+    "end": 0.4
+   },
+   {
+    "w": "un",
+    "start": 0.48,
+    "end": 0.56
+   },
+   {
+    "w": "efod?",
+    "start": 0.64,
+    "end": 1.04
+   },
+   {
+    "w": "¿Dónde",
+    "start": 1.52,
+    "end": 1.76
+   },
+   {
+    "w": "queda",
+    "start": 1.84,
+    "end": 2.08
+   },
+   {
+    "w": "Getsemaní?",
+    "start": 2.16,
+    "end": 2.64
+   }
+  ]
+ },
+ "diccionario": {
+  "duration": 6.531,
+  "speechStart": 0,
+  "speechEnd": 5.92,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Busca",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "cualquier",
+    "start": 0.4,
+    "end": 0.8
+   },
+   {
+    "w": "lugar,",
+    "start": 0.84,
+    "end": 1.28
+   },
+   {
+    "w": "persona",
+    "start": 1.72,
+    "end": 2
+   },
+   {
+    "w": "u",
+    "start": 2.08,
+    "end": 2.16
+   },
+   {
+    "w": "objeto,",
+    "start": 2.28,
+    "end": 2.64
+   },
+   {
+    "w": "y",
+    "start": 3.04,
+    "end": 3.08
+   },
+   {
+    "w": "el",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "diccionario",
+    "start": 3.28,
+    "end": 3.76
+   },
+   {
+    "w": "bíblico",
+    "start": 3.8,
+    "end": 4.16
+   },
+   {
+    "w": "te",
+    "start": 4.24,
+    "end": 4.32
+   },
+   {
+    "w": "lo",
+    "start": 4.36,
+    "end": 4.4
+   },
+   {
+    "w": "explica",
+    "start": 4.52,
+    "end": 4.88
+   },
+   {
+    "w": "con",
+    "start": 4.96,
+    "end": 5.04
+   },
+   {
+    "w": "sus",
+    "start": 5.12,
+    "end": 5.2
+   },
+   {
+    "w": "versículos.",
+    "start": 5.32,
+    "end": 5.92
+   }
+  ]
+ },
+ "ficha": {
+  "duration": 5.407,
+  "speechStart": 0,
+  "speechEnd": 5.2,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Cada",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "personaje",
+    "start": 0.4,
+    "end": 0.8
+   },
+   {
+    "w": "tiene",
+    "start": 0.84,
+    "end": 1.04
+   },
+   {
+    "w": "su",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "ficha:",
+    "start": 1.24,
+    "end": 1.52
+   },
+   {
+    "w": "cuándo",
+    "start": 2.04,
+    "end": 2.28
+   },
+   {
+    "w": "vivió,",
+    "start": 2.32,
+    "end": 2.8
+   },
+   {
+    "w": "sus",
+    "start": 3.16,
+    "end": 3.28
+   },
+   {
+    "w": "viajes",
+    "start": 3.4,
+    "end": 3.84
+   },
+   {
+    "w": "y",
+    "start": 4,
+    "end": 4.04
+   },
+   {
+    "w": "el",
+    "start": 4.08,
+    "end": 4.16
+   },
+   {
+    "w": "mapa",
+    "start": 4.24,
+    "end": 4.48
+   },
+   {
+    "w": "de",
+    "start": 4.52,
+    "end": 4.56
+   },
+   {
+    "w": "su",
+    "start": 4.64,
+    "end": 4.72
+   },
+   {
+    "w": "historia.",
+    "start": 4.88,
+    "end": 5.2
+   }
+  ]
+ },
+ "concordancia": {
+  "duration": 6.034,
+  "speechStart": 0,
+  "speechEnd": 6,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Y",
+    "start": 0,
+    "end": 0.04
+   },
+   {
+    "w": "la",
+    "start": 0.08,
+    "end": 0.16
+   },
+   {
+    "w": "concordancia",
+    "start": 0.24,
+    "end": 0.8
+   },
+   {
+    "w": "te",
+    "start": 0.88,
+    "end": 0.96
+   },
+   {
+    "w": "muestra",
+    "start": 1,
+    "end": 1.36
+   },
+   {
+    "w": "cada",
+    "start": 1.44,
+    "end": 1.68
+   },
+   {
+    "w": "vez",
+    "start": 1.76,
+    "end": 1.84
+   },
+   {
+    "w": "que",
+    "start": 1.92,
+    "end": 1.96
+   },
+   {
+    "w": "aparece",
+    "start": 2,
+    "end": 2.4
+   },
+   {
+    "w": "una",
+    "start": 2.48,
+    "end": 2.64
+   },
+   {
+    "w": "palabra",
+    "start": 2.72,
+    "end": 2.96
+   },
+   {
+    "w": "en",
+    "start": 3.04,
+    "end": 3.12
+   },
+   {
+    "w": "griego",
+    "start": 3.16,
+    "end": 3.6
+   },
+   {
+    "w": "o",
+    "start": 3.68,
+    "end": 3.72
+   },
+   {
+    "w": "hebreo…",
+    "start": 3.76,
+    "end": 4.48
+   },
+   {
+    "w": "y",
+    "start": 4.56,
+    "end": 4.72
+   },
+   {
+    "w": "cómo",
+    "start": 4.76,
+    "end": 4.96
+   },
+   {
+    "w": "se",
+    "start": 5.04,
+    "end": 5.12
+   },
+   {
+    "w": "traduce.",
+    "start": 5.24,
+    "end": 6
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.206,
+  "speechStart": 0.14,
+  "speechEnd": 3.92,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "Biblia",
+    "start": 1.28,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.6,
+    "end": 1.64
+   },
+   {
+    "w": "estudio…",
+    "start": 1.68,
+    "end": 2.16
+   },
+   {
+    "w": "gratis",
+    "start": 2.88,
+    "end": 3.12
+   },
+   {
+    "w": "en",
+    "start": 3.2,
+    "end": 3.28
+   },
+   {
+    "w": "Google",
+    "start": 3.36,
+    "end": 3.6
+   },
+   {
+    "w": "Play.",
+    "start": 3.68,
+    "end": 3.92
+   }
+  ]
+ }
+}

@@ -1,0 +1,284 @@
+{
+ "hook": {
+  "duration": 1.489,
+  "speechStart": 0.067,
+  "speechEnd": 1.28,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Tu",
+    "start": 0.067,
+    "end": 0.16
+   },
+   {
+    "w": "grupo",
+    "start": 0.32,
+    "end": 0.48
+   },
+   {
+    "w": "se",
+    "start": 0.56,
+    "end": 0.64
+   },
+   {
+    "w": "queda",
+    "start": 0.76,
+    "end": 0.88
+   },
+   {
+    "w": "callado?",
+    "start": 1,
+    "end": 1.28
+   }
+  ]
+ },
+ "lista": {
+  "duration": 7.471,
+  "speechStart": 0,
+  "speechEnd": 7.44,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza",
+    "start": 0,
+    "end": 0.4
+   },
+   {
+    "w": "trae",
+    "start": 0.48,
+    "end": 0.64
+   },
+   {
+    "w": "veintitrés",
+    "start": 0.68,
+    "end": 1.2
+   },
+   {
+    "w": "dinámicas",
+    "start": 1.28,
+    "end": 1.84
+   },
+   {
+    "w": "para",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "grupos:",
+    "start": 2.08,
+    "end": 2.48
+   },
+   {
+    "w": "para",
+    "start": 3.08,
+    "end": 3.2
+   },
+   {
+    "w": "conectar,",
+    "start": 3.28,
+    "end": 4.08
+   },
+   {
+    "w": "para",
+    "start": 4.16,
+    "end": 4.24
+   },
+   {
+    "w": "entrar",
+    "start": 4.32,
+    "end": 4.56
+   },
+   {
+    "w": "al",
+    "start": 4.64,
+    "end": 4.72
+   },
+   {
+    "w": "texto,",
+    "start": 4.8,
+    "end": 5.52
+   },
+   {
+    "w": "y",
+    "start": 5.627,
+    "end": 5.68
+   },
+   {
+    "w": "para",
+    "start": 5.76,
+    "end": 5.84
+   },
+   {
+    "w": "aplicar",
+    "start": 5.92,
+    "end": 6.48
+   },
+   {
+    "w": "y",
+    "start": 6.56,
+    "end": 6.6
+   },
+   {
+    "w": "orar.",
+    "start": 6.64,
+    "end": 7.44
+   }
+  ]
+ },
+ "dinamica": {
+  "duration": 7.314,
+  "speechStart": 0,
+  "speechEnd": 7.28,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Cada",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "una",
+    "start": 0.32,
+    "end": 0.48
+   },
+   {
+    "w": "con",
+    "start": 0.56,
+    "end": 0.64
+   },
+   {
+    "w": "sus",
+    "start": 0.76,
+    "end": 0.88
+   },
+   {
+    "w": "pasos,",
+    "start": 1.04,
+    "end": 1.52
+   },
+   {
+    "w": "el",
+    "start": 1.6,
+    "end": 1.76
+   },
+   {
+    "w": "tiempo",
+    "start": 1.8,
+    "end": 2.32
+   },
+   {
+    "w": "y",
+    "start": 2.36,
+    "end": 2.4
+   },
+   {
+    "w": "para",
+    "start": 2.52,
+    "end": 2.64
+   },
+   {
+    "w": "cuántas",
+    "start": 2.72,
+    "end": 3.04
+   },
+   {
+    "w": "personas…",
+    "start": 3.24,
+    "end": 4.16
+   },
+   {
+    "w": "sin",
+    "start": 4.24,
+    "end": 4.32
+   },
+   {
+    "w": "materiales,",
+    "start": 4.4,
+    "end": 5.28
+   },
+   {
+    "w": "solo",
+    "start": 5.44,
+    "end": 5.68
+   },
+   {
+    "w": "la",
+    "start": 5.76,
+    "end": 5.84
+   },
+   {
+    "w": "Biblia",
+    "start": 5.88,
+    "end": 6.16
+   },
+   {
+    "w": "y",
+    "start": 6.24,
+    "end": 6.293
+   },
+   {
+    "w": "el",
+    "start": 6.347,
+    "end": 6.4
+   },
+   {
+    "w": "grupo.",
+    "start": 6.84,
+    "end": 7.28
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.284,
+  "speechStart": 0.14,
+  "speechEnd": 3.92,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "Biblia",
+    "start": 1.28,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.6,
+    "end": 1.64
+   },
+   {
+    "w": "estudio…",
+    "start": 1.68,
+    "end": 2.56
+   },
+   {
+    "w": "gratis",
+    "start": 2.64,
+    "end": 3.12
+   },
+   {
+    "w": "en",
+    "start": 3.2,
+    "end": 3.28
+   },
+   {
+    "w": "Google",
+    "start": 3.44,
+    "end": 3.6
+   },
+   {
+    "w": "Play.",
+    "start": 3.76,
+    "end": 3.92
+   }
+  ]
+ }
+}
