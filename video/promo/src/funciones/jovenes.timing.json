@@ -1,0 +1,347 @@
+{
+ "hook": {
+  "duration": 3.631,
+  "speechStart": 0.069,
+  "speechEnd": 3.44,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Quién",
+    "start": 0.069,
+    "end": 0.24
+   },
+   {
+    "w": "es",
+    "start": 0.28,
+    "end": 0.32
+   },
+   {
+    "w": "Jesús,",
+    "start": 0.4,
+    "end": 0.8
+   },
+   {
+    "w": "de",
+    "start": 0.88,
+    "end": 0.92
+   },
+   {
+    "w": "verdad?",
+    "start": 0.96,
+    "end": 1.36
+   },
+   {
+    "w": "Descúbrelo",
+    "start": 1.84,
+    "end": 2.4
+   },
+   {
+    "w": "en",
+    "start": 2.48,
+    "end": 2.56
+   },
+   {
+    "w": "seis",
+    "start": 2.64,
+    "end": 2.8
+   },
+   {
+    "w": "misiones.",
+    "start": 2.88,
+    "end": 3.44
+   }
+  ]
+ },
+ "rutas": {
+  "duration": 4.754,
+  "speechStart": 0,
+  "speechEnd": 4.72,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "el",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "modo",
+    "start": 0.36,
+    "end": 0.48
+   },
+   {
+    "w": "Jóvenes",
+    "start": 0.56,
+    "end": 0.96
+   },
+   {
+    "w": "de",
+    "start": 1,
+    "end": 1.04
+   },
+   {
+    "w": "Zarza,",
+    "start": 1.12,
+    "end": 1.68
+   },
+   {
+    "w": "eliges",
+    "start": 1.76,
+    "end": 2.16
+   },
+   {
+    "w": "una",
+    "start": 2.24,
+    "end": 2.32
+   },
+   {
+    "w": "ruta",
+    "start": 2.4,
+    "end": 2.8
+   },
+   {
+    "w": "y",
+    "start": 2.84,
+    "end": 2.88
+   },
+   {
+    "w": "vas",
+    "start": 2.96,
+    "end": 3.2
+   },
+   {
+    "w": "misión",
+    "start": 3.44,
+    "end": 3.68
+   },
+   {
+    "w": "por",
+    "start": 3.76,
+    "end": 3.84
+   },
+   {
+    "w": "misión.",
+    "start": 4.28,
+    "end": 4.72
+   }
+  ]
+ },
+ "mision": {
+  "duration": 7.079,
+  "speechStart": 0,
+  "speechEnd": 7.04,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Lees",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "el",
+    "start": 0.4,
+    "end": 0.48
+   },
+   {
+    "w": "pasaje,",
+    "start": 0.6,
+    "end": 1.04
+   },
+   {
+    "w": "respondes",
+    "start": 1.52,
+    "end": 2.08
+   },
+   {
+    "w": "dos",
+    "start": 2.2,
+    "end": 2.32
+   },
+   {
+    "w": "preguntas,",
+    "start": 2.44,
+    "end": 2.96
+   },
+   {
+    "w": "piensas…",
+    "start": 3.44,
+    "end": 4.72
+   },
+   {
+    "w": "y",
+    "start": 4.8,
+    "end": 4.84
+   },
+   {
+    "w": "te",
+    "start": 4.88,
+    "end": 4.96
+   },
+   {
+    "w": "llevas",
+    "start": 5,
+    "end": 5.28
+   },
+   {
+    "w": "un",
+    "start": 5.36,
+    "end": 5.44
+   },
+   {
+    "w": "reto",
+    "start": 5.52,
+    "end": 5.84
+   },
+   {
+    "w": "para",
+    "start": 5.92,
+    "end": 6
+   },
+   {
+    "w": "la",
+    "start": 6.08,
+    "end": 6.16
+   },
+   {
+    "w": "semana.",
+    "start": 6.24,
+    "end": 7.04
+   }
+  ]
+ },
+ "sello": {
+  "duration": 6.609,
+  "speechStart": 0,
+  "speechEnd": 5.92,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Cada",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "misión",
+    "start": 0.4,
+    "end": 0.56
+   },
+   {
+    "w": "cumplida",
+    "start": 0.68,
+    "end": 1.12
+   },
+   {
+    "w": "suma",
+    "start": 1.2,
+    "end": 1.44
+   },
+   {
+    "w": "estrellas",
+    "start": 1.56,
+    "end": 2.08
+   },
+   {
+    "w": "y",
+    "start": 2.16,
+    "end": 2.24
+   },
+   {
+    "w": "sellos.",
+    "start": 2.36,
+    "end": 2.72
+   },
+   {
+    "w": "Sin",
+    "start": 3.28,
+    "end": 3.44
+   },
+   {
+    "w": "rankings:",
+    "start": 3.52,
+    "end": 4.08
+   },
+   {
+    "w": "solo",
+    "start": 4.52,
+    "end": 4.8
+   },
+   {
+    "w": "tú",
+    "start": 4.88,
+    "end": 5.04
+   },
+   {
+    "w": "y",
+    "start": 5.28,
+    "end": 5.32
+   },
+   {
+    "w": "la",
+    "start": 5.36,
+    "end": 5.44
+   },
+   {
+    "w": "Palabra.",
+    "start": 5.52,
+    "end": 5.92
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.049,
+  "speechStart": 0.14,
+  "speechEnd": 3.84,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.2,
+    "end": 1.44
+   },
+   {
+    "w": "de",
+    "start": 1.52,
+    "end": 1.56
+   },
+   {
+    "w": "estudio…",
+    "start": 1.6,
+    "end": 2.4
+   },
+   {
+    "w": "gratis",
+    "start": 2.76,
+    "end": 3.04
+   },
+   {
+    "w": "en",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "Google",
+    "start": 3.28,
+    "end": 3.52
+   },
+   {
+    "w": "Play.",
+    "start": 3.6,
+    "end": 3.84
+   }
+  ]
+ }
+}

@@ -1,0 +1,397 @@
+{
+ "hook": {
+  "duration": 3.631,
+  "speechStart": 0.067,
+  "speechEnd": 3.36,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Y",
+    "start": 0.067,
+    "end": 0.16
+   },
+   {
+    "w": "si",
+    "start": 0.24,
+    "end": 0.32
+   },
+   {
+    "w": "este",
+    "start": 0.44,
+    "end": 0.56
+   },
+   {
+    "w": "Adviento…",
+    "start": 0.68,
+    "end": 1.2
+   },
+   {
+    "w": "lees",
+    "start": 1.68,
+    "end": 1.92
+   },
+   {
+    "w": "la",
+    "start": 2,
+    "end": 2.04
+   },
+   {
+    "w": "promesa",
+    "start": 2.08,
+    "end": 2.48
+   },
+   {
+    "w": "desde",
+    "start": 2.56,
+    "end": 2.747
+   },
+   {
+    "w": "el",
+    "start": 2.773,
+    "end": 2.8
+   },
+   {
+    "w": "principio?",
+    "start": 2.88,
+    "end": 3.36
+   }
+  ]
+ },
+ "retos": {
+  "duration": 6.426,
+  "speechStart": 0,
+  "speechEnd": 5.84,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "los",
+    "start": 0.96,
+    "end": 1.12
+   },
+   {
+    "w": "planes",
+    "start": 1.2,
+    "end": 1.44
+   },
+   {
+    "w": "siguen",
+    "start": 1.52,
+    "end": 1.76
+   },
+   {
+    "w": "el",
+    "start": 1.84,
+    "end": 1.92
+   },
+   {
+    "w": "año",
+    "start": 2,
+    "end": 2.16
+   },
+   {
+    "w": "cristiano:",
+    "start": 2.2,
+    "end": 2.72
+   },
+   {
+    "w": "Adviento,",
+    "start": 3.28,
+    "end": 3.92
+   },
+   {
+    "w": "Cuaresma,",
+    "start": 4.2,
+    "end": 4.8
+   },
+   {
+    "w": "Semana",
+    "start": 5.04,
+    "end": 5.36
+   },
+   {
+    "w": "Santa…",
+    "start": 5.44,
+    "end": 5.84
+   }
+  ]
+ },
+ "dia": {
+  "duration": 6.687,
+  "speechStart": 0,
+  "speechEnd": 6,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Un",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "capítulo",
+    "start": 0.16,
+    "end": 0.64
+   },
+   {
+    "w": "al",
+    "start": 0.72,
+    "end": 0.8
+   },
+   {
+    "w": "día,",
+    "start": 0.92,
+    "end": 1.04
+   },
+   {
+    "w": "con",
+    "start": 1.52,
+    "end": 1.6
+   },
+   {
+    "w": "una",
+    "start": 1.68,
+    "end": 1.76
+   },
+   {
+    "w": "pregunta",
+    "start": 1.84,
+    "end": 2.24
+   },
+   {
+    "w": "para",
+    "start": 2.32,
+    "end": 2.48
+   },
+   {
+    "w": "pensar.",
+    "start": 2.52,
+    "end": 2.96
+   },
+   {
+    "w": "Y",
+    "start": 3.56,
+    "end": 3.6
+   },
+   {
+    "w": "si",
+    "start": 3.68,
+    "end": 3.76
+   },
+   {
+    "w": "un",
+    "start": 3.84,
+    "end": 3.92
+   },
+   {
+    "w": "día",
+    "start": 4.04,
+    "end": 4.16
+   },
+   {
+    "w": "no",
+    "start": 4.24,
+    "end": 4.32
+   },
+   {
+    "w": "puedes,",
+    "start": 4.36,
+    "end": 4.72
+   },
+   {
+    "w": "el",
+    "start": 5.12,
+    "end": 5.2
+   },
+   {
+    "w": "plan",
+    "start": 5.28,
+    "end": 5.44
+   },
+   {
+    "w": "te",
+    "start": 5.52,
+    "end": 5.56
+   },
+   {
+    "w": "espera.",
+    "start": 5.6,
+    "end": 6
+   }
+  ]
+ },
+ "temas": {
+  "duration": 6.766,
+  "speechStart": 0,
+  "speechEnd": 6.72,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "También",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "hay",
+    "start": 0.4,
+    "end": 0.48
+   },
+   {
+    "w": "planes",
+    "start": 0.68,
+    "end": 0.88
+   },
+   {
+    "w": "para",
+    "start": 0.96,
+    "end": 1.12
+   },
+   {
+    "w": "cuando",
+    "start": 1.16,
+    "end": 1.36
+   },
+   {
+    "w": "el",
+    "start": 1.4,
+    "end": 1.44
+   },
+   {
+    "w": "alma",
+    "start": 1.52,
+    "end": 1.76
+   },
+   {
+    "w": "está",
+    "start": 1.88,
+    "end": 2.04
+   },
+   {
+    "w": "abatida,",
+    "start": 2.08,
+    "end": 2.64
+   },
+   {
+    "w": "para",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "el",
+    "start": 3.28,
+    "end": 3.36
+   },
+   {
+    "w": "duelo,",
+    "start": 3.44,
+    "end": 4.16
+   },
+   {
+    "w": "o",
+    "start": 4.24,
+    "end": 4.32
+   },
+   {
+    "w": "para",
+    "start": 4.44,
+    "end": 4.56
+   },
+   {
+    "w": "leer",
+    "start": 4.6,
+    "end": 4.72
+   },
+   {
+    "w": "un",
+    "start": 4.8,
+    "end": 4.88
+   },
+   {
+    "w": "libro",
+    "start": 4.96,
+    "end": 5.12
+   },
+   {
+    "w": "entero",
+    "start": 5.32,
+    "end": 5.547
+   },
+   {
+    "w": "a",
+    "start": 5.573,
+    "end": 5.6
+   },
+   {
+    "w": "tu",
+    "start": 5.68,
+    "end": 5.76
+   },
+   {
+    "w": "ritmo.",
+    "start": 5.88,
+    "end": 6.72
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.049,
+  "speechStart": 0.14,
+  "speechEnd": 3.84,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.2,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.56,
+    "end": 1.6
+   },
+   {
+    "w": "estudio…",
+    "start": 1.72,
+    "end": 2.48
+   },
+   {
+    "w": "gratis",
+    "start": 2.56,
+    "end": 3.04
+   },
+   {
+    "w": "en",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "Google",
+    "start": 3.32,
+    "end": 3.44
+   },
+   {
+    "w": "Play.",
+    "start": 3.52,
+    "end": 3.84
+   }
+  ]
+ }
+}
