@@ -1,0 +1,11 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical de «Línea de tiempo y familias» (src/funciones/Funcion.tsx).",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[curious] ¿Qué pasaba en Egipto… mientras reinaba Josafat?"},
+    {"id": "linea", "at": 0, "text": "En Zarza, la línea de tiempo pone la Biblia junto a la historia del mundo, siglo a siglo."},
+    {"id": "familias", "at": 0, "text": "Y en las familias de la Biblia buscas a cualquier persona: sus padres, sus hijos y su linaje."},
+    {"id": "linaje", "at": 0, "text": "De Jesús hasta Adán… sesenta y cuatro generaciones, a un toque."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}

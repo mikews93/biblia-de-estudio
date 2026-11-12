@@ -1,0 +1,11 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical de «Comparar versiones» (src/funciones/Funcion.tsx).",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[curious] ¿Por qué tu Biblia no dice lo mismo… que la de tu amigo?"},
+    {"id": "abrir", "at": 0, "text": "En Zarza, compara el capítulo en varias versiones a la vez."},
+    {"id": "marcar", "at": 0, "text": "Las palabras que cambian se marcan, para que veas la diferencia de un vistazo."},
+    {"id": "porque", "at": 0, "text": "Y si te preguntas por qué difieren, Zarza te lo explica desde el griego o el hebreo."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}
