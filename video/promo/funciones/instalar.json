@@ -6,13 +6,50 @@
  },
  "_": "Video vertical «Cómo instalar Zarza»: Android desde Google Play y iPhone desde Safari (src/funciones/Funcion.tsx).",
  "lines": [
-  {"id": "hook", "at": 0, "text": "[warm] ¿Quieres tener Zarza en tu teléfono? Te enseño en un minuto."},
-  {"id": "android", "at": 0, "text": "Si tienes Android, búscala en Google Play como Zarza, o abre el enlace directo."},
-  {"id": "instalar", "at": 0, "text": "Toca Instalar… y cuando termine, Abrir. Es gratis, y se actualiza sola."},
-  {"id": "apk", "at": 0, "text": "Si antes la instalaste desde la página web, desinstala esa primero, y luego instálala desde Google Play."},
-  {"id": "iphone", "at": 0, "text": "¿Tienes iPhone? Mientras llega al App Store, abre zarzabiblia.com en Safari."},
-  {"id": "compartir", "at": 0, "text": "Toca el botón de compartir… y elige: Añadir a pantalla de inicio."},
-  {"id": "anadir", "at": 0, "text": "Toca Añadir, y listo. Zarza queda con su ícono, y se abre a pantalla completa, como una app."},
-  {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play, y en zarzabiblia.com."}
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Quieres tener Zarza en tu teléfono? Te enseño en un minuto."
+  },
+  {
+   "id": "android",
+   "at": 0,
+   "text": "Si tienes Android, búscala en Google Play como Zarza, o abre el enlace directo."
+  },
+  {
+   "id": "instalar",
+   "at": 0,
+   "text": "Toca Instalar… y cuando termine, Abrir. Es gratis, y se actualiza sola."
+  },
+  {
+   "id": "apk",
+   "at": 0,
+   "text": "Si antes la instalaste desde la página web, desinstala esa primero, y luego instálala desde Google Play."
+  },
+  {
+   "id": "iphone",
+   "at": 0,
+   "text": "¿Tienes iPhone? Mientras llega al App Store, abre zarzabiblia.com en Safari."
+  },
+  {
+   "id": "compartir",
+   "at": 0,
+   "text": "Toca los tres puntos, abajo a la derecha, y luego Compartir."
+  },
+  {
+   "id": "vermas",
+   "at": 0,
+   "text": "Toca Ver más… y elige: Agregar a Inicio."
+  },
+  {
+   "id": "agregar",
+   "at": 0,
+   "text": "Toca Agregar, y listo. Zarza queda con su ícono, y se abre a pantalla completa, como una app."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play, y en zarzabiblia.com."
+  }
  ]
 }
