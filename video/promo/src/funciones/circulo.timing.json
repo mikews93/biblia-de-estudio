@@ -1,0 +1,440 @@
+{
+ "hook": {
+  "duration": 2.586,
+  "speechStart": 0.08,
+  "speechEnd": 2.4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Esperas",
+    "start": 0.08,
+    "end": 0.56
+   },
+   {
+    "w": "a",
+    "start": 0.587,
+    "end": 0.613
+   },
+   {
+    "w": "la",
+    "start": 0.64,
+    "end": 0.72
+   },
+   {
+    "w": "persona",
+    "start": 0.8,
+    "end": 1.2
+   },
+   {
+    "w": "que",
+    "start": 1.28,
+    "end": 1.36
+   },
+   {
+    "w": "Dios",
+    "start": 1.44,
+    "end": 1.76
+   },
+   {
+    "w": "tiene",
+    "start": 1.8,
+    "end": 2
+   },
+   {
+    "w": "para",
+    "start": 2.08,
+    "end": 2.16
+   },
+   {
+    "w": "ti?",
+    "start": 2.24,
+    "end": 2.4
+   }
+  ]
+ },
+ "camino": {
+  "duration": 7.314,
+  "speechStart": 0,
+  "speechEnd": 7.28,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "El",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Camino",
+    "start": 0.24,
+    "end": 0.48
+   },
+   {
+    "w": "te",
+    "start": 0.56,
+    "end": 0.64
+   },
+   {
+    "w": "prepara",
+    "start": 0.76,
+    "end": 1.04
+   },
+   {
+    "w": "en",
+    "start": 1.12,
+    "end": 1.28
+   },
+   {
+    "w": "siete",
+    "start": 1.32,
+    "end": 1.6
+   },
+   {
+    "w": "etapas:",
+    "start": 1.72,
+    "end": 2.16
+   },
+   {
+    "w": "quién",
+    "start": 2.8,
+    "end": 2.96
+   },
+   {
+    "w": "eres",
+    "start": 3.08,
+    "end": 3.2
+   },
+   {
+    "w": "en",
+    "start": 3.28,
+    "end": 3.36
+   },
+   {
+    "w": "Cristo,",
+    "start": 3.4,
+    "end": 3.76
+   },
+   {
+    "w": "tu",
+    "start": 4.24,
+    "end": 4.32
+   },
+   {
+    "w": "llamado",
+    "start": 4.36,
+    "end": 5.2
+   },
+   {
+    "w": "y",
+    "start": 5.28,
+    "end": 5.36
+   },
+   {
+    "w": "lo",
+    "start": 5.44,
+    "end": 5.52
+   },
+   {
+    "w": "que",
+    "start": 5.6,
+    "end": 5.68
+   },
+   {
+    "w": "todavía",
+    "start": 5.8,
+    "end": 6.24
+   },
+   {
+    "w": "duele.",
+    "start": 6.36,
+    "end": 7.28
+   }
+  ]
+ },
+ "circulo": {
+  "duration": 7.001,
+  "speechStart": 0,
+  "speechEnd": 6.48,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Después,",
+    "start": 0,
+    "end": 0.56
+   },
+   {
+    "w": "el",
+    "start": 0.88,
+    "end": 0.96
+   },
+   {
+    "w": "círculo",
+    "start": 1.04,
+    "end": 1.36
+   },
+   {
+    "w": "de",
+    "start": 1.44,
+    "end": 1.48
+   },
+   {
+    "w": "solteros",
+    "start": 1.52,
+    "end": 2
+   },
+   {
+    "w": "de",
+    "start": 2.04,
+    "end": 2.08
+   },
+   {
+    "w": "tu",
+    "start": 2.16,
+    "end": 2.2
+   },
+   {
+    "w": "iglesia:",
+    "start": 2.24,
+    "end": 2.72
+   },
+   {
+    "w": "una",
+    "start": 3.4,
+    "end": 3.52
+   },
+   {
+    "w": "pregunta",
+    "start": 3.64,
+    "end": 4
+   },
+   {
+    "w": "cada",
+    "start": 4.16,
+    "end": 4.32
+   },
+   {
+    "w": "semana,",
+    "start": 4.4,
+    "end": 4.88
+   },
+   {
+    "w": "con",
+    "start": 5.28,
+    "end": 5.36
+   },
+   {
+    "w": "líderes",
+    "start": 5.44,
+    "end": 5.84
+   },
+   {
+    "w": "que",
+    "start": 5.92,
+    "end": 6
+   },
+   {
+    "w": "cuidan.",
+    "start": 6.08,
+    "end": 6.48
+   }
+  ]
+ },
+ "conocer": {
+  "duration": 4.284,
+  "speechStart": 0,
+  "speechEnd": 3.6,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Y",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "si",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "dos",
+    "start": 0.32,
+    "end": 0.4
+   },
+   {
+    "w": "se",
+    "start": 0.48,
+    "end": 0.56
+   },
+   {
+    "w": "eligen,",
+    "start": 0.64,
+    "end": 1.12
+   },
+   {
+    "w": "se",
+    "start": 1.44,
+    "end": 1.52
+   },
+   {
+    "w": "conocen",
+    "start": 1.6,
+    "end": 1.92
+   },
+   {
+    "w": "con",
+    "start": 2,
+    "end": 2.16
+   },
+   {
+    "w": "siete",
+    "start": 2.2,
+    "end": 2.48
+   },
+   {
+    "w": "días",
+    "start": 2.56,
+    "end": 2.8
+   },
+   {
+    "w": "de",
+    "start": 2.84,
+    "end": 2.88
+   },
+   {
+    "w": "preguntas.",
+    "start": 2.96,
+    "end": 3.6
+   }
+  ]
+ },
+ "hombres": {
+  "duration": 5.799,
+  "speechStart": 0,
+  "speechEnd": 5.28,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Para",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "los",
+    "start": 0.24,
+    "end": 0.4
+   },
+   {
+    "w": "hombres,",
+    "start": 0.44,
+    "end": 0.88
+   },
+   {
+    "w": "«Hombres",
+    "start": 1.307,
+    "end": 1.68
+   },
+   {
+    "w": "de",
+    "start": 1.76,
+    "end": 1.84
+   },
+   {
+    "w": "pie»:",
+    "start": 1.92,
+    "end": 2.08
+   },
+   {
+    "w": "ocho",
+    "start": 2.68,
+    "end": 2.88
+   },
+   {
+    "w": "semanas",
+    "start": 2.96,
+    "end": 3.36
+   },
+   {
+    "w": "para",
+    "start": 3.44,
+    "end": 3.6
+   },
+   {
+    "w": "crecer",
+    "start": 3.68,
+    "end": 4
+   },
+   {
+    "w": "junto",
+    "start": 4.08,
+    "end": 4.32
+   },
+   {
+    "w": "a",
+    "start": 4.4,
+    "end": 4.44
+   },
+   {
+    "w": "otros",
+    "start": 4.48,
+    "end": 4.72
+   },
+   {
+    "w": "hombres.",
+    "start": 4.8,
+    "end": 5.28
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.049,
+  "speechStart": 0.08,
+  "speechEnd": 3.84,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.08,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "Biblia",
+    "start": 1.24,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.56,
+    "end": 1.6
+   },
+   {
+    "w": "estudio…",
+    "start": 1.68,
+    "end": 2.08
+   },
+   {
+    "w": "gratis",
+    "start": 2.8,
+    "end": 3.04
+   },
+   {
+    "w": "en",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "Google",
+    "start": 3.28,
+    "end": 3.52
+   },
+   {
+    "w": "Play.",
+    "start": 3.6,
+    "end": 3.84
+   }
+  ]
+ }
+}

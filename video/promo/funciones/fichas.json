@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Diccionario, fichas y concordancia» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Qué era un efod? ¿Dónde queda Getsemaní?"
+  },
+  {
+   "id": "diccionario",
+   "at": 0,
+   "text": "Busca cualquier lugar, persona u objeto, y el diccionario bíblico te lo explica con sus versículos."
+  },
+  {
+   "id": "ficha",
+   "at": 0,
+   "text": "Cada personaje tiene su ficha: cuándo vivió, sus viajes y el mapa de su historia."
+  },
+  {
+   "id": "concordancia",
+   "at": 0,
+   "text": "Y la concordancia te muestra cada vez que aparece una palabra en griego o hebreo… y cómo se traduce."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

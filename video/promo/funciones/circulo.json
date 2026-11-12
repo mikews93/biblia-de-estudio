@@ -1,0 +1,40 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Círculo y Hombres de pie» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Esperas a la persona que Dios tiene para ti?"
+  },
+  {
+   "id": "camino",
+   "at": 0,
+   "text": "El Camino te prepara en siete etapas: quién eres en Cristo, tu llamado y lo que todavía duele."
+  },
+  {
+   "id": "circulo",
+   "at": 0,
+   "text": "Después, el círculo de solteros de tu iglesia: una pregunta cada semana, con líderes que cuidan."
+  },
+  {
+   "id": "conocer",
+   "at": 0,
+   "text": "Y si dos se eligen, se conocen con siete días de preguntas."
+  },
+  {
+   "id": "hombres",
+   "at": 0,
+   "text": "Para los hombres, «Hombres de pie»: ocho semanas para crecer junto a otros hombres."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

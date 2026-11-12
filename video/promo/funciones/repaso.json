@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Mapa mental y tarjetas» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Quieres recordar lo que lees?"
+  },
+  {
+   "id": "mapa",
+   "at": 0,
+   "text": "El mapa mental te muestra las ideas del capítulo… y cada una te lleva a su versículo."
+  },
+  {
+   "id": "tarjetas",
+   "at": 0,
+   "text": "Las tarjetas de repaso te preguntan lo que leíste."
+  },
+  {
+   "id": "repaso",
+   "at": 0,
+   "text": "Piensas la respuesta, la ves… y te la vuelve a mostrar justo antes de que la olvides."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

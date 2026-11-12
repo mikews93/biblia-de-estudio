@@ -25,6 +25,22 @@ import jovenesTaps from './jovenes.taps.json';
 import jovenesTiming from './jovenes.timing.json';
 import comunidadTaps from './comunidad.taps.json';
 import comunidadTiming from './comunidad.timing.json';
+import hoyTaps from './hoy.taps.json';
+import hoyTiming from './hoy.timing.json';
+import notasTaps from './notas.taps.json';
+import notasTiming from './notas.timing.json';
+import repasoTaps from './repaso.taps.json';
+import repasoTiming from './repaso.timing.json';
+import fichasTaps from './fichas.taps.json';
+import fichasTiming from './fichas.timing.json';
+import dinamicasTaps from './dinamicas.taps.json';
+import dinamicasTiming from './dinamicas.timing.json';
+import eventosTaps from './eventos.taps.json';
+import eventosTiming from './eventos.timing.json';
+import circuloTaps from './circulo.taps.json';
+import circuloTiming from './circulo.timing.json';
+import sinconexionTaps from './sinconexion.taps.json';
+import sinconexionTiming from './sinconexion.timing.json';
 import dramatizadoTaps from './dramatizado.taps.json';
 import dramatizadoTiming from './dramatizado.timing.json';
 import interlinealTaps from './interlineal.taps.json';
@@ -437,6 +453,166 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'muro', eyebrow: 'COMUNIDAD', title: 'Lo que tus amigos leen'},
       {line: 'amigos', eyebrow: 'AMIGOS', title: 'Tú decides quién te ve'},
       {line: 'grupo', eyebrow: 'GRUPOS', title: 'Leer juntos, cada día'},
+    ],
+  },
+  hoy: {
+    id: 'hoy',
+    timing: hoyTiming as Record<string, VoTiming>,
+    taps: hoyTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-manana', line: 'portada'},
+      {src: '2-noche', line: 'portada', word: 'cambia'},
+      {src: '3-para-ti', line: 'parati'},
+      {src: '4-por-que', line: 'parati', word: 'rastrearte:'},
+      {src: '5-accesos', line: 'todo'},
+      {src: '6-todo', line: 'todo', word: 'función,'},
+    ],
+    titulares: [
+      {line: 'portada', eyebrow: 'HOY', title: 'Un versículo para empezar'},
+      {line: 'parati', eyebrow: 'PARA TI', title: 'Elegido sin rastrearte'},
+      {line: 'todo', eyebrow: 'TODO EN ZARZA', title: 'Cada función, a mano'},
+    ],
+  },
+  notas: {
+    id: 'notas',
+    timing: notasTiming as Record<string, VoTiming>,
+    taps: notasTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-lector', line: 'resaltar'},
+      {src: '2-panel', line: 'resaltar', word: 'resáltalo'},
+      {src: '3-resaltado', line: 'resaltar', word: 'color'},
+      {src: '4-nota', line: 'nota'},
+      {src: '5-con-nota', line: 'nota', word: 'palabras.'},
+      {src: '6-mis-notas', line: 'mis'},
+      {src: '7-exportar', line: 'mis', word: 'Word,'},
+    ],
+    titulares: [
+      {line: 'resaltar', eyebrow: 'RESALTAR', title: 'Tus colores'},
+      {line: 'nota', eyebrow: 'NOTAS', title: 'Lo que Dios te dijo'},
+      {line: 'mis', eyebrow: 'EXPORTAR', title: 'Word, PDF o texto'},
+    ],
+  },
+  repaso: {
+    id: 'repaso',
+    timing: repasoTiming as Record<string, VoTiming>,
+    taps: repasoTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '2-herramientas', line: 'mapa'},
+      {src: '3-mapa', line: 'mapa', word: 'ideas'},
+      {src: '4-idea', line: 'mapa', word: 'versículo.'},
+      {src: '5-tarjetas', line: 'tarjetas'},
+      {src: '6-repaso', line: 'repaso'},
+      {src: '7-respuesta', line: 'repaso', word: 'ves…'},
+    ],
+    titulares: [
+      {line: 'mapa', eyebrow: 'MAPA MENTAL', title: 'El capítulo de un vistazo'},
+      {line: 'tarjetas', eyebrow: 'TARJETAS', title: 'Pregunta y respuesta'},
+      {line: 'repaso', eyebrow: 'REPASO', title: 'Justo antes de olvidar'},
+    ],
+  },
+  fichas: {
+    id: 'fichas',
+    timing: fichasTiming as Record<string, VoTiming>,
+    taps: fichasTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-buscar', line: 'diccionario'},
+      {src: '2-diccionario', line: 'diccionario', word: 'diccionario'},
+      {src: '3-articulo', line: 'diccionario', word: 'explica'},
+      {src: '5-ficha-abajo', line: 'ficha'},
+      {src: '7-concordancia', line: 'concordancia'},
+      {src: '8-concordancia-abajo', line: 'concordancia', word: 'traduce.'},
+    ],
+    titulares: [
+      {line: 'diccionario', eyebrow: 'DICCIONARIO BÍBLICO', title: 'Lugares, personas y objetos'},
+      {line: 'ficha', eyebrow: 'FICHAS', title: 'Vida, viajes y mapa'},
+      {line: 'concordancia', eyebrow: 'CONCORDANCIA', title: 'Cada palabra en el original'},
+    ],
+  },
+  dinamicas: {
+    id: 'dinamicas',
+    timing: dinamicasTiming as Record<string, VoTiming>,
+    taps: dinamicasTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-taller', line: 'lista'},
+      {src: '2-lista', line: 'lista', word: 'dinámicas'},
+      {src: '3-lista-abajo', line: 'lista', word: 'entrar'},
+      {src: '4-dinamica', line: 'dinamica'},
+      {src: '5-dinamica-abajo', line: 'dinamica', word: 'materiales,'},
+    ],
+    titulares: [
+      {line: 'lista', eyebrow: 'DINÁMICAS', title: '23 para tu grupo'},
+      {line: 'dinamica', eyebrow: 'PASO A PASO', title: 'Solo la Biblia y el grupo'},
+    ],
+  },
+  eventos: {
+    id: 'eventos',
+    timing: eventosTiming as Record<string, VoTiming>,
+    taps: eventosTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-presentar', line: 'publicar'},
+      {src: '2-preparar', line: 'publicar', word: 'evento…'},
+      {src: '3-codigo', line: 'publicar', word: 'código'},
+      {src: '4-entrar', line: 'entrar'},
+      {src: '5-pronto', line: 'entrar', word: 'cuenta.'},
+      {src: '7-vivo', line: 'vivo'},
+      {src: '8-versiculo', line: 'vivo', word: 'abren'},
+      {src: '9-nota', line: 'vivo', word: 'notas.'},
+      {src: '11-termino', line: 'final'},
+      {src: '12-comparte', line: 'final', word: 'comparten'},
+    ],
+    titulares: [
+      {line: 'publicar', eyebrow: 'EVENTOS', title: 'Tu sermón, con un código'},
+      {line: 'entrar', eyebrow: 'LA CONGREGACIÓN', title: 'Entra sin cuenta'},
+      {line: 'vivo', eyebrow: 'EN VIVO', title: 'Punto por punto'},
+      {line: 'final', eyebrow: 'AL TERMINAR', title: 'Notas para llevar'},
+    ],
+  },
+  circulo: {
+    id: 'circulo',
+    timing: circuloTiming as Record<string, VoTiming>,
+    taps: circuloTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-camino', line: 'camino'},
+      {src: '2-etapa', line: 'camino', word: 'duele.'},
+      {src: '3-circulo', line: 'circulo'},
+      {src: '3b-circulo-abajo', line: 'circulo', word: 'pregunta'},
+      {src: '4-persona', line: 'conocer'},
+      {src: '5-conocernos', line: 'conocer', word: 'siete'},
+      {src: '6-hombres', line: 'hombres'},
+      {src: '7-semana', line: 'hombres', word: 'ocho'},
+      {src: '8-reto', line: 'hombres', word: 'crecer'},
+    ],
+    titulares: [
+      {line: 'camino', eyebrow: 'EL CAMINO', title: 'Siete etapas'},
+      {line: 'circulo', eyebrow: 'CÍRCULO DE SOLTEROS', title: 'Cuidado por tu iglesia'},
+      {line: 'conocer', eyebrow: 'CONOCERNOS', title: 'Siete días de preguntas'},
+      {line: 'hombres', eyebrow: 'HOMBRES DE PIE', title: 'Ocho semanas juntos'},
+    ],
+  },
+  sinconexion: {
+    id: 'sinconexion',
+    timing: sinconexionTiming as Record<string, VoTiming>,
+    taps: sinconexionTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-descargas', line: 'descargar'},
+      {src: '2-bajando', line: 'descargar', word: 'completa'},
+      {src: '3-descargada', line: 'descargar', word: 'pesa'},
+      {src: '4-libros', line: 'leer'},
+      {src: '5-lector', line: 'leer', word: 'campo'},
+      {src: '6-buscar', line: 'buscar'},
+    ],
+    titulares: [
+      {line: 'descargar', eyebrow: 'SIN CONEXIÓN', title: 'La Biblia entera, descargada'},
+      {line: 'leer', eyebrow: 'SIN INTERNET', title: 'Igual la lees'},
+      {line: 'buscar', eyebrow: 'BUSCAR', title: 'También sin datos'},
     ],
   },
   presentar: {
