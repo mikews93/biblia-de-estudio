@@ -11,6 +11,20 @@ import oracionTaps from './oracion.taps.json';
 import oracionTiming from './oracion.timing.json';
 import parejaTaps from './pareja.taps.json';
 import parejaTiming from './pareja.timing.json';
+import estudioTaps from './estudio.taps.json';
+import estudioTiming from './estudio.timing.json';
+import planesTaps from './planes.taps.json';
+import planesTiming from './planes.timing.json';
+import mapaTaps from './mapa.taps.json';
+import mapaTiming from './mapa.timing.json';
+import conexionesTaps from './conexiones.taps.json';
+import conexionesTiming from './conexiones.timing.json';
+import promesasTaps from './promesas.taps.json';
+import promesasTiming from './promesas.timing.json';
+import jovenesTaps from './jovenes.taps.json';
+import jovenesTiming from './jovenes.timing.json';
+import comunidadTaps from './comunidad.taps.json';
+import comunidadTiming from './comunidad.timing.json';
 import dramatizadoTaps from './dramatizado.taps.json';
 import dramatizadoTiming from './dramatizado.timing.json';
 import interlinealTaps from './interlineal.taps.json';
@@ -283,6 +297,146 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'dia', eyebrow: 'CINCO MINUTOS', title: 'Un pasaje, una pregunta, una oración'},
       {line: 'revelar', eyebrow: 'A SOLAS Y JUNTOS', title: 'Lo que escribió el otro'},
       {line: 'planes', eyebrow: 'NOVIOS Y CASADOS', title: 'Un plan para cada etapa'},
+    ],
+  },
+  estudio: {
+    id: 'estudio',
+    timing: estudioTiming as Record<string, VoTiming>,
+    taps: estudioTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-versiculo', line: 'tocar'},
+      {src: '2-investigando', line: 'investiga'},
+      {src: '3-estudio', line: 'investiga', word: 'arma'},
+      {src: '4-costumbres', line: 'detalle'},
+      {src: '5-griego', line: 'detalle', word: 'griego,'},
+      {src: '6-doctrina', line: 'detalle', word: 'enseña.'},
+      {src: '7-aplicar', line: 'aplicar'},
+    ],
+    titulares: [
+      {line: 'tocar', eyebrow: 'ESTUDIO PROFUNDO', title: 'Estudia cualquier versículo'},
+      {line: 'investiga', eyebrow: 'INVESTIGA POR TI', title: 'Diccionarios, comentarios y teologías'},
+      {line: 'detalle', eyebrow: 'EN DETALLE', title: 'Costumbres, griego y doctrina'},
+      {line: 'aplicar', eyebrow: 'PARA TU VIDA', title: 'Preguntas y fuentes a la vista'},
+    ],
+  },
+  planes: {
+    id: 'planes',
+    timing: planesTiming as Record<string, VoTiming>,
+    taps: planesTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '2-toca', line: 'retos'},
+      {src: '3-adviento', line: 'dia'},
+      {src: '4-adviento-abajo', line: 'dia', word: 'espera.'},
+      {src: '5-mas-planes', line: 'temas'},
+      {src: '6-mas-planes-2', line: 'temas', word: 'libro'},
+    ],
+    titulares: [
+      {line: 'retos', eyebrow: 'PLANES DE LECTURA', title: 'Al ritmo del año cristiano'},
+      {line: 'dia', eyebrow: 'UN CAPÍTULO AL DÍA', title: 'Y el plan te espera'},
+      {line: 'temas', eyebrow: 'PARA CADA MOMENTO', title: 'Planes para lo que vives'},
+    ],
+  },
+  mapa: {
+    id: 'mapa',
+    timing: mapaTiming as Record<string, VoTiming>,
+    taps: mapaTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-recorridos', line: 'abrir'},
+      {src: '2-recorrido', line: 'abrir', word: 'escuchar.'},
+      {src: '3-jordan', line: '@clip'},
+      {src: '4-desierto', line: 'sigue', word: 'desierto,'},
+      {src: '5-galilea', line: 'sigue', word: 'Galilea…'},
+      {src: '6-mar', line: 'sigue', word: 'paso'},
+    ],
+    titulares: [
+      {line: 'abrir', eyebrow: 'RECORRIDOS', title: 'El mapa que sigue la lectura'},
+      {line: 'sigue', eyebrow: 'PASO A PASO', title: 'Cada lugar, mientras suena'},
+    ],
+    clip: {
+      after: 'abrir',
+      src: 'clips/dramatizado-mrk-1.mp3',
+      from: 71.3,
+      dur: 8,
+      lineas: [{t: 0, quien: 'Narrador', texto: 'Y aconteció en aquellos días, que Jesús vino de Nazaret de Galilea, y Juan le dio el bautismo en el Jordán.'}],
+    },
+  },
+  conexiones: {
+    id: 'conexiones',
+    timing: conexionesTiming as Record<string, VoTiming>,
+    taps: conexionesTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-toda-la-biblia', line: 'arcos'},
+      {src: '2-isaias', line: 'libro'},
+      {src: '3-isaias-53', line: 'capitulo'},
+      {src: '4-isaias-53-refs', line: 'capitulo', word: 'fuertes,'},
+    ],
+    titulares: [
+      {line: 'arcos', eyebrow: 'CONEXIONES', title: 'Toda la Biblia, conectada'},
+      {line: 'libro', eyebrow: 'POR LIBRO', title: 'Con quién conversa cada libro'},
+      {line: 'capitulo', eyebrow: 'POR CAPÍTULO', title: 'Las referencias más fuertes'},
+    ],
+  },
+  promesas: {
+    id: 'promesas',
+    timing: promesasTiming as Record<string, VoTiming>,
+    taps: promesasTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-promesas', line: 'arcos'},
+      {src: '2-hilos', line: 'hilo'},
+      {src: '3-hilo', line: 'hilo', word: 'Edén'},
+      {src: '4-hilo-abajo', line: 'cumple'},
+      {src: '5-hilo-cristo', line: 'cumple', word: 'esperamos.'},
+    ],
+    titulares: [
+      {line: 'arcos', eyebrow: 'PROMESA Y CUMPLIMIENTO', title: 'Las promesas de Dios son en Él Sí'},
+      {line: 'hilo', eyebrow: 'LOS GRANDES HILOS', title: 'Del Edén a la cruz'},
+      {line: 'cumple', eyebrow: 'PASO A PASO', title: 'Lo cumplido y lo que esperamos'},
+    ],
+  },
+  jovenes: {
+    id: 'jovenes',
+    timing: jovenesTiming as Record<string, VoTiming>,
+    taps: jovenesTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-misiones', line: 'rutas'},
+      {src: '2-toca', line: 'rutas', word: 'ruta'},
+      {src: '3-ruta', line: 'rutas', word: 'misión'},
+      {src: '4-lee', line: 'mision'},
+      {src: '6-respondio', line: 'mision', word: 'respondes'},
+      {src: '7-paso', line: 'mision', word: 'piensas…'},
+      {src: '8-paso', line: 'mision', word: 'reto'},
+      {src: '9-paso', line: 'sello'},
+      {src: '11-paso', line: 'sello', word: 'sellos.'},
+    ],
+    titulares: [
+      {line: 'rutas', eyebrow: 'MODO JÓVENES', title: 'Rutas de seis misiones'},
+      {line: 'mision', eyebrow: 'CADA MISIÓN', title: 'Lee, entiende, piensa y vive'},
+      {line: 'sello', eyebrow: 'SIN RANKINGS', title: 'Estrellas y sellos'},
+    ],
+  },
+  comunidad: {
+    id: 'comunidad',
+    timing: comunidadTiming as Record<string, VoTiming>,
+    taps: comunidadTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '2-me-gusta', line: 'muro'},
+      {src: '3-gustado', line: 'muro', word: 'resaltan'},
+      {src: '4-muro-abajo', line: 'muro', word: 'preguntan…'},
+      {src: '5-amigos', line: 'amigos'},
+      {src: '8-grupos', line: 'grupo'},
+      {src: '6-grupo', line: 'grupo', word: 'leen'},
+    ],
+    titulares: [
+      {line: 'muro', eyebrow: 'COMUNIDAD', title: 'Lo que tus amigos leen'},
+      {line: 'amigos', eyebrow: 'AMIGOS', title: 'Tú decides quién te ve'},
+      {line: 'grupo', eyebrow: 'GRUPOS', title: 'Leer juntos, cada día'},
     ],
   },
   presentar: {
