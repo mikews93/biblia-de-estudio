@@ -13,6 +13,7 @@ import type postgres from 'postgres';
 
 import { IGLESIAS_SCHEMA, LAMPARA_IGLESIA, nuevoCodigo } from './_iglesias';
 import { notifyUser } from './_push';
+import { conClaude } from './_quilate';
 import { PREGUNTAS_SCHEMA } from './_preguntas';
 import { esCuidador, SENALES_SCHEMA } from './_senales';
 
@@ -162,42 +163,45 @@ export function cuidarActions({ auth, fail, books }: Helpers): Record<string, (c
       const preguntas = await preguntasDe(sql, book.id, capitulo);
       const personas = new Set(preguntas.map((p) => p.quien));
       if (personas.size < MIN_PERSONAS) return { propuestas: [] };
-      anthropic ??= new Anthropic();
+      const ia = (anthropic ??= new Anthropic());
       const lista = preguntas.map((p) => `- ${p.quien}${p.versiculo ? ` (v. ${p.versiculo})` : ''}: ${p.texto}`).join('\n');
-      const response = await anthropic.beta.messages.create({
-        model: MODEL,
-        max_tokens: 4000,
-        system: PROPONER_SYSTEM,
-        messages: [{ role: 'user', content: `Pasaje: ${book.name} ${capitulo}\n\nPreguntas:\n${lista}` }],
-        output_config: {
-          effort: 'low',
-          format: {
-            type: 'json_schema',
-            schema: {
-              type: 'object',
-              properties: {
-                propuestas: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      texto: { type: 'string' },
-                      versiculo: { type: ['integer', 'null'] },
-                      personas: { type: 'array', items: { type: 'string' } },
+      const pedido = `Pasaje: ${book.name} ${capitulo}\n\nPreguntas:\n${lista}`;
+      const response = await conClaude('Proponer preguntas frecuentes', { fn: 'cuidar', model: MODEL, input: pedido }, () =>
+        ia.beta.messages.create({
+          model: MODEL,
+          max_tokens: 4000,
+          system: PROPONER_SYSTEM,
+          messages: [{ role: 'user', content: pedido }],
+          output_config: {
+            effort: 'low',
+            format: {
+              type: 'json_schema',
+              schema: {
+                type: 'object',
+                properties: {
+                  propuestas: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        texto: { type: 'string' },
+                        versiculo: { type: ['integer', 'null'] },
+                        personas: { type: 'array', items: { type: 'string' } },
+                      },
+                      required: ['texto', 'versiculo', 'personas'],
+                      additionalProperties: false,
                     },
-                    required: ['texto', 'versiculo', 'personas'],
-                    additionalProperties: false,
                   },
                 },
+                required: ['propuestas'],
+                additionalProperties: false,
               },
-              required: ['propuestas'],
-              additionalProperties: false,
             },
           },
-        },
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-      });
+          betas: ['server-side-fallback-2026-07-01'],
+          fallbacks: 'default',
+        }),
+      );
       if (response.stop_reason === 'refusal') throw fail('La IA no pudo proponer preguntas para este pasaje.', 502);
       const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
       const { propuestas } = JSON.parse(text) as { propuestas: { texto: string; versiculo: number | null; personas: string[] }[] };

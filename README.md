@@ -63,6 +63,8 @@ En el teléfono, `EXPO_PUBLIC_API_URL` apunta a la web publicada.
 
 Quilate es la plataforma propia donde se revisa lo que responde la IA de cada app. Con `QUILATE_KEY` y `QUILATE_URL` en Vercel, cada respuesta de «Estudiar con IA» sale como una traza (`api/_quilate.ts`): lo que escribió la persona o el encargo, cada vuelta con su modelo y sus tokens, y cada herramienta que consultó. Los documentos del pasaje no viajan. Sin esas dos variables no hace nada, y si Quilate está caído la persona recibe su respuesta igual.
 
+También deja su traza cada otra llamada a la IA, con `conClaude` o `trazarIA` del mismo archivo: el buscador con IA (una traza con la propuesta y la revisión de pasajes), el tipo de búsqueda, la corrección de citas, las preguntas para la reunión de una comunidad, las preguntas frecuentes que propone el cuidado, la traducción y revisión de comentarios y fichas, la línea de contexto, el diccionario, el guion del dramatizado y la transcripción de videos con Gemini. Las voces (ElevenLabs) y la búsqueda rápida por vectores no son respuestas de un modelo de lenguaje y no dejan traza. Una llamada nueva a la IA se envuelve igual.
+
 Los primeros casos de «Preguntar» están en `pipeline/quilate/casos.json`; en Quilate se revisan y se aprueban. `pipeline/quilate/objetivo.py` es lo que `quilate run` llama para correrlos contra la app (cada caso es una pregunta real a la IA: cuesta dinero).
 
 ### Herramientas del capítulo (ideas de NotebookLM)

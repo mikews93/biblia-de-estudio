@@ -800,7 +800,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     requests.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
     res.writeHead(200, { 'content-type': 'application/json' });
     const texto = 'Pedro no se hundió por el viento, se hundió cuando dejó de mirar a Jesús.\n\nEl Señor lo mandó al barco y oraba por ellos en el monte.';
-    return res.end(JSON.stringify({ candidates: [{ content: { parts: [{ text: texto }] } }] }));
+    return res.end(JSON.stringify({ candidates: [{ content: { parts: [{ text: texto }] } }], usageMetadata: { promptTokenCount: 1200, candidatesTokenCount: 60 } }));
   }
   if (req.method !== 'POST' || !req.url?.startsWith('/v1/messages')) {
     res.writeHead(404);

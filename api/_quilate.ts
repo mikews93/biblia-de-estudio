@@ -220,3 +220,68 @@ export function textoDe(content: unknown): string {
     .join('')
     .slice(0, MAX_TEXTO_TRAZA);
 }
+
+/** Lo que una llamada a la IA deja en su traza: lo que respondió y los tokens que contó el proveedor. */
+export interface Uso {
+  salida: unknown;
+  entrada?: number | null;
+  salidaTokens?: number | null;
+  cacheLeido?: number | null;
+  cacheEscrito?: number | null;
+}
+
+/** Recorta un texto para la traza; lo demás va tal cual. */
+const corto = (valor: unknown) => (typeof valor === 'string' ? valor.slice(0, MAX_TEXTO_TRAZA) : valor);
+
+/**
+ * Una llamada a la IA como un paso de tipo «model». Si no hay una traza abierta, es una traza sola y sale al terminar;
+ * si la hay (una respuesta de /api/estudiar, una búsqueda), queda dentro de ella.
+ */
+export async function trazarIA<R>(
+  nombre: string,
+  pedido: { fn: string; model: string; input: unknown },
+  llamar: () => Promise<R>,
+  leer: (respuesta: R) => Uso,
+): Promise<R> {
+  try {
+    return await quilate.span(nombre, { kind: 'model', fn: pedido.fn, model: pedido.model, input: corto(pedido.input) }, async (paso) => {
+      const respuesta = await llamar();
+      const uso = leer(respuesta);
+      paso.output = corto(uso.salida);
+      paso.inputTokens = uso.entrada ?? 0;
+      paso.outputTokens = uso.salidaTokens ?? 0;
+      paso.cacheReadTokens = uso.cacheLeido ?? 0;
+      paso.cacheWriteTokens = uso.cacheEscrito ?? 0;
+      return respuesta;
+    });
+  } finally {
+    enviarTrazas();
+  }
+}
+
+/** Lo que importa de un mensaje de Claude, venga de `messages.create`, de `beta.messages.create` o de un stream. */
+export interface MensajeClaude {
+  content: readonly { type: string; text?: string; name?: string; input?: unknown }[];
+  usage?: {
+    input_tokens?: number | null;
+    output_tokens?: number | null;
+    cache_read_input_tokens?: number | null;
+    cache_creation_input_tokens?: number | null;
+  } | null;
+}
+
+/** El texto que escribió Claude; si respondió con herramientas, lo que le pasó a cada una. */
+export function usoDeClaude(mensaje: MensajeClaude): Uso {
+  const herramientas = mensaje.content.filter((bloque) => bloque.type === 'tool_use');
+  return {
+    salida: herramientas.length ? Object.fromEntries(herramientas.map((bloque) => [bloque.name, bloque.input])) : textoDe(mensaje.content),
+    entrada: mensaje.usage?.input_tokens,
+    salidaTokens: mensaje.usage?.output_tokens,
+    cacheLeido: mensaje.usage?.cache_read_input_tokens,
+    cacheEscrito: mensaje.usage?.cache_creation_input_tokens,
+  };
+}
+
+/** Una llamada a Claude con su traza. `llamar` devuelve el mensaje final (en un stream, `finalMessage()`). */
+export const conClaude = <R extends MensajeClaude>(nombre: string, pedido: { fn: string; model: string; input: unknown }, llamar: () => Promise<R>) =>
+  trazarIA(nombre, pedido, llamar, usoDeClaude);

@@ -3,6 +3,7 @@
 // que no puede ver el video y no inventa lo que dice.
 
 import { MAX_TRANSCRIPCION, MAX_VIDEOS, type Video, idDeYoutube, parrafosDeTranscripcion } from '../src/lib/videos';
+import { trazarIA } from './_quilate';
 
 type Meta = { label: string; url: string; nota?: string };
 
@@ -70,11 +71,24 @@ export const geminiActivo = () => !!process.env.GEMINI_API_KEY;
 export async function transcribirConGemini(url: string): Promise<string> {
   const base = process.env.GEMINI_BASE_URL ?? 'https://generativelanguage.googleapis.com';
   const modelo = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
+  const enlace = `https://www.youtube.com/watch?v=${idDeYoutube(url)}`;
+  const { texto } = await trazarIA('Transcribir video', { fn: 'videos', model: modelo, input: enlace }, () => pedirTranscripcion(base, modelo, enlace), (r) => ({
+    salida: r.texto,
+    entrada: r.uso?.promptTokenCount,
+    salidaTokens: r.uso?.candidatesTokenCount,
+    cacheLeido: r.uso?.cachedContentTokenCount,
+  }));
+  return texto === 'SIN VOZ' ? '' : texto.slice(0, MAX_TRANSCRIPCION);
+}
+
+type UsoGemini = { promptTokenCount?: number; candidatesTokenCount?: number; cachedContentTokenCount?: number };
+
+async function pedirTranscripcion(base: string, modelo: string, enlace: string): Promise<{ texto: string; uso?: UsoGemini }> {
   const res = await fetch(`${base}/v1beta/models/${modelo}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY ?? '' },
     body: JSON.stringify({
-      contents: [{ parts: [{ file_data: { file_uri: `https://www.youtube.com/watch?v=${idDeYoutube(url)}` } }, { text: PEDIDO_GEMINI }] }],
+      contents: [{ parts: [{ file_data: { file_uri: enlace } }, { text: PEDIDO_GEMINI }] }],
       generationConfig: { temperature: 0, maxOutputTokens: 32768 },
     }),
     signal: AbortSignal.timeout(240_000),
@@ -82,8 +96,8 @@ export async function transcribirConGemini(url: string): Promise<string> {
   const json = (await res.json().catch(() => null)) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];
     error?: { message?: string };
+    usageMetadata?: UsoGemini;
   } | null;
   if (!res.ok) throw new Error(`Gemini ${res.status}: ${json?.error?.message ?? 'sin detalle'}`);
-  const texto = (json?.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
-  return texto === 'SIN VOZ' ? '' : texto.slice(0, MAX_TRANSCRIPCION);
+  return { texto: (json?.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim(), uso: json?.usageMetadata };
 }

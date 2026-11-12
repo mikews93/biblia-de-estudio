@@ -32,6 +32,7 @@ import postgres from 'postgres';
 
 import { Section, sections } from './_comentarios';
 import { entrada, etiqueta, tema } from './_diccionario';
+import { conClaude } from './_quilate';
 import { waitUntil } from './_seguir';
 import { ACTIVAS, Fuente } from '../src/lib/comentarioFuentes';
 import { type Explicacion, palabraPorId } from '../src/lib/diccionario';
@@ -352,17 +353,19 @@ async function release(sql: Sql, k: Key) {
 /** Segunda pasada: otra IA compara con el original y corrige. Se ejecuta después de responder. */
 async function review(sql: Sql, k: Key, original: string, draft: string, ctx: string) {
   try {
-    const res = await client.messages.create({
-      model: REVIEW_MODEL,
-      max_tokens: 16000,
-      system: REVIEW,
-      messages: [
-        {
-          role: 'user',
-          content: `${ctx}\n\n<original>\n${original}\n</original>\n\n<traduccion>\n${draft}\n</traduccion>`,
-        },
-      ],
-    });
+    const res = await conClaude('Revisar traducción del comentario', { fn: 'comentario', model: REVIEW_MODEL, input: draft }, () =>
+      client.messages.create({
+        model: REVIEW_MODEL,
+        max_tokens: 16000,
+        system: REVIEW,
+        messages: [
+          {
+            role: 'user',
+            content: `${ctx}\n\n<original>\n${original}\n</original>\n\n<traduccion>\n${draft}\n</traduccion>`,
+          },
+        ],
+      }),
+    );
     const out = res.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('').trim();
     if (res.stop_reason !== 'end_turn' || !out) return;
     const texto = out === 'SIN CAMBIOS' ? draft : out;
@@ -399,20 +402,22 @@ async function translate(request: Request, body: Record<string, unknown>) {
       const send = (event: object) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
       let saved = false;
       try {
-        const response = client.messages.stream({
-          model: MODEL,
-          max_tokens: 16000,
-          system: TRANSLATE,
-          messages: [{ role: 'user', content: `${ctx}\n\nTraduce:\n\n${original}` }],
-        });
         let texto = '';
-        for await (const event of response) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            texto += event.delta.text;
-            send({ type: 'text', text: event.delta.text });
+        const final = await conClaude('Traducir comentario', { fn: 'comentario', model: MODEL, input: original }, async () => {
+          const response = client.messages.stream({
+            model: MODEL,
+            max_tokens: 16000,
+            system: TRANSLATE,
+            messages: [{ role: 'user', content: `${ctx}\n\nTraduce:\n\n${original}` }],
+          });
+          for await (const event of response) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              texto += event.delta.text;
+              send({ type: 'text', text: event.delta.text });
+            }
           }
-        }
-        const final = await response.finalMessage();
+          return response.finalMessage();
+        });
         texto = texto.trim();
         if (final.stop_reason !== 'end_turn' || !texto) throw new Error(`traducción incompleta: ${final.stop_reason}`);
         await sql`update comentarios_es set texto = ${texto}, estado = 'traducido', modelo = ${MODEL}, creado = now()
@@ -541,20 +546,22 @@ async function translateGuardado(clave: string, system: string, content: string,
       const send = (event: object) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
       let saved = false;
       try {
-        const response = client.messages.stream({
-          model: MODEL,
-          max_tokens: 8000,
-          system,
-          messages: [{ role: 'user', content }],
-        });
         let texto = '';
-        for await (const event of response) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            texto += event.delta.text;
-            send({ type: 'text', text: event.delta.text });
+        const final = await conClaude('Traducir ficha', { fn: etiqueta, model: MODEL, input: content }, async () => {
+          const response = client.messages.stream({
+            model: MODEL,
+            max_tokens: 8000,
+            system,
+            messages: [{ role: 'user', content }],
+          });
+          for await (const event of response) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              texto += event.delta.text;
+              send({ type: 'text', text: event.delta.text });
+            }
           }
-        }
-        const final = await response.finalMessage();
+          return response.finalMessage();
+        });
         texto = texto.trim();
         if (final.stop_reason !== 'end_turn' || !texto) throw new Error(`traducción incompleta: ${final.stop_reason}`);
         await sql`update fichas_es set texto = ${texto}, estado = 'traducido', modelo = ${MODEL}, creado = now()
@@ -616,17 +623,19 @@ async function contexto(request: Request, body: Record<string, unknown>) {
 
   const verses = JSON.parse(await readFile(path.join(DATA_DIR, 'text', 'rv1909', libro.id, `${capitulo}.json`), 'utf8')) as Verse[];
   const texto = verses.find(([n]) => n === versiculo)?.[1] ?? '';
-  const res = await client.messages.create({
-    model: MODEL,
-    max_tokens: 200,
-    system: CONTEXTO,
-    messages: [
-      {
-        role: 'user',
-        content: `Versículo: ${libro.name} ${capitulo}:${versiculo} (Reina-Valera 1909): ${texto}\n\nNotas de ${fuente.obra}, de ${fuente.autor}:\n${notas}`,
-      },
-    ],
-  });
+  const res = await conClaude('Línea de contexto', { fn: 'contexto', model: MODEL, input: `${libro.name} ${capitulo}:${versiculo}` }, () =>
+    client.messages.create({
+      model: MODEL,
+      max_tokens: 200,
+      system: CONTEXTO,
+      messages: [
+        {
+          role: 'user',
+          content: `Versículo: ${libro.name} ${capitulo}:${versiculo} (Reina-Valera 1909): ${texto}\n\nNotas de ${fuente.obra}, de ${fuente.autor}:\n${notas}`,
+        },
+      ],
+    }),
+  );
   const linea = res.content
     .flatMap((b) => (b.type === 'text' ? [b.text] : []))
     .join(' ')
@@ -683,14 +692,16 @@ async function diccionario(request: Request, id: unknown) {
       .map(([nivel, label, refs]) => `${'  '.repeat(nivel)}- ${label}: ${lista(refs)}`);
     partes.push(`Índice por temas de Nave (1896), tema ${t.clave}:\n${lineas.join('\n')}`);
   }
-  const res = await client.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
-    system: DICCIONARIO,
-    tools: [DICCIONARIO_TOOL],
-    tool_choice: { type: 'tool', name: 'explicar' },
-    messages: [{ role: 'user', content: `Palabra: ${palabra.nombre}\n\n${partes.join('\n\n')}`.slice(0, 24000) }],
-  });
+  const res = await conClaude('Explicar palabra', { fn: 'diccionario', model: MODEL, input: palabra.nombre }, () =>
+    client.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
+      system: DICCIONARIO,
+      tools: [DICCIONARIO_TOOL],
+      tool_choice: { type: 'tool', name: 'explicar' },
+      messages: [{ role: 'user', content: `Palabra: ${palabra.nombre}\n\n${partes.join('\n\n')}`.slice(0, 24000) }],
+    }),
+  );
   const out = res.content.find((b) => b.type === 'tool_use')?.input as Partial<Explicacion> | undefined;
   const texto = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
   const breve = texto(out?.breve, 500);

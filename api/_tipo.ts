@@ -7,6 +7,7 @@
 // ejemplos el 2026-11-02 y acertó menos que las reglas).
 import Anthropic from '@anthropic-ai/sdk';
 
+import { conClaude } from './_quilate';
 import { esPregunta, sinAcentos } from '../src/lib/preguntarTexto';
 
 export type Tipo = 'pregunta' | 'versiculo' | 'busqueda';
@@ -37,16 +38,19 @@ async function clasificar(query: string): Promise<Tipo> {
   if (hoy !== dia) [dia, usados] = [hoy, 0];
   if (usados >= TOPE_DIA || !process.env.ANTHROPIC_API_KEY) return 'busqueda';
   usados++;
-  client ??= new Anthropic();
+  const ia = (client ??= new Anthropic());
   try {
-    const res = await client.messages.create(
-      {
-        model: MODEL,
-        max_tokens: 5,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: query.slice(0, 300) }],
-      },
-      { timeout: ESPERA_MS, maxRetries: 0 },
+    const pedido = query.slice(0, 300);
+    const res = await conClaude('Tipo de búsqueda', { fn: 'buscar', model: MODEL, input: pedido }, () =>
+      ia.messages.create(
+        {
+          model: MODEL,
+          max_tokens: 5,
+          system: SYSTEM,
+          messages: [{ role: 'user', content: pedido }],
+        },
+        { timeout: ESPERA_MS, maxRetries: 0 },
+      ),
     );
     const text = res.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('').toLowerCase();
     const tipo: Tipo = text.includes('pregunta') ? 'pregunta' : 'busqueda';

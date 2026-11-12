@@ -4,6 +4,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 import { Biblia, RV1909 } from './_investigar';
+import { conClaude } from './_quilate';
 import { buscarEnBiblia, corregirCitas, type Problema, type Reemplazo } from '../src/lib/corregirCitas';
 import type { Source } from '../src/lib/estudio';
 
@@ -23,7 +24,7 @@ Responde solo con JSON: una lista de objetos {"de": "fragmento exacto de la resp
 
 async function reparar(texto: string, problemas: Problema[]): Promise<Reemplazo[]> {
   if (!process.env.ANTHROPIC_API_KEY) return [];
-  client ??= new Anthropic();
+  const ia = (client ??= new Anthropic());
   const lista = problemas
     .map((p, i) =>
       [
@@ -36,12 +37,15 @@ async function reparar(texto: string, problemas: Problema[]): Promise<Reemplazo[
         .join('\n'),
     )
     .join('\n');
-  const res = await client.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
-    system: SYSTEM,
-    messages: [{ role: 'user', content: `Respuesta:\n<<<\n${texto}\n>>>\n\nCitas que no cuadran:\n${lista}` }],
-  });
+  const pedido = `Respuesta:\n<<<\n${texto}\n>>>\n\nCitas que no cuadran:\n${lista}`;
+  const res = await conClaude('Corregir citas', { fn: 'corregir', model: MODEL, input: pedido }, () =>
+    ia.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: pedido }],
+    }),
+  );
   const salida = res.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
   const json = salida.slice(salida.indexOf('['), salida.lastIndexOf(']') + 1);
   const pedidos = JSON.parse(json) as unknown;
