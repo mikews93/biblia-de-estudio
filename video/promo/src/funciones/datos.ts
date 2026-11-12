@@ -7,6 +7,8 @@ import podcastTaps from './podcast.taps.json';
 import podcastTiming from './podcast.timing.json';
 import prepararTaps from './preparar.taps.json';
 import prepararTiming from './preparar.timing.json';
+import presentarTaps from './presentar.taps.json';
+import presentarTiming from './presentar.timing.json';
 import preguntarTaps from './preguntar.taps.json';
 import preguntarTiming from './preguntar.timing.json';
 
@@ -155,6 +157,27 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'investigar', eyebrow: 'INVESTIGA CONTIGO', title: 'Pasajes, comentarios y teologías'},
       {line: 'borrador', eyebrow: 'BORRADOR COMPLETO', title: 'Tu mensaje, listo para revisar'},
       {line: 'cambios', eyebrow: 'TÚ DECIDES', title: 'Hasta que sea tuyo'},
+    ],
+  },
+  presentar: {
+    id: 'presentar',
+    timing: presentarTiming as Record<string, VoTiming>,
+    taps: presentarTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-empezar', line: 'empezar'},
+      {src: '2-portada', line: 'empezar', word: 'código.', delay: -6},
+      {src: '3-notas', line: 'notas'},
+      {src: '4-todos-ven-la-cita', line: 'cita', word: 'aparece'},
+      {src: '5-preguntas', line: 'preguntas'},
+      {src: '6-pregunta-en-el-telefono', line: 'preguntas', word: 'secreto,'},
+      {src: '8-dinamica-para-todos', line: 'preguntas', word: 'pasos.', delay: -8},
+    ],
+    titulares: [
+      {line: 'empezar', eyebrow: 'LECTURA EN VIVO', title: 'Tu grupo, cada uno en su teléfono'},
+      {line: 'notas', eyebrow: 'PARA QUIEN GUÍA', title: 'Tus notas y tu reloj'},
+      {line: 'cita', eyebrow: 'UN TOQUE', title: 'La cita, en todas las pantallas'},
+      {line: 'preguntas', eyebrow: 'PARTICIPAN TODOS', title: 'Preguntas y dinámicas en vivo'},
     ],
   },
 };
