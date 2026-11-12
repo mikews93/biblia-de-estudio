@@ -1,0 +1,362 @@
+{
+ "hook": {
+  "duration": 3.239,
+  "speechStart": 0.067,
+  "speechEnd": 3.04,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Cuántas",
+    "start": 0.067,
+    "end": 0.4
+   },
+   {
+    "w": "promesas",
+    "start": 0.48,
+    "end": 0.88
+   },
+   {
+    "w": "de",
+    "start": 0.96,
+    "end": 1.04
+   },
+   {
+    "w": "Dios…",
+    "start": 1.12,
+    "end": 1.52
+   },
+   {
+    "w": "ya",
+    "start": 2.16,
+    "end": 2.24
+   },
+   {
+    "w": "se",
+    "start": 2.32,
+    "end": 2.4
+   },
+   {
+    "w": "cumplieron?",
+    "start": 2.48,
+    "end": 3.04
+   }
+  ]
+ },
+ "arcos": {
+  "duration": 7.236,
+  "speechStart": 0,
+  "speechEnd": 7.2,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "cada",
+    "start": 1.04,
+    "end": 1.28
+   },
+   {
+    "w": "arco",
+    "start": 1.36,
+    "end": 1.68
+   },
+   {
+    "w": "sale",
+    "start": 1.76,
+    "end": 2
+   },
+   {
+    "w": "de",
+    "start": 2.04,
+    "end": 2.08
+   },
+   {
+    "w": "una",
+    "start": 2.16,
+    "end": 2.32
+   },
+   {
+    "w": "promesa",
+    "start": 2.44,
+    "end": 3.04
+   },
+   {
+    "w": "y",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "cae",
+    "start": 3.32,
+    "end": 3.44
+   },
+   {
+    "w": "donde",
+    "start": 3.52,
+    "end": 3.68
+   },
+   {
+    "w": "se",
+    "start": 3.76,
+    "end": 3.84
+   },
+   {
+    "w": "cumplió…",
+    "start": 3.92,
+    "end": 4.88
+   },
+   {
+    "w": "y",
+    "start": 4.96,
+    "end": 5.04
+   },
+   {
+    "w": "casi",
+    "start": 5.12,
+    "end": 5.44
+   },
+   {
+    "w": "todos",
+    "start": 5.52,
+    "end": 5.84
+   },
+   {
+    "w": "llegan",
+    "start": 5.88,
+    "end": 6.08
+   },
+   {
+    "w": "a",
+    "start": 6.12,
+    "end": 6.16
+   },
+   {
+    "w": "Cristo.",
+    "start": 6.24,
+    "end": 7.2
+   }
+  ]
+ },
+ "hilo": {
+  "duration": 5.642,
+  "speechStart": 0,
+  "speechEnd": 5.04,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Sigue",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "un",
+    "start": 0.4,
+    "end": 0.56
+   },
+   {
+    "w": "hilo,",
+    "start": 0.667,
+    "end": 0.88
+   },
+   {
+    "w": "como",
+    "start": 1.28,
+    "end": 1.44
+   },
+   {
+    "w": "la",
+    "start": 1.52,
+    "end": 1.6
+   },
+   {
+    "w": "simiente",
+    "start": 1.68,
+    "end": 2
+   },
+   {
+    "w": "de",
+    "start": 2.08,
+    "end": 2.16
+   },
+   {
+    "w": "la",
+    "start": 2.2,
+    "end": 2.24
+   },
+   {
+    "w": "mujer,",
+    "start": 2.28,
+    "end": 2.64
+   },
+   {
+    "w": "desde",
+    "start": 3.32,
+    "end": 3.52
+   },
+   {
+    "w": "el",
+    "start": 3.56,
+    "end": 3.6
+   },
+   {
+    "w": "Edén",
+    "start": 3.68,
+    "end": 4.24
+   },
+   {
+    "w": "hasta",
+    "start": 4.28,
+    "end": 4.48
+   },
+   {
+    "w": "la",
+    "start": 4.56,
+    "end": 4.64
+   },
+   {
+    "w": "cruz.",
+    "start": 4.72,
+    "end": 5.04
+   }
+  ]
+ },
+ "cumple": {
+  "duration": 5.956,
+  "speechStart": 0,
+  "speechEnd": 5.28,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Cada",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "paso",
+    "start": 0.32,
+    "end": 0.64
+   },
+   {
+    "w": "con",
+    "start": 0.72,
+    "end": 0.8
+   },
+   {
+    "w": "su",
+    "start": 0.88,
+    "end": 0.96
+   },
+   {
+    "w": "versículo,",
+    "start": 1.08,
+    "end": 1.6
+   },
+   {
+    "w": "lo",
+    "start": 2.16,
+    "end": 2.24
+   },
+   {
+    "w": "que",
+    "start": 2.32,
+    "end": 2.4
+   },
+   {
+    "w": "se",
+    "start": 2.44,
+    "end": 2.48
+   },
+   {
+    "w": "cumplió…",
+    "start": 2.56,
+    "end": 3.04
+   },
+   {
+    "w": "y",
+    "start": 3.64,
+    "end": 3.68
+   },
+   {
+    "w": "lo",
+    "start": 3.76,
+    "end": 3.8
+   },
+   {
+    "w": "que",
+    "start": 3.84,
+    "end": 4
+   },
+   {
+    "w": "todavía",
+    "start": 4.08,
+    "end": 4.56
+   },
+   {
+    "w": "esperamos.",
+    "start": 4.64,
+    "end": 5.28
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.206,
+  "speechStart": 0.14,
+  "speechEnd": 3.84,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "Biblia",
+    "start": 1.24,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.56,
+    "end": 1.6
+   },
+   {
+    "w": "estudio…",
+    "start": 1.72,
+    "end": 2.48
+   },
+   {
+    "w": "gratis",
+    "start": 2.56,
+    "end": 3.04
+   },
+   {
+    "w": "en",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "Google",
+    "start": 3.28,
+    "end": 3.52
+   },
+   {
+    "w": "Play.",
+    "start": 3.6,
+    "end": 3.84
+   }
+  ]
+ }
+}

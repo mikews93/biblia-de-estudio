@@ -1,0 +1,327 @@
+{
+ "hook": {
+  "duration": 1.646,
+  "speechStart": 0.067,
+  "speechEnd": 1.44,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Quieres",
+    "start": 0.067,
+    "end": 0.32
+   },
+   {
+    "w": "recordar",
+    "start": 0.4,
+    "end": 0.8
+   },
+   {
+    "w": "lo",
+    "start": 0.84,
+    "end": 0.88
+   },
+   {
+    "w": "que",
+    "start": 0.96,
+    "end": 1.04
+   },
+   {
+    "w": "lees?",
+    "start": 1.12,
+    "end": 1.44
+   }
+  ]
+ },
+ "mapa": {
+  "duration": 5.721,
+  "speechStart": 0,
+  "speechEnd": 5.68,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "El",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "mapa",
+    "start": 0.24,
+    "end": 0.4
+   },
+   {
+    "w": "mental",
+    "start": 0.64,
+    "end": 0.88
+   },
+   {
+    "w": "te",
+    "start": 0.96,
+    "end": 1.04
+   },
+   {
+    "w": "muestra",
+    "start": 1.08,
+    "end": 1.36
+   },
+   {
+    "w": "las",
+    "start": 1.44,
+    "end": 1.52
+   },
+   {
+    "w": "ideas",
+    "start": 1.6,
+    "end": 1.92
+   },
+   {
+    "w": "del",
+    "start": 2,
+    "end": 2.08
+   },
+   {
+    "w": "capítulo…",
+    "start": 2.2,
+    "end": 3.12
+   },
+   {
+    "w": "y",
+    "start": 3.2,
+    "end": 3.28
+   },
+   {
+    "w": "cada",
+    "start": 3.36,
+    "end": 3.6
+   },
+   {
+    "w": "una",
+    "start": 3.68,
+    "end": 3.92
+   },
+   {
+    "w": "te",
+    "start": 4,
+    "end": 4.08
+   },
+   {
+    "w": "lleva",
+    "start": 4.16,
+    "end": 4.36
+   },
+   {
+    "w": "a",
+    "start": 4.4,
+    "end": 4.48
+   },
+   {
+    "w": "su",
+    "start": 4.52,
+    "end": 4.56
+   },
+   {
+    "w": "versículo.",
+    "start": 4.72,
+    "end": 5.68
+   }
+  ]
+ },
+ "tarjetas": {
+  "duration": 3.239,
+  "speechStart": 0,
+  "speechEnd": 2.64,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Las",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "tarjetas",
+    "start": 0.32,
+    "end": 0.64
+   },
+   {
+    "w": "de",
+    "start": 0.72,
+    "end": 0.76
+   },
+   {
+    "w": "repaso",
+    "start": 0.8,
+    "end": 1.28
+   },
+   {
+    "w": "te",
+    "start": 1.36,
+    "end": 1.44
+   },
+   {
+    "w": "preguntan",
+    "start": 1.56,
+    "end": 1.92
+   },
+   {
+    "w": "lo",
+    "start": 2,
+    "end": 2.08
+   },
+   {
+    "w": "que",
+    "start": 2.12,
+    "end": 2.16
+   },
+   {
+    "w": "leíste.",
+    "start": 2.24,
+    "end": 2.64
+   }
+  ]
+ },
+ "repaso": {
+  "duration": 5.721,
+  "speechStart": 0,
+  "speechEnd": 5.68,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Piensas",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "la",
+    "start": 0.4,
+    "end": 0.44
+   },
+   {
+    "w": "respuesta,",
+    "start": 0.48,
+    "end": 1.04
+   },
+   {
+    "w": "la",
+    "start": 1.6,
+    "end": 1.68
+   },
+   {
+    "w": "ves…",
+    "start": 1.92,
+    "end": 2.16
+   },
+   {
+    "w": "y",
+    "start": 2.6,
+    "end": 2.64
+   },
+   {
+    "w": "te",
+    "start": 2.72,
+    "end": 2.8
+   },
+   {
+    "w": "la",
+    "start": 2.84,
+    "end": 2.88
+   },
+   {
+    "w": "vuelve",
+    "start": 2.96,
+    "end": 3.12
+   },
+   {
+    "w": "a",
+    "start": 3.16,
+    "end": 3.2
+   },
+   {
+    "w": "mostrar",
+    "start": 3.28,
+    "end": 3.68
+   },
+   {
+    "w": "justo",
+    "start": 3.84,
+    "end": 4.08
+   },
+   {
+    "w": "antes",
+    "start": 4.16,
+    "end": 4.4
+   },
+   {
+    "w": "de",
+    "start": 4.44,
+    "end": 4.48
+   },
+   {
+    "w": "que",
+    "start": 4.56,
+    "end": 4.64
+   },
+   {
+    "w": "la",
+    "start": 4.68,
+    "end": 4.72
+   },
+   {
+    "w": "olvides.",
+    "start": 4.76,
+    "end": 5.68
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.206,
+  "speechStart": 0.2,
+  "speechEnd": 3.92,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.2,
+    "end": 0.64
+   },
+   {
+    "w": "La",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "Biblia",
+    "start": 1.28,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.6,
+    "end": 1.64
+   },
+   {
+    "w": "estudio…",
+    "start": 1.68,
+    "end": 2.56
+   },
+   {
+    "w": "gratis",
+    "start": 2.64,
+    "end": 3.12
+   },
+   {
+    "w": "en",
+    "start": 3.2,
+    "end": 3.28
+   },
+   {
+    "w": "Google",
+    "start": 3.36,
+    "end": 3.6
+   },
+   {
+    "w": "Play.",
+    "start": 3.68,
+    "end": 3.92
+   }
+  ]
+ }
+}

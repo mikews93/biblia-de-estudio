@@ -1,0 +1,22 @@
+{
+ "1-lector": {
+  "x": 541,
+  "y": 210
+ },
+ "2-podcast": {
+  "x": 305,
+  "y": 541
+ },
+ "3-sonando": null,
+ "4-sonando-abajo": null,
+ "5-barra-lector": {
+  "x": 835,
+  "y": 2084
+ },
+ "6-siguiente": null,
+ "7-grabar": {
+  "x": 878,
+  "y": 2111
+ },
+ "8-grabando": null
+}

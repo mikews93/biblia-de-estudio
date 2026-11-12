@@ -1,0 +1,322 @@
+{
+ "hook": {
+  "duration": 3.004,
+  "speechStart": 0.067,
+  "speechEnd": 2.72,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Ese",
+    "start": 0.067,
+    "end": 0.24
+   },
+   {
+    "w": "versículo",
+    "start": 0.32,
+    "end": 0.8
+   },
+   {
+    "w": "que",
+    "start": 0.84,
+    "end": 0.88
+   },
+   {
+    "w": "te",
+    "start": 0.96,
+    "end": 1.04
+   },
+   {
+    "w": "habló…",
+    "start": 1.08,
+    "end": 1.36
+   },
+   {
+    "w": "dónde",
+    "start": 1.88,
+    "end": 2.08
+   },
+   {
+    "w": "lo",
+    "start": 2.12,
+    "end": 2.16
+   },
+   {
+    "w": "guardaste?",
+    "start": 2.24,
+    "end": 2.72
+   }
+  ]
+ },
+ "resaltar": {
+  "duration": 3.631,
+  "speechStart": 0,
+  "speechEnd": 3.12,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Toca",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "un",
+    "start": 0.28,
+    "end": 0.32
+   },
+   {
+    "w": "versículo",
+    "start": 0.4,
+    "end": 1.04
+   },
+   {
+    "w": "y",
+    "start": 1.2,
+    "end": 1.24
+   },
+   {
+    "w": "resáltalo",
+    "start": 1.28,
+    "end": 1.84
+   },
+   {
+    "w": "con",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "el",
+    "start": 2.08,
+    "end": 2.16
+   },
+   {
+    "w": "color",
+    "start": 2.32,
+    "end": 2.48
+   },
+   {
+    "w": "que",
+    "start": 2.56,
+    "end": 2.64
+   },
+   {
+    "w": "quieras.",
+    "start": 2.76,
+    "end": 3.12
+   }
+  ]
+ },
+ "nota": {
+  "duration": 4.519,
+  "speechStart": 0,
+  "speechEnd": 4.48,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Escríbele",
+    "start": 0,
+    "end": 0.56
+   },
+   {
+    "w": "una",
+    "start": 0.68,
+    "end": 0.8
+   },
+   {
+    "w": "nota:",
+    "start": 0.96,
+    "end": 1.12
+   },
+   {
+    "w": "lo",
+    "start": 1.68,
+    "end": 1.76
+   },
+   {
+    "w": "que",
+    "start": 1.84,
+    "end": 1.92
+   },
+   {
+    "w": "Dios",
+    "start": 2,
+    "end": 2.24
+   },
+   {
+    "w": "te",
+    "start": 2.32,
+    "end": 2.4
+   },
+   {
+    "w": "dijo,",
+    "start": 2.44,
+    "end": 3.04
+   },
+   {
+    "w": "en",
+    "start": 3.12,
+    "end": 3.28
+   },
+   {
+    "w": "tus",
+    "start": 3.333,
+    "end": 3.44
+   },
+   {
+    "w": "palabras.",
+    "start": 3.56,
+    "end": 4.48
+   }
+  ]
+ },
+ "mis": {
+  "duration": 6.426,
+  "speechStart": 0,
+  "speechEnd": 6.4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Todo",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "queda",
+    "start": 0.32,
+    "end": 0.56
+   },
+   {
+    "w": "en",
+    "start": 0.64,
+    "end": 0.88
+   },
+   {
+    "w": "«Mis",
+    "start": 0.933,
+    "end": 1.04
+   },
+   {
+    "w": "resaltados",
+    "start": 1.12,
+    "end": 1.76
+   },
+   {
+    "w": "y",
+    "start": 1.787,
+    "end": 1.813
+   },
+   {
+    "w": "notas»…",
+    "start": 1.84,
+    "end": 2.32
+   },
+   {
+    "w": "y",
+    "start": 2.88,
+    "end": 2.92
+   },
+   {
+    "w": "te",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "lo",
+    "start": 3.08,
+    "end": 3.12
+   },
+   {
+    "w": "llevas",
+    "start": 3.2,
+    "end": 3.44
+   },
+   {
+    "w": "en",
+    "start": 3.52,
+    "end": 3.6
+   },
+   {
+    "w": "Word,",
+    "start": 3.92,
+    "end": 4.24
+   },
+   {
+    "w": "en",
+    "start": 4.32,
+    "end": 4.48
+   },
+   {
+    "w": "PDF",
+    "start": 4.52,
+    "end": 5.2
+   },
+   {
+    "w": "o",
+    "start": 5.24,
+    "end": 5.28
+   },
+   {
+    "w": "como",
+    "start": 5.36,
+    "end": 5.52
+   },
+   {
+    "w": "texto.",
+    "start": 5.6,
+    "end": 6.4
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.441,
+  "speechStart": 0.2,
+  "speechEnd": 4.08,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.2,
+    "end": 0.64
+   },
+   {
+    "w": "La",
+    "start": 1.2,
+    "end": 1.28
+   },
+   {
+    "w": "Biblia",
+    "start": 1.36,
+    "end": 1.6
+   },
+   {
+    "w": "de",
+    "start": 1.68,
+    "end": 1.72
+   },
+   {
+    "w": "estudio…",
+    "start": 1.76,
+    "end": 2.24
+   },
+   {
+    "w": "gratis",
+    "start": 2.96,
+    "end": 3.2
+   },
+   {
+    "w": "en",
+    "start": 3.28,
+    "end": 3.36
+   },
+   {
+    "w": "Google",
+    "start": 3.52,
+    "end": 3.68
+   },
+   {
+    "w": "Play.",
+    "start": 3.76,
+    "end": 4.08
+   }
+  ]
+ }
+}

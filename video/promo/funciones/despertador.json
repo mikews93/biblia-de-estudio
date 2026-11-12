@@ -1,0 +1,11 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical de «Despertar con la Biblia» (src/funciones/Funcion.tsx).",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[curious] ¿Y si lo primero que oyes en la mañana… fuera la Palabra?"},
+    {"id": "hora", "at": 0, "text": "En Zarza, elige a qué hora te despierta y qué días."},
+    {"id": "suena", "at": 0, "text": "Escoge qué suena: el versículo del día, tu lectura… o solo música."},
+    {"id": "amanece", "at": 0, "text": "Al tocar el aviso, amanece en la pantalla, suena música suave… y te leen el versículo."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}

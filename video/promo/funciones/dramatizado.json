@@ -1,0 +1,11 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical del audio dramatizado (src/funciones/Funcion.tsx). Después de «abrir» suena el bautismo de Marcos 1 (v. 10-11) real.",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[curious] ¿Has escuchado Marcos uno… como si estuvieras allí?"},
+    {"id": "abrir", "at": 0, "text": "En Zarza, toca Escuchar y elige el dramatizado: un narrador, una voz para cada personaje, música y sonidos."},
+    {"id": "seguir", "at": 0, "text": "La barra te dice en qué versículo vas, y sigue sonando aunque cambies de pantalla."},
+    {"id": "pedir", "at": 0, "text": "Y si tu capítulo todavía no está, pídelo: Zarza lo dramatiza en unos minutos… y queda para todos."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}

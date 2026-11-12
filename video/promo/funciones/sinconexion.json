@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Leer sin conexión» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Sin internet? Igual puedes leer."
+  },
+  {
+   "id": "descargar",
+   "at": 0,
+   "text": "Descarga la traducción completa en tu teléfono: pesa menos de cinco megas."
+  },
+  {
+   "id": "leer",
+   "at": 0,
+   "text": "En el avión, en el campo o sin datos, lees la Biblia completa…"
+  },
+  {
+   "id": "buscar",
+   "at": 0,
+   "text": "y hasta buscas por palabras en lo que descargaste."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Conexiones» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[curious] ¿Sabías que la Biblia se cita a sí misma… más de doscientas mil veces?"
+  },
+  {
+   "id": "arcos",
+   "at": 0,
+   "text": "En Zarza, cada arco une dos capítulos que se citan o se explican el uno al otro."
+  },
+  {
+   "id": "libro",
+   "at": 0,
+   "text": "Elige un libro, como Isaías, y mira con quién conversa más."
+  },
+  {
+   "id": "capitulo",
+   "at": 0,
+   "text": "Y en cada capítulo, las referencias más fuertes, a un toque."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

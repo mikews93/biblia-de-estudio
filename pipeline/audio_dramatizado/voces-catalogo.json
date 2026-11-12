@@ -5,14 +5,14 @@
       "genero": "hombre",
       "edad": "joven",
       "revisadas": 1000,
-      "bienCalificadas": 861,
-      "latinoamericanas": 137,
+      "bienCalificadas": 852,
+      "latinoamericanas": 138,
       "mejores": [
         {
           "id": "UgBBYS2sOqTuMpoF3BR0",
           "nombre": "Mark - Natural Conversations",
           "acento": "american",
-          "clonada": 4228312,
+          "clonada": 4246475,
           "descripcion": "A casual, young-adult speaking in a natural manner. Perfect for Conversational AI.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/f94e260200764678babc807b935bfb0b/voices/UgBBYS2sOqTuMpoF3BR0/0Oc7jiXwWN9kRTXfQsmw.mp3"
         },
@@ -20,7 +20,7 @@
           "id": "FZkK3TvQ0pjyDmT8fzIW",
           "nombre": "Bunty - Punchy, Crisp and Reel King",
           "acento": "standard",
-          "clonada": 1998781,
+          "clonada": 2018715,
           "descripcion": "A vibrant AI voice crafted for content creators, influencers, and digital storytellers.\r\n\r\nBunty’s natural, expressive tone makes videos feel relatable and comp",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/ed9b05e6324c457685490352e9a1ec90/voices/FZkK3TvQ0pjyDmT8fzIW/k39glMGS9gSdJLHIaJ4K.mp3"
         },
@@ -28,7 +28,7 @@
           "id": "Nh2zY9kknu6z4pZy6FhD",
           "nombre": "David Martin - Confident and Balanced",
           "acento": "peninsular",
-          "clonada": 1343924,
+          "clonada": 1345676,
           "descripcion": "Young Spanish-Castillian male with a confident tone. Works well for Storytelling.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/8RYUsFHsalUXjwVG0LjhNwH1j022/voices/Nh2zY9kknu6z4pZy6FhD/5VD3I67SoLbajJEbw7rH.mp3"
         },
@@ -36,7 +36,7 @@
           "id": "7b9mYhmnp0y2qSH1FnBL",
           "nombre": "Bunty - Funny Best Friend",
           "acento": "standard",
-          "clonada": 1111675,
+          "clonada": 1114442,
           "descripcion": "Bunty’s voice is full of charm, wit, and best-friend energy—ideal for funny reels, roast-style rants, relatable meme content, and banter-led storytelling. With ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/ed9b05e6324c457685490352e9a1ec90/voices/7b9mYhmnp0y2qSH1FnBL/p3TH6CIOiR6dF2BXQmtw.mp3"
         },
@@ -44,7 +44,7 @@
           "id": "9F4C8ztpNUmXkdDDbz3J",
           "nombre": "Dan - Upbeat, Dynamic and Friendly",
           "acento": "american",
-          "clonada": 880029,
+          "clonada": 881818,
           "descripcion": "An upbeat and modulate voice. Great for shorts and social media.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/oDQDaQK0SGT9AtdG8VDe17L4KjX2/voices/9F4C8ztpNUmXkdDDbz3J/4d3e2bc3-b9f8-4bf0-84b2-22e0c15102f6.mp3"
         },
@@ -52,15 +52,15 @@
           "id": "s3TPKV1kjDlVtZbl4Ksh",
           "nombre": "Adam - Engaging, Friendly and Bright",
           "acento": "american",
-          "clonada": 785570,
+          "clonada": 792774,
           "descripcion": "Adam is a male voice, 20s–30s, blends clarity, and confident expression. Ideal for creators and brands who want their content to feel real, relatable, and human",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/s3TPKV1kjDlVtZbl4Ksh/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoidTdFaWQ3ZVVucVBJVWdMTHBLbGs3V3dSUU5PMiIsImZpbGVuYW1lIjoibGpLNlpvSzJPT1RSOGtYSjhBcnAubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/s3TPKV1kjDlVtZbl4Ksh/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoidTdFaWQ3ZVVucVBJVWdMTHBLbGs3V3dSUU5PMiIsImZpbGVuYW1lIjoibGpLNlpvSzJPT1RSOGtYSjhBcnAubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "gJEfHTTiifXEDmO687lC",
           "nombre": "Prince Nur - Deep, Rich and Balanced",
           "acento": "standard",
-          "clonada": 683496,
+          "clonada": 684653,
           "descripcion": "Fragrant velvet voice. A tempting combination of low shades with hot notes will emphasize the depth and richness of your reel, shorts or audiobook.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/fdf00c0e5bee40abad820eb9de6a0acc/voices/gJEfHTTiifXEDmO687lC/bvLjXgefFonQ8qV9UFjN.mp3"
         },
@@ -68,31 +68,31 @@
           "id": "7qBNUtXRGP0jPi0H4r8k",
           "nombre": "Bunty – Friendly & Fun Customer Agent",
           "acento": "standard",
-          "clonada": 612079,
+          "clonada": 628673,
           "descripcion": "Bunty delivers an energetic, youthful, and friendly delivery that feels approachable and upbeat during e-commerce interactions. His tone keeps conversations lig",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/ed9b05e6324c457685490352e9a1ec90/voices/7qBNUtXRGP0jPi0H4r8k/hcT7MzM6YwKDMlrqTEtO.mp3"
-        },
-        {
-          "id": "HJmys3t5KLr6DUWl0kSe",
-          "nombre": "Rada - Relaxed, Confident, Calm",
-          "acento": "latin american",
-          "clonada": 589219,
-          "descripcion": "Young relaxed male voice. Great for Storytelling.",
-          "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/Ut8zv9GhbGgqPeEW08YlxaqZ0Lv2/voices/HJmys3t5KLr6DUWl0kSe/855ed1ea-3dd8-4339-bcaf-fb9caf0bcba5.mp3"
         },
         {
           "id": "P1bg08DkjqiVEzOn76yG",
           "nombre": "Viraj - Rich and Soft",
           "acento": "standard",
-          "clonada": 570235,
+          "clonada": 592355,
           "descripcion": "Viraj’s voice brings depth and intrigue, perfect for suspense and horror storytelling. With a slow, deliberate pace and a rich, breathy tone, his delivery creat",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/514d94e9241c48e8b7905375729c436f/voices/P1bg08DkjqiVEzOn76yG/Du3NRxIlUNRTFZ06GjT5.mp3"
+        },
+        {
+          "id": "HJmys3t5KLr6DUWl0kSe",
+          "nombre": "Rada - Relaxed, Confident, Calm",
+          "acento": "latin american",
+          "clonada": 589406,
+          "descripcion": "Young relaxed male voice. Great for Storytelling.",
+          "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/Ut8zv9GhbGgqPeEW08YlxaqZ0Lv2/voices/HJmys3t5KLr6DUWl0kSe/855ed1ea-3dd8-4339-bcaf-fb9caf0bcba5.mp3"
         },
         {
           "id": "FmBhnvP58BK0vz65OOj7",
           "nombre": "Viraj - Energetic, Clear Narrator",
           "acento": "standard",
-          "clonada": 542392,
+          "clonada": 544047,
           "descripcion": "With his youthful energy and strong command of language, Viraj is an ideal choice for a wide range of applications, including social media content, educational ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/514d94e9241c48e8b7905375729c436f/voices/FmBhnvP58BK0vz65OOj7/w5DIsCcczKNy3L1C6hp0.mp3"
         },
@@ -100,15 +100,15 @@
           "id": "iWNf11sz1GrUE4ppxTOL",
           "nombre": "Viraj - Warm, Energetic and Lively",
           "acento": "standard",
-          "clonada": 383710,
+          "clonada": 384608,
           "descripcion": "A friendly, upbeat voice designed to make every customer feel heard and reassured.\n\nViraj’s tone blends energy with empathy—ideal for dynamic support bots, voic",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/iWNf11sz1GrUE4ppxTOL/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoiN0N1RWpTYkRnaGdDaG1OeUNNYmcubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/iWNf11sz1GrUE4ppxTOL/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoiN0N1RWpTYkRnaGdDaG1OeUNNYmcubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "nzFihrBIvB34imQBuxub",
           "nombre": "Josh - Teacher for Kids",
           "acento": "american",
-          "clonada": 376826,
+          "clonada": 377479,
           "descripcion": "Sweet energetic and encouraging. A super cool big brother to read children’s books. Learning fun audiobooks and happy social media content for optimistic readin",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/b2109416c7514449a5f06540d10f0e73/voices/nzFihrBIvB34imQBuxub/PGPEgmq9nbilpoico1PI.mp3"
         },
@@ -116,7 +116,7 @@
           "id": "TMvmhlKUioQA4U7LOoko",
           "nombre": "Andi - Clear, Friendly and Calm",
           "acento": "standard",
-          "clonada": 346395,
+          "clonada": 346462,
           "descripcion": "A young Indonesian male with a clear, professional, and confident voice. Suitable for Social Media.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/TMvmhlKUioQA4U7LOoko/Dr22F3ZfMBY8NhEcuns6.mp3"
         },
@@ -124,7 +124,7 @@
           "id": "wWWn96OtTHu1sn8SRGEr",
           "nombre": "Hale - Expressive, Deep and Emotive",
           "acento": "american",
-          "clonada": 338243,
+          "clonada": 339278,
           "descripcion": "A voice trained for more dynamic audio, with lots of expression, and trained with v3 in Mind!",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/1D73t5OmWJcLCgnlSL28i2bB7Iq2/voices/wWWn96OtTHu1sn8SRGEr/zpbMSgfLvQGwGB76UKKQ.mp3"
         }
@@ -134,22 +134,22 @@
       "genero": "hombre",
       "edad": "adulto",
       "revisadas": 1000,
-      "bienCalificadas": 769,
-      "latinoamericanas": 204,
+      "bienCalificadas": 775,
+      "latinoamericanas": 208,
       "mejores": [
         {
           "id": "IRHApOXLvnW57QJPQH2P",
           "nombre": "Adam - American, Dark and Tough",
           "acento": "american",
-          "clonada": 2238592,
+          "clonada": 2251397,
           "descripcion": "A tough hero, weathered by years of experience. American accent.",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/IRHApOXLvnW57QJPQH2P/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiNEdXZzBVd1FLWGJpVkZPMFRybDRqTURTVGI4MiIsImZpbGVuYW1lIjoiNzc1ODgyMmYtYzk4Yy00ZGI5LWFiMGEtMTg2YjZhMTNiZTFhLm1wMyIsInRpbWVzdGFtcCI6MTc5NDE4NjAwMDAwMDAwMH0%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/IRHApOXLvnW57QJPQH2P/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiNEdXZzBVd1FLWGJpVkZPMFRybDRqTURTVGI4MiIsImZpbGVuYW1lIjoiNzc1ODgyMmYtYzk4Yy00ZGI5LWFiMGEtMTg2YjZhMTNiZTFhLm1wMyIsInRpbWVzdGFtcCI6MTc5NDQzMDgwMDAwMDAwMH0%3D"
         },
         {
           "id": "zgqefOY5FPQ3bB7OZTVR",
           "nombre": "Niraj - Romantic and Smooth",
           "acento": "standard",
-          "clonada": 2166884,
+          "clonada": 2170285,
           "descripcion": " Niraj is the pen name of a veteran Indian actor. The base and variations of this voice make it great for narrative work, documentaries, and social media.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/514d94e9241c48e8b7905375729c436f/voices/zgqefOY5FPQ3bB7OZTVR/ln1K0H0y3F8OV7aD0JGL.mp3"
         },
@@ -157,7 +157,7 @@
           "id": "EkK5I93UQWFDigLMpZcX",
           "nombre": "James - Husky, Engaging and Bold",
           "acento": "american",
-          "clonada": 2003266,
+          "clonada": 2011478,
           "descripcion": "A slightly husky and bassy voice with a standard American accent. Modulated, controlled, and direct and perfect for audiobooks, captivating narrations, or story",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/48ab3aae468d4e9baded4b1693820088/voices/EkK5I93UQWFDigLMpZcX/xvjT3EK4vD3zlwfawHeV.mp3"
         },
@@ -165,7 +165,7 @@
           "id": "uju3wxzG5OhpWcoi3SMy",
           "nombre": "Michael C. Vincent - Confident, Expressive",
           "acento": "american",
-          "clonada": 1589323,
+          "clonada": 1591517,
           "descripcion": "A confident and expressive narrator across multiple genres. Warm bass tones and crisp high-end clarity deliver an articulate, intelligent voice suited for comme",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/uju3wxzG5OhpWcoi3SMy/ixYUu11jiy8LIVZidnvA.mp3"
         },
@@ -173,7 +173,7 @@
           "id": "NFG5qt843uXKj4pFvR7C",
           "nombre": "Adam Stone - Smooth, Deep and Relaxed",
           "acento": "british",
-          "clonada": 1552927,
+          "clonada": 1554477,
           "descripcion": "A middle aged 'Brit' with a velvety laid back, late night talk show host timbre.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/NFG5qt843uXKj4pFvR7C/BgPFcmyMBm88O9O05Myn.mp3"
         },
@@ -181,7 +181,7 @@
           "id": "ZthjuvLPty3kTMaNKVKb",
           "nombre": "Peter",
           "acento": "american",
-          "clonada": 1426671,
+          "clonada": 1428201,
           "descripcion": "Confident, reliable, credible narrator. A resolute voice that you can trust.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/T05GPpk2fvSBb625DXd4BJHZtu22/voices/ZthjuvLPty3kTMaNKVKb/2nBO0beUcX6fsrvPZbcE.mp3"
         },
@@ -189,7 +189,7 @@
           "id": "G17SuINrv2H9FC6nvetn",
           "nombre": "Christopher - Gentle and Trustworthy",
           "acento": "british",
-          "clonada": 1374629,
+          "clonada": 1375716,
           "descripcion": "British male narrator, English, well-spoken, gentle and trustworthy voice. Great for audiobooks, podcasts and voiceovers.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/G17SuINrv2H9FC6nvetn/ofEmJDtVvrmeL3OEs0ig.mp3"
         },
@@ -197,7 +197,7 @@
           "id": "l1zE9xgNpUTaQCZzpNJa",
           "nombre": "Alberto Rodríguez - Serious, Narrative",
           "acento": "latin american",
-          "clonada": 1176456,
+          "clonada": 1179354,
           "descripcion": "Adult male voice, serious tone, ideal for narrations.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/l1zE9xgNpUTaQCZzpNJa/sF0SJSVjERJtMSqfZLPN.mp3"
         },
@@ -205,15 +205,15 @@
           "id": "1SM7GgM6IMuvQlz2BwM3",
           "nombre": "Mark - Casual, Relaxed and Light",
           "acento": "american",
-          "clonada": 1062919,
+          "clonada": 1066824,
           "descripcion": "",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/1SM7GgM6IMuvQlz2BwM3/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJmOTRlMjYwMjAwNzY0Njc4YmFiYzgwN2I5MzViZmIwYiIsImZpbGVuYW1lIjoieTk0RzFyR2l4YXFMMkZ2UDNUdGUubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/1SM7GgM6IMuvQlz2BwM3/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJmOTRlMjYwMjAwNzY0Njc4YmFiYzgwN2I5MzViZmIwYiIsImZpbGVuYW1lIjoieTk0RzFyR2l4YXFMMkZ2UDNUdGUubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "MFZUKuGQUsGJPQjTS4wC",
           "nombre": "Jon - Warm & Grounded Storyteller",
           "acento": "american",
-          "clonada": 842400,
+          "clonada": 845357,
           "descripcion": "A warm, trustworthy American voice with a mature and grounded tone. Ideal for narration and commercials. It carries an intelligent and calm presence, making it ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/7bdd69d9e581481a8ea5216493271f81/voices/MFZUKuGQUsGJPQjTS4wC/xEoCh0QqT3VPBukUnnNT.mp3"
         },
@@ -221,7 +221,7 @@
           "id": "alFofuDn3cOwyoz1i44T",
           "nombre": "Dallin - Positive, Inspiring and Clear",
           "acento": "american",
-          "clonada": 832076,
+          "clonada": 833125,
           "descripcion": "Adult American Male Voice. Calming, Deep, Warm. Perfect for stories.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/1D73t5OmWJcLCgnlSL28i2bB7Iq2/voices/alFofuDn3cOwyoz1i44T/f3121486-aa47-4540-9e8a-16a642ce77c2.mp3"
         },
@@ -229,7 +229,7 @@
           "id": "goT3UYdM9bhm0n2lmKQx",
           "nombre": "Edward - British, Dark, Seductive, Low",
           "acento": "british",
-          "clonada": 818876,
+          "clonada": 819715,
           "descripcion": "A deep, low, seductive strong British man. ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/5pJrHdqy3wdQOM1KGVsiuf2OJQ12/voices/goT3UYdM9bhm0n2lmKQx/8e1e53b7-9320-4bab-acf2-86d7e77d1b8b.mp3"
         },
@@ -237,7 +237,7 @@
           "id": "aQROLel5sQbj1vuIVi6B",
           "nombre": "Nicolas - Narrator",
           "acento": "parisian",
-          "clonada": 801523,
+          "clonada": 802742,
           "descripcion": "Middle aged French male voice. Ideal for audioguide and all narration projects.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/7593eab373974d1db7d45255c5986d46/voices/aQROLel5sQbj1vuIVi6B/shwzqRrR51OISZWUl7EN.mp3"
         },
@@ -245,7 +245,7 @@
           "id": "wyWA56cQNU2KqUW4eCsI",
           "nombre": "Clyde - Full, Diplomatic and Inviting",
           "acento": "british",
-          "clonada": 790147,
+          "clonada": 790976,
           "descripcion": "British man with power who shows nuance and humor -- wonderful narrator voice.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/T05GPpk2fvSBb625DXd4BJHZtu22/voices/wyWA56cQNU2KqUW4eCsI/RNPfnL6pqQi9eI02rhnL.mp3"
         },
@@ -253,7 +253,7 @@
           "id": "iiidtqDt9FBdT1vfBluA",
           "nombre": "Bill L. Oxley",
           "acento": "american",
-          "clonada": 748286,
+          "clonada": 748585,
           "descripcion": "Mature adult male, factual, clear, conversational baritone. Also great for these categories: characters, educational, advertisement, social media, conversationa",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/64971298bfc24086b69026970a21f1f9/voices/iiidtqDt9FBdT1vfBluA/T36MtmAvwCajW33mBOpD.mp3"
         }
@@ -262,15 +262,15 @@
     {
       "genero": "hombre",
       "edad": "mayor",
-      "revisadas": 194,
-      "bienCalificadas": 176,
+      "revisadas": 197,
+      "bienCalificadas": 177,
       "latinoamericanas": 20,
       "mejores": [
         {
           "id": "NOpBlnGInO9m6vDvFkFC",
           "nombre": "Spuds Oxley - Grandpa ",
           "acento": "american",
-          "clonada": 2844378,
+          "clonada": 2866348,
           "descripcion": "A friendly Southern grandpa who knows how to enthrall his audience with tall tales and fun adventures! A warm, friendly, stylized baritone voice that is great f",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/64971298bfc24086b69026970a21f1f9/voices/NOpBlnGInO9m6vDvFkFC/M4xySW4rr1SbAKKwMAtI.mp3"
         },
@@ -278,7 +278,7 @@
           "id": "wAGzRVkxKEs8La0lmdrE",
           "nombre": "Sully - Mature, Deep and Intriguing",
           "acento": "american",
-          "clonada": 477958,
+          "clonada": 478822,
           "descripcion": "Deep mature American male",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/Bo6DtogKR9MFeVzUzR8msFIzsz92/voices/wAGzRVkxKEs8La0lmdrE/694524f9-fac6-4c16-a9de-8bb69e178312.mp3"
         },
@@ -286,7 +286,7 @@
           "id": "L1aJrPa7pLJEyYlh3Ilq",
           "nombre": "Oliver - Clean, British and Steady",
           "acento": "british",
-          "clonada": 434987,
+          "clonada": 438554,
           "descripcion": "A mature voice which is warm and kind with just a hint of whimsical humor wrapped in a distinctly indistinct British accent. ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/T7bhqxLyENgRaSgfnqhPa6vPSID2/voices/L1aJrPa7pLJEyYlh3Ilq/AwAwPn2G1wujoh4o4RGM.mp3"
         },
@@ -294,7 +294,7 @@
           "id": "7p1Ofvcwsv7UBPoFNcpI",
           "nombre": "Julian - Deep, Rich and Mature",
           "acento": "british",
-          "clonada": 353242,
+          "clonada": 354099,
           "descripcion": "A mature British male voice with a hint of roughness  - yet soothing enough to melt butter. Works well for Narrations.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/7p1Ofvcwsv7UBPoFNcpI/f86HRr1i6v8ZOCi6Dt4a.mp3"
         },
@@ -302,7 +302,7 @@
           "id": "qAZH0aMXY8tw1QufPN0D",
           "nombre": "Flint - Deep, Raspy, and Warm",
           "acento": "american",
-          "clonada": 286404,
+          "clonada": 287215,
           "descripcion": "Ignite your content with Flint, a voice that strikes with precision and leaves a lasting impression. Its deep, raspy resonance embodies strength and determinati",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/759170f692da47489ba9c408ca661b39/voices/qAZH0aMXY8tw1QufPN0D/D9e9wQKrJ8hsb549LFpL.mp3"
         },
@@ -310,7 +310,7 @@
           "id": "YXpFCvM1S3JbWEJhoskW",
           "nombre": "Wyatt- Wise Rustic Cowboy",
           "acento": "american",
-          "clonada": 269512,
+          "clonada": 269887,
           "descripcion": "Weathered wisdom from a Cowboy who's lived a hard life on the range.  An older American Deep Male voice with a Southern flavor.  Excellent for reading stories o",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/YXpFCvM1S3JbWEJhoskW/CLHVUhxcz93hum03aUwc.mp3"
         },
@@ -318,7 +318,7 @@
           "id": "8mBRP99B2Ng2QwsJMFQl",
           "nombre": "El Faraon - Full, Clear, Mellow",
           "acento": "latin american",
-          "clonada": 267856,
+          "clonada": 269489,
           "descripcion": "Deep male voice, ideal for audiobooks, stories, narrations, and documentaries.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/3423ea02d3714f548d4841555aa05554/voices/8mBRP99B2Ng2QwsJMFQl/4yVXcCJQWb38hrMF4luO.mp3"
         },
@@ -326,7 +326,7 @@
           "id": "cPoqAvGWCPfCfyPMwe4z",
           "nombre": "Victor - Deep, Malevolent and Ancient",
           "acento": "american",
-          "clonada": 226115,
+          "clonada": 228058,
           "descripcion": "A deep ancient malevolence voice. Great for character & Animations.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/H2fHN4TKljQ16bAflYGeOPXd0qB2/voices/cPoqAvGWCPfCfyPMwe4z/d7b24042-07ce-4fd5-aeff-dcf71edced52.mp3"
         },
@@ -334,7 +334,7 @@
           "id": "9TcPbUAhHnAV8mzFDAWU",
           "nombre": "El Faraón - Powerful and Resonant",
           "acento": "latin american",
-          "clonada": 209854,
+          "clonada": 210145,
           "descripcion": "Un abuelo cálido y cercano que cautiva con sus historias y su voz.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/90876024874e40ea85f2cfb45b7670c5/voices/9TcPbUAhHnAV8mzFDAWU/iEBnqaTXyJ8kEnzAeU1D.mp3"
         },
@@ -342,23 +342,23 @@
           "id": "6sFKzaJr574YWVu4UuJF",
           "nombre": "Cornelius",
           "acento": "british",
-          "clonada": 187557,
+          "clonada": 188859,
           "descripcion": "A wise old sage wizard, with tales to spin for you!",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/6sFKzaJr574YWVu4UuJF/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiNmNsdlVpOGQ5dlZCcmNqSHRUd2diUkNpbjN3MiIsImZpbGVuYW1lIjoiYmFlMTBmZGMtMWI3Ny00ZjYwLWE0ZDUtNzJlMWE3MjczNmFmLm1wMyIsInRpbWVzdGFtcCI6MTc5NDE4NjAwMDAwMDAwMH0%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/6sFKzaJr574YWVu4UuJF/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiNmNsdlVpOGQ5dlZCcmNqSHRUd2diUkNpbjN3MiIsImZpbGVuYW1lIjoiYmFlMTBmZGMtMWI3Ny00ZjYwLWE0ZDUtNzJlMWE3MjczNmFmLm1wMyIsInRpbWVzdGFtcCI6MTc5NDQzMDgwMDAwMDAwMH0%3D"
         },
         {
           "id": "0lp4RIz96WD1RUtvEu3Q",
           "nombre": "Grandfather Joe -  Gentle, warm & wise",
           "acento": "british",
-          "clonada": 178212,
+          "clonada": 178862,
           "descripcion": "A warm, conversational old-age British voice with the timeless charm of a nature documentary narrator. Grandfather Joe is a gentle, grandfatherly storyteller -p",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/0lp4RIz96WD1RUtvEu3Q/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI4ZWExOGY1NDczNDI0MmRlYjAwZDRmZDcwMjc5ZDI5ZiIsImZpbGVuYW1lIjoiNW9BeHRWeG96VExSUnV2NVlFdGQubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/0lp4RIz96WD1RUtvEu3Q/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI4ZWExOGY1NDczNDI0MmRlYjAwZDRmZDcwMjc5ZDI5ZiIsImZpbGVuYW1lIjoiNW9BeHRWeG96VExSUnV2NVlFdGQubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "g1jpii0iyvtRs8fqXsd1",
           "nombre": "Helmut - German Epic Trailer Voice ",
           "acento": "standard",
-          "clonada": 172855,
+          "clonada": 173585,
           "descripcion": "A powerful, cinematic German trailer voice for movies, games, teasers, ads, and dramatic announcements.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/f7bdadfcbeee4834b0ff20350eae8943/voices/g1jpii0iyvtRs8fqXsd1/K0bI3iMopEshg4gOoZie.mp3"
         },
@@ -366,7 +366,7 @@
           "id": "ppLqTilh7rH7fbUVlXsf",
           "nombre": "David - Documentary ",
           "acento": "american",
-          "clonada": 164498,
+          "clonada": 165122,
           "descripcion": "Deep, authoritative older male voice with a classic documentary narrator style — warm, measured, and richly textured delivery, ideal for nature, history, and sc",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/e7bdeaca6fbb4a6e929e6c98717040b9/voices/ppLqTilh7rH7fbUVlXsf/9bf0d787-305d-491b-aa57-a5a77ba0309c.mp3"
         },
@@ -374,7 +374,7 @@
           "id": "xZp4zaaBzoWhWxxrcAij",
           "nombre": "Danish Khan - Calm, Clear and Expressive",
           "acento": "standard",
-          "clonada": 144455,
+          "clonada": 144728,
           "descripcion": "Danish Khan is the pen name of a veteran voice actor who has trained celebrities in dialogue delivery and pronunciation. This voice is suitable for all purposes",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/514d94e9241c48e8b7905375729c436f/voices/xZp4zaaBzoWhWxxrcAij/FQkdy5eeYqt4REFBrqN8.mp3"
         },
@@ -382,7 +382,7 @@
           "id": "orF2qy9215xjwqqxqsWW",
           "nombre": "Rafael - Expressive and Theatrical",
           "acento": "peninsular",
-          "clonada": 138853,
+          "clonada": 139241,
           "descripcion": "Spanish Mature Storytelling, Expressive and Colourful voice, a bit raspy, ideal for inspiring epic tales and legends.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/70aeebf22b3d4b519e6b9d205612971d/voices/orF2qy9215xjwqqxqsWW/Ebnx2lg8i00UFK1bDKXe.mp3"
         }
@@ -392,14 +392,14 @@
       "genero": "mujer",
       "edad": "joven",
       "revisadas": 1000,
-      "bienCalificadas": 912,
-      "latinoamericanas": 129,
+      "bienCalificadas": 917,
+      "latinoamericanas": 132,
       "mejores": [
         {
           "id": "r1KmysJdVYZjJCm4mL3b",
           "nombre": "Jessica - Playful, Bright, Warm",
           "acento": "american",
-          "clonada": 1545849,
+          "clonada": 1646590,
           "descripcion": "The old Jessica default voice you know and love! Playful, Bright, Warm, youthful, and conversational. Perfect for your project. Voiced by real voice actor Lorin",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/3f9696c671d04ff682b1d6019d5b62fe/voices/r1KmysJdVYZjJCm4mL3b/65478cae-a15a-4f7d-88a4-14cbc8745b2b.mp3"
         },
@@ -407,7 +407,7 @@
           "id": "tnSpp4vdxKPjI9w0GnoV",
           "nombre": "Hope - upbeat and clear",
           "acento": "american",
-          "clonada": 1450679,
+          "clonada": 1461691,
           "descripcion": "",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/tnSpp4vdxKPjI9w0GnoV/LiIyxRT1qFJ1QJPr8sWl.mp3"
         },
@@ -415,23 +415,23 @@
           "id": "Z3R5wn05IrDiVCyEkUrK",
           "nombre": "Arabella - Mysterious and Emotive",
           "acento": "american",
-          "clonada": 1061962,
+          "clonada": 1064521,
           "descripcion": "A young, mature female narrator with a mysterious and emotive tone, perfect for fantasy, romance, urban fantasy, and wellness.",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/Z3R5wn05IrDiVCyEkUrK/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI2N2FkYWRiN2QyYTk0ZjZlYWQ2NGU5NWY0NWJlMjI1NCIsImZpbGVuYW1lIjoiQ0JZS2FmbzVvbkllNTIzNHJBR1MubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/Z3R5wn05IrDiVCyEkUrK/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI2N2FkYWRiN2QyYTk0ZjZlYWQ2NGU5NWY0NWJlMjI1NCIsImZpbGVuYW1lIjoiQ0JZS2FmbzVvbkllNTIzNHJBR1MubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "MF4J4IDTRo0AxOO4dpFR",
           "nombre": "Devi - Encouraging and Motivating",
           "acento": "standard",
-          "clonada": 927122,
+          "clonada": 928442,
           "descripcion": "Devi is the pen name of a young Indian female artist with clear Hindi instructions. She originally comes from Rajasthan, so she has a clear Hindi diction and he",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/MF4J4IDTRo0AxOO4dpFR/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoicHZkcEpQcWdoY29VbW84WUtiT2wubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/MF4J4IDTRo0AxOO4dpFR/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoicHZkcEpQcWdoY29VbW84WUtiT2wubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "jqcCZkN6Knx8BJ5TBdYR",
           "nombre": "Zara - The Warm, Real-World Conversationalist",
           "acento": "american",
-          "clonada": 343545,
+          "clonada": 344999,
           "descripcion": "Zara is a female voice, 20s–30s, blends warmth, clarity, and confident expression. Ideal for creators and brands who want their content to feel real, relatable,",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/XKwEw9ihVRMYSZkGwKydUfpES0B3/voices/jqcCZkN6Knx8BJ5TBdYR/JKHbp9CMKBoqcDFfzWIf.mp3"
         },
@@ -439,23 +439,15 @@
           "id": "RABOvaPec1ymXz02oDQi",
           "nombre": "Anika - Sweet, Lively and Warm",
           "acento": "standard",
-          "clonada": 338305,
+          "clonada": 338744,
           "descripcion": "Voice crafted for engaging Hindi social media content, brand messaging, and influencer communication.\n\nAnika’s sweet and lively tone brings energy and warmth to",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/RABOvaPec1ymXz02oDQi/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJlZDliMDVlNjMyNGM0NTc2ODU0OTAzNTJlOWExZWM5MCIsImZpbGVuYW1lIjoiWXlud044QWpwTldzbXRwOHdqbXMubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
-        },
-        {
-          "id": "pjcYQlDFKMbcOUp6F5GD",
-          "nombre": "Brittney - Relaxing, Calm and Meditative",
-          "acento": "american",
-          "clonada": 319660,
-          "descripcion": "A calm and relaxing female voice, ideal for meditation and self-reflection. The tone is smooth and measured, painting a clear picture for the listener with a yo",
-          "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/pjcYQlDFKMbcOUp6F5GD/5zLsYiRlHlqOzAHAmJT0.mp3"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/RABOvaPec1ymXz02oDQi/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJlZDliMDVlNjMyNGM0NTc2ODU0OTAzNTJlOWExZWM5MCIsImZpbGVuYW1lIjoiWXlud044QWpwTldzbXRwOHdqbXMubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "BIvP0GN1cAtSRTxNHnWS",
           "nombre": "Ellen - Serious, Direct and Confident",
           "acento": "german",
-          "clonada": 319627,
+          "clonada": 321235,
           "descripcion": "Calm female voice with international accent",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/XneWYDMsJGQ7Q0uqR5YiKixJmLn2/voices/BIvP0GN1cAtSRTxNHnWS/ZIkioQ15FEgRXe1XJXoG.mp3"
         },
@@ -463,15 +455,23 @@
           "id": "EST9Ui6982FZPSi7gCHi",
           "nombre": "Elise - Warm, Natural and Engaging",
           "acento": "american",
-          "clonada": 318493,
+          "clonada": 320238,
           "descripcion": "An easy, conversational tone suited to narrations, explainers, podcasts, and editorial content that needs clarity, warmth, and a human touch.",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/EST9Ui6982FZPSi7gCHi/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiOHJiR0R2QXhZc2hnZUtXZEk0T0U2UEhPdFFUMiIsImZpbGVuYW1lIjoiaWlTa3NSRnpuelZ5cDYwdVlGT1oubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/EST9Ui6982FZPSi7gCHi/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiOHJiR0R2QXhZc2hnZUtXZEk0T0U2UEhPdFFUMiIsImZpbGVuYW1lIjoiaWlTa3NSRnpuelZ5cDYwdVlGT1oubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
+        },
+        {
+          "id": "pjcYQlDFKMbcOUp6F5GD",
+          "nombre": "Brittney - Relaxing, Calm and Meditative",
+          "acento": "american",
+          "clonada": 319934,
+          "descripcion": "A calm and relaxing female voice, ideal for meditation and self-reflection. The tone is smooth and measured, painting a clear picture for the listener with a yo",
+          "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/pjcYQlDFKMbcOUp6F5GD/5zLsYiRlHlqOzAHAmJT0.mp3"
         },
         {
           "id": "kdmDKE6EkgrWrrykO9Qt",
           "nombre": "Alexandra - Conversational and Natural",
           "acento": "american",
-          "clonada": 308765,
+          "clonada": 309288,
           "descripcion": "Youthful and authentic, with a conversational tone that's relatable and down-to-earth. ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/1df4b21393b74964b03d3690a173eb80/voices/kdmDKE6EkgrWrrykO9Qt/yJT6XwhJHSWv3Pb05OIk.mp3"
         },
@@ -479,15 +479,15 @@
           "id": "2zRM7PkgwBPiau2jvVXc",
           "nombre": "Monika Sogam - Deep and Natural",
           "acento": "indian",
-          "clonada": 298460,
+          "clonada": 299500,
           "descripcion": "Indian English accent voice for social media videos and audiobooks",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/2zRM7PkgwBPiau2jvVXc/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoiNkdwSHV0ZGNCcVV0VDR6RURSSXAubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/2zRM7PkgwBPiau2jvVXc/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoiNkdwSHV0ZGNCcVV0VDR6RURSSXAubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "XfNU2rGpBa01ckF309OY",
           "nombre": "Nichalia Schwartz - Bright and Friendly",
           "acento": "american",
-          "clonada": 295269,
+          "clonada": 296822,
           "descripcion": "Friendly, intelligent, engaging 20s-30s female American. Ideal for audiobooks, long-form narration, eLearning / e-learning, YouTube channel narration, education",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/XfNU2rGpBa01ckF309OY/kuFJZI5s8GbgYm5f0hMo.mp3"
         },
@@ -495,7 +495,7 @@
           "id": "eXpIbVcVbLo8ZJQDlDnl",
           "nombre": "Siren - Natural realistic conversational voice",
           "acento": "american",
-          "clonada": 264427,
+          "clonada": 275505,
           "descripcion": "This voice is perfect for podcasts, videos, social media, commercials...really ANYTHING where you need a hyper-realistic voice that sounds so chill and natural,",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/cbfaa74d559547979fa92c07eae49b0f/voices/eXpIbVcVbLo8ZJQDlDnl/nvbKCMRoZnwNqgIhVjJE.mp3"
         },
@@ -503,17 +503,17 @@
           "id": "n4x17EKVqyxfey8QMqvy",
           "nombre": "Mauro - Neutral, Friendly, Balanced",
           "acento": "latin american",
-          "clonada": 260869,
+          "clonada": 260945,
           "descripcion": "A cheerful and vibrant young Latin American woman, with a natural, warm, and engaging tone. Perfect for content that needs an authentic, energetic, and friendly",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/n4x17EKVqyxfey8QMqvy/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI0NzRmODgwOGExMjI0NjE1YTBlYjcyMGQxNTIwZmY5MSIsImZpbGVuYW1lIjoiOEE5enhpajZDVUN2MnNlV1d6NnQubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/n4x17EKVqyxfey8QMqvy/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI0NzRmODgwOGExMjI0NjE1YTBlYjcyMGQxNTIwZmY5MSIsImZpbGVuYW1lIjoiOEE5enhpajZDVUN2MnNlV1d6NnQubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "ecp3DWciuUyW7BYM7II1",
           "nombre": "Anika - Sweet and Lively",
           "acento": "indian",
-          "clonada": 258158,
+          "clonada": 258532,
           "descripcion": "A fun, expressive voice for social media content, reels, and upbeat storytelling.\r\n\r\nAnika’s voice is sweet, energetic, and instantly engaging—perfect for hooks",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/ecp3DWciuUyW7BYM7II1/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJlZDliMDVlNjMyNGM0NTc2ODU0OTAzNTJlOWExZWM5MCIsImZpbGVuYW1lIjoia3JucUlTZlR0ZG9ESUw4ZkVFMUoubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/ecp3DWciuUyW7BYM7II1/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJlZDliMDVlNjMyNGM0NTc2ODU0OTAzNTJlOWExZWM5MCIsImZpbGVuYW1lIjoia3JucUlTZlR0ZG9ESUw4ZkVFMUoubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         }
       ]
     },
@@ -521,22 +521,22 @@
       "genero": "mujer",
       "edad": "adulto",
       "revisadas": 1000,
-      "bienCalificadas": 906,
-      "latinoamericanas": 100,
+      "bienCalificadas": 901,
+      "latinoamericanas": 99,
       "mejores": [
         {
           "id": "1qEiC6qsybMkmnNdVMbK",
           "nombre": "Monika Sogam - Calm and Natural",
           "acento": "standard",
-          "clonada": 1208251,
+          "clonada": 1209773,
           "descripcion": "Monika Sogam is already a pretty loved voice on ElevenLabs in the English Indian category. Now it is available in Hindi too. This is a perfect voice for social ",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/1qEiC6qsybMkmnNdVMbK/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoiSG9UNEE0OHJwMVp4RlYyYUFRdlQubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/1qEiC6qsybMkmnNdVMbK/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoiSG9UNEE0OHJwMVp4RlYyYUFRdlQubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "lxYfHSkYm1EzQzGhdbfc",
           "nombre": "Jessica Anne Bogart - A VO Professional; now cloned!",
           "acento": "american",
-          "clonada": 967228,
+          "clonada": 968010,
           "descripcion": "A credited VoiceOver actor, now cloned. Confident, Conversational.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/fb1bd18708014d8d80e770df5ea11bb7/voices/lxYfHSkYm1EzQzGhdbfc/JZDpsUoP3T2VAnEEmj4l.mp3"
         },
@@ -544,7 +544,7 @@
           "id": "KHCvMklQZZo0O30ERnVn",
           "nombre": "Sara Martin - Gentle and Layered",
           "acento": "peninsular",
-          "clonada": 424889,
+          "clonada": 425635,
           "descripcion": "Middle aged Spanish-Castillian female with a gentle & friendly tone. Great for Educational content.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/8RYUsFHsalUXjwVG0LjhNwH1j022/voices/KHCvMklQZZo0O30ERnVn/MdsY0B910z3we0udGv3w.mp3"
         },
@@ -552,7 +552,7 @@
           "id": "H6QPv2pQZDcGqLwDTIJQ",
           "nombre": "Kanika - Soft, Smooth and Muffled",
           "acento": "standard",
-          "clonada": 409342,
+          "clonada": 410028,
           "descripcion": "Kanika is the pen name of one of the best voice-over artists you will ever hear. Everyone who regularly consumes content has definitely heard her voice. Give th",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/514d94e9241c48e8b7905375729c436f/voices/H6QPv2pQZDcGqLwDTIJQ/h4cm7siflKaybWATajsy.mp3"
         },
@@ -560,15 +560,15 @@
           "id": "g6xIsTj2HwM6VR4iXFCw",
           "nombre": "Jessica Anne Bogart - Chatty and Friendly",
           "acento": "american",
-          "clonada": 321519,
+          "clonada": 322099,
           "descripcion": "Friendly and Conversational Female voice. Articulate, Confident and Helpful. Works well for Conversations.",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/g6xIsTj2HwM6VR4iXFCw/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJmYjFiZDE4NzA4MDE0ZDhkODBlNzcwZGY1ZWExMWJiNyIsImZpbGVuYW1lIjoiMU9xazlTZXNReFVNeG9wZmdMYjcubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/g6xIsTj2HwM6VR4iXFCw/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiJmYjFiZDE4NzA4MDE0ZDhkODBlNzcwZGY1ZWExMWJiNyIsImZpbGVuYW1lIjoiMU9xazlTZXNReFVNeG9wZmdMYjcubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "50YSQEDPA2vlOxhCseP4",
           "nombre": "Saanu - Soft, Muffled and Calm",
           "acento": "standard",
-          "clonada": 308479,
+          "clonada": 308613,
           "descripcion": "This voice is of a veteran Indian actress (of course, name changed). This voice has good emotions and will be very good for social media, audiobooks, and for co",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/514d94e9241c48e8b7905375729c436f/voices/50YSQEDPA2vlOxhCseP4/U2Omfhchx9uOg0QyDPtK.mp3"
         },
@@ -576,7 +576,7 @@
           "id": "5l5f8iK3YPeGga21rQIX",
           "nombre": "Adeline - Feminine and Conversational",
           "acento": "american",
-          "clonada": 264006,
+          "clonada": 264914,
           "descripcion": "A conversational, feminine voice that is perfect for narration.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/f021b68953424a4a8ee93f30771e783b/voices/5l5f8iK3YPeGga21rQIX/IWGwBNrRKUNn0fVDInY5.mp3"
         },
@@ -584,7 +584,7 @@
           "id": "19STyYD15bswVz51nqLf",
           "nombre": "Samara X - Smooth Classy British",
           "acento": "british",
-          "clonada": 254678,
+          "clonada": 255088,
           "descripcion": "A smooth, high-quality British female voice with an elegant, relaxed tone. Warm, clear, trustworthy, and conversational, making it ideal for professional voiceo",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/65ce3d25b2034bf0b490a868052eff08/voices/19STyYD15bswVz51nqLf/zl9HbPmiEEiOdhvLunad.mp3"
         },
@@ -592,7 +592,7 @@
           "id": "xoV6iGVuOGYHLWjXhVC7",
           "nombre": "Muskaan - Friendly, Calm and Inviting",
           "acento": "standard",
-          "clonada": 213508,
+          "clonada": 213637,
           "descripcion": "Muskaan is the pen name of a very experienced financial trainer in India. Her voice is very natural and feels relatable, unlike the corporate tone that often fe",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/514d94e9241c48e8b7905375729c436f/voices/xoV6iGVuOGYHLWjXhVC7/OuOzrYPTx3vARSgUi5Kl.mp3"
         },
@@ -600,7 +600,7 @@
           "id": "XW70ikSsadUbinwLMZ5w",
           "nombre": "Annie K - Grounded Narrator",
           "acento": "american",
-          "clonada": 189577,
+          "clonada": 189941,
           "descripcion": "Steady, clear, and highly professional female voice ideal for technical, educational, and long-form narration. For dynamic accent-free Spanish or bilingual proj",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/d919f501def841d688c8fe932a668ff6/voices/XW70ikSsadUbinwLMZ5w/soulfji4KA2lZeeF5t2w.mp3"
         },
@@ -608,7 +608,7 @@
           "id": "ymDCYd8puC7gYjxIamPt",
           "nombre": "Marina - Soft, Clear and Warm",
           "acento": "standard",
-          "clonada": 182479,
+          "clonada": 183377,
           "descripcion": "A soft, gentle Rusian female voice, expressive and warm, creating a comfortable listening experience. the voice is rich in intonation, making it ideal for readi",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/Ws0NuxiaxGXfCa5Pjid7Cf3DXNI2/voices/ymDCYd8puC7gYjxIamPt/JIvpZszp6VTLxZ35YaHE.mp3"
         },
@@ -616,7 +616,7 @@
           "id": "K7W7zLWeGoxU9YqWoB7A",
           "nombre": "Rachel - Social Media Narrator",
           "acento": "american",
-          "clonada": 169763,
+          "clonada": 170018,
           "descripcion": "Perfect for Social media, ads, explainer videos, lifestyle content, storytelling, and brand narration. Clear, natural, and engaging with a modern social-media t",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/ASpWtpoIb8QO6ihmDnPl9KOrd4s1/voices/K7W7zLWeGoxU9YqWoB7A/JyYCTsdVf8ikvvri5CTU.mp3"
         },
@@ -624,7 +624,7 @@
           "id": "I7sakys8pBZ1Z5f0UhT9",
           "nombre": "Putri Maharani - Neutral and WItty",
           "acento": "javanese",
-          "clonada": 166751,
+          "clonada": 169093,
           "descripcion": "The voice that transforms words into unforgettable experiences. With a warm, expressive tone and a storytelling style that captivates hearts, Putri Maharani voi",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/kpstv3iMbHg7V8ZE8rXn9zVKouq1/voices/I7sakys8pBZ1Z5f0UhT9/46f47948-560b-4921-bdbe-d59b885a0a7f.mp3"
         },
@@ -632,7 +632,7 @@
           "id": "Nhs7eitvQWFTQBsf0yiT",
           "nombre": "Sarah - Approachable and Informative",
           "acento": "american",
-          "clonada": 164024,
+          "clonada": 164496,
           "descripcion": "This voice is approachable, conversational, and informative. Great for explainer videos, narration, e-learning, or even commercials!",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/kGguywYBM6ZDW5j5xFRCvBmzqL92/voices/Nhs7eitvQWFTQBsf0yiT/D6QJtXoAUfIBGei8I0WT.mp3"
         },
@@ -640,7 +640,7 @@
           "id": "2Lb1en5ujrODDIqmp7F3",
           "nombre": "Jhenny - Soft, Calm, Sweet",
           "acento": "latin american",
-          "clonada": 163252,
+          "clonada": 163625,
           "descripcion": "Soft well-educated tone, ideal for educational content. This soothing, natural Latin American voice with a neutral accent elevates narration, audiobooks, and mi",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/2Lb1en5ujrODDIqmp7F3/q4yhTMl09IVyvr9aLc0s.mp3"
         }
@@ -649,15 +649,15 @@
     {
       "genero": "mujer",
       "edad": "mayor",
-      "revisadas": 45,
-      "bienCalificadas": 40,
+      "revisadas": 47,
+      "bienCalificadas": 42,
       "latinoamericanas": 4,
       "mejores": [
         {
           "id": "RILOU7YmBhvwJGDGjNmP",
           "nombre": "Jane - Professional Audiobook Reader",
           "acento": "british",
-          "clonada": 519711,
+          "clonada": 521731,
           "descripcion": "Professional English audiobook narrator in her 50s with a nice tone and cadence. Great for narration, storytelling, or general content creation, like YouTube.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/20dd3b9a3ec14f77bc0f5688c9f44ff5/voices/RILOU7YmBhvwJGDGjNmP/rg0TiCrZRw0nfGOZiVoe.mp3"
         },
@@ -665,7 +665,7 @@
           "id": "eBthAb30UYbt2nojGXeA",
           "nombre": "Regina - Meditative, Expressive, Soft",
           "acento": "latin american",
-          "clonada": 93815,
+          "clonada": 94170,
           "descripcion": "Female mature voice. Calm and Deep. Perfect for audiobooks.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/8RYUsFHsalUXjwVG0LjhNwH1j022/voices/eBthAb30UYbt2nojGXeA/ULUGw8PrCnX5atC7KOY6.mp3"
         },
@@ -673,7 +673,7 @@
           "id": "wGcFBfKz5yUQqhqr0mVy",
           "nombre": "Maria Moody - Grandmotherly Storykeeper",
           "acento": "american",
-          "clonada": 89473,
+          "clonada": 90035,
           "descripcion": "As an octogenarian, her voice carries the grace of long living: patience in the pauses, wisdom in the restraint, and kindness that never feels rehearsed. It sou",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/0933a199cad04cb18ac7e32b9e8476a2/voices/wGcFBfKz5yUQqhqr0mVy/hmDeilAcXODFxnSV2olx.mp3"
         },
@@ -681,7 +681,7 @@
           "id": "7NsaqHdLuKNFvEfjpUno",
           "nombre": "Seer Morganna - Intimidating, and Clear",
           "acento": "",
-          "clonada": 62138,
+          "clonada": 62504,
           "descripcion": "The voice of an old wise seer woman telling people of their fortunes. Works well for Animations and characters in a story.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/custom/voices/7NsaqHdLuKNFvEfjpUno/LyhT6nxqgbsw2z56SfVt.mp3"
         },
@@ -689,7 +689,7 @@
           "id": "fNmw8sukfGuvWVOp33Ge",
           "nombre": "Tosca - Mature, Whispery and Seductive",
           "acento": "standard",
-          "clonada": 49147,
+          "clonada": 49417,
           "descripcion": "Deep Italian female voice. Mature, calm. Perfect for audiobook, storytelling, podcast, and dubbing.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/GNqGwAvcm9T2ztiUnKdevR5QaPE2/voices/fNmw8sukfGuvWVOp33Ge/pEyoDlZNSfk32LUM6xmw.mp3"
         },
@@ -697,7 +697,7 @@
           "id": "fs3nd19KF2GO2hLTzkBm",
           "nombre": "Lucinda - Earthy and Wise",
           "acento": "brazilian",
-          "clonada": 40010,
+          "clonada": 40519,
           "descripcion": "A textured, mature female voice with a grounded and slightly husky quality. It feels deeply rooted and authentic, carrying the weight of experience without bein",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/1da06ea679a54975ad96a2221fe6530d/voices/fs3nd19KF2GO2hLTzkBm/36fbb974-c86a-434b-a6bf-07fe0229b4b8.mp3"
         },
@@ -705,7 +705,7 @@
           "id": "efcRUax7uSa9kpBwtDPe",
           "nombre": "Luisa - Friendly, Calm, Versatile",
           "acento": "latin american",
-          "clonada": 36965,
+          "clonada": 37445,
           "descripcion": "Storyteller with a deep, measured voice, ideal for narrations, stories, tales, reflective messages, and more.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/cac61574323345ac9dd4471d2c2bcbe1/voices/efcRUax7uSa9kpBwtDPe/KaIF9TYMegiYrPsYQ5d7.mp3"
         },
@@ -713,15 +713,15 @@
           "id": "p2Wol3C7j3rHbfOrbL18",
           "nombre": "Lisa - Lovely and Emotional",
           "acento": "standard",
-          "clonada": 32117,
+          "clonada": 32851,
           "descripcion": "A warm, lively voice full of character and life experience. From heartfelt memories to mischievous anecdotes, this grandmotherly voice tells real stories with l",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/p2Wol3C7j3rHbfOrbL18/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiaXFadlA5dU9GWWZVdzBCc0RVUVJtSHlFSEEwMiIsImZpbGVuYW1lIjoiNklpOHd3UnZuMzJ6UmR3NWhLZWkubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/p2Wol3C7j3rHbfOrbL18/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiaXFadlA5dU9GWWZVdzBCc0RVUVJtSHlFSEEwMiIsImZpbGVuYW1lIjoiNklpOHd3UnZuMzJ6UmR3NWhLZWkubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "0mLOQqwA3kovxF1ID7z6",
           "nombre": "Linda – Gentle Mom Storytime Voice",
           "acento": "canadian",
-          "clonada": 26784,
+          "clonada": 26989,
           "descripcion": "Warm, steady mom voice with soft edges and slow, relaxed pacing. Sounds like bedtime reading on the couch—clear but gentle, with rounded consonants and a calm r",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/s7xbzTxZ7NgCi7HdEFoPjfrZPTo2/voices/0mLOQqwA3kovxF1ID7z6/nPBXqsmDETfLYPBAIioM.mp3"
         },
@@ -729,15 +729,15 @@
           "id": "kkPJzQOWz2Oz9cUaEaQd",
           "nombre": "Beatrice - Mature, Gentle and Engaging",
           "acento": "british",
-          "clonada": 25305,
+          "clonada": 25754,
           "descripcion": "I have a mature British voice with a naturally warm, rich tone and a calm, steady pace. My delivery is engaging and wise, making it well-suited for audiobooks o",
-          "muestra": "https://api.us.elevenlabs.io/v1/voices/kkPJzQOWz2Oz9cUaEaQd/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiVFVEb051N3pjSFJjNHhBNnBPYVNjUnlNdm5pMiIsImZpbGVuYW1lIjoiRDg5WXZOUE9VOXdrNXlrYjB5c3oubXAzIiwidGltZXN0YW1wIjoxNzk0MTg2MDAwMDAwMDAwfQ%3D%3D"
+          "muestra": "https://api.us.elevenlabs.io/v1/voices/kkPJzQOWz2Oz9cUaEaQd/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ1c2VyX2lkIjoiVFVEb051N3pjSFJjNHhBNnBPYVNjUnlNdm5pMiIsImZpbGVuYW1lIjoiRDg5WXZOUE9VOXdrNXlrYjB5c3oubXAzIiwidGltZXN0YW1wIjoxNzk0NDMwODAwMDAwMDAwfQ%3D%3D"
         },
         {
           "id": "D3ws14YxTqcjPaXEOehR",
           "nombre": "Azu - Calm, Soft and Melodic",
           "acento": "mexican",
-          "clonada": 21892,
+          "clonada": 22125,
           "descripcion": "Soft, clear voice, with a slight natural roughness that adds character without sounding raspy.\nSlow and thoughtful rhythm, with a calm tempo that suggests calm ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/d62c3103d27d4af99d04a86aa22eb394/voices/D3ws14YxTqcjPaXEOehR/GgqrKUSTG6A7LZQ1EoTI.mp3"
         },
@@ -745,31 +745,31 @@
           "id": "8WaMCGQzWsKvf7sGPqjE",
           "nombre": "Julieanne",
           "acento": "australian",
-          "clonada": 19904,
+          "clonada": 20118,
           "descripcion": "A calm, older Australian voice perfect for narration, educational and informative content. Well spoken, clear and articulate.",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/user/KwHjFNlKkregTHf9IltZKfTMXqO2/voices/8WaMCGQzWsKvf7sGPqjE/iPJ1A2RSmZYRv4ScznEm.mp3"
-        },
-        {
-          "id": "UOxKeHS7lixzgw35mtAR",
-          "nombre": "Grandma Titina - Relaxed and Reassuring",
-          "acento": "latin american",
-          "clonada": 16426,
-          "descripcion": "Grandmother is a natural storyteller and works well in Spanish , English, French and Italian. try it in every language.",
-          "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/4018df99925c44d991724dbdb1d0ef8b/voices/UOxKeHS7lixzgw35mtAR/IJjF3VKsBQ9S7UyUZACH.mp3"
         },
         {
           "id": "8fwYhwfiWkLjR4FKLHSQ",
           "nombre": "Elise Hart - Warm, Clear & Engaging",
           "acento": "american",
-          "clonada": 16196,
+          "clonada": 16661,
           "descripcion": "Warm, intelligent, and versatile, her voice brings authenticity and connection to every project. Her voice is perfect for Narrations, eLearning, Training, IVR, ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/bb3de32d375e4462a5d1aebc77eb7b0a/voices/8fwYhwfiWkLjR4FKLHSQ/eT0h07aQSRxJzwk8pT8f.mp3"
+        },
+        {
+          "id": "UOxKeHS7lixzgw35mtAR",
+          "nombre": "Grandma Titina - Relaxed and Reassuring",
+          "acento": "latin american",
+          "clonada": 16529,
+          "descripcion": "Grandmother is a natural storyteller and works well in Spanish , English, French and Italian. try it in every language.",
+          "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/4018df99925c44d991724dbdb1d0ef8b/voices/UOxKeHS7lixzgw35mtAR/IJjF3VKsBQ9S7UyUZACH.mp3"
         },
         {
           "id": "T2OtqAWGDq4sh6HX3MwH",
           "nombre": "Teacher Rayla - Storyteller",
           "acento": "filipino",
-          "clonada": 14526,
+          "clonada": 14553,
           "descripcion": "Teacher Rayla’s voice is warm, clear, and empowering — like a guiding light for every learner. She sounds Special, Unique, and Precious, always empowered to be ",
           "muestra": "https://storage.googleapis.com/eleven-public-prod/database/workspace/00d3e426a4ec48cda2413d7038347603/voices/T2OtqAWGDq4sh6HX3MwH/8w07SUM8skYC0mHlbA4N.mp3"
         }

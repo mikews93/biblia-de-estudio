@@ -1,0 +1,86 @@
+name: Video promocional (voz y música)
+
+# Graba con ElevenLabs la voz de Abel para el video promocional (video/promo/script.json) y, si aún no
+# existe, la música compuesta con Eleven Music. Sube los audios a la versión de GitHub «video-promo» y
+# guarda la sincronía de cada palabra (video/promo/src/vo-timing.json) en la rama. Solo se paga lo que
+# cambió: las frases ya grabadas se bajan de la versión y su caché (public/vo/manifest.json) las salta.
+# El video se renderiza aparte con Remotion (video/promo/README.md).
+
+on:
+  push:
+    paths:
+      - video/promo/script.json
+      - video/promo/funciones/*.json
+      - video/promo/scripts/vo.ts
+      - video/promo/scripts/musica.ts
+      - .github/workflows/video-promo.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: video-promo
+  cancel-in-progress: false
+
+jobs:
+  audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: video/promo
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      TAG: video-promo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.17
+      - name: Instalar ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Bajar los audios ya grabados
+        run: |
+          mkdir -p public/vo public/music
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release download "$TAG" -D public/vo -p 'vo-*' --clobber || true
+            gh release download "$TAG" -D public/music -p 'zarza-promo.mp3' --clobber || true
+            cd public/vo && for f in vo-*; do [ -e "$f" ] && mv "$f" "${f#vo-}"; done; true
+          fi
+      - name: Grabar la voz (solo lo que cambió)
+        run: bun scripts/vo.ts
+      - name: Voz de los videos de funciones (solo lo que cambió)
+        run: |
+          for f in funciones/*.json; do
+            id=$(basename "$f" .json)
+            mkdir -p "public/vo/funciones/$id"
+            gh release download "$TAG" -D "public/vo/funciones/$id" -p "fn-$id--*" --clobber 2>/dev/null || true
+            (cd "public/vo/funciones/$id" && for a in fn-*; do [ -e "$a" ] && mv "$a" "${a#fn-$id--}"; done; true)
+            VO_SCRIPT="$f" bun scripts/vo.ts
+          done
+      - name: Componer la música (si falta)
+        continue-on-error: true
+        run: test -f public/music/zarza-promo.mp3 || bun scripts/musica.ts
+      - name: Subir a la versión de GitHub
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
+            --title "Video promocional (audios)" \
+            --notes "Voz de Abel y música del video promocional de Zarza. Se reemplazan en cada grabación."
+          mkdir -p ../../salida-vo
+          for f in public/vo/*; do if [ -f "$f" ]; then cp "$f" "../../salida-vo/vo-$(basename "$f")"; fi; done
+          for d in public/vo/funciones/*/; do
+            id=$(basename "$d")
+            for f in "$d"*; do cp "$f" "../../salida-vo/fn-$id--$(basename "$f")"; done
+          done
+          gh release upload "$TAG" ../../salida-vo/* --clobber
+          if [ -f public/music/zarza-promo.mp3 ]; then gh release upload "$TAG" public/music/zarza-promo.mp3 --clobber; fi
+      - name: Guardar la sincronía en la rama
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/vo-timing.json src/funciones/*.timing.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Video promocional: sincronía de la voz"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done

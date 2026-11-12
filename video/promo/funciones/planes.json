@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Planes de lectura» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Y si este Adviento… lees la promesa desde el principio?"
+  },
+  {
+   "id": "retos",
+   "at": 0,
+   "text": "En Zarza, los planes siguen el año cristiano: Adviento, Cuaresma, Semana Santa…"
+  },
+  {
+   "id": "dia",
+   "at": 0,
+   "text": "Un capítulo al día, con una pregunta para pensar. Y si un día no puedes, el plan te espera."
+  },
+  {
+   "id": "temas",
+   "at": 0,
+   "text": "También hay planes para cuando el alma está abatida, para el duelo, o para leer un libro entero a tu ritmo."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

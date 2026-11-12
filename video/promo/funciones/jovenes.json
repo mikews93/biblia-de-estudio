@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Modo Jóvenes» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[excited] ¿Quién es Jesús, de verdad? Descúbrelo en seis misiones."
+  },
+  {
+   "id": "rutas",
+   "at": 0,
+   "text": "En el modo Jóvenes de Zarza, eliges una ruta y vas misión por misión."
+  },
+  {
+   "id": "mision",
+   "at": 0,
+   "text": "Lees el pasaje, respondes dos preguntas, piensas… y te llevas un reto para la semana."
+  },
+  {
+   "id": "sello",
+   "at": 0,
+   "text": "Cada misión cumplida suma estrellas y sellos. Sin rankings: solo tú y la Palabra."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

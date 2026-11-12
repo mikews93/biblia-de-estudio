@@ -1,0 +1,12 @@
+{
+  "voice": {"name": "Abel", "voiceId": "452WrNT9o8dphaYW5YGU", "model": "eleven_v4"},
+  "_": "Video vertical de «En pareja» (src/funciones/Funcion.tsx).",
+  "lines": [
+    {"id": "hook", "at": 0, "text": "[warm] ¿Cuándo fue la última vez… que oraron juntos?"},
+    {"id": "invitar", "at": 0, "text": "En Zarza, invitas a tu pareja con un código, y empiezan un plan los dos."},
+    {"id": "dia", "at": 0, "text": "Cada día, cinco minutos: un pasaje, una pregunta, y orar el uno por el otro."},
+    {"id": "revelar", "at": 0, "text": "Cada uno responde a solas… y lo que escribió el otro se abre cuando los dos respondieron."},
+    {"id": "planes", "at": 0, "text": "Con planes para novios y para casados."},
+    {"id": "cta", "at": 0, "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."}
+  ]
+}

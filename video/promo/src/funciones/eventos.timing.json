@@ -1,0 +1,390 @@
+{
+ "hook": {
+  "duration": 2.508,
+  "speechStart": 0.067,
+  "speechEnd": 2.4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Y",
+    "start": 0.067,
+    "end": 0.12
+   },
+   {
+    "w": "si",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "la",
+    "start": 0.32,
+    "end": 0.36
+   },
+   {
+    "w": "iglesia",
+    "start": 0.4,
+    "end": 0.8
+   },
+   {
+    "w": "siguiera",
+    "start": 0.88,
+    "end": 1.2
+   },
+   {
+    "w": "el",
+    "start": 1.24,
+    "end": 1.28
+   },
+   {
+    "w": "sermón",
+    "start": 1.36,
+    "end": 1.68
+   },
+   {
+    "w": "en",
+    "start": 1.72,
+    "end": 1.76
+   },
+   {
+    "w": "su",
+    "start": 1.84,
+    "end": 1.92
+   },
+   {
+    "w": "teléfono?",
+    "start": 2,
+    "end": 2.4
+   }
+  ]
+ },
+ "publicar": {
+  "duration": 5.564,
+  "speechStart": 0,
+  "speechEnd": 5.52,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Quien",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "predica",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "publica",
+    "start": 0.8,
+    "end": 1
+   },
+   {
+    "w": "su",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "mensaje",
+    "start": 1.2,
+    "end": 1.6
+   },
+   {
+    "w": "del",
+    "start": 1.68,
+    "end": 1.76
+   },
+   {
+    "w": "Taller",
+    "start": 1.84,
+    "end": 2.16
+   },
+   {
+    "w": "como",
+    "start": 2.24,
+    "end": 2.4
+   },
+   {
+    "w": "evento…",
+    "start": 2.88,
+    "end": 3.36
+   },
+   {
+    "w": "con",
+    "start": 3.44,
+    "end": 3.52
+   },
+   {
+    "w": "un",
+    "start": 3.6,
+    "end": 3.68
+   },
+   {
+    "w": "código",
+    "start": 3.76,
+    "end": 4.24
+   },
+   {
+    "w": "y",
+    "start": 4.32,
+    "end": 4.4
+   },
+   {
+    "w": "un",
+    "start": 4.48,
+    "end": 4.56
+   },
+   {
+    "w": "QR.",
+    "start": 4.72,
+    "end": 5.52
+   }
+  ]
+ },
+ "entrar": {
+  "duration": 3.553,
+  "speechStart": 0,
+  "speechEnd": 3.52,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "La",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "congregación",
+    "start": 0.16,
+    "end": 0.88
+   },
+   {
+    "w": "entra",
+    "start": 0.96,
+    "end": 1.2
+   },
+   {
+    "w": "con",
+    "start": 1.28,
+    "end": 1.36
+   },
+   {
+    "w": "el",
+    "start": 1.44,
+    "end": 1.52
+   },
+   {
+    "w": "código,",
+    "start": 1.56,
+    "end": 2.24
+   },
+   {
+    "w": "sin",
+    "start": 2.4,
+    "end": 2.48
+   },
+   {
+    "w": "cuenta.",
+    "start": 2.827,
+    "end": 3.52
+   }
+  ]
+ },
+ "vivo": {
+  "duration": 5.068,
+  "speechStart": 0,
+  "speechEnd": 4.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Cada",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "punto",
+    "start": 0.32,
+    "end": 0.56
+   },
+   {
+    "w": "aparece",
+    "start": 0.64,
+    "end": 1.04
+   },
+   {
+    "w": "cuando",
+    "start": 1.12,
+    "end": 1.28
+   },
+   {
+    "w": "se",
+    "start": 1.36,
+    "end": 1.44
+   },
+   {
+    "w": "predica:",
+    "start": 1.56,
+    "end": 1.92
+   },
+   {
+    "w": "abren",
+    "start": 2.56,
+    "end": 2.8
+   },
+   {
+    "w": "los",
+    "start": 2.84,
+    "end": 2.88
+   },
+   {
+    "w": "versículos",
+    "start": 2.96,
+    "end": 3.68
+   },
+   {
+    "w": "y",
+    "start": 3.72,
+    "end": 3.76
+   },
+   {
+    "w": "toman",
+    "start": 3.84,
+    "end": 4.08
+   },
+   {
+    "w": "notas.",
+    "start": 4.16,
+    "end": 4.56
+   }
+  ]
+ },
+ "final": {
+  "duration": 4.833,
+  "speechStart": 0,
+  "speechEnd": 4.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Al",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "terminar,",
+    "start": 0.36,
+    "end": 0.64
+   },
+   {
+    "w": "se",
+    "start": 0.96,
+    "end": 1.04
+   },
+   {
+    "w": "llevan",
+    "start": 1.12,
+    "end": 1.36
+   },
+   {
+    "w": "el",
+    "start": 1.4,
+    "end": 1.44
+   },
+   {
+    "w": "mensaje",
+    "start": 1.52,
+    "end": 2
+   },
+   {
+    "w": "y",
+    "start": 2.04,
+    "end": 2.08
+   },
+   {
+    "w": "sus",
+    "start": 2.16,
+    "end": 2.24
+   },
+   {
+    "w": "notas…",
+    "start": 2.32,
+    "end": 2.72
+   },
+   {
+    "w": "y",
+    "start": 3.24,
+    "end": 3.28
+   },
+   {
+    "w": "comparten",
+    "start": 3.36,
+    "end": 3.84
+   },
+   {
+    "w": "lo",
+    "start": 3.92,
+    "end": 3.96
+   },
+   {
+    "w": "que",
+    "start": 4,
+    "end": 4.08
+   },
+   {
+    "w": "oyeron.",
+    "start": 4.16,
+    "end": 4.56
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.284,
+  "speechStart": 0.14,
+  "speechEnd": 4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.64
+   },
+   {
+    "w": "La",
+    "start": 1.2,
+    "end": 1.28
+   },
+   {
+    "w": "Biblia",
+    "start": 1.36,
+    "end": 1.6
+   },
+   {
+    "w": "de",
+    "start": 1.68,
+    "end": 1.76
+   },
+   {
+    "w": "estudio…",
+    "start": 1.84,
+    "end": 2.24
+   },
+   {
+    "w": "gratis",
+    "start": 2.8,
+    "end": 3.2
+   },
+   {
+    "w": "en",
+    "start": 3.28,
+    "end": 3.36
+   },
+   {
+    "w": "Google",
+    "start": 3.48,
+    "end": 3.6
+   },
+   {
+    "w": "Play.",
+    "start": 3.68,
+    "end": 4
+   }
+  ]
+ }
+}

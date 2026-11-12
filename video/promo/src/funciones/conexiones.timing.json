@@ -1,0 +1,352 @@
+{
+ "hook": {
+  "duration": 4.989,
+  "speechStart": 0.08,
+  "speechEnd": 4.48,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Sabías",
+    "start": 0.08,
+    "end": 0.48
+   },
+   {
+    "w": "que",
+    "start": 0.56,
+    "end": 0.64
+   },
+   {
+    "w": "la",
+    "start": 0.72,
+    "end": 0.76
+   },
+   {
+    "w": "Biblia",
+    "start": 0.8,
+    "end": 1.12
+   },
+   {
+    "w": "se",
+    "start": 1.2,
+    "end": 1.36
+   },
+   {
+    "w": "cita",
+    "start": 1.44,
+    "end": 1.6
+   },
+   {
+    "w": "a",
+    "start": 1.68,
+    "end": 1.76
+   },
+   {
+    "w": "sí",
+    "start": 1.8,
+    "end": 1.92
+   },
+   {
+    "w": "misma…",
+    "start": 2.04,
+    "end": 2.56
+   },
+   {
+    "w": "más",
+    "start": 2.76,
+    "end": 2.88
+   },
+   {
+    "w": "de",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "doscientas",
+    "start": 3.16,
+    "end": 3.68
+   },
+   {
+    "w": "mil",
+    "start": 3.84,
+    "end": 4
+   },
+   {
+    "w": "veces?",
+    "start": 4.08,
+    "end": 4.48
+   }
+  ]
+ },
+ "arcos": {
+  "duration": 5.799,
+  "speechStart": 0,
+  "speechEnd": 5.2,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "cada",
+    "start": 0.92,
+    "end": 1.2
+   },
+   {
+    "w": "arco",
+    "start": 1.32,
+    "end": 1.52
+   },
+   {
+    "w": "une",
+    "start": 1.6,
+    "end": 1.84
+   },
+   {
+    "w": "dos",
+    "start": 1.96,
+    "end": 2.08
+   },
+   {
+    "w": "capítulos",
+    "start": 2.16,
+    "end": 2.72
+   },
+   {
+    "w": "que",
+    "start": 2.76,
+    "end": 2.8
+   },
+   {
+    "w": "se",
+    "start": 2.88,
+    "end": 3.04
+   },
+   {
+    "w": "citan",
+    "start": 3.08,
+    "end": 3.52
+   },
+   {
+    "w": "o",
+    "start": 3.56,
+    "end": 3.6
+   },
+   {
+    "w": "se",
+    "start": 3.68,
+    "end": 3.76
+   },
+   {
+    "w": "explican",
+    "start": 3.88,
+    "end": 4.32
+   },
+   {
+    "w": "el",
+    "start": 4.4,
+    "end": 4.48
+   },
+   {
+    "w": "uno",
+    "start": 4.56,
+    "end": 4.72
+   },
+   {
+    "w": "al",
+    "start": 4.76,
+    "end": 4.8
+   },
+   {
+    "w": "otro.",
+    "start": 4.88,
+    "end": 5.2
+   }
+  ]
+ },
+ "libro": {
+  "duration": 4.598,
+  "speechStart": 0,
+  "speechEnd": 4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Elige",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "un",
+    "start": 0.4,
+    "end": 0.44
+   },
+   {
+    "w": "libro,",
+    "start": 0.48,
+    "end": 0.8
+   },
+   {
+    "w": "como",
+    "start": 1.12,
+    "end": 1.28
+   },
+   {
+    "w": "Isaías,",
+    "start": 1.36,
+    "end": 1.92
+   },
+   {
+    "w": "y",
+    "start": 2.32,
+    "end": 2.4
+   },
+   {
+    "w": "mira",
+    "start": 2.48,
+    "end": 2.72
+   },
+   {
+    "w": "con",
+    "start": 2.84,
+    "end": 2.96
+   },
+   {
+    "w": "quién",
+    "start": 3,
+    "end": 3.2
+   },
+   {
+    "w": "conversa",
+    "start": 3.28,
+    "end": 3.68
+   },
+   {
+    "w": "más.",
+    "start": 3.76,
+    "end": 4
+   }
+  ]
+ },
+ "capitulo": {
+  "duration": 4.676,
+  "speechStart": 0,
+  "speechEnd": 4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Y",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "en",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "cada",
+    "start": 0.28,
+    "end": 0.48
+   },
+   {
+    "w": "capítulo,",
+    "start": 0.6,
+    "end": 1.04
+   },
+   {
+    "w": "las",
+    "start": 1.36,
+    "end": 1.44
+   },
+   {
+    "w": "referencias",
+    "start": 1.52,
+    "end": 2.08
+   },
+   {
+    "w": "más",
+    "start": 2.24,
+    "end": 2.4
+   },
+   {
+    "w": "fuertes,",
+    "start": 2.48,
+    "end": 2.96
+   },
+   {
+    "w": "a",
+    "start": 3.44,
+    "end": 3.52
+   },
+   {
+    "w": "un",
+    "start": 3.56,
+    "end": 3.6
+   },
+   {
+    "w": "toque.",
+    "start": 3.68,
+    "end": 4
+   }
+  ]
+ },
+ "cta": {
+  "duration": 3.971,
+  "speechStart": 0.14,
+  "speechEnd": 3.76,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.2,
+    "end": 1.44
+   },
+   {
+    "w": "de",
+    "start": 1.48,
+    "end": 1.52
+   },
+   {
+    "w": "estudio…",
+    "start": 1.6,
+    "end": 2.08
+   },
+   {
+    "w": "gratis",
+    "start": 2.56,
+    "end": 2.96
+   },
+   {
+    "w": "en",
+    "start": 3.04,
+    "end": 3.12
+   },
+   {
+    "w": "Google",
+    "start": 3.24,
+    "end": 3.36
+   },
+   {
+    "w": "Play.",
+    "start": 3.44,
+    "end": 3.76
+   }
+  ]
+ }
+}

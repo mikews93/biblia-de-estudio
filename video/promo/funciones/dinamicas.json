@@ -1,0 +1,30 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Dinámicas para grupos» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Tu grupo se queda callado?"
+  },
+  {
+   "id": "lista",
+   "at": 0,
+   "text": "Zarza trae veintitrés dinámicas para grupos: para conectar, para entrar al texto, y para aplicar y orar."
+  },
+  {
+   "id": "dinamica",
+   "at": 0,
+   "text": "Cada una con sus pasos, el tiempo y para cuántas personas… sin materiales, solo la Biblia y el grupo."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

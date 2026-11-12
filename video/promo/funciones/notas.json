@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Notas y resaltados» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Ese versículo que te habló… dónde lo guardaste?"
+  },
+  {
+   "id": "resaltar",
+   "at": 0,
+   "text": "Toca un versículo y resáltalo con el color que quieras."
+  },
+  {
+   "id": "nota",
+   "at": 0,
+   "text": "Escríbele una nota: lo que Dios te dijo, en tus palabras."
+  },
+  {
+   "id": "mis",
+   "at": 0,
+   "text": "Todo queda en «Mis resaltados y notas»… y te lo llevas en Word, en PDF o como texto."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

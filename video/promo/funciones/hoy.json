@@ -1,0 +1,35 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Hoy» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Cómo empiezas el día?"
+  },
+  {
+   "id": "portada",
+   "at": 0,
+   "text": "Al abrir Zarza, te recibe un versículo para hoy… y la luz cambia con la hora del día."
+  },
+  {
+   "id": "parati",
+   "at": 0,
+   "text": "«Para ti» elige lecturas según lo que oras, sin rastrearte: todo se queda en tu teléfono."
+  },
+  {
+   "id": "todo",
+   "at": 0,
+   "text": "Y en «Todo en Zarza» encuentras cada función, ordenada por lo que quieres hacer."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

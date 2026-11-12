@@ -1,0 +1,30 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «El mapa que sigue la lectura» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[curious] ¿Dónde quedaba el Jordán… y cuánto caminó Jesús?"
+  },
+  {
+   "id": "abrir",
+   "at": 0,
+   "text": "En Zarza, elige un recorrido y dale a escuchar."
+  },
+  {
+   "id": "sigue",
+   "at": 0,
+   "text": "Mientras suena, el mapa te lleva a cada lugar que se nombra: Nazaret, el desierto, Galilea… paso a paso."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}

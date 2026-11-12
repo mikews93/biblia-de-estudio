@@ -1,0 +1,21 @@
+{
+ "1-lector": {
+  "x": 546,
+  "y": 1200
+ },
+ "2-panel": {
+  "x": 601,
+  "y": 1696
+ },
+ "3-resaltado": {
+  "x": 152,
+  "y": 2095
+ },
+ "4-nota": {
+  "x": 541,
+  "y": 3803
+ },
+ "5-con-nota": null,
+ "6-mis-notas": null,
+ "7-exportar": null
+}

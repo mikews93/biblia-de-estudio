@@ -1,0 +1,357 @@
+{
+ "hook": {
+  "duration": 3.474,
+  "speechStart": 0.057,
+  "speechEnd": 3.28,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Qué",
+    "start": 0.057,
+    "end": 0.08
+   },
+   {
+    "w": "pasaba",
+    "start": 0.16,
+    "end": 0.56
+   },
+   {
+    "w": "en",
+    "start": 0.6,
+    "end": 0.64
+   },
+   {
+    "w": "Egipto…",
+    "start": 0.72,
+    "end": 1.36
+   },
+   {
+    "w": "mientras",
+    "start": 1.8,
+    "end": 2.16
+   },
+   {
+    "w": "reinaba",
+    "start": 2.24,
+    "end": 2.64
+   },
+   {
+    "w": "Josafat?",
+    "start": 2.76,
+    "end": 3.28
+   }
+  ]
+ },
+ "linea": {
+  "duration": 5.721,
+  "speechStart": 0,
+  "speechEnd": 5.68,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "la",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "línea",
+    "start": 1.2,
+    "end": 1.36
+   },
+   {
+    "w": "de",
+    "start": 1.44,
+    "end": 1.52
+   },
+   {
+    "w": "tiempo",
+    "start": 1.6,
+    "end": 1.92
+   },
+   {
+    "w": "pone",
+    "start": 2,
+    "end": 2.24
+   },
+   {
+    "w": "la",
+    "start": 2.28,
+    "end": 2.32
+   },
+   {
+    "w": "Biblia",
+    "start": 2.4,
+    "end": 2.72
+   },
+   {
+    "w": "junto",
+    "start": 2.76,
+    "end": 2.96
+   },
+   {
+    "w": "a",
+    "start": 3,
+    "end": 3.04
+   },
+   {
+    "w": "la",
+    "start": 3.08,
+    "end": 3.12
+   },
+   {
+    "w": "historia",
+    "start": 3.28,
+    "end": 3.52
+   },
+   {
+    "w": "del",
+    "start": 3.6,
+    "end": 3.68
+   },
+   {
+    "w": "mundo,",
+    "start": 3.72,
+    "end": 4.32
+   },
+   {
+    "w": "siglo",
+    "start": 4.4,
+    "end": 4.72
+   },
+   {
+    "w": "a",
+    "start": 4.8,
+    "end": 4.88
+   },
+   {
+    "w": "siglo.",
+    "start": 5,
+    "end": 5.68
+   }
+  ]
+ },
+ "familias": {
+  "duration": 6.531,
+  "speechStart": 0,
+  "speechEnd": 6.48,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Y",
+    "start": 0,
+    "end": 0.04
+   },
+   {
+    "w": "en",
+    "start": 0.08,
+    "end": 0.16
+   },
+   {
+    "w": "las",
+    "start": 0.24,
+    "end": 0.32
+   },
+   {
+    "w": "familias",
+    "start": 0.4,
+    "end": 0.8
+   },
+   {
+    "w": "de",
+    "start": 0.84,
+    "end": 0.88
+   },
+   {
+    "w": "la",
+    "start": 0.92,
+    "end": 0.96
+   },
+   {
+    "w": "Biblia",
+    "start": 1.04,
+    "end": 1.52
+   },
+   {
+    "w": "buscas",
+    "start": 1.6,
+    "end": 1.92
+   },
+   {
+    "w": "a",
+    "start": 1.96,
+    "end": 2
+   },
+   {
+    "w": "cualquier",
+    "start": 2.04,
+    "end": 2.48
+   },
+   {
+    "w": "persona:",
+    "start": 2.56,
+    "end": 3.44
+   },
+   {
+    "w": "sus",
+    "start": 3.52,
+    "end": 3.76
+   },
+   {
+    "w": "padres,",
+    "start": 3.88,
+    "end": 4.4
+   },
+   {
+    "w": "sus",
+    "start": 4.48,
+    "end": 4.64
+   },
+   {
+    "w": "hijos",
+    "start": 4.72,
+    "end": 5.28
+   },
+   {
+    "w": "y",
+    "start": 5.32,
+    "end": 5.36
+   },
+   {
+    "w": "su",
+    "start": 5.44,
+    "end": 5.52
+   },
+   {
+    "w": "linaje.",
+    "start": 5.64,
+    "end": 6.48
+   }
+  ]
+ },
+ "linaje": {
+  "duration": 5.146,
+  "speechStart": 0,
+  "speechEnd": 4.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "De",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "Jesús",
+    "start": 0.16,
+    "end": 0.64
+   },
+   {
+    "w": "hasta",
+    "start": 0.72,
+    "end": 1.04
+   },
+   {
+    "w": "Adán…",
+    "start": 1.12,
+    "end": 1.44
+   },
+   {
+    "w": "sesenta",
+    "start": 2,
+    "end": 2.32
+   },
+   {
+    "w": "y",
+    "start": 2.4,
+    "end": 2.48
+   },
+   {
+    "w": "cuatro",
+    "start": 2.52,
+    "end": 2.72
+   },
+   {
+    "w": "generaciones,",
+    "start": 2.8,
+    "end": 3.6
+   },
+   {
+    "w": "a",
+    "start": 3.96,
+    "end": 4
+   },
+   {
+    "w": "un",
+    "start": 4.08,
+    "end": 4.16
+   },
+   {
+    "w": "toque.",
+    "start": 4.24,
+    "end": 4.56
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.362,
+  "speechStart": 0.16,
+  "speechEnd": 4.16,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.16,
+    "end": 0.64
+   },
+   {
+    "w": "La",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "Biblia",
+    "start": 1.28,
+    "end": 1.52
+   },
+   {
+    "w": "de",
+    "start": 1.6,
+    "end": 1.64
+   },
+   {
+    "w": "estudio…",
+    "start": 1.68,
+    "end": 2.24
+   },
+   {
+    "w": "gratis",
+    "start": 2.92,
+    "end": 3.2
+   },
+   {
+    "w": "en",
+    "start": 3.28,
+    "end": 3.44
+   },
+   {
+    "w": "Google",
+    "start": 3.52,
+    "end": 3.76
+   },
+   {
+    "w": "Play.",
+    "start": 3.84,
+    "end": 4.16
+   }
+  ]
+ }
+}

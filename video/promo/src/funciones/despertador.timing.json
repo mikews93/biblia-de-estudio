@@ -1,0 +1,342 @@
+{
+ "hook": {
+  "duration": 3.474,
+  "speechStart": 0.057,
+  "speechEnd": 3.28,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Y",
+    "start": 0.057,
+    "end": 0.08
+   },
+   {
+    "w": "si",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "lo",
+    "start": 0.32,
+    "end": 0.4
+   },
+   {
+    "w": "primero",
+    "start": 0.52,
+    "end": 0.72
+   },
+   {
+    "w": "que",
+    "start": 0.8,
+    "end": 0.88
+   },
+   {
+    "w": "oyes",
+    "start": 0.96,
+    "end": 1.2
+   },
+   {
+    "w": "en",
+    "start": 1.28,
+    "end": 1.36
+   },
+   {
+    "w": "la",
+    "start": 1.4,
+    "end": 1.44
+   },
+   {
+    "w": "mañana…",
+    "start": 1.52,
+    "end": 2
+   },
+   {
+    "w": "fuera",
+    "start": 2.4,
+    "end": 2.64
+   },
+   {
+    "w": "la",
+    "start": 2.72,
+    "end": 2.8
+   },
+   {
+    "w": "Palabra?",
+    "start": 2.88,
+    "end": 3.28
+   }
+  ]
+ },
+ "hora": {
+  "duration": 3.709,
+  "speechStart": 0,
+  "speechEnd": 3.68,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.16,
+    "end": 0.8
+   },
+   {
+    "w": "elige",
+    "start": 0.88,
+    "end": 1.2
+   },
+   {
+    "w": "a",
+    "start": 1.28,
+    "end": 1.36
+   },
+   {
+    "w": "qué",
+    "start": 1.44,
+    "end": 1.52
+   },
+   {
+    "w": "hora",
+    "start": 1.64,
+    "end": 1.76
+   },
+   {
+    "w": "te",
+    "start": 1.8,
+    "end": 1.84
+   },
+   {
+    "w": "despierta",
+    "start": 1.96,
+    "end": 2.56
+   },
+   {
+    "w": "y",
+    "start": 2.6,
+    "end": 2.64
+   },
+   {
+    "w": "qué",
+    "start": 2.72,
+    "end": 2.8
+   },
+   {
+    "w": "días.",
+    "start": 2.88,
+    "end": 3.68
+   }
+  ]
+ },
+ "suena": {
+  "duration": 5.642,
+  "speechStart": 0,
+  "speechEnd": 4.96,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Escoge",
+    "start": 0,
+    "end": 0.4
+   },
+   {
+    "w": "qué",
+    "start": 0.48,
+    "end": 0.64
+   },
+   {
+    "w": "suena:",
+    "start": 0.72,
+    "end": 1.04
+   },
+   {
+    "w": "el",
+    "start": 1.68,
+    "end": 1.72
+   },
+   {
+    "w": "versículo",
+    "start": 1.76,
+    "end": 2.24
+   },
+   {
+    "w": "del",
+    "start": 2.32,
+    "end": 2.4
+   },
+   {
+    "w": "día,",
+    "start": 2.6,
+    "end": 2.8
+   },
+   {
+    "w": "tu",
+    "start": 3.08,
+    "end": 3.12
+   },
+   {
+    "w": "lectura…",
+    "start": 3.2,
+    "end": 3.68
+   },
+   {
+    "w": "o",
+    "start": 4.2,
+    "end": 4.24
+   },
+   {
+    "w": "solo",
+    "start": 4.32,
+    "end": 4.48
+   },
+   {
+    "w": "música.",
+    "start": 4.56,
+    "end": 4.96
+   }
+  ]
+ },
+ "amanece": {
+  "duration": 6.531,
+  "speechStart": 0,
+  "speechEnd": 6.48,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Al",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "tocar",
+    "start": 0.16,
+    "end": 0.4
+   },
+   {
+    "w": "el",
+    "start": 0.44,
+    "end": 0.48
+   },
+   {
+    "w": "aviso,",
+    "start": 0.56,
+    "end": 1.2
+   },
+   {
+    "w": "amanece",
+    "start": 1.28,
+    "end": 1.76
+   },
+   {
+    "w": "en",
+    "start": 1.8,
+    "end": 1.84
+   },
+   {
+    "w": "la",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "pantalla,",
+    "start": 2.04,
+    "end": 2.96
+   },
+   {
+    "w": "suena",
+    "start": 3.04,
+    "end": 3.28
+   },
+   {
+    "w": "música",
+    "start": 3.32,
+    "end": 3.68
+   },
+   {
+    "w": "suave…",
+    "start": 3.76,
+    "end": 4.56
+   },
+   {
+    "w": "y",
+    "start": 4.64,
+    "end": 4.72
+   },
+   {
+    "w": "te",
+    "start": 4.8,
+    "end": 4.88
+   },
+   {
+    "w": "leen",
+    "start": 5,
+    "end": 5.12
+   },
+   {
+    "w": "el",
+    "start": 5.2,
+    "end": 5.28
+   },
+   {
+    "w": "versículo.",
+    "start": 5.4,
+    "end": 6.48
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.127,
+  "speechStart": 0.2,
+  "speechEnd": 3.92,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.2,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "Biblia",
+    "start": 1.28,
+    "end": 1.6
+   },
+   {
+    "w": "de",
+    "start": 1.64,
+    "end": 1.68
+   },
+   {
+    "w": "estudio…",
+    "start": 1.8,
+    "end": 2.56
+   },
+   {
+    "w": "gratis",
+    "start": 2.64,
+    "end": 3.12
+   },
+   {
+    "w": "en",
+    "start": 3.2,
+    "end": 3.28
+   },
+   {
+    "w": "Google",
+    "start": 3.4,
+    "end": 3.52
+   },
+   {
+    "w": "Play.",
+    "start": 3.6,
+    "end": 3.92
+   }
+  ]
+ }
+}

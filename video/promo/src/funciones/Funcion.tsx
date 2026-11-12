@@ -1,0 +1,199 @@
+import {AbsoluteFill, Html5Audio, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {bedVolume, has, MUSIC, type VoTiming} from '../audio';
+import {Llama} from '../components/Llama';
+import {ease, glide, progress} from '../motion';
+import {c, fonts} from '../theme';
+import {Headline, Phone, phoneSize, Screens, type Shot, Sky} from '../film/kit';
+import {FUNCIONES, type Funcion as Datos} from './datos';
+
+/**
+ * Un video vertical (9:16) por función de Zarza para Reels, Shorts y TikTok: la llama y una pregunta,
+ * el teléfono con las pantallas reales mientras Abel explica, y el cierre. Lleva sus propios subtítulos
+ * abajo (Mike prefirió no tener los de Rvela a media pantalla) y la música del promo bajo la voz.
+ * Rvela se usa para programarlos y publicarlos.
+ */
+const FPS = 30;
+const GAP = 0.55; // aire entre frases (s)
+const START = 0.4;
+
+/** Cuándo empieza cada frase (cuadro), una detrás de otra. */
+export const plan = (d: Datos) => {
+  const ids = Object.keys(d.timing);
+  const at: Record<string, number> = {};
+  let t = START;
+  for (const id of ids) {
+    at[id] = Math.round(t * FPS);
+    t += d.timing[id].speechEnd + GAP;
+    // Un trozo del audio real de la app (el pódcast, el dramatizado) suena después de esta frase.
+    if (d.clip?.after === id) {
+      at['@clip'] = Math.round(t * FPS);
+      t += d.clip.dur + GAP;
+    }
+  }
+  const last = ids[ids.length - 1];
+  const total = at[last] + Math.ceil((d.timing[last].duration + 1.6) * FPS);
+  return {ids, at, total, cta: at[last]};
+};
+
+const wordAt = (t: VoTiming, word: string) => t.words.find((w) => w.w === word)?.start ?? 0;
+
+export const duracion = (id: string) => plan(FUNCIONES[id]).total;
+
+// Titular arriba, teléfono en medio y una franja libre abajo para los subtítulos.
+const SCREEN_H = 1200;
+const PHONE_Y = 1125;
+
+export const Funcion = ({id}: {id: string}) => {
+  const d = FUNCIONES[id];
+  const f = useCurrentFrame();
+  const {fps, width, height} = useVideoConfig();
+  const {ids, at, cta, total} = plan(d);
+  const phoneIn = at[ids[1]] - 8;
+  const leave = progress(f, cta - 6, 20, ease.exitIn);
+  const enter = glide(f, fps, phoneIn);
+  const ph = phoneSize(SCREEN_H);
+  const py = PHONE_Y + (1 - enter) * height * 0.75 + leave * height * 0.3;
+  const breathe = 1 + Math.min(1, Math.max(0, (f - phoneIn) / 900)) * 0.035;
+
+  const shots: Shot[] = d.pantallas.map((p) => {
+    const offset = p.t ?? (p.word ? wordAt(d.timing[p.line], p.word) : 0);
+    const base = at[p.line] + Math.round(offset * FPS) + (p.delay ?? 0);
+    const tap = d.taps[p.src];
+    // Un toque fuera de la pantalla (un botón al fondo de la página) no se marca.
+    return {at: base, src: `funciones/${id}/${p.src}`, tap: tap && tap.y < 2402 ? tap : undefined};
+  });
+  shots[0] = {...shots[0], at: phoneIn};
+  // El último toque no lleva a otra pantalla: se quita.
+  shots[shots.length - 1] = {...shots[shots.length - 1], tap: undefined};
+
+  // La música baja también bajo el audio real.
+  const timing: Record<string, VoTiming> = {...d.timing, ...(d.clip ? {'@clip': {duration: d.clip.dur, speechStart: 0, speechEnd: d.clip.dur, method: 'clip', words: []}} : {})};
+  const cues = [...ids, ...(d.clip ? ['@clip'] : [])].map((x) => ({id: x, at: at[x]}));
+  const glowOn = progress(f, phoneIn, 40) - progress(f, cta, 30);
+  const titulares = d.titulares.map((h, i) => {
+    const from = at[h.line] - 4;
+    const next = d.titulares[i + 1] ? at[d.titulares[i + 1].line] - 8 : cta - 6;
+    return {...h, from, to: next};
+  });
+
+  return (
+    <AbsoluteFill style={{overflow: 'hidden', fontFamily: fonts.sans}}>
+      <Sky glowX={width / 2} glowY={interpolate(glowOn, [0, 1], [height * 0.42, py])} glow={1} />
+      {f < phoneIn + 30 && <Hook d={d} start={at[ids[0]]} out={phoneIn} />}
+      {f >= phoneIn - 2 && f < cta + 30 && (
+        <Phone screenH={SCREEN_H} style={{left: width / 2 - ph.w / 2, top: py - ph.h / 2, opacity: 1 - leave, transform: `scale(${breathe}) rotate(${(1 - enter) * 4}deg)`, zIndex: 3}}>
+          <Screens shots={shots} screenH={SCREEN_H} />
+        </Phone>
+      )}
+      <div style={{position: 'absolute', left: 0, right: 0, top: 250, transform: 'translateY(-50%)', display: 'flex', justifyContent: 'center', zIndex: 5}}>
+        {titulares.map((h) => (
+          <Headline key={h.line} eyebrow={h.eyebrow} title={h.title} from={h.from} to={h.to} size={72} align="center" maxWidth={960} />
+        ))}
+      </div>
+      {f >= cta && <Cta at={cta} />}
+      {f >= phoneIn && f < cta && <Subtitulos d={d} at={at} ids={ids.slice(1, -1)} />}
+      {d.clip && <ClipSubtitulos clip={d.clip} at={at['@clip']} />}
+      {has(MUSIC) && <Html5Audio src={staticFile(MUSIC)} volume={(fr) => bedVolume(fr, cues, total, 4, 30, timing)} />}
+      {d.clip && (
+        <Sequence from={at['@clip']} durationInFrames={Math.round(d.clip.dur * FPS)} layout="none">
+          <Html5Audio src={staticFile(d.clip.src)} trimBefore={Math.round(d.clip.from * FPS)} volume={(fr) => interpolate(fr, [0, 6, d.clip!.dur * FPS - 10, d.clip!.dur * FPS], [0, 1, 1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})} />
+        </Sequence>
+      )}
+      {ids.map((line) => (
+        <Sequence key={line} from={at[line]} durationInFrames={Math.ceil(d.timing[line].duration * FPS) + 2} layout="none">
+          <Html5Audio src={staticFile(`vo/funciones/${id}/${line}.mp3`)} />
+        </Sequence>
+      ))}
+    </AbsoluteFill>
+  );
+};
+
+/** La llama y la pregunta, palabra por palabra mientras Abel la dice. */
+const Hook = ({d, start, out: outAt}: {d: Datos; start: number; out: number}) => {
+  const f = useCurrentFrame();
+  const out = progress(f, outAt - 14, 20, ease.exitIn);
+  const words = d.timing[d.hook].words;
+  return (
+    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 70, opacity: 1 - out, transform: `translateY(${-out * 60}px)`}}>
+      <div style={{transform: `scale(${1 + f * 0.0006})`}}>
+        <Llama size={380} start={2} />
+      </div>
+      <div style={{fontFamily: fonts.display, fontSize: 76, color: c.text, textAlign: 'center', letterSpacing: -1, padding: '0 80px', lineHeight: 1.12}}>
+        {words.map((w, i) => {
+          const t = progress(f, start + Math.round(w.start * FPS) - 2, 16, ease.expoOut);
+          return (
+            <span key={i}>
+              <span style={{display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', paddingBottom: 14, marginBottom: -14}}>
+                <span style={{display: 'inline-block', transform: `translateY(${(1 - t) * 110}%)`}}>{w.w}</span>
+              </span>{' '}
+            </span>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+/** Subtítulos abajo, bajo el teléfono: trozos de hasta 5 palabras; la palabra dicha se enciende. */
+const Subtitulos = ({d, at, ids}: {d: Datos; at: Record<string, number>; ids: string[]}) => {
+  const f = useCurrentFrame();
+  for (const id of ids) {
+    const t = d.timing[id];
+    const rel = (f - at[id]) / FPS;
+    if (rel < t.speechStart - 0.1 || rel > t.speechEnd + 0.4) continue;
+    const chunks: (typeof t.words)[] = [[]];
+    for (const w of t.words) {
+      const cur = chunks[chunks.length - 1];
+      cur.push(w);
+      if (cur.length >= 5 || /[,.…:]$/.test(w.w)) chunks.push([]);
+    }
+    const chunk = chunks.filter((ch) => ch.length).find((ch, i, all) => rel < (all[i + 1]?.[0].start ?? Infinity) - 0.05) ?? [];
+    return (
+      <div style={{position: 'absolute', left: 50, right: 50, bottom: 70, display: 'flex', justifyContent: 'center', flexWrap: 'wrap', columnGap: 14, zIndex: 9}}>
+        {chunk.map((w, i) => (
+          <span key={i} style={{fontFamily: fonts.sans, fontWeight: 700, fontSize: 52, color: rel >= w.start ? c.text : 'rgba(236,234,230,0.38)', textShadow: '0 2px 18px rgba(0,0,0,0.85)'}}>
+            {w.w}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+/** Lo que se oye del audio real, con quién habla: «Ana — …». */
+const ClipSubtitulos = ({clip, at}: {clip: NonNullable<Datos['clip']>; at: number}) => {
+  const f = useCurrentFrame();
+  const rel = (f - at) / FPS;
+  const linea = [...clip.lineas].reverse().find((l) => rel >= l.t);
+  if (rel < 0 || rel > clip.dur || !linea) return null;
+  return (
+    <div style={{position: 'absolute', left: 60, right: 60, bottom: 34, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, zIndex: 9}}>
+      <span style={{fontFamily: fonts.sans, fontWeight: 600, fontSize: 26, letterSpacing: 3, color: c.warm}}>{linea.quien.toUpperCase()}</span>
+      <span style={{fontFamily: fonts.display, fontStyle: 'italic', fontSize: 40, lineHeight: 1.12, textAlign: 'center', color: c.text, textShadow: '0 2px 18px rgba(0,0,0,0.85)'}}>{linea.texto}</span>
+    </div>
+  );
+};
+
+const Cta = ({at: start}: {at: number}) => {
+  const f = useCurrentFrame();
+  const at = start + 6;
+  const name = progress(f, at + 14, 22, ease.expoOut);
+  const motto = progress(f, at + 34, 22, ease.expoOut);
+  const store = progress(f, at + 56, 20, ease.quintOut);
+  return (
+    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', flexDirection: 'column'}}>
+      <Llama size={340} start={at} glow={1.3} />
+      <div style={{overflow: 'hidden', marginTop: 20}}>
+        <div style={{fontFamily: fonts.display, fontSize: 160, color: c.text, letterSpacing: -3, lineHeight: 1.1, transform: `translateY(${(1 - name) * 105}%)`}}>Zarza</div>
+      </div>
+      <div style={{fontFamily: fonts.display, fontStyle: 'italic', fontSize: 52, color: c.warm, opacity: motto, transform: `translateY(${(1 - motto) * 20}px)`, marginTop: 4}}>
+        La Biblia de estudio
+      </div>
+      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, marginTop: 70, opacity: store, transform: `translateY(${(1 - store) * 24}px)`}}>
+        <div style={{fontFamily: fonts.sans, fontWeight: 600, fontSize: 40, color: c.night, background: c.warm, padding: '22px 44px', borderRadius: 999}}>Gratis en Google Play</div>
+        <div style={{fontFamily: fonts.sans, fontWeight: 500, fontSize: 40, color: c.text, letterSpacing: 0.5}}>zarzabiblia.com</div>
+      </div>
+    </AbsoluteFill>
+  );
+};

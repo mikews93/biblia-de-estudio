@@ -1,0 +1,40 @@
+{
+ "voice": {
+  "name": "Abel",
+  "voiceId": "452WrNT9o8dphaYW5YGU",
+  "model": "eleven_v4"
+ },
+ "_": "Video vertical de «Eventos de la iglesia» (src/funciones/Funcion.tsx).",
+ "lines": [
+  {
+   "id": "hook",
+   "at": 0,
+   "text": "[warm] ¿Y si la iglesia siguiera el sermón en su teléfono?"
+  },
+  {
+   "id": "publicar",
+   "at": 0,
+   "text": "Quien predica publica su mensaje del Taller como evento… con un código y un QR."
+  },
+  {
+   "id": "entrar",
+   "at": 0,
+   "text": "La congregación entra con el código, sin cuenta."
+  },
+  {
+   "id": "vivo",
+   "at": 0,
+   "text": "Cada punto aparece cuando se predica: abren los versículos y toman notas."
+  },
+  {
+   "id": "final",
+   "at": 0,
+   "text": "Al terminar, se llevan el mensaje y sus notas… y comparten lo que oyeron."
+  },
+  {
+   "id": "cta",
+   "at": 0,
+   "text": "[warm] Zarza. La Biblia de estudio… gratis en Google Play."
+  }
+ ]
+}
