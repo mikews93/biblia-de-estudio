@@ -9,6 +9,7 @@ on:
   push:
     paths:
       - pipeline/audio_dramatizado/*.json
+      - "!pipeline/audio_dramatizado/voces-*.json"
       - pipeline/audio_dramatizado/grabar.py
       - .github/workflows/audio-dramatizado.yml
   workflow_dispatch:
@@ -66,8 +67,19 @@ jobs:
       - name: Grabar
         run: |
           guiones="${{ github.event.inputs.guiones }}"
-          if [ -z "$guiones" ]; then
-            guiones=$(ls pipeline/audio_dramatizado/*.json | xargs -n1 basename | sed 's/\.json$//')
+          if [ -z "$guiones" ] && [ "${{ github.event_name }}" = push ]; then
+            # En un push solo se graban los guiones que cambiaron en ese push: tocar la acción o grabar.py no vuelve a
+            # grabar (ni a gastar créditos en) los capítulos ya publicados. Para regrabar uno, lánzala a mano.
+            antes="${{ github.event.before }}"
+            git cat-file -e "$antes^{commit}" 2>/dev/null || antes="HEAD~1"
+            for f in $(git diff --name-only "$antes" HEAD -- 'pipeline/audio_dramatizado/*.json'); do
+              g=$(basename "$f" .json)
+              case "$g" in voces-*) continue ;; esac
+              [ -f "$f" ] && guiones="$guiones $g"
+            done
+            if [ -z "$guiones" ]; then echo "Ningún guion cambió: no se graba nada."; exit 0; fi
+          elif [ -z "$guiones" ]; then
+            guiones=$(ls pipeline/audio_dramatizado/*.json | xargs -n1 basename | grep -v '^voces-' | sed 's/\.json$//')
           fi
           audicion="${{ github.event.inputs.audicion }}"
           pruebas="${{ github.event.inputs.pruebas }}"

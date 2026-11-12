@@ -60,6 +60,7 @@ import { type Book as LibroCompleto, Biblia, commentaryBlocks, fichasDe, load, R
 import { codificarMp3, codificarMp3Estereo, decodificarMp3, decodificarMp3Estereo } from './_mp3';
 import { mudas, reemplazar } from './podcast-grabado';
 import { esCuidador } from './_senales';
+import { conClaude } from './_quilate';
 import { waitUntil } from './_seguir';
 
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
@@ -1154,29 +1155,32 @@ async function escribirGuion(where: Target, versos: [number, string][], fondoTex
   const version = versions.find((v) => v.id === where.version) ?? { abbr: where.version.toUpperCase(), name: where.version };
   const client = new Anthropic({ maxRetries: 1, timeout: 260_000 });
   const [fichasTexto, lista] = await Promise.all([fichas(), bibliotecaSonidos()]);
-  const message = await client.messages
-    .stream({
-      model: MODELO_IA,
-      max_tokens: 32000,
-      // Un capítulo corto se piensa más (la hoja de dirección); uno largo, con menos, para no pasarse del tiempo.
-      output_config: { effort: versos.length <= ESFUERZO_HASTA ? 'medium' : 'low' },
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM + textoBiblioteca(lista) + (fichasTexto ? `\n\nFichas de personajes y de la voz de Dios:\n\n${fichasTexto}` : ''),
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content:
-            (fondoTexto ? `Trasfondo de ${libro} ${where.chapter} para ambientarlo (no se lee en voz alta):\n\n${fondoTexto}\n\n---\n\n` : '') +
-            `Capítulo: ${libro} ${where.chapter} (${version.name}, ${version.abbr}).\n\n${versos.map(([n, t]) => `${n} ${t}`).join('\n')}`,
-        },
-      ],
-    })
-    .finalMessage();
+  const pedido = `${libro} ${where.chapter} (${version.abbr})`;
+  const message = await conClaude('Guion dramatizado', { fn: 'dramatizado', model: MODELO_IA, input: pedido }, () =>
+    client.messages
+      .stream({
+        model: MODELO_IA,
+        max_tokens: 32000,
+        // Un capítulo corto se piensa más (la hoja de dirección); uno largo, con menos, para no pasarse del tiempo.
+        output_config: { effort: versos.length <= ESFUERZO_HASTA ? 'medium' : 'low' },
+        system: [
+          {
+            type: 'text',
+            text: SYSTEM + textoBiblioteca(lista) + (fichasTexto ? `\n\nFichas de personajes y de la voz de Dios:\n\n${fichasTexto}` : ''),
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages: [
+          {
+            role: 'user',
+            content:
+              (fondoTexto ? `Trasfondo de ${libro} ${where.chapter} para ambientarlo (no se lee en voz alta):\n\n${fondoTexto}\n\n---\n\n` : '') +
+              `Capítulo: ${libro} ${where.chapter} (${version.name}, ${version.abbr}).\n\n${versos.map(([n, t]) => `${n} ${t}`).join('\n')}`,
+          },
+        ],
+      })
+      .finalMessage(),
+  );
   return message.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('\n');
 }
 

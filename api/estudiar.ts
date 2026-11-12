@@ -47,6 +47,7 @@ import {
 } from './_investigar';
 import { corregirRespuesta } from './_corregir';
 import { fuentesDetalladas } from './_detalle';
+import { Span, enviarTrazas, quilate, textoDe } from './_quilate';
 import { guardarPregunta } from './_preguntas';
 import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
 import { Registro, detener, reanudar } from './_reanudar';
@@ -1423,7 +1424,8 @@ async function palabraPost(request: Request, body: Body) {
     },
   ];
   const system = SYSTEM + PALABRA_SYSTEM + versionSystem(version);
-  return streamAnswer(request, docs, messages, system, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true, lector);
+  const traza = { fn: tool === 'palabra' ? 'palabra' : 'palabra-podcast', nombre: `Historia de la palabra ${palabra.id}` };
+  return streamAnswer(request, traza, docs, messages, system, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true, lector);
 }
 
 /**
@@ -1473,7 +1475,7 @@ async function temaPost(request: Request, body: Body) {
   ];
   const preparar = body.tema.preparar === true;
   const system = SYSTEM + (preparar ? BORRADOR_SYSTEM : TALLER_SYSTEM) + TEMA_SYSTEM + versionSystem(version) + TOOLS_SYSTEM + (preparar ? WEB_SYSTEM : '');
-  return streamAnswer(request, docs, messages, system, MODEL_PROPIO, async () => {}, biblia, false, undefined, Registro.de(request, body.seguir), preparar);
+  return streamAnswer(request, { fn: 'tema', nombre: 'Taller desde un tema' }, docs, messages, system, MODEL_PROPIO, async () => {}, biblia, false, undefined, Registro.de(request, body.seguir), preparar);
 }
 
 // La transcripción de un video de YouTube con Gemini, para que la persona la vea y la use al preparar. Sin la clave,
@@ -1545,6 +1547,7 @@ async function preguntaPost(request: Request, body: Body) {
   const system = SYSTEM + PREGUNTA_SYSTEM + versionSystem(version, true) + TOOLS_SYSTEM + (jovenes ? JOVENES_SYSTEM : '');
   return streamAnswer(
     request,
+    { fn: 'pregunta', nombre: 'Pregunta del buscador' },
     [],
     messages,
     system,
@@ -1746,8 +1749,12 @@ export async function POST(request: Request) {
     (investiga ? TOOLS_SYSTEM : '') +
     (detallado ? PROFUNDO_SYSTEM : podcast ? PODCAST_SYSTEM : '') +
     (jovenes ? JOVENES_SYSTEM : '');
+  const fn = frecuente ? 'frecuente' : semana ? 'semana' : taller ? 'taller' : herramienta ? herramienta : turns.length ? 'seguimiento' : focus && verse ? 'palabra-del-versiculo' : devocional ? 'devocional' : 'estudio';
+  const pasaje = `${book.name} ${chapter}${verse ? `:${verse}` : ''}`;
+  const nombre = fn === 'estudio' ? `Estudio de ${pasaje}` : fn === 'seguimiento' ? `Pregunta sobre ${pasaje}` : `${fn}: ${pasaje}`;
   return streamAnswer(
     request,
+    { fn, nombre },
     docs,
     messages,
     system,
@@ -1900,6 +1907,8 @@ export function sumarRespuesta(history: Anthropic.Beta.BetaMessageParam[], conte
  */
 function streamAnswer(
   request: Request,
+  /** Cómo se llama esta respuesta en Quilate (api/_quilate.ts) y qué función de la app la pidió. */
+  traza: { fn: string; nombre: string },
   docs: Doc[],
   messages: Anthropic.Beta.BetaMessageParam[],
   system: string,
@@ -1937,13 +1946,19 @@ function streamAnswer(
           controller.close();
         }
         await registro?.cerrar();
+        enviarTrazas();
       });
       if (sigue) waitUntil(work);
       await work;
     },
   });
 
-  async function generate(send: (event: object) => void) {
+  // La respuesta entera es una traza: de la persona va lo que escribió (o el encargo), nunca los documentos del pasaje.
+  function generate(send: (event: object) => void) {
+    return quilate.span(traza.nombre, { kind: 'chain', fn: traza.fn, input: textoDe(messages.at(-1)?.content) }, (raiz) => responder(send, raiz));
+  }
+
+  async function responder(send: (event: object) => void, raiz: Span) {
     const sources = new Map<string, number>();
     // Bloques de cada search_result que devolvieron las herramientas, en el orden en que la IA los recibió.
     const results: BlockMeta[][] = [];
@@ -1967,7 +1982,7 @@ function streamAnswer(
     const history = [...messages];
     // Una vuelta con la IA. «enviado» dice si ya llegó texto a la persona: entonces no se puede repetir.
     let enviado = false;
-    const vuelta = async (last: boolean) => {
+    const vuelta = (last: boolean, round: number) => quilate.span(`Vuelta ${round + 1}`, { kind: 'model', model, input: textoDe(history.at(-1)?.content) }, async (paso) => {
       const pending = new Map<number, Set<number>>();
       const response = client.beta.messages.stream(
         {
@@ -2008,8 +2023,14 @@ function streamAnswer(
           pending.delete(event.index);
         }
       }
-      return response.finalMessage();
-    };
+      const final = await response.finalMessage();
+      paso.inputTokens = final.usage.input_tokens;
+      paso.outputTokens = final.usage.output_tokens;
+      paso.cacheReadTokens = final.usage.cache_read_input_tokens ?? 0;
+      paso.cacheWriteTokens = final.usage.cache_creation_input_tokens ?? 0;
+      paso.output = { texto: textoDe(final.content), herramientas: final.content.flatMap((b) => (b.type === 'tool_use' ? [b.name] : [])) };
+      return final;
+    });
     try {
       for (let round = 0; ; round++) {
         const last = !biblia || round >= MAX_ROUNDS;
@@ -2017,7 +2038,7 @@ function streamAnswer(
         for (let intento = 1; ; intento++) {
           const antes = enviado;
           try {
-            final = await vuelta(last);
+            final = await vuelta(last, round);
             break;
           } catch (err) {
             const nuevo = enviado && !antes;
@@ -2051,7 +2072,15 @@ function streamAnswer(
           }
           const inputs = calls.map((call) => (call.input && typeof call.input === 'object' ? (call.input as Record<string, unknown>) : {}));
           calls.forEach((call, i) => send({ type: 'paso', ...pasoDe(call.name, inputs[i], biblia) }));
-          const done = await Promise.all(calls.map((call, i) => investigar(call.name, inputs[i], biblia)));
+          const done = await Promise.all(
+            calls.map((call, i) =>
+              quilate.span(call.name, { kind: 'tool', input: inputs[i] }, async (paso) => {
+                const hecho = await investigar(call.name, inputs[i], biblia);
+                paso.output = { resultados: hecho.results.length };
+                return hecho;
+              }),
+            ),
+          );
           done.forEach((d) => results.push(...d.results));
           sumarRespuesta(history, completa);
           history.push({ role: 'user', content: respuestas(calls, done) });
@@ -2077,6 +2106,7 @@ function streamAnswer(
       }
     } catch (err) {
       console.error('estudiar', detalle(err), err);
+      raiz.error = String(detalle(err));
       const message =
         err instanceof Anthropic.RateLimitError
           ? 'Hay muchas consultas ahora mismo. Inténtalo en un momento.'
@@ -2084,6 +2114,8 @@ function streamAnswer(
             ? 'Falta configurar la clave de la IA en el servidor.'
             : 'No se pudo generar el estudio. Inténtalo de nuevo.';
       send({ type: 'error', message });
+    } finally {
+      raiz.output = texto;
     }
   }
 

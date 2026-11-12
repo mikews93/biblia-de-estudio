@@ -59,6 +59,8 @@ jobs:
       - run: npm run build:web
       - name: Pruebas unitarias
         run: npm test
+      - name: Pruebas de los casos de Quilate
+        run: python3 -m unittest discover -s pipeline/quilate
       - name: Navegador para Playwright
         run: npx playwright install --with-deps chromium
       - name: Pruebas e2e
