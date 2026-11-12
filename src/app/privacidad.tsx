@@ -15,7 +15,7 @@ import {
 // La política de privacidad que piden las tiendas (App Store y Google Play), también en
 // https://zarzabiblia.com/privacidad. Si cambia lo que la app guarda o a quién lo envía, hay que cambiarla aquí
 // y en las fichas de las tiendas (etiquetas de privacidad y «Seguridad de los datos»).
-const ACTUALIZADA = '25 de octubre de 2026';
+const ACTUALIZADA = '12 de noviembre de 2026';
 
 const PARTES: Parte[] = [
   {
@@ -45,6 +45,8 @@ const PARTES: Parte[] = [
       'Para preparar estudios y responder preguntas, enviamos el pasaje y lo que escribes a Anthropic (Claude). No enviamos tu nombre ni tu correo.',
       'Anthropic no usa esos datos para entrenar sus modelos. Los estudios generales de cada pasaje se guardan para que todos los lean sin volver a pedirlos.',
       'En el teléfono te pedimos permiso antes de la primera vez.',
+      'Para revisar que la IA responde bien, guardamos cada pedido a la IA y su respuesta (lo que escribiste, el pasaje y lo que contestó) en Quilate, nuestra herramienta propia de revisión. Sin tu nombre, tu correo ni tu cuenta. Solo la ve el equipo de Zarza y no se comparte con nadie.',
+      'Si pegas un enlace de un video de YouTube, se lo enviamos a Google (Gemini) para sacar lo que se dice en él. Solo el enlace, nada tuyo.',
       'Tus preguntas sobre un pasaje pueden ayudar a otros: se guardan sin tu nombre ni tu cuenta, después de borrar correos, teléfonos y enlaces. Una pregunta solo se publica si la hicieron al menos cinco personas, con otras palabras y revisada. Lo apagas con «No compartir» en el estudio. En el Modo Jóvenes nunca se guardan.',
     ],
   },
