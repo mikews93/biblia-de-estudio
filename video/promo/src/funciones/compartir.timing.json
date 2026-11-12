@@ -1,0 +1,365 @@
+{
+ "hook": {
+  "duration": 2.847,
+  "speechStart": 0.057,
+  "speechEnd": 2.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿A",
+    "start": 0.057,
+    "end": 0.08
+   },
+   {
+    "w": "quién",
+    "start": 0.24,
+    "end": 0.4
+   },
+   {
+    "w": "le",
+    "start": 0.44,
+    "end": 0.48
+   },
+   {
+    "w": "hace",
+    "start": 0.56,
+    "end": 0.72
+   },
+   {
+    "w": "falta",
+    "start": 0.8,
+    "end": 1.12
+   },
+   {
+    "w": "hoy…",
+    "start": 1.16,
+    "end": 1.52
+   },
+   {
+    "w": "un",
+    "start": 1.88,
+    "end": 1.92
+   },
+   {
+    "w": "versículo?",
+    "start": 2,
+    "end": 2.56
+   }
+  ]
+ },
+ "tocar": {
+  "duration": 3.788,
+  "speechStart": 0,
+  "speechEnd": 3.2,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.24,
+    "end": 0.64
+   },
+   {
+    "w": "toca",
+    "start": 0.96,
+    "end": 1.12
+   },
+   {
+    "w": "el",
+    "start": 1.2,
+    "end": 1.28
+   },
+   {
+    "w": "versículo",
+    "start": 1.4,
+    "end": 2
+   },
+   {
+    "w": "y",
+    "start": 2.04,
+    "end": 2.08
+   },
+   {
+    "w": "elige",
+    "start": 2.16,
+    "end": 2.48
+   },
+   {
+    "w": "Compartir.",
+    "start": 2.56,
+    "end": 3.2
+   }
+  ]
+ },
+ "fondos": {
+  "duration": 4.206,
+  "speechStart": 0,
+  "speechEnd": 3.68,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Escoge",
+    "start": 0,
+    "end": 0.4
+   },
+   {
+    "w": "un",
+    "start": 0.48,
+    "end": 0.56
+   },
+   {
+    "w": "fondo",
+    "start": 0.6,
+    "end": 0.96
+   },
+   {
+    "w": "y",
+    "start": 1,
+    "end": 1.04
+   },
+   {
+    "w": "una",
+    "start": 1.12,
+    "end": 1.2
+   },
+   {
+    "w": "letra,",
+    "start": 1.28,
+    "end": 1.6
+   },
+   {
+    "w": "y",
+    "start": 1.96,
+    "end": 2
+   },
+   {
+    "w": "destaca",
+    "start": 2.12,
+    "end": 2.4
+   },
+   {
+    "w": "las",
+    "start": 2.48,
+    "end": 2.56
+   },
+   {
+    "w": "palabras",
+    "start": 2.64,
+    "end": 3.04
+   },
+   {
+    "w": "que",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "quieras.",
+    "start": 3.32,
+    "end": 3.68
+   }
+  ]
+ },
+ "dedicar": {
+  "duration": 4.519,
+  "speechStart": 0,
+  "speechEnd": 4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Puedes",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "dedicárselo",
+    "start": 0.32,
+    "end": 0.88
+   },
+   {
+    "w": "a",
+    "start": 0.96,
+    "end": 1
+   },
+   {
+    "w": "alguien,",
+    "start": 1.04,
+    "end": 1.44
+   },
+   {
+    "w": "o",
+    "start": 1.72,
+    "end": 1.76
+   },
+   {
+    "w": "mostrar",
+    "start": 1.84,
+    "end": 2.16
+   },
+   {
+    "w": "la",
+    "start": 2.24,
+    "end": 2.32
+   },
+   {
+    "w": "palabra",
+    "start": 2.4,
+    "end": 2.64
+   },
+   {
+    "w": "en",
+    "start": 2.72,
+    "end": 2.8
+   },
+   {
+    "w": "griego",
+    "start": 2.84,
+    "end": 3.2
+   },
+   {
+    "w": "que",
+    "start": 3.28,
+    "end": 3.36
+   },
+   {
+    "w": "hay",
+    "start": 3.44,
+    "end": 3.52
+   },
+   {
+    "w": "detrás.",
+    "start": 3.6,
+    "end": 4
+   }
+  ]
+ },
+ "enviar": {
+  "duration": 4.676,
+  "speechStart": 0,
+  "speechEnd": 4.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Y",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "lo",
+    "start": 0.12,
+    "end": 0.16
+   },
+   {
+    "w": "envías",
+    "start": 0.28,
+    "end": 0.56
+   },
+   {
+    "w": "como",
+    "start": 0.68,
+    "end": 0.8
+   },
+   {
+    "w": "imagen,",
+    "start": 1.24,
+    "end": 1.68
+   },
+   {
+    "w": "lista",
+    "start": 1.76,
+    "end": 2.08
+   },
+   {
+    "w": "para",
+    "start": 2.16,
+    "end": 2.24
+   },
+   {
+    "w": "tu",
+    "start": 2.32,
+    "end": 2.4
+   },
+   {
+    "w": "muro",
+    "start": 2.44,
+    "end": 2.88
+   },
+   {
+    "w": "o",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "para",
+    "start": 3.12,
+    "end": 3.2
+   },
+   {
+    "w": "tus",
+    "start": 3.24,
+    "end": 3.36
+   },
+   {
+    "w": "historias.",
+    "start": 3.56,
+    "end": 4.56
+   }
+  ]
+ },
+ "cta": {
+  "duration": 3.971,
+  "speechStart": 0.14,
+  "speechEnd": 3.76,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.2,
+    "end": 1.44
+   },
+   {
+    "w": "de",
+    "start": 1.48,
+    "end": 1.52
+   },
+   {
+    "w": "estudio…",
+    "start": 1.6,
+    "end": 2.4
+   },
+   {
+    "w": "gratis",
+    "start": 2.48,
+    "end": 2.96
+   },
+   {
+    "w": "en",
+    "start": 3.04,
+    "end": 3.2
+   },
+   {
+    "w": "Google",
+    "start": 3.32,
+    "end": 3.44
+   },
+   {
+    "w": "Play.",
+    "start": 3.52,
+    "end": 3.76
+   }
+  ]
+ }
+}
