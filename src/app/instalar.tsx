@@ -5,9 +5,10 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, useW
 
 import Appear from '@/components/Appear';
 import { text } from '@/components/comunidad/ui';
-import { CheckIcon, CopyIcon, type IconProps, PhoneDownloadIcon, PlusSquareIcon, QrIcon, ShareIcon, ShieldIcon } from '@/components/icons';
+import { CheckIcon, CopyIcon, type IconProps, PhoneDownloadIcon, PlusSquareIcon, QrIcon, ShareIcon, ShieldIcon, TiendaIcon } from '@/components/icons';
 import Qr from '@/components/Qr';
 import { type Apk, dispositivo, ENLACE_APK, megas, OFRECER_APK, PAGINA_INSTALAR, ultimoApk } from '@/lib/apk';
+import { abrirFichaPlay } from '@/lib/resena';
 import { Colors, isDark, serif, useColors } from '@/lib/theme';
 
 const PASOS: { titulo: string; detalle: string }[] = [
@@ -33,7 +34,7 @@ const PASOS: { titulo: string; detalle: string }[] = [
 const TRANQUILO = [
   'Es la misma Zarza de la web, firmada por nosotros y compilada desde el código del proyecto.',
   'Se actualiza sola: las mejoras le llegan al abrirla, sin volver a descargar nada.',
-  'Cuando llegue a Google Play podrás pasarte allá; tus notas y tu progreso viajan con tu cuenta.',
+  '¿Te quieres pasar a la de Google Play? Desinstala esta primero (las dos no conviven) y entra con tu cuenta: tus notas y tu progreso siguen ahí.',
 ];
 
 /**
@@ -84,7 +85,7 @@ export default function Instalar() {
             <Image source={require('../../assets/icon.png')} style={styles.logo} accessibilityIgnoresInvertColors />
             <Text style={[styles.titulo, { color: colors.text }, computador && ancho && { textAlign: 'left' }]}>Zarza en tu Android</Text>
             <Text style={[text.body, styles.lema, { color: colors.muted }, computador && ancho && { textAlign: 'left' }]}>
-              Instala la app en tu teléfono sin esperar a Google Play. Es gratis, sin anuncios, y se actualiza sola.
+              Instala la app en tu teléfono, gratis, sin anuncios y siempre al día. Está en Google Play, o aquí mismo como APK directo.
             </Text>
             {!iphone && <Descargar colors={colors} apk={apk} buscando={buscando} secundario={computador} />}
           </View>
@@ -104,6 +105,28 @@ export default function Instalar() {
           )}
         </View>
       </Appear>
+
+      {!iphone && (
+        <Appear delay={30}>
+          <Pressable
+            onPress={abrirFichaPlay}
+            accessibilityRole="link"
+            testID="instalar-play"
+            style={({ pressed }) => [styles.card, styles.play, { backgroundColor: colors.surface, borderColor: colors.border }, shadow(colors), pressed && { opacity: 0.85 }]}
+          >
+            <View style={[styles.playIcon, { backgroundColor: colors.accentSoft }]}>
+              <TiendaIcon color={colors.accent} size={22} />
+            </View>
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={[styles.playTitulo, { color: colors.text }]}>Desde Google Play</Text>
+              <Text style={[text.small, { color: colors.muted, lineHeight: 19 }]}>
+                La forma más fácil: sin permisos extra, y desde ahí puedes dejarnos una reseña.
+              </Text>
+            </View>
+            <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 15 }}>Abrir ›</Text>
+          </Pressable>
+        </Appear>
+      )}
 
       {iphone && (
         <Appear delay={40}>
@@ -380,6 +403,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: { fontFamily: serif, fontSize: 20 },
+  play: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  playIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  playTitulo: { fontSize: 16, fontWeight: '700' },
   paso: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   numero: {
     width: 28,

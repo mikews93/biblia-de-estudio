@@ -41,6 +41,7 @@
     "expo-speech-recognition": "~58.0.1",
     "expo-splash-screen": "~58.0.10",
     "expo-status-bar": "~58.0.3",
+    "expo-store-review": "~58.0.3",
     "expo-updates": "~58.0.17",
     "expo-web-browser": "~58.0.6",
     "mpg123-decoder": "^1.0.3",

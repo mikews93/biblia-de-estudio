@@ -56,6 +56,10 @@ export async function markChapterRead(book: string, chapter: number) {
   markPlanReading(book, chapter);
 }
 
+/** Cuántos capítulos se terminaron en total y en cuántos días distintos se leyó (para pedir una reseña: src/lib/resena.ts). */
+export const resumenProgreso = () =>
+  load().then(() => ({ capitulos: Object.values(state.chapters).reduce((n, l) => n + l.length, 0), dias: state.days.length }));
+
 /** Un día con la Palabra sin terminar un capítulo: explorar una palabra original, un lugar, una promesa… */
 export async function markStudyDay() {
   await load();
