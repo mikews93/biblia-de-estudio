@@ -1,0 +1,390 @@
+{
+ "hook": {
+  "duration": 3.318,
+  "speechStart": 0.067,
+  "speechEnd": 3.04,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Te",
+    "start": 0.067,
+    "end": 0.12
+   },
+   {
+    "w": "acuerdas",
+    "start": 0.16,
+    "end": 0.56
+   },
+   {
+    "w": "de",
+    "start": 0.6,
+    "end": 0.64
+   },
+   {
+    "w": "lo",
+    "start": 0.72,
+    "end": 0.76
+   },
+   {
+    "w": "que",
+    "start": 0.8,
+    "end": 0.88
+   },
+   {
+    "w": "le",
+    "start": 0.92,
+    "end": 0.96
+   },
+   {
+    "w": "pediste",
+    "start": 1.04,
+    "end": 1.36
+   },
+   {
+    "w": "a",
+    "start": 1.44,
+    "end": 1.48
+   },
+   {
+    "w": "Dios…",
+    "start": 1.52,
+    "end": 1.92
+   },
+   {
+    "w": "hace",
+    "start": 2.32,
+    "end": 2.56
+   },
+   {
+    "w": "un",
+    "start": 2.6,
+    "end": 2.64
+   },
+   {
+    "w": "mes?",
+    "start": 2.72,
+    "end": 3.04
+   }
+  ]
+ },
+ "lista": {
+  "duration": 4.911,
+  "speechStart": 0,
+  "speechEnd": 4.88,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza,",
+    "start": 0.24,
+    "end": 0.88
+   },
+   {
+    "w": "llevas",
+    "start": 0.96,
+    "end": 1.28
+   },
+   {
+    "w": "tu",
+    "start": 1.32,
+    "end": 1.36
+   },
+   {
+    "w": "diario",
+    "start": 1.44,
+    "end": 1.76
+   },
+   {
+    "w": "de",
+    "start": 1.8,
+    "end": 1.84
+   },
+   {
+    "w": "oración,",
+    "start": 1.88,
+    "end": 2.72
+   },
+   {
+    "w": "con",
+    "start": 2.827,
+    "end": 2.88
+   },
+   {
+    "w": "los",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "versículos",
+    "start": 3.16,
+    "end": 3.6
+   },
+   {
+    "w": "que",
+    "start": 3.64,
+    "end": 3.68
+   },
+   {
+    "w": "te",
+    "start": 3.72,
+    "end": 3.76
+   },
+   {
+    "w": "acompañan.",
+    "start": 3.88,
+    "end": 4.88
+   }
+  ]
+ },
+ "camino": {
+  "duration": 5.251,
+  "speechStart": 0,
+  "speechEnd": 5.2,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Cuando",
+    "start": 0,
+    "end": 0.24
+   },
+   {
+    "w": "Dios",
+    "start": 0.32,
+    "end": 0.48
+   },
+   {
+    "w": "responde,",
+    "start": 0.56,
+    "end": 1.28
+   },
+   {
+    "w": "lo",
+    "start": 1.44,
+    "end": 1.48
+   },
+   {
+    "w": "anotas…",
+    "start": 1.52,
+    "end": 2.48
+   },
+   {
+    "w": "y",
+    "start": 2.56,
+    "end": 2.64
+   },
+   {
+    "w": "ves",
+    "start": 2.76,
+    "end": 2.88
+   },
+   {
+    "w": "tu",
+    "start": 2.92,
+    "end": 2.96
+   },
+   {
+    "w": "camino,",
+    "start": 3.08,
+    "end": 3.68
+   },
+   {
+    "w": "mes",
+    "start": 3.76,
+    "end": 4
+   },
+   {
+    "w": "a",
+    "start": 4.08,
+    "end": 4.12
+   },
+   {
+    "w": "mes.",
+    "start": 4.16,
+    "end": 5.2
+   }
+  ]
+ },
+ "grupo": {
+  "duration": 4.833,
+  "speechStart": 0,
+  "speechEnd": 4.24,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Y",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "si",
+    "start": 0.16,
+    "end": 0.24
+   },
+   {
+    "w": "quieres,",
+    "start": 0.36,
+    "end": 0.72
+   },
+   {
+    "w": "pides",
+    "start": 1,
+    "end": 1.28
+   },
+   {
+    "w": "a",
+    "start": 1.307,
+    "end": 1.333
+   },
+   {
+    "w": "tu",
+    "start": 1.36,
+    "end": 1.44
+   },
+   {
+    "w": "grupo",
+    "start": 1.52,
+    "end": 1.76
+   },
+   {
+    "w": "que",
+    "start": 1.84,
+    "end": 2
+   },
+   {
+    "w": "ore",
+    "start": 2.12,
+    "end": 2.24
+   },
+   {
+    "w": "contigo,",
+    "start": 2.36,
+    "end": 2.72
+   },
+   {
+    "w": "incluso",
+    "start": 3.12,
+    "end": 3.52
+   },
+   {
+    "w": "sin",
+    "start": 3.6,
+    "end": 3.68
+   },
+   {
+    "w": "tu",
+    "start": 3.76,
+    "end": 3.84
+   },
+   {
+    "w": "nombre.",
+    "start": 4.04,
+    "end": 4.24
+   }
+  ]
+ },
+ "animos": {
+  "duration": 3.082,
+  "speechStart": 0,
+  "speechEnd": 3.04,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Ellos",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "te",
+    "start": 0.36,
+    "end": 0.4
+   },
+   {
+    "w": "envían",
+    "start": 0.48,
+    "end": 0.88
+   },
+   {
+    "w": "ánimo…",
+    "start": 0.96,
+    "end": 1.68
+   },
+   {
+    "w": "y",
+    "start": 1.76,
+    "end": 1.84
+   },
+   {
+    "w": "lo",
+    "start": 1.88,
+    "end": 1.92
+   },
+   {
+    "w": "lees",
+    "start": 2,
+    "end": 2.24
+   },
+   {
+    "w": "aquí.",
+    "start": 2.32,
+    "end": 3.04
+   }
+  ]
+ },
+ "cta": {
+  "duration": 3.866,
+  "speechStart": 0.2,
+  "speechEnd": 3.68,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.2,
+    "end": 0.56
+   },
+   {
+    "w": "La",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "Biblia",
+    "start": 1.16,
+    "end": 1.44
+   },
+   {
+    "w": "de",
+    "start": 1.48,
+    "end": 1.52
+   },
+   {
+    "w": "estudio…",
+    "start": 1.64,
+    "end": 2.32
+   },
+   {
+    "w": "gratis",
+    "start": 2.4,
+    "end": 2.88
+   },
+   {
+    "w": "en",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "Google",
+    "start": 3.12,
+    "end": 3.36
+   },
+   {
+    "w": "Play.",
+    "start": 3.44,
+    "end": 3.68
+   }
+  ]
+ }
+}
