@@ -34,6 +34,9 @@ function set(patch: Partial<Recuerdo>) {
   listeners.forEach((l) => l());
 }
 
+/** El primer día que esta persona abrió Zarza en este dispositivo (desde que existe la invitación). */
+export const desdeCuando = () => load().then(() => state.desde);
+
 /** «Quiero sembrar» o «Ahora no»: la tarjeta no vuelve en un año. */
 export const responderInvitacion = () => load().then(() => set({ respondida: todayKey() }));
 

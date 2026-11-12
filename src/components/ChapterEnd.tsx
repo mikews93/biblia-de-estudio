@@ -9,6 +9,7 @@ import { Book, getBooks, getPlaces } from '@/lib/data';
 import { planDef, plansWaitingFor, todayKey, usePlans } from '@/lib/planes';
 import { questionFor, seasonTint } from '@/lib/retos';
 import { WEEKLY_GOAL, markChapterRead, useProgress, weekDays } from '@/lib/progress';
+import { pedirResenaSiToca } from '@/lib/resena';
 import { BOOK_SLUGS, chapterHref } from '@/lib/routes';
 import { Colors, serif } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
@@ -141,7 +142,7 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
         </View>
       ) : (
         <Pressable
-          onPress={() => markChapterRead(book.id, chapter)}
+          onPress={() => markChapterRead(book.id, chapter).then(pedirResenaSiToca)}
           style={[styles.markButton, { borderColor: colors.accent }]}
           accessibilityRole="button"
         >
