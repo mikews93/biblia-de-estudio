@@ -167,8 +167,29 @@ function answer(row: Row | undefined) {
   return { estado: 'ninguno' };
 }
 
+/**
+ * Las versiones en que un capítulo ya tiene su pódcast grabado (y la grabación sigue siendo de su guion). Grabar con
+ * voces naturales cuesta: si el capítulo ya está grabado en otra versión, la app lo usa en vez de grabarlo otra vez.
+ */
+async function grabadas(s: NonNullable<typeof sql>, book: unknown, chapter: unknown): Promise<string[] | null> {
+  const ch = Number(chapter);
+  if (typeof book !== 'string' || !/^[0-9a-z]{3}$/.test(book) || !Number.isInteger(ch) || ch < 1 || ch > 150) return null;
+  const rows = await s<{ libro: string }[]>`select g.libro from podcast_grabado g
+    left join herramientas_ia h on h.libro = ${book} and h.capitulo = g.capitulo and h.herramienta = 'podcast' || substr(g.libro, 4)
+    where (g.libro = ${book} or g.libro like ${`${book}:%`}) and g.capitulo = ${ch} and g.estado = 'listo'
+      and not (h.texto is not null and g.guion is not null and g.guion <> h.texto)
+    order by g.libro`;
+  return rows.map((r) => (r.libro === book ? 'rv1909' : r.libro.slice(4)));
+}
+
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
+  if (params.get('grabadas') !== null) {
+    const s = await db().catch(() => null);
+    if (!s) return json({ versiones: [] });
+    const versiones = await grabadas(s, params.get('book') ?? undefined, params.get('chapter') ?? undefined);
+    return versiones ? json({ versiones }) : json({ error: 'Pedido no válido' }, 400);
+  }
   const where = place(params.get('book') ?? undefined, params.get('chapter') ?? undefined, params.get('palabra'), params.get('version'));
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const s = await db().catch(() => null);
