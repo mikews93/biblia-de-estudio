@@ -39,6 +39,14 @@ async function request({ book, chapter, palabra, version }: Target): Promise<Ans
   return body;
 }
 
+/** Las versiones libres en que el capítulo ya tiene su pódcast grabado (ver elegirVersionPodcast). */
+export async function versionesGrabadas(book: string, chapter: number, signal?: AbortSignal): Promise<string[]> {
+  const res = await fetch(`${API}/api/podcast-grabado?grabadas=1&book=${book}&chapter=${chapter}`, { signal });
+  if (!res.ok) throw new Error(`No se pudo consultar la grabación (${res.status})`);
+  const body = (await res.json()) as { versiones?: unknown };
+  return Array.isArray(body.versiones) ? body.versiones.filter((v): v is string => typeof v === 'string') : [];
+}
+
 /** `guion`: el texto del guion ya terminado. Si cambia («Preparar otra versión»), se vuelve a preguntar: la grabación del
  * guion de antes ya no vale y el servidor deja grabar el nuevo. */
 export function usePodcastGrabado(book: string, chapter: number, palabra?: string, version?: string, guion?: string) {

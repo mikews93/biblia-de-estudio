@@ -115,20 +115,26 @@ export const recordingId = (book: string, chapter: number) => `${book}-${chapter
 
 let catalogLoad: Promise<void> | null = null;
 
+/** Pide el catálogo una vez por sesión; termina cuando ya está en el estado (o no se pudo pedir). */
+export function cargarCatalogo(): Promise<Catalog> {
+  catalogLoad ??= fetch(`${API}/audio/index.json`)
+    .then((res) => (res.ok ? res.json() : null))
+    .then((body: Partial<Catalog> | null) => {
+      if (body) set({ catalog: { dramatizado: body.dramatizado ?? [], podcast: body.podcast ?? [], original: body.original ?? [] } });
+    })
+    .catch(() => {
+      // sin catálogo solo se pierden los botones de las grabaciones
+      catalogLoad = null;
+    });
+  return catalogLoad.then(() => state.catalog);
+}
+
 /** Qué capítulos tienen audio dramatizado o pódcast grabado. Se pide una vez por sesión. */
 export function useCatalog(): Catalog {
   // Solo el catálogo: así el lector no se vuelve a dibujar cada vez que cambia el reproductor.
   const catalog = useSyncExternalStore(subscribe, () => state.catalog, () => state.catalog);
   useEffect(() => {
-    catalogLoad ??= fetch(`${API}/audio/index.json`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body: Partial<Catalog> | null) => {
-        if (body) set({ catalog: { dramatizado: body.dramatizado ?? [], podcast: body.podcast ?? [], original: body.original ?? [] } });
-      })
-      .catch(() => {
-        // sin catálogo solo se pierden los botones de las grabaciones
-        catalogLoad = null;
-      });
+    cargarCatalogo();
   }, []);
   return catalog;
 }
