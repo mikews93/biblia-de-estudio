@@ -415,6 +415,11 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     expect(await q('pdt')).toEqual(listo);
     expect(await q('nbla')).toEqual(listo);
     expect(await get('oba', 1)).not.toEqual(listo);
+    // La app pregunta en qué versiones ya está grabado el capítulo para no grabar otro pódcast igual.
+    const grabadas = (q: string) => api.GET(new Request(`http://localhost/api/podcast-grabado?grabadas=1&${q}`));
+    expect(await (await grabadas('book=oba&chapter=1')).json()).toEqual({ versiones: ['rv1909', 'pdt'] }); // la RV1909 se grabó antes
+    expect(await (await grabadas('book=oba&chapter=2')).json()).toEqual({ versiones: [] });
+    expect((await grabadas('book=../x&chapter=1')).status).toBe(400);
   });
 
   it('el pódcast de una palabra se graba con su guion y queda listo para todos', async () => {

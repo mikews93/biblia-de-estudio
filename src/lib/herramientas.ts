@@ -39,10 +39,10 @@ export type VersionPodcast = {
   sigla: string;
 };
 
-/** En qué versión suena el pódcast para quien lee la versión elegida en los ajustes. */
-export function useVersionPodcast(): VersionPodcast {
+/** En qué versión suena el pódcast para quien lee la versión elegida en los ajustes (o en «elegida», si ya se sabe). */
+export function useVersionPodcast(elegida?: string): VersionPodcast {
   const { settings } = useSettings();
-  const id = versionPodcast(settings.version);
+  const id = elegida ?? versionPodcast(settings.version);
   const [sigla, setSigla] = useState<Record<string, string>>({ rv1909: 'RV1909', pdt: 'PDT' });
   useEffect(() => {
     if (sigla[id]) return;
