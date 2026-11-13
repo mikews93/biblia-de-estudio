@@ -1,0 +1,17 @@
+name: Neon inventario (temporal)
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths: ['.github/workflows/neon-inventario-temporal.yml', 'pipeline/neon_ramas.sh']
+env:
+  GUARDAR: 'preview/dev'
+jobs:
+  inventario:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BORRAR: 'false'
+        run: bash pipeline/neon_ramas.sh

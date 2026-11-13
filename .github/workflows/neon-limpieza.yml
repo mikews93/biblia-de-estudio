@@ -1,7 +1,11 @@
 name: Limpieza de ramas de Neon
 
-# Cada vista previa de Vercel crea una rama de la base de datos en Neon («preview/<rama de git>») y el plan
-# gratuito tiene un límite de ramas. Al cerrar o unir un PR se borra la suya.
+# La integración de Neon en Vercel creaba una rama de la base de datos («preview/<rama de git>») por cada
+# vista previa, aunque Vercel saltara el despliegue. Cada rama gasta cómputo del mismo proyecto (plan gratis:
+# 100 CU-horas al mes). Este flujo:
+#   - al cerrar o unir un PR borra la rama de ese PR;
+#   - cada lunes (y a mano, en Actions → «Run workflow») enseña cuánto gasta cada rama y borra todas las
+#     «preview/*» menos las que se nombran en GUARDAR. Nunca toca la rama principal (producción) ni las protegidas.
 # Necesita en GitHub (Settings → Secrets and variables → Actions):
 #   secreto NEON_API_KEY      clave de API de Neon (Account settings → API keys)
 #   variable NEON_PROJECT_ID  id del proyecto de Neon (Settings del proyecto)
@@ -9,9 +13,22 @@ name: Limpieza de ramas de Neon
 on:
   pull_request:
     types: [closed]
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      borrar:
+        description: 'Borrar las ramas preview/* (si no, solo las enseña)'
+        type: boolean
+        default: true
+
+env:
+  # Ramas que nunca se borran aunque empiecen por preview/ (la de dev la usa la vista previa de dev).
+  GUARDAR: 'preview/dev'
 
 jobs:
   borrar-rama:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Borrar la rama de Neon de la vista previa
@@ -24,12 +41,25 @@ jobs:
             echo "::warning::Faltan NEON_API_KEY o NEON_PROJECT_ID; no se borra la rama $BRANCH."
             exit 0
           fi
+          case " $GUARDAR " in *" $BRANCH "*) echo "$BRANCH se guarda."; exit 0 ;; esac
           api="https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches"
           id=$(curl -sSf -H "Authorization: Bearer $NEON_API_KEY" "$api" \
-            | jq -r --arg name "$BRANCH" '.branches[] | select(.name == $name) | .id')
+            | jq -r --arg name "$BRANCH" '.branches[] | select(.name == $name and (.default | not) and (.primary | not) and (.protected | not)) | .id')
           if [ -z "$id" ]; then
             echo "No hay rama $BRANCH en Neon."
             exit 0
           fi
           curl -sSf -X DELETE -H "Authorization: Bearer $NEON_API_KEY" "$api/$id" > /dev/null
           echo "Rama $BRANCH ($id) borrada."
+
+  limpiar-todo:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enseñar el gasto y borrar las ramas preview/*
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BORRAR: ${{ github.event_name == 'schedule' || inputs.borrar }}
+        run: bash pipeline/neon_ramas.sh
