@@ -79,19 +79,27 @@ export function enSilencio(minutos: number, desde: number | null | undefined, ha
   return desde < hasta ? minutos >= desde && minutos < hasta : minutos >= desde || minutos < hasta;
 }
 
+// Un formateador por zona: crearlos es lento y la agenda de avisos (avisosAgenda.ts) pregunta miles de veces.
+const formatos = new Map<string, Intl.DateTimeFormat>();
+
 /** Fecha y minuto del día en una zona horaria («America/Bogota»). Zona desconocida: UTC. */
 export function localNow(zona: string, now = new Date()) {
   let parts: Intl.DateTimeFormatPart[];
   try {
-    parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: zona,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    }).formatToParts(now);
+    let formato = formatos.get(zona);
+    if (!formato) {
+      formato = new Intl.DateTimeFormat('en-CA', {
+        timeZone: zona,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      });
+      formatos.set(zona, formato);
+    }
+    parts = formato.formatToParts(now);
   } catch {
     return localNow('UTC', now);
   }
