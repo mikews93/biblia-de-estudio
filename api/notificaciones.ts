@@ -18,6 +18,7 @@ import postgres from 'postgres';
 
 import { dailyMessage, DiaReto, enSilencio, EstadoAvisos, HORA_POR_DEFECTO, horaLabel, isDue, localNow, validZone } from '../src/lib/avisosTexto';
 import { despertarDue, despertarMessage, POSPONER_MINUTOS, validDias } from '../src/lib/despertarTexto';
+import { proximoAviso, REVISAR_CADA } from '../src/lib/avisosAgenda';
 import { rachaDue, rachaMessage } from '../src/lib/rachaTexto';
 import { isExpoToken, PUSH_SCHEMA, sendMany, sendPush, Suscripcion, validEndpoint, vapid } from './_push';
 
@@ -50,6 +51,16 @@ class Fail extends Error {
     this.status = status;
   }
 }
+
+/**
+ * Hasta cuándo (ms) no toca ningún aviso, según la última ronda de esta instancia. Mientras tanto, la llamada de cada
+ * minuto del programador no toca la base, y Neon puede dormirse (src/lib/avisosAgenda.ts). Cualquier cambio de avisos
+ * que pase por esta instancia la borra; los que pasen por otra se ven a más tardar en REVISAR_CADA minutos.
+ */
+let nadaHasta = 0;
+
+/** Para las pruebas, que cambian la base por detrás: la próxima ronda vuelve a mirarla. */
+export const olvidarAgenda = () => void (nadaHasta = 0);
 
 let sql: Sql | null = null;
 let ready: Promise<unknown> | null = null;
@@ -271,7 +282,11 @@ const actions: Record<string, Action> = {
       insert into ajustes (clave, valor) values ('ultimo_envio', now()::text)
       on conflict (clave) do update set valor = now()::text where ajustes.valor::timestamptz < now() - interval '50 seconds'
       returning 1`;
-    if (!turn) return { enviados: 0, pausa: true };
+    if (!turn) {
+      // Otra instancia hizo la ronda hace menos de un minuto: aquí se vuelve a mirar en un rato.
+      nadaHasta = Date.now() + 5 * 60_000;
+      return { enviados: 0, pausa: true };
+    }
     // «enviado» como texto: es una fecha local y no debe moverse con la zona del servidor.
     const subs = await sql<Fila[]>`
       select endpoint, p256dh, auth, zona, hora, lectura, tarjetas, reto, racha, estado, enviado::text as enviado,
@@ -293,6 +308,9 @@ const actions: Record<string, Action> = {
               update suscripciones set pospuesto = null,
                 despertar_enviado = ${alarma.pospuesto ? sql`despertar_enviado` : alarma.fecha}
               where endpoint = ${s.endpoint}`;
+            // La fila en memoria queda como en la base, para calcular bien la agenda.
+            s.pospuesto = null;
+            if (!alarma.pospuesto) s.despertar_enviado = alarma.fecha;
             const aviso = despertarMessage({ lectura: s.estado?.lectura?.titulo, pospuesto: alarma.pospuesto });
             // Media hora de vida: un despertador que llega tarde ya no sirve.
             const r = await sendPush(s, aviso, keys, 30 * 60, 'high');
@@ -304,6 +322,7 @@ const actions: Record<string, Action> = {
           // El aviso de la racha no suena en el horario de silencio (el recordatorio y el despertador van a la hora elegida).
           if (s.racha && !enSilencio(local.minutos, s.silencio_desde, s.silencio_hasta) && rachaDue(s.estado?.racha, local, s.racha_enviado)) {
             await sql`update suscripciones set racha_enviado = ${local.fecha} where endpoint = ${s.endpoint}`;
+            s.racha_enviado = local.fecha;
             const [r] = await sendMany(sql, [s], rachaMessage(s.estado!.racha!.dias));
             if (r === 'ok') rachas++;
           }
@@ -312,6 +331,7 @@ const actions: Record<string, Action> = {
           if (!due) return;
           // Se marca antes de enviar: si algo falla, mejor un aviso de menos que uno repetido.
           await sql`update suscripciones set enviado = ${fecha} where endpoint = ${s.endpoint}`;
+          s.enviado = fecha;
           const aviso = dailyMessage(s.estado ?? {}, s, fecha);
           if (!aviso) return;
           const [r] = await sendMany(sql, [s], aviso);
@@ -319,13 +339,21 @@ const actions: Record<string, Action> = {
         }),
       );
     }
-    return { enviados, despertados, rachas, revisados: subs.length };
+    // Hasta el próximo aviso (o REVISAR_CADA minutos) las llamadas del programador no despiertan la base.
+    nadaHasta = proximoAviso(subs, now, now.getTime() + REVISAR_CADA * 60_000);
+    return { enviados, despertados, rachas, revisados: subs.length, proximo: new Date(nadaHasta).toISOString() };
   },
 };
 
 async function run(accion: unknown, body: Json, request: Request) {
   const action = typeof accion === 'string' && Object.hasOwn(actions, accion) ? actions[accion] : undefined;
   if (!action) return Response.json({ error: 'Acción no válida' }, { status: 400 });
+  if (accion === 'enviar') {
+    if (Date.now() < nadaHasta) return Response.json({ enviados: 0, dormida: true }, { headers: { 'Cache-Control': 'no-store' } });
+  } else if (accion !== 'leer' && accion !== 'probar') {
+    // guardar, estado, posponer o quitar pueden adelantar el próximo aviso: la siguiente ronda mira la base.
+    nadaHasta = 0;
+  }
   try {
     const result = await action({ sql: await db(), body, request });
     return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });

@@ -11,6 +11,7 @@ import { client, DB_URL, ensureSchema, HAS_DATA, Post, prepareEnv, request, uniq
 
 let POST: Post;
 let GET: Post;
+let olvidarAgenda: () => void;
 let comunidades: Post;
 let vivoPOST: Post;
 let server: Server;
@@ -20,7 +21,7 @@ let sql: ReturnType<typeof postgres>;
 beforeAll(async () => {
   await prepareEnv();
   process.env.PUSH_HOSTS = '127.0.0.1';
-  ({ POST, GET } = await import('../../api/notificaciones'));
+  ({ POST, GET, olvidarAgenda } = await import('../../api/notificaciones'));
   ({ POST: comunidades } = await import('../../api/comunidades'));
   ({ POST: vivoPOST } = await import('../../api/vivo'));
   server = createServer((req, res) => {
@@ -65,6 +66,7 @@ const deliveredTo = (id: string) => entregas.filter((e) => e.id === id);
 /** El programador puede volver a llamar ya (la ronda anterior deja una pausa de 50 s). */
 const enviar = async () => {
   await sql`delete from ajustes where clave = 'ultimo_envio'`;
+  olvidarAgenda();
   return call('enviar');
 };
 
@@ -137,9 +139,22 @@ describe.skipIf(!DB_URL)('/api/notificaciones con Postgres', () => {
 
   it('dos llamadas seguidas del programador hacen una sola ronda', async () => {
     await enviar();
+    olvidarAgenda();
     expect((await call('enviar')).json).toEqual({ enviados: 0, pausa: true });
+    olvidarAgenda();
     const res = await GET(new Request('http://localhost/api/notificaciones?accion=enviar'));
     expect(await res.json()).toEqual({ enviados: 0, pausa: true });
+  });
+
+  it('si no toca ningún aviso, el programador no despierta la base hasta el próximo; un cambio la vuelve a mirar', async () => {
+    const r = await enviar();
+    expect(new Date(r.json.proximo).getTime()).toBeGreaterThan(Date.now());
+    await sql`delete from ajustes where clave = 'ultimo_envio'`;
+    expect((await call('enviar')).json).toEqual({ enviados: 0, dormida: true });
+    // Un cambio de avisos en esta instancia hace que la siguiente llamada haga la ronda.
+    const otra = nuevaSuscripcion(base);
+    await call('guardar', { suscripcion: otra, zona: 'UTC', hora: 0 });
+    expect((await call('enviar')).json.dormida).toBeUndefined();
   });
 
   it('al activarlas después de su hora, el primero llega mañana; si ya leyó, no escribe', async () => {

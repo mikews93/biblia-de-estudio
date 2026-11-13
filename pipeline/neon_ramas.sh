@@ -25,7 +25,7 @@ echo "$ramas" | jq -r '.branches | sort_by(-(.compute_time_seconds // 0))[] | "\
 
 borrables=$(echo "$ramas" | jq -r --arg guardar " ${GUARDAR:-} " '.branches[]
   | select((.name | startswith("preview/")) and (.default | not) and (.primary | not) and (.protected | not))
-  | select(($guardar | contains(" " + .name + " ")) | not)
+  | .name as $n | select(($guardar | contains(" " + $n + " ")) | not)
   | "\(.id) \(.name)"')
 
 echo
