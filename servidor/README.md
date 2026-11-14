@@ -17,12 +17,17 @@ Scheduler, con un token OIDC. La base va en Secret Manager (`zarza-database-url`
 **Desplegar.**
 
 ```sh
-# Primera vez: con la DATABASE_URL de producción de Zarza (Vercel → biblia-de-estudio → Settings → Environment Variables)
-PROYECTO=<id del proyecto de Zarza> DATABASE_URL='postgres://…' sh servidor/desplegar.sh
+# Primera vez: con la cadena pooled de Neon de Zarza (Neon → neon-gray-bell → Connect → Connection pooling).
+# No sirve `vercel env pull`: en Vercel la variable es «sensible» y llega como el texto [SENSITIVE].
+PROYECTO=zarza-512819 DATABASE_URL='postgresql://…-pooler…' sh servidor/desplegar.sh
 # Las siguientes veces
-PROYECTO=<id del proyecto de Zarza> sh servidor/desplegar.sh
+PROYECTO=zarza-512819 sh servidor/desplegar.sh
 ```
 
 Después de la primera vez, apaga en cron-job.org la tarea que llamaba a
 `/api/notificaciones?accion=enviar`. Para volver atrás, enciéndela otra vez y pausa la tarea
 `zarza-avisos` de Cloud Scheduler.
+
+**En producción (2026-11-14).** Proyecto `zarza-512819`, región `us-east4`, servicio `zarza-avisos`, tarea de
+Scheduler `zarza-avisos` cada minuto. El primer despliegue necesitó dar `roles/run.builder` a la cuenta de Compute
+del proyecto (los proyectos nuevos no la traen con permiso para construir).
