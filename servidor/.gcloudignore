@@ -1,0 +1,5 @@
+# Sube solo lo que usa el Dockerfile (dist/ está en .gitignore, pero aquí sí hace falta).
+*
+!Dockerfile
+!dist/
+!dist/avisos.mjs
