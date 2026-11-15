@@ -32,6 +32,7 @@ import {
 } from '@/lib/tallerTema';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { useTecladoPantalla } from '@/lib/teclado';
 
 const ICONOS: Record<Tipo, (p: IconProps) => React.ReactNode> = { reflexion: LampIcon, encuentro: PeopleIcon, sermon: LecternIcon };
 
@@ -43,6 +44,7 @@ type Clave = 'explorar' | 'maqueta';
  * y con el pasaje elegido arma la maqueta (títulos, preguntas guía y pasajes de apoyo). El mensaje lo escribe la persona.
  */
 export default function TemaScreen() {
+  const teclado = useTecladoPantalla();
   const colors = useColors();
   const { settings } = useSettings();
   const [books, setBooks] = useState<Book[]>([]);
@@ -209,7 +211,7 @@ export default function TemaScreen() {
     ) : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingBottom: teclado }}>
       <Stack.Screen options={{ title: 'Desde un tema' }} />
       <ScrollView ref={scroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         {etapa === 'contar' && (
