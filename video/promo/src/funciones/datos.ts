@@ -52,6 +52,8 @@ import prepararTiming from './preparar.timing.json';
 import presentarTaps from './presentar.taps.json';
 import presentarTiming from './presentar.timing.json';
 import preguntarTaps from './preguntar.taps.json';
+import instalarTaps from './instalar.taps.json';
+import instalarTiming from './instalar.timing.json';
 import preguntarTiming from './preguntar.timing.json';
 
 /**
@@ -634,6 +636,32 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'notas', eyebrow: 'PARA QUIEN GUÍA', title: 'Tus notas y tu reloj'},
       {line: 'cita', eyebrow: 'UN TOQUE', title: 'La cita, en todas las pantallas'},
       {line: 'preguntas', eyebrow: 'PARTICIPAN TODOS', title: 'Preguntas y dinámicas en vivo'},
+    ],
+  },
+  instalar: {
+    id: 'instalar',
+    timing: instalarTiming as Record<string, VoTiming>,
+    taps: instalarTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: 'a1', line: 'android'},
+      {src: 'a2', line: 'instalar', word: 'Abrir.'},
+      {src: 'a3', line: 'apk', word: 'web,'},
+      {src: 'i1', line: 'iphone', word: 'zarzabiblia.com'},
+      {src: 'i2', line: 'compartir', word: 'puntos,', delay: 4},
+      {src: 'i3', line: 'compartir', word: 'Compartir.', delay: 4},
+      {src: 'i4', line: 'vermas', word: 'más…', delay: 4},
+      {src: 'i5', line: 'agregar', word: 'Toca', delay: -4},
+      {src: 'i6', line: 'agregar', word: 'listo.'},
+      {src: 'i7', line: 'agregar', word: 'completa,', delay: -6},
+    ],
+    titulares: [
+      {line: 'android', eyebrow: 'ANDROID', title: 'Desde Google Play'},
+      {line: 'apk', eyebrow: '¿TENÍAS EL APK DE LA WEB?', title: 'Desinstálalo antes'},
+      {line: 'iphone', eyebrow: 'IPHONE', title: 'Desde Safari, sin App Store'},
+      {line: 'compartir', eyebrow: 'PASO 1', title: '··· y luego Compartir'},
+      {line: 'vermas', eyebrow: 'PASO 2', title: 'Ver más › Agregar a Inicio'},
+      {line: 'agregar', eyebrow: 'PASO 3', title: 'Agregar, y queda como app'},
     ],
   },
 };
