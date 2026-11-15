@@ -123,22 +123,52 @@ export function useTecladoAbierto(): boolean {
 }
 
 /**
- * Lo que hay que dejar debajo de la caja en un panel a pantalla completa dentro de un Modal (Estudio, Taller).
- * En la web, lo de useTecladoWeb. En Android, el alto del teclado: KeyboardAvoidingView mide su posición respecto al
- * Modal y no a la pantalla, así que se quedaba corto por la barra de estado y el margen de arriba del panel, y el
- * teclado tapaba la caja. En iPhone lo hace bien KeyboardAvoidingView y devuelve 0.
+ * Lo que tapa el teclado en la app nativa, contado desde el borde de abajo de la pantalla.
+ *
+ * En Android, React Native da en `endCoordinates.height` el teclado MENOS la barra de navegación
+ * (ReactRootView.checkForKeyboardEvents: imeInsets.bottom - systemBars.bottom). Pero la app se dibuja de borde a borde
+ * y las pantallas y los paneles llegan hasta abajo, debajo de esa barra: por eso la caja seguía un poco tapada
+ * (Mike, 2026-11-15, app de Play). Aquí se suma la barra (safe-area bottom) para tener el teclado entero.
+ * En iPhone `endCoordinates.height` ya es el teclado entero.
  */
-export function useTecladoPanel(): number {
-  const web = useTecladoWeb();
+function useTecladoNativo(): number {
   const [alto, setAlto] = useState(0);
+  const { bottom } = useSafeAreaInsets();
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const a = Keyboard.addListener('keyboardDidShow', (e) => setAlto(Math.max(0, Math.round(e.endCoordinates.height))));
-    const b = Keyboard.addListener('keyboardDidHide', () => setAlto(0));
+    if (Platform.OS === 'web') return;
+    const mostrar = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const ocultar = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const a = Keyboard.addListener(mostrar, (e) => setAlto(Math.max(0, Math.round(e.endCoordinates.height))));
+    const b = Keyboard.addListener(ocultar, () => setAlto(0));
     return () => {
       a.remove();
       b.remove();
     };
   }, []);
-  return Platform.OS === 'android' ? (alto > 0 ? alto + RESPIRO : 0) : web;
+  if (alto <= 0) return 0;
+  return (Platform.OS === 'android' ? alto + bottom : alto) + RESPIRO;
+}
+
+/**
+ * Lo que hay que dejar debajo de la caja en un panel a pantalla completa dentro de un Modal (Estudio, Taller).
+ * En la web, lo de useTecladoWeb. En Android, el teclado entero (useTecladoNativo): KeyboardAvoidingView mide su
+ * posición respecto al Modal y no a la pantalla, así que se quedaba corto. En iPhone lo hace bien
+ * KeyboardAvoidingView y devuelve 0.
+ */
+export function useTecladoPanel(): number {
+  const web = useTecladoWeb();
+  const nativo = useTecladoNativo();
+  if (Platform.OS === 'web') return web;
+  return Platform.OS === 'android' ? nativo : 0;
+}
+
+/**
+ * Lo mismo para una pantalla con la caja abajo (Pregúntale a la Biblia, Preparar, Desde un tema, Borrador). Sin
+ * KeyboardAvoidingView: ese mide su sitio respecto a la pantalla de debajo de la cabecera y se quedaba corto por el
+ * alto de la cabecera y la barra de estado.
+ */
+export function useTecladoPantalla(): number {
+  const web = useTecladoWeb(false);
+  const nativo = useTecladoNativo();
+  return Platform.OS === 'web' ? web : nativo;
 }

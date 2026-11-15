@@ -1,7 +1,9 @@
 // Cliente de /api/estudiar: pide el estudio de un pasaje o la respuesta a una pregunta y lo va recibiendo por partes.
 
+import { aRitmo } from './aRitmo';
 import { aiDenied, aiHeaders, sessionKey } from './comunidad';
 import { requireConnection } from './conexion';
+import { fetchPorPartes } from './porPartes';
 import { getSettings } from './theme';
 import { ordenarVueltas, recortarVueltas } from './turnos';
 
@@ -210,7 +212,7 @@ export async function askStudy(
   }
   let res: Response;
   try {
-    res = await fetch(`${API}/api/estudiar`, {
+    res = await fetchPorPartes(`${API}/api/estudiar`, {
       method: 'POST',
       headers,
       // En el Modo Jóvenes la IA escribe para su edad (ver JOVENES_SYSTEM en api/estudiar.ts).
@@ -253,6 +255,8 @@ export async function askStudy(
     if (event.type === 'done' || event.type === 'error') terminada = true;
   };
 
+  // La pantalla se redibuja a un ritmo que el teléfono aguanta, aunque lleguen muchas palabras por segundo.
+  const avisar = aRitmo(onUpdate);
   try {
     const reader = res.body?.getReader?.();
     if (reader) {
@@ -265,18 +269,20 @@ export async function askStudy(
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
         lines.forEach(handle);
-        onUpdate(text, [...sources], [...pasos]);
+        avisar(text, [...sources], [...pasos]);
       }
       handle(buffer);
     } else {
-      // Sin lectura por partes (algunas versiones de React Native): se muestra al terminar.
+      // Sin lectura por partes (no debería pasar: en el teléfono se usa expo/fetch): se muestra al terminar.
       (await res.text()).split('\n').forEach(handle);
     }
   } catch (e) {
+    avisar.cancelar();
     // Se cortó a mitad (en el teléfono, al cambiar de app): la IA siguió en el servidor.
     if (signal?.aborted || !seguir) throw e;
     return recoger(seguir, headers, onUpdate, signal, e);
   }
+  avisar.cancelar();
   // La conexión se cerró sin «done» (el servidor llegó a su tiempo máximo, un proxy la cortó): se busca lo guardado.
   if (!terminada && seguir && !signal?.aborted) return recoger(seguir, headers, onUpdate, signal, new Error(CORTADA));
   onUpdate(text, [...sources], [...pasos]);

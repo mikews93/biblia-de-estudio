@@ -36,6 +36,7 @@ import { type Mensaje, actualizarMensaje, actualizarSeccion, pasajeLabel, termin
 import { guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
 import { Colors, serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
+import { useTecladoPantalla } from '@/lib/teclado';
 
 type Clave = 'cambiar' | 'practicar';
 type Estado = 'aceptado' | 'descartado';
@@ -48,6 +49,7 @@ type Escucha = 'completo' | 'repaso';
  */
 export default function BorradorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const teclado = useTecladoPantalla();
   const colors = useColors();
   const { settings } = useSettings();
   const { mensajes, ready } = useTaller();
@@ -171,7 +173,7 @@ export default function BorradorScreen() {
   const turnos = cambiarConv.turns;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingBottom: teclado }}>
       <Stack.Screen options={{ title: 'Borrador' }} />
       <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <View style={styles.cabeza}>

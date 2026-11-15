@@ -3,7 +3,7 @@
 // &n=fondo pide la respuesta A fondo. Sin «q», las preguntas que muchos hacen y la caja para preguntar.
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ComponentRef, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import AskBar from '@/components/AskBar';
@@ -16,10 +16,10 @@ import type { Source } from '@/lib/estudio';
 import { MAX_PREGUNTA, type Nivel, conversacion, separar, useConversacion } from '@/lib/preguntar';
 import { serif, useColors, useSettings } from '@/lib/theme';
 import { navigate } from '@/lib/transition';
-import { useTecladoWeb } from '@/lib/teclado';
+import { useTecladoPantalla } from '@/lib/teclado';
 
 export default function Preguntar() {
-  const teclado = useTecladoWeb(false);
+  const teclado = useTecladoPantalla();
   const colors = useColors();
   const { settings } = useSettings();
   const params = useLocalSearchParams<{ q?: string; n?: string }>();
@@ -52,7 +52,7 @@ export default function Preguntar() {
   const sugerencias = last?.role === 'assistant' && !estado?.working ? separar(last.text).sugerencias : [];
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background, paddingBottom: teclado }} behavior="padding">
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingBottom: teclado }}>
       <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Appear style={styles.top}>
           <View style={{ flex: 1 }}>
@@ -93,7 +93,7 @@ export default function Preguntar() {
                 )}
                 <Investigacion pasos={t.pasos ?? []} working={working && !cuerpo.trim()} colors={colors} />
                 {!!cuerpo.trim() && (
-                  <Markdown text={cuerpo} colors={colors} ornate sources={t.sources} onCite={setPeek} onOpenRef={openRef} />
+                  <Markdown text={cuerpo} colors={colors} ornate escribiendo={working} sources={t.sources} onCite={setPeek} onOpenRef={openRef} />
                 )}
                 {working && !cuerpo.trim() && !t.pasos?.length && <Esperando colors={colors} />}
                 {t.cortada && <Text style={[styles.note, { color: colors.muted }]}>La respuesta se cortó.</Text>}
@@ -158,7 +158,7 @@ export default function Preguntar() {
           />
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

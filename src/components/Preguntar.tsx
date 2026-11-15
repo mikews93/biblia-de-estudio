@@ -47,7 +47,10 @@ export function PreguntaCard({ texto, colors }: { texto: string; colors: Colors 
   const estado = useConversacion(c);
   const last = estado?.turns[estado.turns.length - 1];
   const respuesta = last?.role === 'assistant' ? last : null;
-  const corto = respuesta ? enCorto(separar(respuesta.text).cuerpo) : '';
+  const cuerpo = respuesta ? separar(respuesta.text).cuerpo : '';
+  const corto = enCorto(cuerpo);
+  // La respuesta corta sigue escribiéndose hasta que empieza la sección siguiente.
+  const escribiendoCorto = !!estado?.working && !!corto && !/##\s*En corto[\s\S]*?\n##\s/i.test(cuerpo);
   const investigando = !!estado?.working && !corto;
   const abrir = () => navigate(() => router.push(preguntarHref(texto) as never), 'forward');
 
@@ -79,7 +82,7 @@ export function PreguntaCard({ texto, colors }: { texto: string; colors: Colors 
           <Text style={[styles.kicker, { color: colors.warm }]}>Pregunta</Text>
         </View>
         {corto ? (
-          <Markdown text={corto.replace(/^## En corto\n/, '')} colors={colors} sources={respuesta?.sources} onOpenRef={openRef} />
+          <Markdown text={corto.replace(/^## En corto\n/, '')} colors={colors} escribiendo={escribiendoCorto} sources={respuesta?.sources} onOpenRef={openRef} />
         ) : estado?.error ? (
           <Text style={[styles.body, { color: colors.text }]}>{estado.error}</Text>
         ) : (

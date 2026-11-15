@@ -118,7 +118,7 @@ function FaqItem({ item, pasaje, colors, onOpen, onCite }: { item: Frecuente; pa
         <View style={styles.itemBody}>
           {answer?.text ? (
             <>
-              <Markdown text={answer.text} colors={colors} sources={answer.sources} onCite={onCite} onOpenRef={onOpen} />
+              <Markdown text={answer.text} colors={colors} escribiendo={busy} sources={answer.sources} onCite={onCite} onOpenRef={onOpen} />
               {!busy && <Sources sources={answer.sources} text={answer.text} colors={colors} onOpen={onOpen} />}
             </>
           ) : error ? (

@@ -80,35 +80,81 @@ type Cites = {
 // Un versículo que la IA no copia (versión con derechos, ver versionSystem en api/_investigar.ts): ⟪Juan 3:16⟫.
 const MARCA = /^⟪([^⟪⟫\n]{3,60})⟫$/;
 
-export function Markdown({ text, colors, ornate, sources, onCite, onOpenRef }: { text: string; colors: Colors; ornate?: boolean } & Cites) {
+/**
+ * Cursor ámbar al final de lo que la IA lleva escrito: dice que sigue escribiendo. Va dentro del texto (en la misma
+ * línea que la última palabra) y late suave entre ámbar y ámbar claro. Es un Text dentro de otro, así que cambia de
+ * color en vez de opacidad: en Android un trozo de texto anidado no admite opacidad animada.
+ */
+function Cursor({ colors }: { colors: Colors }) {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    const t = setInterval(() => setOn((v) => !v), 530);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <Text accessible={false} aria-hidden style={[styles.cursor, { color: on ? colors.warm : colors.warmSoft }]}>
+      {'\u2009\u258d'}
+    </Text>
+  );
+}
+
+export function Markdown({
+  text,
+  colors,
+  ornate,
+  escribiendo,
+  sources,
+  onCite,
+  onOpenRef,
+}: {
+  text: string;
+  colors: Colors;
+  ornate?: boolean;
+  /** La IA sigue escribiendo: un cursor al final de lo que lleva. */
+  escribiendo?: boolean;
+} & Cites) {
   const cites = { sources, onCite, onOpenRef };
   // Mientras llega la respuesta, una marca a medias no se enseña.
   const blocks = text.replace(/⟪[^⟫\n]*$/, '').split(/\n{2,}/);
+  // Dónde va el cursor: al final de la última línea con algo escrito, si es un párrafo o un punto de una lista.
+  let fin = -1;
+  for (let i = blocks.length - 1; escribiendo && i >= 0 && fin < 0; i--) if (blocks[i].trim()) fin = i;
+  const ultima = fin >= 0 ? blocks[fin].split('\n').filter((l) => l.trim()).at(-1)!.trim() : '';
+  const enLinea = fin >= 0 && !/^#{1,3} /.test(ultima) && !MARCA.test(ultima);
+  const conCursor = (i: number, j: number, n: number) => (enLinea && i === fin && j === n - 1 ? <Cursor colors={colors} /> : null);
+  const cuerpo = blocks.map((block, i) => {
+    const lines = block.split('\n').filter((l) => l.trim());
+    if (!lines.length) return null;
+    if (lines.length === 1 && /^#{1,3} /.test(lines[0])) {
+      return <Heading key={i} text={lines[0]} colors={colors} ornate={ornate} cites={cites} />;
+    }
+    return lines.map((line, j) => {
+      if (/^#{1,3} /.test(line)) {
+        return <Heading key={`${i}-${j}`} text={line} colors={colors} ornate={ornate} cites={cites} />;
+      }
+      const marca = line.trim().match(MARCA);
+      if (marca) return <VerseQuote key={`${i}-${j}`} cita={marca[1]} colors={colors} onOpen={onOpenRef} />;
+      const bullet = /^\s*[-*] /.test(line);
+      return (
+        <View key={`${i}-${j}`} style={bullet ? styles.bulletRow : undefined}>
+          {bullet && <Text style={[styles.p, { color: colors.accent, width: 16 }]}>•</Text>}
+          <Text style={[styles.p, { color: colors.text, flex: bullet ? 1 : undefined }]}>
+            {inline(line.replace(/^\s*[-*] /, ''), colors, cites)}
+            {conCursor(i, j, lines.length)}
+          </Text>
+        </View>
+      );
+    });
+  });
   return (
     <View>
-      {blocks.map((block, i) => {
-        const lines = block.split('\n').filter((l) => l.trim());
-        if (!lines.length) return null;
-        if (lines.length === 1 && /^#{1,3} /.test(lines[0])) {
-          return <Heading key={i} text={lines[0]} colors={colors} ornate={ornate} cites={cites} />;
-        }
-        return lines.map((line, j) => {
-          if (/^#{1,3} /.test(line)) {
-            return <Heading key={`${i}-${j}`} text={line} colors={colors} ornate={ornate} cites={cites} />;
-          }
-          const marca = line.trim().match(MARCA);
-          if (marca) return <VerseQuote key={`${i}-${j}`} cita={marca[1]} colors={colors} onOpen={onOpenRef} />;
-          const bullet = /^\s*[-*] /.test(line);
-          return (
-            <View key={`${i}-${j}`} style={bullet ? styles.bulletRow : undefined}>
-              {bullet && <Text style={[styles.p, { color: colors.accent, width: 16 }]}>•</Text>}
-              <Text style={[styles.p, { color: colors.text, flex: bullet ? 1 : undefined }]}>
-                {inline(line.replace(/^\s*[-*] /, ''), colors, cites)}
-              </Text>
-            </View>
-          );
-        });
-      })}
+      {cuerpo}
+      {/* Si lo último es un título o un versículo, o aún no hay nada, el cursor va en su propia línea. */}
+      {escribiendo && !enLinea && (
+        <Text style={[styles.p, { color: colors.text }]}>
+          <Cursor colors={colors} />
+        </Text>
+      )}
     </View>
   );
 }
@@ -455,6 +501,7 @@ const styles = StyleSheet.create({
   peekOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   peekOpen: { alignSelf: 'flex-start', marginTop: 12, borderWidth: 1.5, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 7 },
   citeTap: { borderRadius: 8, overflow: 'hidden' },
+  cursor: { fontWeight: '400' },
   quote: { borderLeftWidth: 3, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 4, marginBottom: 12 },
   quoteHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   quoteLabel: { flex: 1, fontSize: 12, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' },
