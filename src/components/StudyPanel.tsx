@@ -345,7 +345,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
           <View key={i}>
             {!!turn.pasos?.length && <Investigacion pasos={turn.pasos} working={!turn.text && busy && i === turns.length - 1} colors={colors} />}
             {turn.text ? (
-              <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} onOpenRef={open} />
+              <Markdown text={turn.text} colors={colors} escribiendo={busy && i === turns.length - 1} sources={turn.sources} onCite={setPeek} onOpenRef={open} />
             ) : (
               !turn.pasos?.length && (
                 <View style={styles.waiting}>
@@ -496,7 +496,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
               )}
               {first?.text ? (
                 <View>
-                  <Markdown text={first.text} colors={colors} ornate sources={first.sources} onCite={setPeek} onOpenRef={open} />
+                  <Markdown text={first.text} colors={colors} ornate escribiendo={busy && turns.length <= 1} sources={first.sources} onCite={setPeek} onOpenRef={open} />
                   {(busy ? turns.length > 1 : true) && (
                     <Appear>
                       <Sources sources={first.sources} text={first.text} colors={colors} onOpen={open} />

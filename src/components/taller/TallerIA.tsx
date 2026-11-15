@@ -218,7 +218,7 @@ export default function TallerIA({ mensaje, paso, modo: initialModo, title, onCl
                         onCite={setPeek}
                       />
                     ) : (
-                      <Markdown text={turn.text} colors={colors} sources={turn.sources} onCite={setPeek} />
+                      <Markdown text={turn.text} colors={colors} escribiendo={busy && i === turns.length - 1} sources={turn.sources} onCite={setPeek} />
                     )}
                     {!!turn.text && (!busy || i < turns.length - 1) && (
                       <Sources sources={turn.sources} text={turn.text} colors={colors} onOpen={open} />
