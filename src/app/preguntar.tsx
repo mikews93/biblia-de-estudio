@@ -93,7 +93,7 @@ export default function Preguntar() {
                 )}
                 <Investigacion pasos={t.pasos ?? []} working={working && !cuerpo.trim()} colors={colors} />
                 {!!cuerpo.trim() && (
-                  <Markdown text={cuerpo} colors={colors} ornate sources={t.sources} onCite={setPeek} onOpenRef={openRef} />
+                  <Markdown text={cuerpo} colors={colors} ornate escribiendo={working} sources={t.sources} onCite={setPeek} onOpenRef={openRef} />
                 )}
                 {working && !cuerpo.trim() && !t.pasos?.length && <Esperando colors={colors} />}
                 {t.cortada && <Text style={[styles.note, { color: colors.muted }]}>La respuesta se cortó.</Text>}

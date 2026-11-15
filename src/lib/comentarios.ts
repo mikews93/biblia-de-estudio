@@ -1,6 +1,8 @@
 // Cliente de /api/comentario: comentarios bíblicos traducidos al español (ver comentarioFuentes.ts).
 
+import { aRitmo } from './aRitmo';
 import type { Explicacion } from './diccionario';
+import { fetchPorPartes } from './porPartes';
 
 export { ACTIVAS, FUENTES, comenta } from './comentarioFuentes';
 export type { Fuente } from './comentarioFuentes';
@@ -52,7 +54,7 @@ export async function traducir(
   signal?: AbortSignal,
 ): Promise<{ texto: string; estado: Estado }> {
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${API}/api/comentario`, {
+    const res = await fetchPorPartes(`${API}/api/comentario`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -75,6 +77,7 @@ export async function traducir(
       else if (event.type === 'done') estado = event.estado;
       else if (event.type === 'error') failure = event.message;
     };
+    const avisar = aRitmo(onUpdate);
     const reader = res.body?.getReader?.();
     if (reader) {
       const decoder = new TextDecoder();
@@ -86,11 +89,12 @@ export async function traducir(
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
         lines.forEach(handle);
-        onUpdate(text);
+        avisar(text);
       }
+      avisar.cancelar();
       handle(buffer);
     } else {
-      // Sin lectura por partes (algunas versiones de React Native): se muestra al terminar.
+      // Sin lectura por partes (no debería pasar: en el teléfono se usa expo/fetch): se muestra al terminar.
       (await res.text()).split('\n').forEach(handle);
     }
     if (failure) throw new Error(failure);
