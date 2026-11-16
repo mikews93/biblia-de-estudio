@@ -36,6 +36,7 @@ import { conClaude } from './_quilate';
 import { waitUntil } from './_seguir';
 import { ACTIVAS, Fuente } from '../src/lib/comentarioFuentes';
 import { type Explicacion, palabraPorId } from '../src/lib/diccionario';
+import { SIN_BUFFER } from './_porPartes';
 
 const MODEL = process.env.COMENTARIO_MODEL ?? 'claude-sonnet-5-5';
 const REVIEW_MODEL = process.env.COMENTARIO_REVISOR ?? 'claude-opus-5-5';
@@ -391,7 +392,7 @@ async function translate(request: Request, body: Record<string, unknown>) {
     // Ya estaba traducida: se envía de una vez.
     const lines = [{ type: 'text', text: claimed.texto }, { type: 'done', estado: claimed.estado }];
     return new Response(lines.map((l) => JSON.stringify(l) + '\n').join(''), {
-      headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
+      headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', ...SIN_BUFFER },
     });
   }
 
@@ -444,7 +445,7 @@ async function translate(request: Request, body: Record<string, unknown>) {
     },
   });
   return new Response(stream, {
-    headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
+    headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', ...SIN_BUFFER },
   });
 }
 
@@ -523,7 +524,7 @@ async function translateGuardado(clave: string, system: string, content: string,
   const sql = await db();
   const [done] = await sql<{ texto: string; estado: string }[]>`
     select texto, estado from fichas_es where id = ${ficha.id} and texto is not null`;
-  const ndjson = { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' };
+  const ndjson = { 'Content-Type': 'application/x-ndjson; charset=utf-8', ...SIN_BUFFER };
   if (done) {
     const lines = [{ type: 'text', text: done.texto }, { type: 'done', estado: done.estado }];
     return new Response(lines.map((l) => JSON.stringify(l) + '\n').join(''), { headers: ndjson });
