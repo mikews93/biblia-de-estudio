@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 2.194,
+  "duration": 2.16,
   "speechStart": 0.067,
   "speechEnd": 2,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -48,7 +48,7 @@
   ]
  },
  "muro": {
-  "duration": 6.113,
+  "duration": 6.08,
   "speechStart": 0,
   "speechEnd": 6.08,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -136,7 +136,7 @@
   ]
  },
  "amigos": {
-  "duration": 5.068,
+  "duration": 5.04,
   "speechStart": 0,
   "speechEnd": 5.04,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -219,7 +219,7 @@
   ]
  },
  "grupo": {
-  "duration": 6.113,
+  "duration": 6.08,
   "speechStart": 0,
   "speechEnd": 6.08,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -322,7 +322,7 @@
   ]
  },
  "cta": {
-  "duration": 4.049,
+  "duration": 4,
   "speechStart": 0.14,
   "speechEnd": 3.84,
   "method": "elevenlabs alignment (with-timestamps, per character)",

@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 4.989,
+  "duration": 4.96,
   "speechStart": 0.08,
   "speechEnd": 4.48,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -78,7 +78,7 @@
   ]
  },
  "arcos": {
-  "duration": 5.799,
+  "duration": 5.76,
   "speechStart": 0,
   "speechEnd": 5.2,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -171,7 +171,7 @@
   ]
  },
  "libro": {
-  "duration": 4.598,
+  "duration": 4.56,
   "speechStart": 0,
   "speechEnd": 4,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -234,7 +234,7 @@
   ]
  },
  "capitulo": {
-  "duration": 4.676,
+  "duration": 4.64,
   "speechStart": 0,
   "speechEnd": 4,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -297,7 +297,7 @@
   ]
  },
  "cta": {
-  "duration": 3.971,
+  "duration": 3.92,
   "speechStart": 0.14,
   "speechEnd": 3.76,
   "method": "elevenlabs alignment (with-timestamps, per character)",
