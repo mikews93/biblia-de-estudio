@@ -51,6 +51,7 @@ import { Span, enviarTrazas, quilate, textoDe } from './_quilate';
 import { guardarPregunta } from './_preguntas';
 import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
 import { Registro, detener, reanudar } from './_reanudar';
+import { SIN_BUFFER } from './_porPartes';
 import { waitUntil } from './_seguir';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
@@ -965,7 +966,7 @@ async function saveStudy(clave: string, saved: Saved) {
 
 const ndjson = (events: object[]) =>
   new Response(events.map((e) => JSON.stringify(e) + '\n').join(''), {
-    headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
+    headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', ...SIN_BUFFER },
   });
 
 function doc(title: string, blocks: Block[]) {
@@ -2120,6 +2121,6 @@ function streamAnswer(
   }
 
   return new Response(stream, {
-    headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
+    headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', ...SIN_BUFFER },
   });
 }

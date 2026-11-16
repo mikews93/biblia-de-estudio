@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 3.318,
+  "duration": 3.28,
   "speechStart": 0.067,
   "speechEnd": 3.04,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -68,7 +68,7 @@
   ]
  },
  "lista": {
-  "duration": 4.911,
+  "duration": 4.88,
   "speechStart": 0,
   "speechEnd": 4.88,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -141,7 +141,7 @@
   ]
  },
  "camino": {
-  "duration": 5.251,
+  "duration": 5.2,
   "speechStart": 0,
   "speechEnd": 5.2,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -209,7 +209,7 @@
   ]
  },
  "grupo": {
-  "duration": 4.833,
+  "duration": 4.8,
   "speechStart": 0,
   "speechEnd": 4.24,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -287,7 +287,7 @@
   ]
  },
  "animos": {
-  "duration": 3.082,
+  "duration": 3.04,
   "speechStart": 0,
   "speechEnd": 3.04,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -335,7 +335,7 @@
   ]
  },
  "cta": {
-  "duration": 3.866,
+  "duration": 3.84,
   "speechStart": 0.2,
   "speechEnd": 3.68,
   "method": "elevenlabs alignment (with-timestamps, per character)",
