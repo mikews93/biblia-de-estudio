@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 3.239,
+  "duration": 3.2,
   "speechStart": 0.057,
   "speechEnd": 3.04,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -63,7 +63,7 @@
   ]
  },
  "android": {
-  "duration": 5.329,
+  "duration": 5.28,
   "speechStart": 0,
   "speechEnd": 5,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -141,7 +141,7 @@
   ]
  },
  "instalar": {
-  "duration": 5.956,
+  "duration": 5.92,
   "speechStart": 0,
   "speechEnd": 5.44,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -209,7 +209,7 @@
   ]
  },
  "apk": {
-  "duration": 6.922,
+  "duration": 6.88,
   "speechStart": 0,
   "speechEnd": 6.24,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -302,7 +302,7 @@
   ]
  },
  "iphone": {
-  "duration": 5.642,
+  "duration": 5.6,
   "speechStart": 0,
   "speechEnd": 5.12,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -365,7 +365,7 @@
   ]
  },
  "compartir": {
-  "duration": 4.127,
+  "duration": 4.08,
   "speechStart": 0,
   "speechEnd": 3.92,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -428,7 +428,7 @@
   ]
  },
  "vermas": {
-  "duration": 3.866,
+  "duration": 3.84,
   "speechStart": 0,
   "speechEnd": 3.76,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -476,7 +476,7 @@
   ]
  },
  "agregar": {
-  "duration": 7.079,
+  "duration": 7.04,
   "speechStart": 0,
   "speechEnd": 6.4,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -574,7 +574,7 @@
   ]
  },
  "cta": {
-  "duration": 5.956,
+  "duration": 5.92,
   "speechStart": 0.16,
   "speechEnd": 5.68,
   "method": "elevenlabs alignment (with-timestamps, per character)",
