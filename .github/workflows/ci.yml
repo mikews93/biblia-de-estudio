@@ -27,7 +27,8 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # ubuntu-latest pasó a 26.04 y Playwright aún no instala Chromium ahí («does not support chromium on ubuntu26.04»).
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       # Base de datos para las pruebas de api/comunidades.ts y los flujos e2e con cuenta
