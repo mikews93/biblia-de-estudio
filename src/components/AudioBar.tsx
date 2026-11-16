@@ -247,13 +247,21 @@ function Bar() {
             style={styles.trackHit}
             accessibilityRole="adjustable"
             accessibilityLabel={
-              speech ? `Intervención ${speech.index + 1} de ${speech.lines.length}` : `Posición ${clock(now)} de ${clock(total)}`
+              speech
+                ? `Intervención ${speech.index + 1} de ${speech.lines.length}`
+                : `Posición ${clock(now)} de ${clock(total)}, faltan ${clock(total - now)}`
             }
           >
             <View style={[styles.track, { backgroundColor: colors.border }]}>
               <View style={[styles.fill, { backgroundColor: colors.accent, width: `${Math.min(1, progress) * 100}%` }]} />
             </View>
           </Pressable>
+          {!speech && total > 0 && (
+            <View style={styles.times} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Text style={[styles.timeSmall, { color: colors.muted }]}>{clock(now)}</Text>
+              <Text style={[styles.timeSmall, { color: colors.muted }]}>−{clock(total - now)}</Text>
+            </View>
+          )}
           <View style={styles.controls}>
             {capitulos ? (
               <>
@@ -263,7 +271,7 @@ function Bar() {
             ) : (
               <>
                 <Text style={[styles.time, { color: colors.muted }]}>
-                  {speech ? `${speech.index + 1}/${speech.lines.length}` : clock(now)}
+                  {speech ? `${speech.index + 1}/${speech.lines.length}` : ''}
                 </Text>
                 {rateButton}
               </>
@@ -304,13 +312,13 @@ function Bar() {
               <>
                 {chapterButton(vecinos.siguiente, true)}
                 <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]}>
-                  {speech ? `${speech.index + 1}/${speech.lines.length}` : clock(now)}
+                  {speech ? `${speech.index + 1}/${speech.lines.length}` : ''}
                 </Text>
               </>
             ) : (
               <>
                 <View style={styles.rateSpacer} />
-                <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]}>{speech ? '' : clock(total)}</Text>
+                <Text style={[styles.time, { color: colors.muted, textAlign: 'right' }]} />
               </>
             )}
           </View>
@@ -465,6 +473,9 @@ const styles = StyleSheet.create({
   fill: { height: 4, borderRadius: 2 },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   time: { fontSize: 12, width: 44, fontVariant: ['tabular-nums'] },
+  // Lo que va y lo que falta, justo bajo la barra (también con los botones de capítulo, que no dejan sitio al lado).
+  times: { flexDirection: 'row', justifyContent: 'space-between', marginTop: -4, marginBottom: 2 },
+  timeSmall: { fontSize: 11.5, fontVariant: ['tabular-nums'] },
   rate: { minWidth: 40, borderWidth: 1, borderRadius: 10, paddingVertical: 3, alignItems: 'center' },
   rateSpacer: { minWidth: 40 },
   small: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
