@@ -182,7 +182,9 @@ function showOnLockScreen(p: AudioPlayer) {
     p.setActiveForLockScreen(
       true,
       { title: state.title, artist: state.audio?.label ?? '', albumTitle: 'Zarza' },
-      { showSeekBackward: true, showSeekForward: true },
+      // Todo lo que suena aquí es un archivo con final. Si no se dice, Android mira al abrir la sesión si el audio parece
+      // «en vivo» (lo cree cuando no sabe cuánto mide el archivo) y entonces quita de la notificación el poder adelantar.
+      { showSeekBackward: true, showSeekForward: true, isLiveStream: false },
     );
   } catch {
     // la pantalla de bloqueo no está en todas las plataformas
