@@ -11,7 +11,8 @@ const DIR = process.env.TEOLOGIA_DIR ?? path.join(process.cwd(), 'dist', 'teolog
 // Secciones por archivo de texto (SHARD en pipeline/build_teologia.py)
 const SHARD = 40;
 
-export type Area = 'sistematicas' | 'canon' | 'credos' | 'herejias' | 'historia';
+export type Area = 'sistematicas' | 'canon' | 'credos' | 'herejias' | 'concilios' | 'padres' | 'historia';
+export const AREAS: Area[] = ['sistematicas', 'canon', 'credos', 'herejias', 'concilios', 'padres', 'historia'];
 export type Obra = {
   id: string;
   autor: string;
