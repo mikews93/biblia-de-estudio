@@ -24,6 +24,7 @@ La licencia de [LICENSE](LICENSE) (todos los derechos reservados) cubre solo la 
 | Manuales de plantas, animales y objetos de la Biblia (Flora, Fauna and Realia Handbooks, `objetos/`) | [ubsicap/ubs-open-license](https://github.com/ubsicap/ubs-open-license), © Sociedades Bíblicas Unidas, 2025 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Traducidos al español con IA y sin los consejos para traductores; **la traducción también es CC BY-SA 4.0** |
 | Treasury of Scripture Knowledge (`tsk/`), International Standard Bible Encyclopedia, 1915 (`isbe/`) y Torrey's New Topical Textbook, 1897 (`torrey/`) | Módulos SWORD de [CrossWire](https://www.crosswire.org/sword/), copiados en la versión «fuentes-libros-v1» | Dominio público |
 | Alfred Edersheim (*Life and Times of Jesus the Messiah*, *The Temple*, *Sketches of Jewish Social Life*) y Flavio Josefo (trad. Whiston), en `pipeline/teologia/` | [CCEL](https://ccel.org), copiados en la versión «fuentes-libros-v1» | Dominio público |
+| Padres antenicenos y nicenos y postnicenos (ANF y NPNF, ed. Philip Schaff y Henry Wace, 1885-1900) *The Seven Ecumenical Councils* (ed. Henry R. Percival, 1900) y la *Summa Theologica* de Tomás de Aquino (trad. 1920, solo Dios, Trinidad, creación y ley), en `pipeline/teologia/` | [CCEL](https://ccel.org/fathers), copiados en la versión «teologia-fuentes-v1» | Dominio público |
 | Genealogías | [Theographic Bible Metadata](https://github.com/robertrouse/theographic-bible-metadata), Robert Rouse | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Los datos derivados (árboles y familias de las fichas) se comparten con la misma licencia |
 | Fotos de lugares, objetos y mapas | Wikimedia Commons | La de cada foto (dominio público, CC0, CC BY o CC BY-SA), con su autor y licencia junto a la imagen |
 
@@ -33,6 +34,7 @@ La licencia de [LICENSE](LICENSE) (todos los derechos reservados) cubre solo la 
 | --- | --- |
 | Tyndale Open Study Notes, Tyndale House Publishers ([tyndaleopenresources.com](https://tyndaleopenresources.com)) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). **La traducción al español que hace la app también es CC BY-SA 4.0**, no «todos los derechos reservados» |
 | Matthew Henry, Jamieson-Fausset-Brown, Adam Clarke, Albert Barnes, Juan Calvino, Keil y Delitzsch, Spurgeon (*El tesoro de David*), John Wesley, Scofield (1917) | Dominio público, desde los módulos SWORD de CrossWire. Las traducciones al español se hacen con IA |
+| Padres de la Iglesia (comentario «Padres»): citas por versículo de [Commentaries-Database](https://github.com/HistoricalChristianFaith/Commentaries-Database) (HistoricalChristianFaith, dominio público), solo las que están en los volúmenes ANF y NPNF de Schaff, de autores hasta el año 750 | Dominio público. Las traducciones al español se hacen con IA |
 | Enduring Word, David Guzik | Con derechos de autor. Solo se enlaza a su sitio |
 
 ## Audio

@@ -15,7 +15,7 @@ import path from 'node:path';
 
 import { Section, sections } from './_comentarios';
 import { ISBE, OBRAS, TORREY, TYNDALE, buscarEntradas, buscarLD, buscarTema, buscarTyndale, etiqueta, partes, textoTyndale } from './_diccionario';
-import { Area, buscarTeologia } from './_teologia';
+import { AREAS, Area, buscarTeologia } from './_teologia';
 import { parseCita } from '../src/lib/cita';
 import { type CapituloRow, type FichaDatos, type IndiceRow, buscarNombre, citasDeFicha, datosDe, delTramo, enlaceFicha, momentoDe } from './_personajes';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
@@ -359,7 +359,7 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
   {
     name: 'comentarios',
     description:
-      'Lo que dicen de un pasaje los comentarios bíblicos de la app, en su inglés original (las notas de estudio de Tyndale y comentaristas clásicos como Matthew Henry, Calvino, Keil y Delitzsch o Spurgeon). Para un versículo o un capítulo entero.',
+      'Lo que dicen de un pasaje los comentarios bíblicos de la app, en su inglés original (las notas de estudio de Tyndale, comentaristas clásicos como Matthew Henry, Calvino, Keil y Delitzsch o Spurgeon, y lo que dijeron del pasaje los padres de la Iglesia de los siglos II al VIII, como Ireneo, Atanasio, Agustín, Crisóstomo o Jerónimo). Para un versículo o un capítulo entero.',
     input_schema: cita('Un capítulo o un versículo, como «Romanos 9» o «2 Timoteo 3:16».'),
     strict: true,
   },
@@ -385,20 +385,20 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
   {
     name: 'teologia',
     description:
-      'Busca en obras clásicas de teología y de historia de la Iglesia, de dominio público y en su inglés original: las teologías sistemáticas de Charles Hodge (presbiteriano, 1872), A. H. Strong (bautista, 1907), W. G. T. Shedd (presbiteriano, 1888) y John Miley (metodista arminiano, 1892), la Institución de Calvino, los credos y confesiones (Apostólico, Calcedonia, la Confesión y los catecismos Mayor y Menor de Westminster, Heidelberg, Belga, Treinta y Nueve Artículos, Dort, confesiones bautistas y metodistas), para la historia del canon la Historia eclesiástica de Eusebio, la Carta festal 39 de Atanasio, el fragmento de Muratori y la historia del canon del NT de Westcott, y para las herejías y los concilios la Historia de la Iglesia de Philip Schaff (capítulos de controversias: gnósticos, montanistas, monarquianos y modalistas, arrianos, apolinaristas, nestorianos, eutiquianos, pelagianos, monotelitas, adopcionistas; y en la Reforma anabaptistas, antitrinitarios, Socino y Servet), su historia de los credos y los concilios ecuménicos, y las refutaciones de los Padres: Ireneo (Contra las herejías), Tertuliano (Contra Práxeas), Hipólito (Contra Noeto) y Atanasio (Contra los arrianos), y para el trasfondo histórico y las costumbres del tiempo de la Biblia Alfred Edersheim (Vida y tiempos de Jesús el Mesías, El templo y sus servicios, La vida social judía en tiempos de Cristo) y Flavio Josefo (Antigüedades y Guerras de los judíos, historiador judío del siglo I; no es Escritura y a veces exagera cifras). Úsala para preguntas de doctrina o de historia (cómo se definió el canon, qué es la justificación, cómo se entiende la Trinidad, qué es el modalismo, qué decidió Nicea) y para el contexto de un pasaje (cómo era una boda judía, qué pasaba en el templo en la Pascua, quiénes eran los fariseos, quién fue Herodes). Devuelve hasta tres secciones, como mucho una por obra.',
+      'Busca en obras clásicas de teología y de historia de la Iglesia, de dominio público y en su inglés original: las teologías sistemáticas de Charles Hodge (presbiteriano, 1872), A. H. Strong (bautista, 1907), W. G. T. Shedd (presbiteriano, 1888) y John Miley (metodista arminiano, 1892), la Institución de Calvino, los credos y confesiones (Apostólico, Calcedonia, la Confesión y los catecismos Mayor y Menor de Westminster, Heidelberg, Belga, Treinta y Nueve Artículos, Dort, confesiones bautistas y metodistas), para la historia del canon la Historia eclesiástica de Eusebio, la Carta festal 39 de Atanasio, el fragmento de Muratori y la historia del canon del NT de Westcott, y para las herejías y los concilios la Historia de la Iglesia de Philip Schaff (capítulos de controversias: gnósticos, montanistas, monarquianos y modalistas, arrianos, apolinaristas, nestorianos, eutiquianos, pelagianos, monotelitas, adopcionistas; y en la Reforma anabaptistas, antitrinitarios, Socino y Servet), su historia de los credos y los concilios ecuménicos, y las refutaciones de los Padres: Ireneo (Contra las herejías), Tertuliano (Contra Práxeas), Hipólito (Contra Noeto) y Atanasio (Contra los arrianos), los siete concilios ecuménicos (de Nicea, 325, a Nicea II, 787: credos, definiciones de fe, cánones y extractos de las actas, ed. Percival, 1900), las obras de los padres de la Iglesia (padres apostólicos y la Didajé, Justino, Atanasio sobre la encarnación, las catequesis de Cirilo de Jerusalén, los discursos teológicos de Gregorio Nacianceno, Basilio sobre el Espíritu Santo, Hilario sobre la Trinidad, Agustín: Confesiones, La ciudad de Dios, La Trinidad, el Enquiridión y La doctrina cristiana, y la Exposición de la fe de Juan Damasceno), la Suma teológica de Tomás de Aquino (teólogo católico medieval, 1274; solo sus cuestiones sobre Dios, sus atributos y su existencia, la Trinidad, la creación y la ley), y para el trasfondo histórico y las costumbres del tiempo de la Biblia Alfred Edersheim (Vida y tiempos de Jesús el Mesías, El templo y sus servicios, La vida social judía en tiempos de Cristo) y Flavio Josefo (Antigüedades y Guerras de los judíos, historiador judío del siglo I; no es Escritura y a veces exagera cifras). Úsala para preguntas de doctrina o de historia (cómo se definió el canon, qué es la justificación, cómo se entiende la Trinidad, qué es el modalismo, qué decidió Nicea, qué enseñaban los primeros cristianos, cómo se argumenta que Dios existe) y para el contexto de un pasaje (cómo era una boda judía, qué pasaba en el templo en la Pascua, quiénes eran los fariseos, quién fue Herodes). Devuelve hasta tres secciones, como mucho una por obra.',
     input_schema: {
       type: 'object',
       properties: {
         tema: { type: 'string', description: 'El tema en español, corto, para enseñárselo a la persona: «el canon del Nuevo Testamento».' },
         busqueda: {
           type: 'string',
-          description: 'Palabras clave en inglés, como las escribirían esos autores: «canon New Testament disputed books», «justification imputation righteousness», «Trinity eternal generation Son», «Sabellius modalism Praxeas Patripassian», «marriage betrothal bridegroom wedding feast», «Herod Antipas Galilee».',
+          description: 'Palabras clave en inglés, como las escribirían esos autores: «canon New Testament disputed books», «justification imputation righteousness», «Trinity eternal generation Son», «Sabellius modalism Praxeas Patripassian», «Nicaea canon Easter bishops», «first cause motion God exist», «baptism catechumens Eucharist», «marriage betrothal bridegroom wedding feast», «Herod Antipas Galilee».',
         },
         area: {
           type: 'string',
-          enum: ['sistematicas', 'canon', 'credos', 'herejias', 'historia', 'todo'],
+          enum: [...AREAS, 'todo'],
           description:
-            'sistematicas: las teologías y Calvino; canon: Eusebio, Atanasio, Muratori y Westcott; credos: credos y confesiones; herejias: herejías, controversias y concilios (Schaff y los Padres que las refutaron); historia: trasfondo histórico y costumbres judías (Edersheim y Josefo); todo: todas.',
+            'sistematicas: las teologías y Calvino; canon: Eusebio, Atanasio, Muratori y Westcott; credos: credos y confesiones; herejias: herejías y controversias (Schaff y los Padres que las refutaron); concilios: lo que dijo y decidió cada concilio ecuménico, con sus cánones y actas; padres: las obras de los padres de la Iglesia de los siglos I al VIII; filosofia: argumentos sobre Dios, fe y razón y ley natural (Tomás de Aquino); historia: trasfondo histórico y costumbres judías (Edersheim y Josefo); todo: todas.',
         },
       },
       required: ['tema', 'busqueda', 'area'],
@@ -544,7 +544,7 @@ export async function investigar(name: string, input: Record<string, unknown>, b
 
     if (name === 'teologia') {
       const busqueda = String(input.busqueda ?? '').slice(0, 200);
-      const area = (['sistematicas', 'canon', 'credos', 'herejias', 'historia'].includes(String(input.area)) ? input.area : 'todo') as Area | 'todo';
+      const area = (AREAS.includes(input.area as Area) ? input.area : 'todo') as Area | 'todo';
       const found = await buscarTeologia(biblia.request, busqueda, area);
       if (!found) return fail(paso, 'Las obras de teología no están disponibles ahora. Sigue con lo que tienes.');
       if (!found.length) return { content: `Nada en esas obras sobre «${busqueda}». Prueba con otras palabras en inglés o con otra área.`, results: [], paso };

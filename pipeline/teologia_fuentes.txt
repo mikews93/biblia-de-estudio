@@ -24,3 +24,41 @@ anf01.xml https://ccel.org/ccel/s/schaff/anf01.xml
 anf03.xml https://ccel.org/ccel/s/schaff/anf03.xml
 hcc7.xml https://ccel.org/ccel/s/schaff/hcc7.xml
 hcc8.xml https://ccel.org/ccel/s/schaff/hcc8.xml
+# Padres de la Iglesia (ANF y NPNF de Schaff, 1885-1900): obras para el área «padres» y para comprobar las citas de padres.tar.gz
+anf02.xml https://ccel.org/ccel/s/schaff/anf02.xml
+anf04.xml https://ccel.org/ccel/s/schaff/anf04.xml
+anf06.xml https://ccel.org/ccel/s/schaff/anf06.xml
+anf07.xml https://ccel.org/ccel/s/schaff/anf07.xml
+anf08.xml https://ccel.org/ccel/s/schaff/anf08.xml
+anf09.xml https://ccel.org/ccel/s/schaff/anf09.xml
+anf10.xml https://ccel.org/ccel/s/schaff/anf10.xml
+npnf101.xml https://ccel.org/ccel/s/schaff/npnf101.xml
+npnf102.xml https://ccel.org/ccel/s/schaff/npnf102.xml
+npnf103.xml https://ccel.org/ccel/s/schaff/npnf103.xml
+npnf104.xml https://ccel.org/ccel/s/schaff/npnf104.xml
+npnf105.xml https://ccel.org/ccel/s/schaff/npnf105.xml
+npnf106.xml https://ccel.org/ccel/s/schaff/npnf106.xml
+npnf107.xml https://ccel.org/ccel/s/schaff/npnf107.xml
+npnf108.xml https://ccel.org/ccel/s/schaff/npnf108.xml
+npnf109.xml https://ccel.org/ccel/s/schaff/npnf109.xml
+npnf110.xml https://ccel.org/ccel/s/schaff/npnf110.xml
+npnf111.xml https://ccel.org/ccel/s/schaff/npnf111.xml
+npnf112.xml https://ccel.org/ccel/s/schaff/npnf112.xml
+npnf113.xml https://ccel.org/ccel/s/schaff/npnf113.xml
+npnf114.xml https://ccel.org/ccel/s/schaff/npnf114.xml
+npnf202.xml https://ccel.org/ccel/s/schaff/npnf202.xml
+npnf203.xml https://ccel.org/ccel/s/schaff/npnf203.xml
+npnf205.xml https://ccel.org/ccel/s/schaff/npnf205.xml
+npnf206.xml https://ccel.org/ccel/s/schaff/npnf206.xml
+npnf207.xml https://ccel.org/ccel/s/schaff/npnf207.xml
+npnf208.xml https://ccel.org/ccel/s/schaff/npnf208.xml
+npnf209.xml https://ccel.org/ccel/s/schaff/npnf209.xml
+npnf210.xml https://ccel.org/ccel/s/schaff/npnf210.xml
+npnf211.xml https://ccel.org/ccel/s/schaff/npnf211.xml
+npnf212.xml https://ccel.org/ccel/s/schaff/npnf212.xml
+npnf213.xml https://ccel.org/ccel/s/schaff/npnf213.xml
+npnf214.xml https://ccel.org/ccel/s/schaff/npnf214.xml
+# Citas de los padres por versículo (HistoricalChristianFaith, dominio público; solo se usan las que están en ANF/NPNF)
+padres.tar.gz https://codeload.github.com/HistoricalChristianFaith/Commentaries-Database/tar.gz/refs/heads/master
+# Tomás de Aquino, Summa Theologica (trad. Padres Dominicos, 1920): solo para la IA en filosofía y argumentos sobre Dios (Mike, 2026-11-17)
+aquino.xml https://ccel.org/ccel/a/aquinas/summa.xml

@@ -152,6 +152,20 @@ export const FUENTES: Fuente[] = [
     licencia: 'Dominio público. Texto del módulo SWORD de CrossWire.',
   },
   {
+    // Citas de los padres por versículo (pipeline/build_padres.py): solo las que están en los volúmenes de Schaff y
+    // de autores hasta el año 750, sin nadie condenado por un concilio.
+    id: 'padres',
+    nombre: 'Padres',
+    obra: 'Los padres de la Iglesia sobre cada pasaje',
+    autor: 'Ireneo, Atanasio, Agustín, Crisóstomo, Jerónimo y otros',
+    año: 'siglos II-VIII',
+    tipo: 'traducida',
+    idioma: 'en',
+    nota: 'Lo que dijeron del pasaje los primeros cristianos, en sus sermones y escritos.',
+    licencia:
+      'Dominio público. Citas de Commentaries-Database (HistoricalChristianFaith), comprobadas en las traducciones de los Padres antenicenos y nicenos de Philip Schaff (1885-1900).',
+  },
+  {
     id: 'ew',
     nombre: 'Enduring Word',
     obra: 'Comentario bíblico Enduring Word',

@@ -1,0 +1,31 @@
+name: Citas de los padres
+
+# Comprueba las citas de los padres de la Iglesia por versículo contra los volúmenes de Schaff (ANF y NPNF) y deja solo
+# las de dominio público en padres-citas.json.gz, en la versión «teologia-fuentes-v1». pipeline/build_comentarios.py lo
+# lee para el comentario «Padres». Las fuentes las copia antes .github/workflows/teologia-fuentes.yml.
+
+on:
+  push:
+    paths:
+      - pipeline/build_padres.py
+      - .github/workflows/padres.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  comprobar:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: teologia-fuentes-v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Comprobar las citas
+        run: python3 pipeline/build_padres.py salida/padres-citas.json.gz
+      - name: Publicar
+        run: gh release upload "$TAG" salida/padres-citas.json.gz --clobber

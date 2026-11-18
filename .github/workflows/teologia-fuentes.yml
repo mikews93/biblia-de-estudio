@@ -26,15 +26,18 @@ jobs:
       - name: Descargar
         run: |
           mkdir -p fuentes
+          # Solo las que faltan en la versión: así un sitio lento (archive.org) no frena las nuevas.
+          gh release view "$TAG" --json assets -q '.assets[].name' > ya.txt 2>/dev/null || true
           grep -v '^#' pipeline/teologia_fuentes.txt | while read -r name url; do
             [ -z "$name" ] && continue
-            code=$(curl -sL --retry 3 --retry-all-errors -A 'Mozilla/5.0 (biblia-de-estudio)' -o "fuentes/$name" -w '%{http_code}' "$url")
-            echo "$code $(stat -c %s "fuentes/$name") $name $url"
+            grep -qx "$name" ya.txt && continue
+            code=$(curl -sL --connect-timeout 30 --max-time 300 --retry 1 --retry-all-errors -A 'Mozilla/5.0 (biblia-de-estudio)' -o "fuentes/$name" -w '%{http_code}' "$url" || true)
+            echo "$code $(stat -c %s "fuentes/$name" 2>/dev/null) $name $url"
             [ "$code" = 200 ] || rm -f "fuentes/$name"
           done
-          cd fuentes && sha256sum * | tee ../sha256.txt
+          cd fuentes && sha256sum * | tee ../sha256-$(date +%Y%m%d%H%M).txt
       - name: Publicar los archivos
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Fuentes de teología (dominio público)" \
             --notes "Copias de obras de dominio público para pipeline/build_teologia.py." --prerelease
-          gh release upload "$TAG" fuentes/* sha256.txt --clobber
+          gh release upload "$TAG" fuentes/* sha256-*.txt --clobber
