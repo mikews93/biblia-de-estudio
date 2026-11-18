@@ -60,3 +60,8 @@ npnf213.xml https://ccel.org/ccel/s/schaff/npnf213.xml
 npnf214.xml https://ccel.org/ccel/s/schaff/npnf214.xml
 # Citas de los padres por versículo (HistoricalChristianFaith, dominio público; solo se usan las que están en ANF/NPNF)
 padres.tar.gz https://codeload.github.com/HistoricalChristianFaith/Commentaries-Database/tar.gz/refs/heads/master
+# Tomás de Aquino, Summa Theologica (trad. Padres Dominicos, 1920): solo para la IA en filosofía y argumentos sobre Dios (Mike, 2026-11-17)
+aquino1.html https://www.gutenberg.org/cache/epub/17611/pg17611-images.html
+aquino2.html https://www.gutenberg.org/cache/epub/17897/pg17897-images.html
+aquino3.html https://www.gutenberg.org/cache/epub/18755/pg18755-images.html
+aquino4.html https://www.gutenberg.org/cache/epub/19950/pg19950-images.html
