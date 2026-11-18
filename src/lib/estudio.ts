@@ -64,6 +64,8 @@ type Request = {
   /** La historia de una palabra del catálogo (src/lib/palabras.ts), en lugar de un pasaje */
   palabra?: string;
   verse?: number;
+  /** Varios versículos seguidos: el estudio va de `verse` a `hasta`. */
+  hasta?: number;
   word?: number;
   messages: Turn[];
   taller?: TallerRequest;

@@ -8,7 +8,16 @@ import { verseHref } from './routes';
 
 const SITE = 'https://zarzabiblia.com';
 
-export type VerseToShare = { book: string; chapter: number; verse: number; text: string; reference: string; version?: string };
+export type VerseToShare = {
+  book: string;
+  chapter: number;
+  verse: number;
+  text: string;
+  reference: string;
+  version?: string;
+  /** Varios versículos elegidos a la vez en el lector (el primero es `verse`); `text` ya los trae juntos. */
+  verses?: number[];
+};
 
 export type ImageFormat = 'cuadrado' | 'historia';
 export type ImageStyle = Fondo;

@@ -53,6 +53,8 @@ type Props = {
   book: Book;
   chapter: number;
   verse?: number;
+  /** Varios versículos elegidos en el lector: el estudio va de `verse` a `hasta`. */
+  hasta?: number;
   /** «¿Por qué esta palabra?»: posición de la palabra griega en el versículo y cómo se muestra. */
   word?: { index: number; greek: string };
   onClose: () => void;
@@ -71,12 +73,15 @@ const FOLLOW_PAUSE = 1200;
  * dispositivo (src/lib/misPreguntas.ts). Al seguir un enlace la ventana se oculta y, al volver atrás,
  * reaparece donde estaba.
  */
-export default function StudyPanel({ book, chapter, verse: given, word, onClose, enfoque: initial }: Props) {
+export default function StudyPanel({ book, chapter, verse: given, hasta: hastaDado, word, onClose, enfoque: initial }: Props) {
   const teclado = useTecladoPanel();
   const colors = useColors();
   // Abierto en un versículo, se puede pasar al estudio de todo el capítulo (y volver): es otro estudio guardado.
   const [whole, setWhole] = useState(false);
   const verse = whole ? undefined : given;
+  const hasta = verse !== undefined && !word && hastaDado && hastaDado > verse ? hastaDado : undefined;
+  /** «16» o «16-18»: el versículo (o el tramo) en las claves y en la cita. */
+  const tramo = hasta ? `${verse}-${hasta}` : verse;
   const { settings, update } = useSettings();
   // «¿Por qué esta palabra?» siempre es estudio profundo.
   const [chosen, setChosen] = useState<Enfoque>(initial ?? settings.enfoque);
@@ -93,7 +98,7 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
   const [peek, setPeek] = useState<Source | null>(null);
   const [clearing, setClearing] = useState(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const passage = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+  const passage = verse ? `${book.name} ${chapter}:${tramo}` : `${book.name} ${chapter}`;
   const title = word ? `${word.greek} en ${passage}` : passage;
   // La IA cita la versión que se lee. Con una versión con derechos, la RV1909: su texto no se puede pasar a la IA.
   const version = settings.version;
@@ -105,14 +110,14 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
   }, []);
   const current = versions.find((v) => v.id === version);
   const aiVersion = licensed || !current ? { id: 'rv1909', abbr: 'RV1909', name: 'Reina-Valera 1909' } : current;
-  const passageKey = `${book.id}.${chapter}.${verse ?? ''}.${word?.index ?? ''}.${version}`;
+  const passageKey = `${book.id}.${chapter}.${tramo ?? ''}.${word?.index ?? ''}.${version}`;
   // Las preguntas de la RV1909 conservan la clave de siempre; las de otra versión van aparte.
-  const storeKey = (e: Enfoque) => conversationKey(e, book.id, chapter, verse, word?.index) + (version === 'rv1909' ? '' : `:${version}`);
+  const storeKey = (e: Enfoque) => conversationKey(e, book.id, chapter, tramo, word?.index) + (version === 'rv1909' ? '' : `:${version}`);
 
   // Una conversación por modo: cambiar de Devocional a Profundo no vuelve a pedir nada ni detiene al otro.
   const convs = useConversations<Enfoque>(
     (enfoque, history, onUpdate, signal) =>
-      askStudy({ book: book.id, chapter, verse, word: word?.index, messages: history, enfoque, version }, onUpdate, signal),
+      askStudy({ book: book.id, chapter, verse, ...(hasta && { hasta }), word: word?.index, messages: history, enfoque, version }, onUpdate, signal),
     (enfoque, done) => {
       if (done.some((t) => t.role === 'user')) saveConversation(storeKey(enfoque), done);
     },
@@ -264,7 +269,8 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
   };
   const retry = () => convs.retry(mode);
   // «Me ayudó», «Algo suena raro» y las preguntas que otros hicieron, cuando el estudio de todos ya está completo.
-  const signals = !!first?.text && (busy ? turns.length > 1 : true) && (
+  // Las señales y preguntas frecuentes son de un versículo o del capítulo: no de un tramo elegido a mano.
+  const signals = !hasta && !!first?.text && (busy ? turns.length > 1 : true) && (
     <StudySignals
       key={mode}
       pasaje={{ book: book.id, chapter, verse, word: word?.index, enfoque: mode }}
@@ -419,11 +425,11 @@ export default function StudyPanel({ book, chapter, verse: given, word, onClose,
                           onPress={() => setWhole(!whole)}
                           hitSlop={6}
                           accessibilityRole="button"
-                          accessibilityLabel={whole ? `Estudiar solo el versículo ${given}` : `Estudiar todo el capítulo ${chapter}`}
+                          accessibilityLabel={whole ? (hastaDado ? `Estudiar solo los versículos ${given}-${hastaDado}` : `Estudiar solo el versículo ${given}`) : `Estudiar todo el capítulo ${chapter}`}
                           style={({ pressed }) => [styles.versionChip, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.6 }]}
                         >
                           <Text style={[styles.versionText, { color: colors.muted }]} numberOfLines={1}>
-                            {whole ? `Solo el versículo ${given}` : 'Todo el capítulo'}
+                            {whole ? (hastaDado ? `Solo los versículos ${given}-${hastaDado}` : `Solo el versículo ${given}`) : 'Todo el capítulo'}
                           </Text>
                           <ChevronRightIcon color={colors.muted} size={13} />
                         </Pressable>

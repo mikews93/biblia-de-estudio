@@ -1,6 +1,8 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
 import { ComponentRef, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, GestureResponderEvent, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
 import ChapterEnd from '@/components/ChapterEnd';
@@ -39,6 +41,8 @@ import { sans, saveLastRead, serif, useColors, useSettings } from '@/lib/theme';
 import { HIGHLIGHT_COLORS, HighlightColor, setHighlight, useChapterHighlights } from '@/lib/highlights';
 import { useChapterNotes } from '@/lib/notas';
 import { BOOK_SLUGS, bookIdFromParam, chapterHref } from '@/lib/routes';
+import { alternar, citaDe, ordenar, sumarTramo, textoDe, textoParaCopiar } from '@/lib/seleccion';
+import { verseUrl } from '@/lib/compartir';
 import { addCards, useCards, verseCardId } from '@/lib/tarjetas';
 import { CapituloRow, fichaHref, fichasDelVersiculo, getFichasCapitulo, marcarNombres } from '@/lib/fichas';
 import FichaChips from '@/components/FichaChips';
@@ -59,6 +63,7 @@ import {
   CloseIcon,
   CommentaryIcon,
   CompareIcon,
+  CopyIcon,
   DramaIcon,
   InterlinearIcon,
   LecternIcon,
@@ -107,14 +112,32 @@ export default function Reader() {
   const [paragraphEnds, setParagraphEnds] = useState<number[]>([]);
   const [interlinear, setInterlinear] = useState<Record<string, Word[]>>({});
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<number | null>(target);
+  // Los versículos elegidos. Con uno, como siempre; al mantener presionado uno se entra en «varios» y cada toque
+  // suma o quita (en el computador, también Mayús o Ctrl/⌘ al hacer clic).
+  const [sel, setSel] = useState<number[]>(target ? [target] : []);
+  const [varios, setVarios] = useState(false);
+  const selected = sel.length ? sel[0] : null;
+  const multi = sel.length > 1;
+  const setSelected = (n: number | null) => {
+    setSel(n === null ? [] : [n]);
+    setVarios(false);
+  };
+  const ultimoToque = useRef<number | null>(target);
+  const [copiado, setCopiado] = useState(false);
+  // El consejo «mantén presionado» se deja de mostrar cuando la persona ya eligió varios alguna vez.
+  const [sabeVarios, setSabeVarios] = useState(true);
+  useEffect(() => {
+    AsyncStorage.getItem(SABE_VARIOS)
+      .then((v) => setSabeVarios(v === '1'))
+      .catch(() => {});
+  }, []);
   const [panelTab, setPanelTab] = useState<Tab | null>(null);
   const [word, setWord] = useState<{ verse: number; index: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState(0);
   const [sharing, setSharing] = useState(false);
   const [praying, setPraying] = useState(false);
-  const [study, setStudy] = useState<{ verse?: number } | null>(null);
+  const [study, setStudy] = useState<{ verse?: number; hasta?: number } | null>(null);
   const [writing, setWriting] = useState(false);
   const [fichas, setFichas] = useState<CapituloRow[]>([]);
   const [placeCount, setPlaceCount] = useState(0);
@@ -235,11 +258,77 @@ export default function Reader() {
     navigate(() => router.replace(href), delta > 0 ? 'turn-forward' : 'turn-back');
   };
 
-  const select = (n: number) => setSelected(selected === n ? null : n);
+  const select = (n: number, e?: GestureResponderEvent) => {
+    const tecla = Platform.OS === 'web' ? (e?.nativeEvent as unknown as { shiftKey?: boolean; metaKey?: boolean; ctrlKey?: boolean } | undefined) : undefined;
+    const antes = ultimoToque.current;
+    ultimoToque.current = n;
+    if (tecla?.shiftKey && sel.length && antes !== null) return elegirVarios(sumarTramo(sel, antes, n));
+    if ((tecla?.metaKey || tecla?.ctrlKey) && sel.length) return elegirVarios(alternar(sel, n));
+    if (varios) {
+      const next = alternar(sel, n);
+      setSel(next);
+      if (!next.length) setVarios(false);
+      return;
+    }
+    setSelected(selected === n ? null : n);
+  };
+  const elegirVarios = (next: number[]) => {
+    setSel(next);
+    setVarios(next.length > 0);
+    if (next.length > 1 && !sabeVarios) {
+      setSabeVarios(true);
+      AsyncStorage.setItem(SABE_VARIOS, '1').catch(() => {});
+    }
+  };
+  // En la web, un <Text> anidado (el modo párrafo) no tiene onLongPress: se mide con el puntero. Si se cumplió,
+  // el clic que sigue no cuenta como toque, y el menú y la selección de texto de Android no aparecen.
+  const largoWeb = useRef<{ n: number; x: number; y: number; t: ReturnType<typeof setTimeout> | null; hecho: boolean } | null>(null);
+  const presionarWeb = (n: number) =>
+    Platform.OS !== 'web'
+      ? {}
+      : ({
+          onPointerDown: (e: { nativeEvent: PointerEvent }) => {
+            if (e.nativeEvent.button > 0) return;
+            const t = setTimeout(() => {
+              if (!largoWeb.current) return;
+              largoWeb.current.hecho = true;
+              (globalThis as { getSelection?: () => Selection | null }).getSelection?.()?.removeAllRanges();
+              mantener(n);
+            }, 420);
+            largoWeb.current = { n, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY, t, hecho: false };
+          },
+          onPointerMove: (e: { nativeEvent: PointerEvent }) => {
+            const l = largoWeb.current;
+            if (l?.t && Math.hypot(e.nativeEvent.clientX - l.x, e.nativeEvent.clientY - l.y) > 10) {
+              clearTimeout(l.t);
+              l.t = null;
+            }
+          },
+          onPointerUp: () => largoWeb.current?.t && clearTimeout(largoWeb.current.t),
+          onPointerCancel: () => largoWeb.current?.t && clearTimeout(largoWeb.current.t),
+          onContextMenu: (e: { preventDefault: () => void }) => {
+            if (largoWeb.current?.n === n) e.preventDefault();
+          },
+          // Son eventos del DOM (react-native-web los pasa tal cual); los tipos de RN no los conocen.
+        } as object);
+  /** El clic que termina un «mantener presionado» de la web no es un toque. */
+  const tocarParrafo = (n: number, e: GestureResponderEvent) => {
+    if (largoWeb.current?.hecho && largoWeb.current.n === n) {
+      largoWeb.current = null;
+      return;
+    }
+    select(n, e);
+  };
+  /** Mantener presionado: empieza (o sigue) la selección de varios con este versículo. */
+  const mantener = (n: number) => {
+    ultimoToque.current = n;
+    if (Platform.OS === 'web') (globalThis.navigator as Navigator | undefined)?.vibrate?.(12);
+    elegirVarios(sel.includes(n) && varios ? sel : ordenar([...sel, n]));
+  };
   const openFicha = (f: { id: string; nombre: string }) => navigate(() => router.push(fichaHref(f) as never), 'forward');
   /** En el versículo elegido, los nombres con ficha se pueden tocar (solo en la RV1909, que es la de los nombres). */
   const withNames = (n: number, text: string) =>
-    n !== selected || settings.version !== 'rv1909'
+    n !== selected || multi || settings.version !== 'rv1909'
       ? text
       : marcarNombres(text, fichasDelVersiculo(fichas, n)).map((t, i) =>
           t.ficha ? (
@@ -271,26 +360,31 @@ export default function Reader() {
 
   const marks = useChapterHighlights(bookId, chapter);
   const mark = (n: number) => (marks[n] ? HIGHLIGHT_COLORS[marks[n]] : undefined);
+  /** El color está puesto en todos los elegidos: tocarlo lo quita. */
+  const pintado = (color: HighlightColor) => sel.length > 0 && sel.every((n) => marks[n] === color);
   const paint = (color: HighlightColor) => {
     if (selected === null) return;
-    setHighlight(bookId, chapter, selected, marks[selected] === color ? null : color);
+    const quitar = pintado(color);
+    for (const n of sel) setHighlight(bookId, chapter, n, quitar ? null : color);
     setSelected(null);
   };
 
   const notes = useChapterNotes(bookId, chapter);
   const deck = useCards();
-  const memorizing = selected !== null && !!deck[verseCardId(bookId, chapter, selected)];
+  // Varios versículos se memorizan juntos, en una sola tarjeta.
+  const cardId = selected === null ? '' : verseCardId(bookId, chapter, selected) + (multi ? `-${sel[sel.length - 1]}` : '');
+  const memorizing = selected !== null && !!deck[cardId];
   const memorize = () => {
     if (selected === null || !book) return;
     if (memorizing) {
       navigate(() => router.push('/repaso'), 'forward');
       return;
     }
-    const reference = `${book.name} ${chapter}:${selected}`;
+    const reference = cita;
     const words = selectedText.split(/\s+/);
     addCards([
       {
-        id: verseCardId(bookId, chapter, selected),
+        id: cardId,
         kind: 'versiculo',
         book: bookId,
         chapter,
@@ -324,7 +418,9 @@ export default function Reader() {
   };
 
   const verseBlocks = interlinearOn || settings.layout === 'versiculo';
-  const selectedText = verses?.find(([n]) => n === selected)?.[1] ?? '';
+  const selectedText = verses ? textoDe(verses, sel) : '';
+  /** «Juan 3:16» o, con varios, «Juan 3:16-18, 20». */
+  const cita = book && sel.length ? citaDe(book.name, chapter, sel) : '';
   const title = book ? `${book.name} ${chapter}` : '';
   const version = versions.find((v) => v.id === settings.version);
 
@@ -430,12 +526,28 @@ export default function Reader() {
     { key: 'explorar', title: 'Explorar', tools: exploreTools },
   ];
 
-  const promesas = selected === null ? [] : hilosEn(bookId, chapter, selected);
+  const promesas = selected === null || multi ? [] : hilosEn(bookId, chapter, selected);
+  const copiar = async () => {
+    if (!verses || !book || selected === null) return;
+    const sigla = version?.abbr ?? 'RV1909';
+    const enlace = verseUrl({ book: book.id, chapter, verse: selected, text: '', reference: cita });
+    await Clipboard.setStringAsync(textoParaCopiar(verses, sel, `${cita} (${sigla})`, enlace)).catch(() => {});
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 1600);
+  };
+  const refCount = sel.reduce((s, n) => s + (xrefs[String(n)]?.length ?? 0), 0);
+  const ultimo = sel[sel.length - 1];
   const verseActions =
     selected === null || !book
       ? []
       : [
-          { key: 'estudiar', label: 'Estudiar', icon: (c: string) => <SparkIcon color={c} size={21} />, onPress: () => setStudy({ verse: selected }) },
+          {
+            key: 'estudiar',
+            label: 'Estudiar',
+            icon: (c: string) => <SparkIcon color={c} size={21} />,
+            // Varios: el estudio del tramo, del primero al último elegido.
+            onPress: () => setStudy(multi ? { verse: selected, hasta: ultimo } : { verse: selected }),
+          },
           ...(book.interlinear
             ? [
                 {
@@ -455,7 +567,7 @@ export default function Reader() {
           {
             key: 'referencias',
             label: 'Referencias',
-            badge: xrefs[String(selected)]?.length,
+            badge: refCount || undefined,
             icon: (c: string) => <LinkIcon color={c} size={21} />,
             onPress: () => setPanelTab('referencias'),
           },
@@ -472,9 +584,17 @@ export default function Reader() {
               ]
             : []),
           { key: 'comentario', label: 'Comentario', icon: (c: string) => <CommentaryIcon color={c} size={21} />, onPress: () => setPanelTab('comentario') },
-          { key: 'nota', label: notes[selected] ? 'Mi nota' : 'Nota', icon: (c: string) => <PencilIcon color={c} size={21} />, onPress: () => setWriting(true) },
-          { key: 'orar', label: 'Orar', icon: (c: string) => <PrayIcon color={c} size={21} />, onPress: () => setPraying(true) },
+          ...(multi
+            ? []
+            : [{ key: 'nota', label: notes[selected] ? 'Mi nota' : 'Nota', icon: (c: string) => <PencilIcon color={c} size={21} />, onPress: () => setWriting(true) }]),
           { key: 'compartir', label: 'Compartir', icon: (c: string) => <ShareIcon color={c} size={21} />, onPress: () => setSharing(true) },
+          {
+            key: 'copiar',
+            label: copiado ? 'Copiado' : 'Copiar',
+            icon: (c: string) => (copiado ? <CheckIcon color={c} size={21} /> : <CopyIcon color={c} size={21} />),
+            onPress: copiar,
+          },
+          { key: 'orar', label: 'Orar', icon: (c: string) => <PrayIcon color={c} size={21} />, onPress: () => setPraying(true) },
           {
             key: 'memorizar',
             label: memorizing ? 'En repaso' : 'Memorizar',
@@ -485,7 +605,11 @@ export default function Reader() {
             key: 'preparar',
             label: 'Preparar',
             icon: (c: string) => <LecternIcon color={c} size={21} />,
-            onPress: () => navigate(() => router.push(`/taller?libro=${book.id}&capitulo=${chapter}&versiculo=${selected}`), 'forward'),
+            onPress: () =>
+              navigate(
+                () => router.push(`/taller?libro=${book.id}&capitulo=${chapter}&versiculo=${selected}${multi ? `&hasta=${ultimo}` : ''}`),
+                'forward',
+              ),
           },
         ];
 
@@ -599,9 +723,11 @@ export default function Reader() {
                 {group.map(([n, text, label], i) => (
                   <Text
                     key={n}
-                    onPress={() => select(n)}
+                    onPress={(e) => tocarParrafo(n, e)}
+                    onLongPress={() => mantener(n)}
+                    {...presionarWeb(n)}
                     style={
-                      n === selected
+                      sel.includes(n)
                         ? {
                             backgroundColor: mark(n) ?? colors.highlight,
                             textDecorationLine: 'underline',
@@ -643,12 +769,13 @@ export default function Reader() {
                   words={interlinear[String(n)]}
                   rtl={original(book).rtl}
                   refCount={xrefs[String(n)]?.length ?? 0}
-                  selected={n === selected}
+                  selected={sel.includes(n)}
                   mark={mark(n)}
                   fontSize={size}
                   fontFamily={fontFamily}
                   colors={colors}
-                  onSelect={() => select(n)}
+                  onSelect={(e) => select(n, e)}
+                  onLongPress={() => mantener(n)}
                   onWord={(i) => {
                     // Mientras suena la lectura original, tocar una palabra salta a ella; en pausa, abre su ficha.
                     if (!(listening && getPlayer().playing && seekWord(n, i))) setWord({ verse: n, index: i });
@@ -662,12 +789,17 @@ export default function Reader() {
             ) : (
               <Pressable
                 key={n}
-                onPress={() => select(n)}
+                onPress={(e) => select(n, e)}
+                onLongPress={() => mantener(n)}
+                delayLongPress={380}
                 onLayout={(e) => n === target && scrollToY(e.nativeEvent.layout.y)}
+                accessibilityState={{ selected: sel.includes(n) }}
                 style={[
                   styles.verseLine,
                   { backgroundColor: mark(n) },
-                  n === selected && { backgroundColor: colors.highlight },
+                  sel.includes(n) && { backgroundColor: colors.highlight },
+                  multi && sel.includes(n) && styles.verseLineVarios,
+                  multi && sel.includes(n) && { borderLeftColor: colors.accent },
                 ]}
               >
                 <Text style={{ fontFamily, fontSize: size, lineHeight: size * 1.6, color: colors.text }}>
@@ -735,9 +867,16 @@ export default function Reader() {
           style={[styles.actionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}
         >
           <View style={styles.actionHead}>
-            <Text style={{ color: colors.accent, fontWeight: '700' }}>
-              {book.name} {chapter}:{selected}
-            </Text>
+            <View style={styles.actionRef}>
+              <Text style={{ color: colors.accent, fontWeight: '700' }} numberOfLines={1}>
+                {cita}
+              </Text>
+              {varios && (
+                <View style={[styles.cuenta, { backgroundColor: colors.accentSoft }]}>
+                  <Text style={[styles.cuentaText, { color: colors.accent }]}>{sel.length}</Text>
+                </View>
+              )}
+            </View>
             <View style={styles.swatches}>
               {(Object.keys(HIGHLIGHT_COLORS) as HighlightColor[]).map((c) => (
                 <Pressable
@@ -745,14 +884,14 @@ export default function Reader() {
                   onPress={() => paint(c)}
                   hitSlop={6}
                   accessibilityRole="button"
-                  accessibilityLabel={marks[selected] === c ? `Quitar resaltado ${c}` : `Resaltar en ${c}`}
+                  accessibilityLabel={pintado(c) ? `Quitar resaltado ${c}` : `Resaltar en ${c}`}
                   style={({ pressed }) => [
                     styles.swatch,
-                    { backgroundColor: HIGHLIGHT_COLORS[c], borderColor: marks[selected] === c ? colors.accent : colors.border },
+                    { backgroundColor: HIGHLIGHT_COLORS[c], borderColor: pintado(c) ? colors.accent : colors.border },
                     pressed && styles.pressed,
                   ]}
                 >
-                  {marks[selected] === c && <CloseIcon color={colors.text} size={12} />}
+                  {pintado(c) && <CloseIcon color={colors.text} size={12} />}
                 </Pressable>
               ))}
             </View>
@@ -766,7 +905,26 @@ export default function Reader() {
               <CloseIcon color={colors.muted} size={16} />
             </Pressable>
           </View>
-          <FichaChips rows={fichasDelVersiculo(fichas, selected)} colors={colors} onOpen={openFicha} />
+          {varios ? (
+            <Text style={[styles.consejo, { color: colors.muted }]}>
+              {multi ? `${sel.length} versículos elegidos · toca otros para sumarlos o quitarlos` : 'Toca otros versículos para sumarlos'}
+            </Text>
+          ) : (
+            <>
+              <FichaChips rows={fichasDelVersiculo(fichas, selected)} colors={colors} onOpen={openFicha} />
+              {!sabeVarios && (
+                <Pressable
+                  onPress={() => elegirVarios(sel)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.consejoBoton, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={[styles.consejo, { color: colors.muted }]}>
+                    Para elegir varios, mantén presionado un versículo o <Text style={{ color: colors.accent, fontWeight: '700' }}>toca aquí</Text>
+                  </Text>
+                </Pressable>
+              )}
+            </>
+          )}
           {/* Todas las acciones a la vista, en una rejilla de cuatro columnas */}
           <View style={styles.actions}>
             {verseActions.map((t, i) => (
@@ -822,6 +980,7 @@ export default function Reader() {
           books={books}
           chapter={chapter}
           verse={selected}
+          verses={multi ? sel : undefined}
           text={selectedText}
           initialTab={panelTab}
           onClose={() => setPanelTab(null)}
@@ -836,7 +995,7 @@ export default function Reader() {
         />
       )}
       {study && book && (
-        <StudyPanel book={book} chapter={chapter} verse={study.verse} onClose={() => setStudy(null)} />
+        <StudyPanel book={book} chapter={chapter} verse={study.verse} hasta={study.hasta} onClose={() => setStudy(null)} />
       )}
       {sharing && book && selected !== null && (
         <VerseImage
@@ -844,8 +1003,9 @@ export default function Reader() {
             book: book.id,
             chapter,
             verse: selected,
+            ...(multi && { verses: sel }),
             text: selectedText,
-            reference: `${book.name} ${chapter}:${selected}`,
+            reference: cita,
             version: version?.abbr ?? 'RV1909',
           }}
           onClose={() => setSharing(false)}
@@ -853,11 +1013,11 @@ export default function Reader() {
       )}
       {praying && book && selected !== null && (
         <OrarConVersiculo
-          versiculo={{ book: book.id, chapter, verse: selected, reference: `${book.name} ${chapter}:${selected}`, text: selectedText }}
+          versiculo={{ book: book.id, chapter, verse: selected, reference: cita, text: selectedText }}
           onClose={() => setPraying(false)}
         />
       )}
-      {writing && book && selected !== null && (
+      {writing && book && selected !== null && !multi && (
         <NoteEditor
           book={book.id}
           chapter={chapter}
@@ -895,6 +1055,13 @@ const styles = StyleSheet.create({
   versionText: { fontSize: 12.5, fontWeight: '700', letterSpacing: 0.4, lineHeight: 16 },
   studyHint: { fontSize: 13, textAlign: 'center', marginTop: 12, maxWidth: 360 },
   verseLine: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, marginHorizontal: -6 },
+  // Con varios elegidos, una raya de acento a la izquierda los une a la vista.
+  verseLineVarios: { borderLeftWidth: 3, borderTopLeftRadius: 2, borderBottomLeftRadius: 2, paddingLeft: 3 },
+  actionRef: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  cuenta: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
+  cuentaText: { fontSize: 11.5, fontWeight: '800', lineHeight: 14 },
+  consejo: { fontSize: 12.5, lineHeight: 17, marginTop: 8 },
+  consejoBoton: { alignSelf: 'flex-start' },
   creditBox: { marginTop: 24, gap: 8, alignItems: 'center' },
   credit: { fontSize: 12, textAlign: 'center' },
   creditLinks: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 },
@@ -944,6 +1111,8 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 12, marginTop: 14, marginHorizontal: -6 },
   letter: { fontFamily: serif, fontSize: 21, lineHeight: 24, textAlign: 'center', width: 22, includeFontPadding: false },
 });
+
+const SABE_VARIOS = 'lector-sabe-varios';
 
 /** Agrupa los versículos en párrafos según los finales de párrafo del griego o del hebreo (sin datos: un solo párrafo). */
 function paragraphs(verses: Verse[], ends: number[]): Verse[][] {

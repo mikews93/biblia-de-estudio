@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { IconText } from '@/components/comunidad/ui';
 import { LinkIcon } from '@/components/icons';
@@ -19,7 +19,9 @@ type Props = {
   fontSize: number;
   fontFamily?: string;
   colors: Colors;
-  onSelect: () => void;
+  onSelect: (e?: GestureResponderEvent) => void;
+  /** Mantener presionado: elegir varios versículos. */
+  onLongPress?: () => void;
   onWord: (index: number) => void;
   onRefs: () => void;
   /** Suena el capítulo en la lengua original: la palabra que se lee se ilumina. */
@@ -27,7 +29,7 @@ type Props = {
 };
 
 /** Versículo en modo estudio: el texto, debajo el griego o el hebreo palabra por palabra y las referencias a un toque. */
-export default function StudyVerse({ n, text, words, rtl, refCount, selected, mark, fontSize, fontFamily, colors, onSelect, onWord, onRefs, listening }: Props) {
+export default function StudyVerse({ n, text, words, rtl, refCount, selected, mark, fontSize, fontFamily, colors, onSelect, onLongPress, onWord, onRefs, listening }: Props) {
   // Solo se vuelve a dibujar el versículo que se está leyendo, no todo el capítulo.
   const spoken = useSpoken((w) => (listening && w?.verse === n ? w.index : -1));
   return (
@@ -38,7 +40,7 @@ export default function StudyVerse({ n, text, words, rtl, refCount, selected, ma
         selected && { backgroundColor: colors.highlight },
       ]}
     >
-      <Pressable onPress={onSelect}>
+      <Pressable onPress={onSelect} onLongPress={onLongPress} delayLongPress={380}>
         <Text style={{ fontFamily, fontSize, lineHeight: fontSize * 1.55, color: colors.text }}>
           <Text style={{ fontSize: fontSize * 0.62, color: colors.accent, fontWeight: '700' }}>{n} </Text>
           {text}
