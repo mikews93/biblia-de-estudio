@@ -122,13 +122,15 @@ export default function Lucero({ nivel, cuenta, onClose }: Props) {
           style={[styles.textos, { opacity: entra, transform: [{ translateY: entra.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}
           pointerEvents="none"
         >
-          <Cifra valor={contar} />
-          <Text style={styles.kicker}>VECES SIRVIENDO</Text>
-          <Text style={styles.titulo}>{nivel.titulo}</Text>
-          <Text style={styles.verso}>«{nivel.versiculo.texto}»</Text>
-          <Text style={styles.ref}>{nivel.versiculo.ref}</Text>
-          <Text style={styles.desglose}>{desglose(cuenta)}</Text>
-          <Text style={styles.cerrar}>Toca para seguir</Text>
+          <View style={styles.columna}>
+            <Cifra valor={contar} />
+            <Text style={styles.kicker}>VECES SIRVIENDO</Text>
+            <Text style={styles.titulo}>{nivel.titulo}</Text>
+            <Text style={styles.verso}>«{nivel.versiculo.texto}»</Text>
+            <Text style={styles.ref}>{nivel.versiculo.ref}</Text>
+            <Text style={styles.desglose}>{desglose(cuenta)}</Text>
+            <Text style={styles.cerrar}>Toca para seguir</Text>
+          </View>
         </Animated.View>
 
         {n >= 5 && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: BLANCO, opacity: destello }]} />}
@@ -316,7 +318,10 @@ function Centro({ tipo, size }: { tipo: Nivel['centro']; size: number }) {
 
 const styles = StyleSheet.create({
   centro: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: '30%' },
-  textos: { position: 'absolute', left: 24, right: 24, bottom: '7%', alignItems: 'center', maxWidth: 520, alignSelf: 'center' },
+  // Fila a todo lo ancho y columna centrada dentro: alignSelf no centra algo con position absolute,
+  // y con maxWidth el texto quedaba pegado a la izquierda en tablets y escritorio.
+  textos: { position: 'absolute', left: 0, right: 0, bottom: '7%', alignItems: 'center', paddingHorizontal: 24 },
+  columna: { width: '100%', maxWidth: 520, alignItems: 'center' },
   cifra: { color: ORO, fontFamily: serif, fontSize: 54, lineHeight: 60, fontWeight: '700', fontVariant: ['tabular-nums'] },
   kicker: { color: ORO, fontSize: 12, fontWeight: '800', letterSpacing: 2 },
   titulo: { color: BLANCO, fontFamily: serif, fontSize: 30, textAlign: 'center', marginTop: 8 },
