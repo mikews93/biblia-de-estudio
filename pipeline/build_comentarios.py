@@ -19,6 +19,7 @@ desde = 0 es la introducción del capítulo. El texto es markdown sencillo: pár
 """
 
 import gzip
+from collections import defaultdict
 import hashlib
 import html
 import json
@@ -460,14 +461,83 @@ def build_tosn(out, counts):
     print(f"tosn: {total} secciones, {words:,} palabras")
 
 
+# ------------------------------------------------------------------------------------------------- Padres de la Iglesia
+
+PADRES = "https://github.com/mikews93/biblia-de-estudio/releases/download/teologia-fuentes-v1/padres-citas.json.gz"
+# Citas por sección (como mucho dos por autor, las más antiguas primero) y palabras por cita
+PADRES_POR_SECCION = 10
+PADRES_POR_AUTOR = 2
+PADRES_PALABRAS = 450
+# Nombre en español de cada padre de la base (pipeline/build_padres.py); los que falten quedan en inglés.
+PADRES_ES = {
+}
+
+
+def recortar(texto, maximo):
+    paras = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n", texto) if p.strip()]
+    out, n = [], 0
+    for p in paras:
+        w = p.split()
+        if n + len(w) > maximo:
+            if maximo - n >= 40 or not out:
+                out.append(" ".join(w[:maximo - n]).rstrip(",;:") + "…")
+            break
+        out.append(p)
+        n += len(w)
+    return out
+
+
+def build_padres(out, counts):
+    """Citas de los padres de la Iglesia (dominio público, comprobadas en Schaff) agrupadas por el versículo donde empiezan."""
+    path = CACHE / "padres-citas.json.gz"
+    if not path.exists():
+        CACHE.mkdir(exist_ok=True)
+        print(f"Descargando {PADRES}…")
+        path.write_bytes(urllib.request.urlopen(PADRES, timeout=300).read())
+    data = json.loads(gzip.decompress(path.read_bytes()))
+    index = {b[0]: i for i, b in enumerate(BOOKS)}
+    chapters = defaultdict(lambda: defaultdict(list))
+    for libro, c1, v1, c2, v2, padre, obra, año, texto in data["citas"]:
+        vc = counts[index[libro]]
+        if not 1 <= c1 <= len(vc) or not 1 <= v1 <= vc[c1 - 1]:
+            continue
+        hasta = min(v2 if c2 == c1 else vc[c1 - 1], vc[c1 - 1])
+        chapters[(libro, c1)][v1].append((año, padre, obra, max(hasta, v1), texto))
+    total = words = 0
+    for (libro, ch), by_verse in sorted(chapters.items(), key=lambda kv: (index[kv[0][0]], kv[0][1])):
+        sections = []
+        for v in sorted(by_verse):
+            citas = sorted(by_verse[v], key=lambda c: (c[0], c[1]))
+            elegidas, por_autor = [], defaultdict(int)
+            for c in citas:
+                if por_autor[c[1]] < PADRES_POR_AUTOR and len(elegidas) < PADRES_POR_SECCION:
+                    por_autor[c[1]] += 1
+                    elegidas.append(c)
+            paras = []
+            for año, padre, obra, _, texto in elegidas:
+                cuando = f"hacia el año {año}" if año else ""
+                cabeza = f"**{PADRES_ES.get(padre, padre)}**" + (f" · *{obra}*" if obra else "") + (f" ({cuando})" if cuando else "")
+                cuerpo = recortar(texto, PADRES_PALABRAS)
+                if cuerpo:
+                    paras += [cabeza] + cuerpo
+            if paras:
+                sections.append({"desde": v, "hasta": max(c[3] for c in elegidas), "titulo": "", "paras": paras})
+        n, w = write_chapter(out, "padres", libro, ch, sections)
+        total += n
+        words += w
+    print(f"padres: {total} secciones, {words:,} palabras")
+
+
 def main():
     args = sys.argv[1:]
     out = Path(args[0]) if args else ROOT.parent / "public" / "comentarios"
-    names = args[1:] or list(MODULES)
+    names = args[1:] or [*MODULES, "padres"]
     counts, kjv = verse_counts()
     for name in names:
         if name == "tosn":
             build_tosn(out, counts)
+        elif name == "padres":
+            build_padres(out, counts)
         else:
             build(name, out, counts, kjv)
 

@@ -15,7 +15,7 @@ import path from 'node:path';
 
 import { Section, sections } from './_comentarios';
 import { ISBE, OBRAS, TORREY, TYNDALE, buscarEntradas, buscarLD, buscarTema, buscarTyndale, etiqueta, partes, textoTyndale } from './_diccionario';
-import { Area, buscarTeologia } from './_teologia';
+import { AREAS, Area, buscarTeologia } from './_teologia';
 import { parseCita } from '../src/lib/cita';
 import { type CapituloRow, type FichaDatos, type IndiceRow, buscarNombre, citasDeFicha, datosDe, delTramo, enlaceFicha, momentoDe } from './_personajes';
 import { ACTIVAS, Fuente, comenta } from '../src/lib/comentarioFuentes';
@@ -359,7 +359,7 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
   {
     name: 'comentarios',
     description:
-      'Lo que dicen de un pasaje los comentarios bíblicos de la app, en su inglés original (las notas de estudio de Tyndale y comentaristas clásicos como Matthew Henry, Calvino, Keil y Delitzsch o Spurgeon). Para un versículo o un capítulo entero.',
+      'Lo que dicen de un pasaje los comentarios bíblicos de la app, en su inglés original (las notas de estudio de Tyndale, comentaristas clásicos como Matthew Henry, Calvino, Keil y Delitzsch o Spurgeon, y lo que dijeron del pasaje los padres de la Iglesia de los siglos II al VIII, como Ireneo, Atanasio, Agustín, Crisóstomo o Jerónimo). Para un versículo o un capítulo entero.',
     input_schema: cita('Un capítulo o un versículo, como «Romanos 9» o «2 Timoteo 3:16».'),
     strict: true,
   },
@@ -396,7 +396,7 @@ export const TOOLS: Anthropic.Beta.BetaTool[] = [
         },
         area: {
           type: 'string',
-          enum: ['sistematicas', 'canon', 'credos', 'herejias', 'historia', 'todo'],
+          enum: [...AREAS, 'todo'],
           description:
             'sistematicas: las teologías y Calvino; canon: Eusebio, Atanasio, Muratori y Westcott; credos: credos y confesiones; herejias: herejías, controversias y concilios (Schaff y los Padres que las refutaron); historia: trasfondo histórico y costumbres judías (Edersheim y Josefo); todo: todas.',
         },
@@ -544,7 +544,7 @@ export async function investigar(name: string, input: Record<string, unknown>, b
 
     if (name === 'teologia') {
       const busqueda = String(input.busqueda ?? '').slice(0, 200);
-      const area = (['sistematicas', 'canon', 'credos', 'herejias', 'historia'].includes(String(input.area)) ? input.area : 'todo') as Area | 'todo';
+      const area = (AREAS.includes(input.area as Area) ? input.area : 'todo') as Area | 'todo';
       const found = await buscarTeologia(biblia.request, busqueda, area);
       if (!found) return fail(paso, 'Las obras de teología no están disponibles ahora. Sigue con lo que tienes.');
       if (!found.length) return { content: `Nada en esas obras sobre «${busqueda}». Prueba con otras palabras en inglés o con otra área.`, results: [], paso };
