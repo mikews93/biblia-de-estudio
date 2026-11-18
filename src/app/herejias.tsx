@@ -62,9 +62,9 @@ export default function HerejiasScreen() {
       })}
 
       <Text style={[styles.pie, { color: colors.muted }]}>
-        Las explicaciones las prepara la IA de la app con la Biblia, los credos antiguos, la Historia de la Iglesia de Philip
-        Schaff y los Padres que respondieron a cada error (Ireneo, Tertuliano, Hipólito, Atanasio). Puede equivocarse: revisa
-        las citas.
+        Las explicaciones las prepara la IA de la app con la Biblia, los credos antiguos, las actas y cánones de los siete
+        concilios ecuménicos, la Historia de la Iglesia de Philip Schaff y los Padres que respondieron a cada error (Ireneo,
+        Tertuliano, Hipólito, Atanasio y otros). Puede equivocarse: revisa las citas.
       </Text>
     </ScrollView>
   );

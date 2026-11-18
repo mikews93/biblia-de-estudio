@@ -100,7 +100,7 @@ def nice_title(t):
 
 # ------------------------------------------------------------------------------------------------- Las obras
 
-# area: sistematicas | canon | credos | herejias | historia. Cada «parte» es un archivo de la caché.
+# area: sistematicas | canon | credos | herejias | concilios | padres | filosofia | historia. Cada «parte» es un archivo de la caché.
 OBRAS = [
     {"id": "hodge", "autor": "Charles Hodge", "titulo": "Systematic Theology", "corto": "Hodge, Teología sistemática",
      "año": 1872, "tradicion": "presbiteriana (Princeton)", "area": "sistematicas",
@@ -194,6 +194,71 @@ OBRAS = [
      "corto": "Atanasio, Contra los arrianos", "año": 358, "tradicion": "Padres de la Iglesia", "area": "herejias",
      "url": "https://ccel.org/ccel/schaff/npnf204.xxi.ii.html",
      "partes": [{"thml": "atanasio.xml", "ccel": "schaff/npnf204", "roots": ["xxi.ii", "xiv"]}]},
+    # Padres de la Iglesia: sus obras de doctrina y de vida cristiana (ANF y NPNF de Schaff, 1885-1900). Lo que dijeron
+    # sobre cada versículo va aparte, en el comentario «Padres» (pipeline/build_padres.py).
+    {"id": "padres-apostolicos", "autor": "Clemente de Roma, Ignacio, Policarpo, Bernabé, Papías y la Didajé",
+     "titulo": "The Apostolic Fathers (ANF I y VII)", "corto": "Padres apostólicos", "año": 100,
+     "tradicion": "Padres de la Iglesia (generación de los apóstoles)", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/anf01",
+     "partes": [{"thml": "anf01.xml", "ccel": "schaff/anf01",
+                 "roots": ["ii", "iii", "iv", "v.ii", "v.iii", "v.iv", "v.v", "v.vi", "v.vii", "v.viii", "vi", "vii"]},
+                {"thml": "anf07.xml", "ccel": "schaff/anf07", "roots": ["viii.iii"], "titulo": "The Teaching of the Twelve Apostles (Didache)"}]},
+    {"id": "justino", "autor": "Justino Mártir", "titulo": "First and Second Apology; Dialogue with Trypho",
+     "corto": "Justino, Apologías y Diálogo con Trifón", "año": 155, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/anf01.viii.html",
+     "partes": [{"thml": "anf01.xml", "ccel": "schaff/anf01", "roots": ["viii.ii", "viii.iii", "viii.iv"]}]},
+    {"id": "atanasio-encarnacion", "autor": "Atanasio de Alejandría", "titulo": "On the Incarnation of the Word",
+     "corto": "Atanasio, La encarnación del Verbo", "año": 318, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf204.vii.html",
+     "partes": [{"thml": "atanasio.xml", "ccel": "schaff/npnf204", "roots": ["vii.ii"], "titulo": "On the Incarnation of the Word"}]},
+    {"id": "cirilo-catequesis", "autor": "Cirilo de Jerusalén", "titulo": "Catechetical Lectures",
+     "corto": "Cirilo de Jerusalén, Catequesis", "año": 350, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf207.ii.html",
+     "partes": [{"thml": "npnf207.xml", "ccel": "schaff/npnf207", "roots": ["ii"], "skip": ["ii.i", "ii.ii", "ii.iii"]}]},
+    {"id": "nacianceno", "autor": "Gregorio Nacianceno", "titulo": "The Five Theological Orations",
+     "corto": "Gregorio Nacianceno, Discursos teológicos", "año": 380, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf207.iii.html",
+     "partes": [{"thml": "npnf207.xml", "ccel": "schaff/npnf207",
+                 "roots": ["iii.xiii", "iii.xiv", "iii.xv", "iii.xvi", "iii.xvii", "iii.xxiii"]}]},
+    {"id": "basilio-espiritu", "autor": "Basilio de Cesarea", "titulo": "On the Holy Spirit; Hexaemeron",
+     "corto": "Basilio, El Espíritu Santo", "año": 375, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf208.vii.html",
+     "partes": [{"thml": "npnf208.xml", "ccel": "schaff/npnf208", "roots": ["vii", "viii"], "skip": ["viii.i"]}]},
+    {"id": "hilario-trinidad", "autor": "Hilario de Poitiers", "titulo": "On the Trinity",
+     "corto": "Hilario, La Trinidad", "año": 360, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf209.ii.v.html",
+     "partes": [{"thml": "npnf209.xml", "ccel": "schaff/npnf209", "roots": ["ii.v"]}]},
+    {"id": "agustin-confesiones", "autor": "Agustín de Hipona", "titulo": "The Confessions",
+     "corto": "Agustín, Confesiones", "año": 400, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf101.vi.html",
+     "partes": [{"thml": "npnf101.xml", "ccel": "schaff/npnf101", "roots": ["vi"], "skip": ["vi.i", "vi.ii"]}]},
+    {"id": "agustin-ciudad", "autor": "Agustín de Hipona", "titulo": "The City of God",
+     "corto": "Agustín, La ciudad de Dios", "año": 426, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf102.iv.html",
+     "partes": [{"thml": "npnf102.xml", "ccel": "schaff/npnf102", "roots": ["iv"]}]},
+    {"id": "agustin-doctrina", "autor": "Agustín de Hipona",
+     "titulo": "On the Holy Trinity; Enchiridion; On Christian Doctrine; On Faith and the Creed",
+     "corto": "Agustín, La Trinidad y otros tratados", "año": 420, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf103.iv.html",
+     "partes": [{"thml": "npnf103.xml", "ccel": "schaff/npnf103", "roots": ["iv.i", "iv.ii", "iv.iv"]},
+                {"thml": "npnf102.xml", "ccel": "schaff/npnf102", "roots": ["v"]}]},
+    {"id": "damasceno", "autor": "Juan Damasceno", "titulo": "An Exact Exposition of the Orthodox Faith",
+     "corto": "Juan Damasceno, Exposición de la fe", "año": 743, "tradicion": "Padres de la Iglesia", "area": "padres",
+     "url": "https://ccel.org/ccel/schaff/npnf209.iii.iv.html",
+     "partes": [{"thml": "npnf209.xml", "ccel": "schaff/npnf209", "roots": ["iii.iv"]}]},
+    # Los siete concilios ecuménicos: credos, definiciones, cánones y extractos de las actas, con las notas de Percival
+    # (anglicano) y los cánones de los sínodos locales que los concilios aprobaron.
+    {"id": "concilios", "autor": "Henry R. Percival (ed.)", "titulo": "The Seven Ecumenical Councils (NPNF II, vol. 14)",
+     "corto": "Los siete concilios ecuménicos", "año": 1900, "tradicion": "concilios de la Iglesia antigua (325-787)",
+     "area": "concilios", "url": "https://ccel.org/ccel/schaff/npnf214",
+     "partes": [{"thml": "npnf214.xml", "ccel": "schaff/npnf214",
+                 "roots": ["iii", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv", "xv", "xvi"]}]},
+    # Tomás de Aquino (decisión de Mike, 2026-11-17): solo para filosofía y argumentos sobre Dios, no como padre de la
+    # Iglesia ni en el comentario por versículo. De la Suma, Dios, la Trinidad, la creación y la ley.
+    {"id": "aquino", "autor": "Tomás de Aquino", "titulo": "Summa Theologica (trad. Padres de la Provincia Dominica Inglesa, 1920)",
+     "corto": "Tomás de Aquino, Suma teológica", "año": 1274, "tradicion": "teología medieval (católica)",
+     "area": "filosofia", "url": "https://ccel.org/ccel/aquinas/summa",
+     "partes": [{"thml": "aquino.xml", "ccel": "aquinas/summa", "roots": ["FP.i", "FP.ii", "FP.iii", "FP.iv", "FP.v", "FP.vi", "FS.vi"]}]},
     # Historia y costumbres del tiempo de la Biblia: Edersheim (judío convertido, anglicano) y Josefo, de la versión
     # «fuentes-libros-v1» (pipeline/fuentes_libros.txt).
     {"id": "edersheim-vida", "autor": "Alfred Edersheim", "titulo": "The Life and Times of Jesus the Messiah",

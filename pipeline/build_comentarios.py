@@ -517,7 +517,8 @@ def build_padres(out, counts):
                 cabeza = f"**{nombres.get(padre, padre)}**" + (f" · *{obra}*" if obra else "") + (f" ({cuando})" if cuando else "")
                 cuerpo = recortar(texto, PADRES_PALABRAS)
                 if cuerpo:
-                    paras += [cabeza] + cuerpo
+                    # El nombre va pegado a su primer párrafo para que nunca quede solo al final de una parte.
+                    paras += [f"{cabeza}\n\n{cuerpo[0]}"] + cuerpo[1:]
             if paras:
                 sections.append({"desde": v, "hasta": max(c[3] for c in elegidas), "titulo": "", "paras": paras})
         n, w = write_chapter(out, "padres", libro, ch, sections)
