@@ -24,6 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Descargar
+        id: descargar
         run: |
           mkdir -p fuentes
           # Solo las que faltan en la versión: así un sitio lento (archive.org) no frena las nuevas.
@@ -35,8 +36,15 @@ jobs:
             echo "$code $(stat -c %s "fuentes/$name" 2>/dev/null) $name $url"
             [ "$code" = 200 ] || rm -f "fuentes/$name"
           done
-          cd fuentes && sha256sum * | tee ../sha256-$(date +%Y%m%d%H%M).txt
+          # Si ya estaban todas, no hay nada que publicar y el paso siguiente se salta.
+          if [ -n "$(ls -A fuentes)" ]; then
+            (cd fuentes && sha256sum * | tee ../sha256-$(date +%Y%m%d%H%M).txt)
+            echo "nuevas=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Todas las fuentes ya están en la versión $TAG."
+          fi
       - name: Publicar los archivos
+        if: steps.descargar.outputs.nuevas == 'true'
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Fuentes de teología (dominio público)" \
             --notes "Copias de obras de dominio público para pipeline/build_teologia.py." --prerelease
