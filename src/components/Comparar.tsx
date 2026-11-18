@@ -225,20 +225,34 @@ export const compareHref = (book: string, chapter: number, verse?: number) =>
 export function CompareVerse({
   book,
   chapter,
-  verse,
+  verse: dado,
   colors,
   onNavigate,
 }: {
   book: Book;
   chapter: number;
-  verse: number;
+  /** Un versículo o varios elegidos a la vez (se comparan de corrido). */
+  verse: number | number[];
   colors: Colors;
   onNavigate: () => void;
 }) {
+  const lista = Array.isArray(dado) ? dado : [dado];
+  const verse = lista[0];
+  const varios = lista.length > 1;
+  /** El versículo (o los elegidos, juntos) en una versión; una versión que une versículos no los repite. */
+  const buscar = (verses: Verse[]): Verse | undefined => {
+    if (!varios) return findVerse(verses, verse);
+    const vistos = new Map<number, Verse>();
+    for (const n of lista) {
+      const f = findVerse(verses, n);
+      if (f) vistos.set(f[0], f);
+    }
+    return vistos.size ? [verse, [...vistos.values()].map(([, t]) => t.trim()).join(' ')] : undefined;
+  };
   const { all, chosen, toggle, reading } = useCompareVersions();
   const chapters = useChapters(book.id, chapter, chosen);
   const [marks, setMarks] = useState(true);
-  const baseText = findVerse(chapters(reading).verses ?? [], verse)?.[1] ?? null;
+  const baseText = buscar(chapters(reading).verses ?? [])?.[1] ?? null;
   const original = useOriginal(book.id, chapter);
 
   return (
@@ -254,7 +268,7 @@ export function CompareVerse({
       <View style={{ gap: 10 }}>
         {chosen.map((v, i) => {
           const { verses, error, extras } = chapters(v.id);
-          const found = verses ? findVerse(verses, verse) : undefined;
+          const found = verses ? buscar(verses) : undefined;
           const isBase = v.id === reading;
           return (
             <Appear key={v.id} delay={i * 40} from={6}>
@@ -309,14 +323,16 @@ export function CompareVerse({
         })}
       </View>
 
-      <WhyDifferent
-        verse={verse}
-        reference={`${book.name} ${chapter}:${verse}`}
-        original={original}
-        versions={chosen}
-        chapters={chapters}
-        colors={colors}
-      />
+      {!varios && (
+        <WhyDifferent
+          verse={verse}
+          reference={`${book.name} ${chapter}:${verse}`}
+          original={original}
+          versions={chosen}
+          chapters={chapters}
+          colors={colors}
+        />
+      )}
 
       <Pressable
         onPress={() => {

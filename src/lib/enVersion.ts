@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import type { VerseToShare } from './compartir';
 import { Verse, getChapter, getVersions } from './data';
 import { licensedById } from './licenciadas';
+import { textoDe } from './seleccion';
 import { useSettings } from './theme';
 
 let abreviaturas: Promise<Record<string, string>> | null = null;
@@ -28,7 +29,8 @@ export async function enVersion<T extends VerseToShare>(versos: T[], version: st
   return Promise.all(
     versos.map(async (v) => {
       if (v.version === sigla) return v;
-      const texto = (await getChapter(v.book, v.chapter, version).catch(() => [])).find(([n]) => n === v.verse)?.[1];
+      const capitulo = await getChapter(v.book, v.chapter, version).catch(() => []);
+      const texto = v.verses && v.verses.length > 1 ? textoDe(capitulo, v.verses) : capitulo.find(([n]) => n === v.verse)?.[1];
       return texto ? { ...v, text: texto, version: sigla } : v;
     }),
   );
