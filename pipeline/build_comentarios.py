@@ -468,9 +468,6 @@ PADRES = "https://github.com/mikews93/biblia-de-estudio/releases/download/teolog
 PADRES_POR_SECCION = 10
 PADRES_POR_AUTOR = 2
 PADRES_PALABRAS = 450
-# Nombre en español de cada padre de la base (pipeline/build_padres.py); los que falten quedan en inglés.
-PADRES_ES = {
-}
 
 
 def recortar(texto, maximo):
@@ -495,6 +492,7 @@ def build_padres(out, counts):
         print(f"Descargando {PADRES}…")
         path.write_bytes(urllib.request.urlopen(PADRES, timeout=300).read())
     data = json.loads(gzip.decompress(path.read_bytes()))
+    nombres = {p: m["es"] for p, m in data["padres"].items()}
     index = {b[0]: i for i, b in enumerate(BOOKS)}
     chapters = defaultdict(lambda: defaultdict(list))
     for libro, c1, v1, c2, v2, padre, obra, año, texto in data["citas"]:
@@ -516,7 +514,7 @@ def build_padres(out, counts):
             paras = []
             for año, padre, obra, _, texto in elegidas:
                 cuando = f"hacia el año {año}" if año else ""
-                cabeza = f"**{PADRES_ES.get(padre, padre)}**" + (f" · *{obra}*" if obra else "") + (f" ({cuando})" if cuando else "")
+                cabeza = f"**{nombres.get(padre, padre)}**" + (f" · *{obra}*" if obra else "") + (f" ({cuando})" if cuando else "")
                 cuerpo = recortar(texto, PADRES_PALABRAS)
                 if cuerpo:
                     paras += [cabeza] + cuerpo
