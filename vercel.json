@@ -64,6 +64,10 @@
       "destination": "/api/auth?ruta=$1"
     },
     {
+      "source": "/play",
+      "destination": "/play.html"
+    },
+    {
       "source": "/i/:codigo",
       "destination": "/invitar.html"
     },

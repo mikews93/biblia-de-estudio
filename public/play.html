@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Zarza en Google Play</title>
+<meta name="description" content="Instala Zarza, la Biblia de estudio gratis en español: griego y hebreo, audio, planes y estudio con IA." />
+<meta name="robots" content="noindex" />
+<meta property="og:title" content="Zarza · Biblia de estudio" />
+<meta property="og:description" content="Gratis en Google Play. Griego y hebreo, audio, planes y estudio con IA que cita sus fuentes." />
+<meta property="og:url" content="https://zarzabiblia.com/play" />
+<meta property="og:image" content="https://zarzabiblia.com/logo512.png" />
+<meta property="og:site_name" content="Zarza" />
+<meta name="theme-color" content="#F9F8F6" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#131313" media="(prefers-color-scheme: dark)" />
+<link rel="icon" href="/logo192.png" />
+<!--
+  Enlace corto para redes (bio de Instagram, TikTok, Facebook): zarzabiblia.com/play.
+  El navegador que traen Instagram y Facebook abre https://play.google.com como página web y no pasa a la
+  app de Play Store. Un enlace intent:// sí sale del navegador interno y abre la tienda; si no hay Play Store,
+  Android sigue con browser_fallback_url (la página web de Play). Fuera de Android lleva a /instalar.
+  ?de=instagram (o tiktok, facebook…) queda como utm_source en Play Console.
+-->
+<style>
+  :root {
+    --bg: #F9F8F6; --surface: #FFFFFF; --text: #1C1B19; --muted: #625E58; --border: #E3E0DB;
+    --accent: #2A2826; --on-accent: #F9F8F6; --amber: #B7791F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131313; --surface: #1C1C1B; --text: #ECEAE6; --muted: #9D9A94; --border: #302F2D;
+      --accent: #E6E3DE; --on-accent: #131313; --amber: #E0A84A;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+  main { width: 100%; max-width: 400px; text-align: center; }
+  .icono { width: 96px; height: 96px; border-radius: 24px; display: block; margin: 0 auto 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.14), 0 0 0 1px var(--border); }
+  h1 { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; font-size: 30px; line-height: 1.15;
+    font-weight: 700; margin: 0 0 8px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); font-size: 16px; line-height: 1.5; margin: 0 0 28px; }
+  .estado { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; margin: 0 0 18px; min-height: 20px; }
+  .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); animation: latir 1.2s ease-in-out infinite; }
+  @keyframes latir { 0%,100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.1); } }
+  .boton { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%;
+    min-height: 56px; padding: 0 20px; border-radius: 16px; background: var(--accent); color: var(--on-accent);
+    font-size: 17px; font-weight: 700; text-decoration: none; -webkit-tap-highlight-color: transparent;
+    transition: transform .12s ease, opacity .12s ease; }
+  .boton:active { transform: scale(.98); opacity: .9; }
+  .boton svg { width: 22px; height: 22px; flex: none; }
+  .tarjeta { margin-top: 20px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 16px;
+    background: var(--surface); text-align: left; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+  .tarjeta b { color: var(--text); }
+  .tarjeta a { color: var(--text); font-weight: 700; }
+  .menu { display: inline-flex; vertical-align: -3px; width: 18px; height: 18px; margin: 0 2px; }
+  .enlaces { margin-top: 22px; font-size: 14px; color: var(--muted); }
+  .enlaces a { color: var(--text); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+  .enlaces span { margin: 0 8px; opacity: .5; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <img class="icono" src="/logo512.png" alt="" width="96" height="96" />
+  <h1>Zarza en Google Play</h1>
+  <p class="sub">La Biblia de estudio gratis, en español. Griego y hebreo, audio, planes y estudio que cita sus fuentes.</p>
+
+  <p class="estado" id="estado"><span class="punto"></span><span>Abriendo Play Store…</span></p>
+
+  <a class="boton" id="abrir" href="https://play.google.com/store/apps/details?id=com.migueblanco.zarza">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4.6 2.3c-.3.3-.5.8-.5 1.4v16.6c0 .6.2 1.1.5 1.4l.1.1 9.3-9.3v-.2L4.7 2.2l-.1.1Z"/><path fill="currentColor" opacity=".8" d="m17.1 15.6-3.1-3.1v-.2l3.1-3.1.1.1 3.7 2.1c1 .6 1 1.6 0 2.2l-3.7 2.1-.1-.1Z"/><path fill="currentColor" opacity=".65" d="M17.2 15.5 14 12.3l-9.4 9.4c.4.4 1 .4 1.7.1l10.9-6.3"/><path fill="currentColor" opacity=".9" d="M17.2 9.1 6.3 2.8c-.7-.4-1.3-.3-1.7.1l9.4 9.4 3.2-3.2Z"/></svg>
+    <span>Abrir en Google Play</span>
+  </a>
+
+  <div class="tarjeta" id="ayuda" hidden>
+    ¿No se abrió la tienda? Toca el menú <svg class="menu" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="19" r="1.8" fill="currentColor"/></svg>
+    de arriba y elige <b>«Abrir en navegador externo»</b>, o <a id="chrome" href="#">ábrelo en Chrome</a>.
+  </div>
+
+  <p class="enlaces">
+    <a href="/">Usar en la web</a><span>·</span><a href="/instalar">Otras formas de instalar</a>
+  </p>
+</main>
+<script>
+(function () {
+  var PAQUETE = 'com.migueblanco.zarza';
+  var ua = navigator.userAgent || '';
+  var android = /Android/i.test(ua);
+  var origen = (new URLSearchParams(location.search).get('de') || 'zarzabiblia').replace(/[^a-z0-9_-]/gi, '').slice(0, 30);
+  var referrer = encodeURIComponent('utm_source=' + origen + '&utm_medium=enlace');
+  var web = 'https://play.google.com/store/apps/details?id=' + PAQUETE + '&referrer=' + referrer;
+
+  if (!android) {
+    // iPhone y computador: Zarza aún no está en el App Store; /instalar explica cómo tenerla (QR, web).
+    location.replace('/instalar');
+    return;
+  }
+
+  var intent = 'intent://details?id=' + PAQUETE + '&referrer=' + referrer +
+    '#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=' + encodeURIComponent(web) + ';end';
+  var boton = document.getElementById('abrir');
+  boton.href = intent;
+
+  // Abrir esta misma página en Chrome, fuera del navegador de Instagram o Facebook.
+  document.getElementById('chrome').href = 'intent://' + location.host + location.pathname + location.search +
+    '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(web) + ';end';
+
+  var estado = document.getElementById('estado');
+  var interno = /Instagram|FBAN|FBAV|FB_IAB|Threads|TikTok|musical_ly|Bytedance|Line\/|Twitter|Snapchat/i.test(ua);
+
+  // Se intenta abrir la tienda sola; si la página sigue visible un rato, se muestra la ayuda.
+  setTimeout(function () { location.href = intent; }, 60);
+  setTimeout(function () {
+    if (document.hidden) return;
+    estado.hidden = true;
+    if (interno) document.getElementById('ayuda').hidden = false;
+  }, 1800);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) estado.hidden = true;
+  });
+})();
+</script>
+</body>
+</html>
