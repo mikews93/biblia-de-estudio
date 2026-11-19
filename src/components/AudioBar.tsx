@@ -36,6 +36,7 @@ import { SPEAKERS } from '@/lib/podcast';
 import { useExtrasPodcast } from '@/lib/podcastExtras';
 import { Vecino, irAlVecino, useVecinos } from '@/lib/podcastVecinos';
 import PodcastAjustes from './PodcastAjustes';
+import PodcastPreguntas from './PodcastPreguntas';
 
 import {
   BackIcon,
@@ -113,6 +114,7 @@ function Bar() {
   const total = file ? chapterDuration(status.duration) : 0;
   const progress = speech ? (speech.index + 1) / Math.max(1, speech.lines.length) : total ? now / total : 0;
   const verse = audio.kind !== 'podcast' ? currentVerse(now) : null;
+  const podcastLines = speech?.lines ?? file?.lines ?? [];
   const others =
     audio.kind === 'lectura' && file?.version
       ? audio.versions.filter((v) => v.id !== file.version!.id && v[file.testament ?? 'nt'])
@@ -323,6 +325,17 @@ function Bar() {
             )}
           </View>
           {file?.note && <Text style={[styles.note, { color: colors.muted }]}>{file.note}</Text>}
+          {/* Preguntar sobre lo que suena: solo en el pódcast de un capítulo (el de una palabra no tiene capítulo). */}
+          {audio.kind === 'podcast' && audio.book && audio.chapter > 0 && podcastLines.length > 0 && (
+            <PodcastPreguntas
+              book={audio.book}
+              chapter={audio.chapter}
+              title={audio.title}
+              lines={podcastLines}
+              index={speech ? speech.index : currentVerse(now)}
+              colors={colors}
+            />
+          )}
           {audio.kind === 'podcast' && <PodcastAjustes colors={colors} dispositivo={!!speech} extras={extras} />}
           {audio.kind === 'dramatizado' && file?.variantes && (
             <View style={styles.mezcla}>
