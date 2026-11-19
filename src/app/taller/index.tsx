@@ -44,7 +44,7 @@ const ICONOS: Record<Tipo, (p: IconProps) => React.ReactNode> = { reflexion: Lam
 /** El Taller: preparar reflexiones, encuentros de grupo y sermones. Desde el lector llega con un pasaje. */
 export default function TallerScreen() {
   const colors = useColors();
-  const params = useLocalSearchParams<{ libro?: string; capitulo?: string; versiculo?: string }>();
+  const params = useLocalSearchParams<{ libro?: string; capitulo?: string; versiculo?: string; hasta?: string }>();
   const { mensajes, ready } = useTaller();
   const [books, setBooks] = useState<Book[]>([]);
   const [buscar, setBuscar] = useState('');
@@ -91,7 +91,13 @@ export default function TallerScreen() {
 
   const pasaje: Pasaje | null =
     params.libro && params.capitulo
-      ? { book: params.libro, chapter: Number(params.capitulo), from: params.versiculo ? Number(params.versiculo) : undefined }
+      ? {
+          book: params.libro,
+          chapter: Number(params.capitulo),
+          from: params.versiculo ? Number(params.versiculo) : undefined,
+          // Varios versículos elegidos en el lector
+          to: params.versiculo && params.hasta ? Number(params.hasta) : undefined,
+        }
       : null;
 
   const crear = async (tipo: Tipo) => {

@@ -32,6 +32,7 @@ import { Encontrado, ROLES, hilosEn, pasoEnRef } from '@/lib/promesas';
 import { Colors, serif, useColors } from '@/lib/theme';
 import { verseHref } from '@/lib/routes';
 import { navigate } from '@/lib/transition';
+import { citaDe } from '@/lib/seleccion';
 
 export type Tab = 'interlineal' | 'versiones' | 'referencias' | 'diccionario' | 'mapa' | 'comentario' | 'grupo';
 
@@ -40,12 +41,18 @@ type Props = {
   books: Book[];
   chapter: number;
   verse: number;
+  /** Varios versículos elegidos a la vez (el primero es `verse`). */
+  verses?: number[];
   text: string;
   initialTab?: Tab;
   onClose: () => void;
 };
 
-export default function VersePanel({ book, books, chapter, verse, text, initialTab, onClose }: Props) {
+export default function VersePanel({ book, books, chapter, verse: primero, verses, text, initialTab, onClose }: Props) {
+  const varios = verses && verses.length > 1 ? verses : null;
+  // Con varios: las pestañas de un solo versículo (original, diccionario, comentario…) se ven de uno en uno.
+  const [foco, setFoco] = useState(primero);
+  const verse = foco;
   const colors = useColors();
   // Al ir a /entrar o /registro desde aquí, la ventana se oculta para no tapar esa pantalla y vuelve al regresar.
   const focused = useIsFocused();
@@ -74,8 +81,8 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
             <View style={[styles.handle, { backgroundColor: colors.border }]} />
           </View>
           <View style={styles.head}>
-            <Text style={[styles.ref, { color: colors.accent }]}>
-              {book.name} {chapter}:{verse}
+            <Text style={[styles.ref, { color: colors.accent, flexShrink: 1 }]} numberOfLines={1}>
+              {varios ? citaDe(book.name, chapter, varios) : `${book.name} ${chapter}:${verse}`}
             </Text>
             <Pressable
               onPress={onClose}
@@ -131,13 +138,46 @@ export default function VersePanel({ book, books, chapter, verse, text, initialT
             ))}
           </ScrollView>
           <ScrollView contentContainerStyle={styles.body}>
+            {varios && tab !== 'versiones' && tab !== 'referencias' && (
+              <View style={styles.focoRow} accessibilityRole="tablist">
+                <Text style={[styles.focoLabel, { color: colors.muted }]}>Versículo</Text>
+                {varios.map((n) => (
+                  <Pressable
+                    key={n}
+                    onPress={() => setFoco(n)}
+                    accessibilityRole="tab"
+                    aria-selected={n === foco}
+                    style={({ pressed }) => [
+                      styles.focoChip,
+                      { borderColor: n === foco ? colors.accent : colors.border, backgroundColor: n === foco ? colors.accentSoft : 'transparent' },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Text style={{ color: n === foco ? colors.accent : colors.text, fontWeight: '700', fontSize: 13.5 }}>{n}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
             {tab === 'interlineal' && <Interlinear book={book} chapter={chapter} verse={verse} colors={colors} />}
             {tab === 'versiones' && (
-              <CompareVerse book={book} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+              <CompareVerse book={book} chapter={chapter} verse={varios ?? verse} colors={colors} onNavigate={onClose} />
             )}
-            {tab === 'referencias' && (
-              <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
-            )}
+            {tab === 'referencias' &&
+              (varios ? (
+                // Con varios, las referencias de cada uno, una tras otra con su número.
+                <View style={{ gap: 18 }}>
+                  {varios.map((n) => (
+                    <View key={n}>
+                      <Text style={[styles.grupoRefs, { color: colors.muted }]}>
+                        {book.name.toUpperCase()} {chapter}:{n}
+                      </Text>
+                      <CrossRefs book={book} books={books} chapter={chapter} verse={n} colors={colors} onNavigate={onClose} />
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <CrossRefs book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
+              ))}
             {tab === 'diccionario' && (
               <DiccionarioVersiculo book={book} books={books} chapter={chapter} verse={verse} colors={colors} onNavigate={onClose} />
             )}
@@ -463,6 +503,10 @@ const styles = StyleSheet.create({
   tsk: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 4 },
   tskChip: { borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 },
   refRow: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  focoRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 14 },
+  focoLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginRight: 4 },
+  focoChip: { minWidth: 36, height: 32, borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
+  grupoRefs: { fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginBottom: 2 },
   promesaChip: {
     flexDirection: 'row',
     alignItems: 'center',

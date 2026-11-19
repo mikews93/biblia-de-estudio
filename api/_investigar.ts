@@ -219,13 +219,18 @@ export async function commentaryBlocks(
   verse: number | undefined,
   books: Book[],
   budget: number,
+  /** Varios versículos seguidos: las secciones que comentan cualquiera de verse a hasta. */
+  hasta?: number,
 ): Promise<{ title: string; fuente: Fuente; blocks: Block[] }[]> {
   const fuentes = ACTIVAS.filter((f) => f.tipo !== 'enlace' && f.ia !== false && comenta(f, book));
   const found = await Promise.all(
     fuentes.map(async (f: Fuente) => {
       const all = await sections(request, f, book.id, chapter);
       // Un versículo: la sección que lo comenta (o la anterior más cercana, que suele cubrir un tramo).
-      const picked = verse
+      const tramo = verse && hasta && hasta > verse ? all.filter((s) => s.desde > 0 && s.desde <= hasta && s.hasta >= verse) : [];
+      const picked = tramo.length
+        ? tramo
+        : verse
         ? [all.find((s) => s.desde <= verse && verse <= s.hasta) ?? all.filter((s) => s.desde > 0 && s.desde <= verse).at(-1)].filter(
             (s): s is Section => !!s,
           )
@@ -254,7 +259,7 @@ export async function commentaryBlocks(
         };
         return text.map((t, i) => ({ text: i === 0 && s.titulo ? `${s.titulo}\n${t}` : t, meta }));
       });
-      const title = `${f.obra}, ${f.autor}${f.año ? ` (${f.año})` : ''} · comentario sobre ${verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`}`;
+      const title = `${f.obra}, ${f.autor}${f.año ? ` (${f.año})` : ''} · comentario sobre ${verse ? `${book.name} ${chapter}:${verse}${hasta && hasta > verse ? `-${hasta}` : ''}` : `${book.name} ${chapter}`}`;
       return { title, fuente: f, blocks };
     }),
   );

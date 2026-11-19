@@ -28,7 +28,7 @@ function load() {
 }
 
 /** Clave de una conversación: modo, pasaje y, en «¿Por qué esta palabra?», la palabra. */
-export const conversationKey = (enfoque: string, book: string, chapter: number, verse?: number, word?: number) =>
+export const conversationKey = (enfoque: string, book: string, chapter: number, verse?: number | string, word?: number) =>
   [enfoque, book, chapter, verse ?? '', word ?? ''].join(':');
 
 const asked = (turns: Turn[]) => turns.some((t) => t.role === 'user');

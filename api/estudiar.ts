@@ -89,6 +89,8 @@ type Body = {
   book?: string;
   chapter?: number;
   verse?: number;
+  /** Varios versículos seguidos elegidos en el lector: el estudio va de `verse` a `hasta`. */
+  hasta?: number;
   word?: number;
   messages?: Turn[];
   taller?: Taller;
@@ -998,8 +1000,9 @@ async function wordUses(word: Word, here: string, biblia: Biblia) {
 }
 
 /** Lo que dicen del pasaje los comentarios que la IA puede leer: un documento por comentario. */
-async function commentaryDocs(request: Request, book: Book, chapter: number, verse: number | undefined, books: Book[]) {
-  const found = await commentaryBlocks(request, book, chapter, verse, books, verse ? COMMENT_WORDS.verse : COMMENT_WORDS.chapter);
+async function commentaryDocs(request: Request, book: Book, chapter: number, verse: number | undefined, books: Book[], hasta?: number) {
+  const words = verse && !hasta ? COMMENT_WORDS.verse : COMMENT_WORDS.chapter;
+  const found = await commentaryBlocks(request, book, chapter, verse, books, words, hasta);
   return found.map((f) => doc(f.title, f.blocks));
 }
 
@@ -1011,6 +1014,8 @@ async function buildSources(
   word?: number,
   /** El estudio profundo: además, diccionario, léxico UBS, Treasury, medidas y objetos (api/_detalle.ts). */
   detallado = false,
+  /** Varios versículos seguidos: de `verse` a `hasta`. */
+  hasta?: number,
 ) {
   const { request, books } = biblia;
   const [verses, interlinear, xrefs] = await Promise.all([
@@ -1019,6 +1024,11 @@ async function buildSources(
     load<Record<string, [string, number][]>>(`xrefs/${book.id}/${chapter}.json`, {}),
   ]);
   if (verse && !verses.some(([n]) => n === verse)) throw new Error('Ese versículo no existe');
+  if (verse && hasta && !verses.some(([n]) => n === hasta)) throw new Error('Ese versículo no existe');
+  // Los versículos del pasaje: uno, un tramo elegido en el lector o (sin versículo) todo el capítulo.
+  const tramo = verse ? verses.map(([n]) => n).filter((n) => n >= verse && n <= (hasta ?? verse)) : null;
+  // Con el análisis completo del original: un versículo o un tramo corto.
+  const analisis = !!tramo && tramo.length <= 8;
 
   const docs = [
     doc(
@@ -1033,7 +1043,7 @@ async function buildSources(
   // Texto original: con todo el análisis para un versículo; solo palabra y glosa para un capítulo entero.
   const lang = original(book);
   const Lang = lang.name[0].toUpperCase() + lang.name.slice(1);
-  const greekVerses = verse ? [verse] : verses.map(([n]) => n);
+  const greekVerses = tramo ?? verses.map(([n]) => n);
   const greek = greekVerses
     .filter((n) => interlinear[n]?.length)
     .map((n) => ({
@@ -1041,18 +1051,20 @@ async function buildSources(
         `${chapter}:${n} ` +
         interlinear[n]
           .map(([g, tr, es, , lemma, lemmaGloss, strong, morph]) =>
-            verse
+            analisis
               ? `${g} (${tr}) «${es}»: lema ${lemma} «${lemmaGloss}», ${strong}, ${describeMorph(morph)}`
               : `${g} «${es}»`,
           )
-          .join(verse ? '; ' : ' '),
+          .join(analisis ? '; ' : ' '),
       meta: { label: `${Lang} de ${book.name} ${chapter}:${n}`, ref: `${book.id}.${chapter}.${n}` },
     }));
   if (greek.length) docs.push(doc(`${book.name} ${chapter} · ${Lang} (STEPBible ${lang.source})`, greek));
 
   // Referencias cruzadas: todas las del versículo, o las dos más votadas de cada versículo del capítulo.
-  const refs = verse
-    ? (xrefs[verse] ?? []).map(([r]) => r)
+  const refs = tramo?.length === 1
+    ? (xrefs[tramo[0]] ?? []).map(([r]) => r)
+    : tramo
+    ? [...new Set(tramo.flatMap((n) => (xrefs[n] ?? []).slice(0, 5).map(([r]) => r)))].slice(0, 40)
     : Object.values(xrefs).flatMap((list) => list.slice(0, 2).map(([r]) => r)).slice(0, 40);
   const refBlocks = await Promise.all(
     refs.map(async (r) => {
@@ -1062,7 +1074,7 @@ async function buildSources(
   );
   if (refBlocks.length) {
     const title = verse
-      ? `Referencias cruzadas de ${book.name} ${chapter}:${verse} (OpenBible.info)`
+      ? `Referencias cruzadas de ${book.name} ${chapter}:${verse}${hasta ? `-${hasta}` : ''} (OpenBible.info)`
       : `Referencias cruzadas de ${book.name} ${chapter} (OpenBible.info)`;
     docs.push(doc(title, refBlocks));
   }
@@ -1077,9 +1089,9 @@ async function buildSources(
     }
     focus = { word: w, total: uses.total };
   }
-  docs.push(...(await commentaryDocs(request, book, chapter, verse, books)));
+  docs.push(...(await commentaryDocs(request, book, chapter, verse, books, hasta)));
   // Quiénes son las personas del pasaje, de dónde vienen y el momento histórico: un documento con las fichas de la app.
-  const fichas = await fichasDe(biblia, { book, chapter, verse }, '', verse ? 4 : 6, 110).catch(() => []);
+  const fichas = await fichasDe(biblia, { book, chapter, verse, verseEnd: hasta }, '', verse && !hasta ? 4 : 6, 110).catch(() => []);
   if (fichas.length) {
     docs.push(
       doc(
@@ -1110,9 +1122,9 @@ function wordTask(book: Book, chapter: number, verse: number, focus: { word: Wor
 Si los especialistas o las tradiciones cristianas entienden la palabra de maneras distintas en este pasaje, menciónalo sin tomar partido. Extensión: 250 a 400 palabras. Empieza directamente por la primera sección.`;
 }
 
-function studyTask(book: Book, chapter: number, verse: number | undefined, hasGreek: boolean) {
+function studyTask(book: Book, chapter: number, verse: number | undefined, hasGreek: boolean, hasta?: number) {
   const lang = original(book).name;
-  const target = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+  const target = verse ? `${book.name} ${chapter}:${verse}${hasta ? `-${hasta}` : ''}` : `${book.name} ${chapter}`;
   // Estudio inductivo: observar, interpretar, relacionar y aplicar. Desde 2026-11-08 más detallado (pedido de Mike):
   // costumbres y trasfondo, el léxico en español, más referencias, el tema por toda la Biblia y la doctrina.
   const sections = verse
@@ -1145,8 +1157,10 @@ function studyTask(book: Book, chapter: number, verse: number | undefined, hasGr
         '## Hacia Cristo: cómo se relaciona con el evangelio, solo si el texto o sus referencias lo sostienen, sin forzarlo.',
         '## Para aplicar: 2 o 3 preguntas personales o para un grupo.',
       ];
-  return `Prepara un estudio detallado de ${target} con estas secciones:\n${sections.filter(Boolean).join('\n')}\n\nExtensión: ${
-    verse ? '900 a 1.200' : '1.100 a 1.500'
+  // Varios versículos elegidos juntos en el lector: las secciones del versículo, leídas como un solo pasaje.
+  const lista = sections.filter((x): x is string => !!x).map((x) => (hasta ? x.replace(/\bel versículo\b/g, 'el pasaje') : x));
+  return `Prepara un estudio detallado de ${target}${hasta ? ' (los versículos que la persona eligió juntos, como un solo pasaje)' : ''} con estas secciones:\n${lista.join('\n')}\n\nExtensión: ${
+    verse && !hasta ? '900 a 1.200' : '1.100 a 1.500'
   } palabras. Antes de escribir, investiga lo que te falta con las herramientas; después empieza directamente por la primera sección.`;
 }
 
@@ -1157,8 +1171,8 @@ function frecuenteTask(book: Book, chapter: number, verse: number | null, pregun
 Respóndela para todas, con citas: primero lo que dice el texto en su contexto, después lo que aportan el original, las referencias o los comentarios si ayudan. Si las tradiciones cristianas históricas la responden distinto, muéstralo sin tomar partido. Termina con una pregunta breve para seguir pensando. Extensión: 150 a 300 palabras. Empieza directamente por la respuesta, sin títulos.`;
 }
 
-function devotionalTask(book: Book, chapter: number, verse: number | undefined) {
-  const target = verse ? `${book.name} ${chapter}:${verse}` : `${book.name} ${chapter}`;
+function devotionalTask(book: Book, chapter: number, verse: number | undefined, hasta?: number) {
+  const target = verse ? `${book.name} ${chapter}:${verse}${hasta ? `-${hasta}` : ''}` : `${book.name} ${chapter}`;
   return `Prepara el devocional de ${target}${verse ? ', leído dentro de su capítulo' : ''}. La app muestra cada sección como un paso; respeta el formato exacto, sin texto antes ni después:
 
 ## Observa
@@ -1607,6 +1621,15 @@ export async function POST(request: Request) {
     return badRequest('Libro o capítulo no válido');
   }
   if (verse !== undefined && (!Number.isInteger(verse) || verse < 1)) return badRequest('Versículo no válido');
+  const hasta = body.hasta === undefined ? undefined : Number(body.hasta);
+  // Hasta 40 versículos seguidos, solo en el estudio y el devocional de un pasaje.
+  if (
+    hasta !== undefined &&
+    (verse === undefined || !Number.isInteger(hasta) || hasta <= verse || hasta - verse > 40 ||
+      body.word !== undefined || body.taller !== undefined || body.herramienta !== undefined || body.semana !== undefined || body.frecuente !== undefined)
+  ) {
+    return badRequest('Versículos no válidos');
+  }
   const word = body.word === undefined ? undefined : Number(body.word);
   if (word !== undefined && (verse === undefined || !book.interlinear || !Number.isInteger(word) || word < 0)) {
     return badRequest('Palabra no válida');
@@ -1672,7 +1695,7 @@ export async function POST(request: Request) {
           (devocional ? 'devocional' : detallado ? 'profundo-detallado' : 'profundo') + (jovenes ? '-jovenes' : ''),
           book.id,
           chapter,
-          verse ?? '',
+          hasta ? `${verse}-${hasta}` : (verse ?? ''),
           word ?? '',
         ].join(':')
       : null;
@@ -1709,7 +1732,7 @@ export async function POST(request: Request) {
   let focus;
   let hasOriginal = false;
   try {
-    ({ docs, focus, hasOriginal } = await buildSources(biblia, book, chapter, focusVerse, word, detallado || podcast));
+    ({ docs, focus, hasOriginal } = await buildSources(biblia, book, chapter, focusVerse, word, detallado || podcast, hasta));
   } catch (err) {
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
@@ -1734,8 +1757,8 @@ export async function POST(request: Request) {
               : focus && verse
               ? wordTask(book, chapter, verse, focus, version.abbr)
               : devocional
-              ? devotionalTask(book, chapter, verse)
-              : studyTask(book, chapter, verse, hasOriginal && book.interlinear),
+              ? devotionalTask(book, chapter, verse, hasta)
+              : studyTask(book, chapter, verse, hasOriginal && book.interlinear, hasta),
         },
       ],
     },
@@ -1754,7 +1777,7 @@ export async function POST(request: Request) {
     (detallado ? PROFUNDO_SYSTEM : podcast ? PODCAST_SYSTEM : '') +
     (jovenes ? JOVENES_SYSTEM : '');
   const fn = frecuente ? 'frecuente' : semana ? 'semana' : taller ? 'taller' : herramienta ? herramienta : turns.length ? 'seguimiento' : focus && verse ? 'palabra-del-versiculo' : devocional ? 'devocional' : 'estudio';
-  const pasaje = `${book.name} ${chapter}${verse ? `:${verse}` : ''}`;
+  const pasaje = `${book.name} ${chapter}${verse ? `:${verse}${hasta ? `-${hasta}` : ''}` : ''}`;
   const nombre = fn === 'estudio' ? `Estudio de ${pasaje}` : fn === 'seguimiento' ? `Pregunta sobre ${pasaje}` : `${fn}: ${pasaje}`;
   return streamAnswer(
     request,

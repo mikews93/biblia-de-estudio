@@ -89,7 +89,7 @@ export default function VerseImage({ verse: dado, onClose, inicial }: Props) {
     return () => {
       vivo = false;
     };
-  }, [dado.book, dado.chapter, dado.verse, dado.text, settings.version]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dado.book, dado.chapter, dado.verse, dado.text, dado.verses?.join(','), settings.version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [format, setFormat] = useState<ImageFormat>('cuadrado');
   // Carrusel de láminas para Historias (solo en la web, donde se dibujan con canvas).
   const [carrusel, setCarrusel] = useState(false);
@@ -128,7 +128,7 @@ export default function VerseImage({ verse: dado, onClose, inicial }: Props) {
   useEffect(() => {
     let vivo = true;
     getInterlinear(verse.book, verse.chapter)
-      .then((all) => vivo && setOriginales(palabrasOriginales(all[String(verse.verse)])))
+      .then((all) => vivo && setOriginales(palabrasOriginales((verse.verses ?? [verse.verse]).flatMap((n) => all[String(n)] ?? []))))
       .catch(() => vivo && setOriginales([]));
     return () => {
       vivo = false;

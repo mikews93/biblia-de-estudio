@@ -733,6 +733,34 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(aiRequests.slice(before).map((r) => r.model)).toEqual(['claude-opus-5-5', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5-5']);
   });
 
+  it('varios versículos elegidos juntos: un estudio del tramo, con el original y las referencias de cada uno', async () => {
+    expect(await bad({ book: 'jhn', chapter: 3, hasta: 18 })).toBe('Versículos no válidos');
+    expect(await bad({ book: 'jhn', chapter: 3, verse: 16, hasta: 16 })).toBe('Versículos no válidos');
+    expect(await bad({ book: 'jhn', chapter: 3, verse: 1, hasta: 50 })).toBe('Versículos no válidos');
+    expect(await bad({ book: 'jhn', chapter: 3, verse: 16, hasta: 18, word: 0 })).toBe('Versículos no válidos');
+    expect(await bad({ book: 'jhn', chapter: 3, verse: 30, hasta: 40 }, 404)).toBe('Ese versículo no existe');
+
+    const before = aiRequests.length;
+    await events(await ask({ book: 'jhn', chapter: 3, verse: 16, hasta: 18 }));
+    expect(aiRequests.length).toBe(before + 1);
+    const sent = aiRequests.at(-1)!;
+    const encargo = sent.messages[0].content.at(-1).text as string;
+    expect(encargo).toContain('Prepara un estudio detallado de Juan 3:16-18');
+    expect(encargo).toContain('el pasaje');
+    const docs = sent.messages[0].content.filter((b: { type: string }) => b.type === 'document');
+    const griego = JSON.stringify(docs.find((d: { title: string }) => d.title.includes('Griego')));
+    expect(griego).toContain('3:16');
+    expect(griego).toContain('3:18');
+    expect(griego).not.toContain('3:19 ');
+    expect(docs.some((d: { title: string }) => d.title === 'Referencias cruzadas de Juan 3:16-18 (OpenBible.info)')).toBe(true);
+
+    // Se guarda aparte del estudio de un solo versículo
+    await events(await ask({ book: 'jhn', chapter: 3, verse: 16, hasta: 18 }));
+    expect(aiRequests.length).toBe(before + 1);
+    await events(await ask({ book: 'jhn', chapter: 3, verse: 16 }));
+    expect(aiRequests.length).toBe(before + 2);
+  });
+
   it('el estudio para todos se termina y se guarda aunque la persona se vaya (iPhone corta la conexión)', async () => {
     const base = { book: 'jhn', chapter: 6, verse: 35 };
     const before = aiRequests.length;

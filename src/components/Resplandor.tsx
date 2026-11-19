@@ -196,22 +196,24 @@ export default function Resplandor({ nivel, dias, onClose }: Props) {
           style={[styles.textos, { opacity: entra, transform: [{ translateY: entra.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}
           pointerEvents="none"
         >
-          {grande ? (
-            <>
-              <Cifra valor={cuenta} style={[styles.cifra, { color: textoColor(ORO, ORO_HONDO) }]} />
-              <Animated.Text style={[styles.kicker, { color: textoColor(ORO, ORO_HONDO) }]}>
-                {claro ? 'DÍAS SEGUIDOS · SIETE AÑOS' : 'DÍAS SEGUIDOS · UN AÑO'}
-              </Animated.Text>
-            </>
-          ) : (
-            <Text style={styles.kicker}>{diasLabel(dias).toUpperCase()} SEGUIDOS</Text>
-          )}
-          <Animated.View style={{ opacity: letras, alignItems: 'center', transform: [{ translateY: letras.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }}>
-            <Animated.Text style={[styles.titulo, claro && { color: textoColor(BLANCO, TINTA) }]}>{nivel.titulo}</Animated.Text>
-            <Animated.Text style={[styles.verso, claro && { color: textoColor('#F3E6CF', '#5A4320') }]}>«{nivel.versiculo.texto}»</Animated.Text>
-            <Animated.Text style={[styles.ref, claro && { color: textoColor(ORO, ORO_HONDO) }]}>{nivel.versiculo.ref}</Animated.Text>
-            <Animated.Text style={[styles.cerrar, claro && { color: textoColor('#BBA88C', '#8A7350') }]}>Toca para seguir</Animated.Text>
-          </Animated.View>
+          <View style={styles.columna}>
+            {grande ? (
+              <>
+                <Cifra valor={cuenta} style={[styles.cifra, { color: textoColor(ORO, ORO_HONDO) }]} />
+                <Animated.Text style={[styles.kicker, { color: textoColor(ORO, ORO_HONDO) }]}>
+                  {claro ? 'DÍAS SEGUIDOS · SIETE AÑOS' : 'DÍAS SEGUIDOS · UN AÑO'}
+                </Animated.Text>
+              </>
+            ) : (
+              <Text style={styles.kicker}>{diasLabel(dias).toUpperCase()} SEGUIDOS</Text>
+            )}
+            <Animated.View style={{ opacity: letras, alignItems: 'center', transform: [{ translateY: letras.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }}>
+              <Animated.Text style={[styles.titulo, claro && { color: textoColor(BLANCO, TINTA) }]}>{nivel.titulo}</Animated.Text>
+              <Animated.Text style={[styles.verso, claro && { color: textoColor('#F3E6CF', '#5A4320') }]}>«{nivel.versiculo.texto}»</Animated.Text>
+              <Animated.Text style={[styles.ref, claro && { color: textoColor(ORO, ORO_HONDO) }]}>{nivel.versiculo.ref}</Animated.Text>
+              <Animated.Text style={[styles.cerrar, claro && { color: textoColor('#BBA88C', '#8A7350') }]}>Toca para seguir</Animated.Text>
+            </Animated.View>
+          </View>
         </Animated.View>
 
         {n >= 4 && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: claro ? '#FFFFFF' : BLANCO, opacity: destello }]} />}
@@ -412,7 +414,10 @@ function Centro({ tipo, size }: { tipo: Nivel['centro']; size: number }) {
 
 const styles = StyleSheet.create({
   centro: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: '28%' },
-  textos: { position: 'absolute', left: 24, right: 24, bottom: '9%', alignItems: 'center', maxWidth: 520, alignSelf: 'center' },
+  // Fila a todo lo ancho y columna centrada dentro: alignSelf no centra algo con position absolute,
+  // y con maxWidth el texto quedaba pegado a la izquierda en tablets y escritorio.
+  textos: { position: 'absolute', left: 0, right: 0, bottom: '9%', alignItems: 'center', paddingHorizontal: 24 },
+  columna: { width: '100%', maxWidth: 520, alignItems: 'center' },
   kicker: { color: ORO, fontSize: 12, fontWeight: '800', letterSpacing: 2 },
   cifra: { fontFamily: serif, fontSize: 64, lineHeight: 70, fontWeight: '700', fontVariant: ['tabular-nums'] },
   titulo: { color: BLANCO, fontFamily: serif, fontSize: 30, textAlign: 'center', marginTop: 8 },
