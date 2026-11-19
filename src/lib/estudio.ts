@@ -70,6 +70,8 @@ type Request = {
   messages: Turn[];
   taller?: TallerRequest;
   herramienta?: Herramienta;
+  /** Pregunta durante el pódcast (src/lib/podcastPreguntas.ts): la intervención que sonaba al pausar. */
+  momento?: string;
   enfoque?: Enfoque;
   /** Pedir otra versión de la herramienta en vez de la que ya está guardada */
   nueva?: boolean;

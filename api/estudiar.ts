@@ -76,6 +76,8 @@ const STUDY_VERSION = 'c2';
 // los guardados antes citaban la RV1909, así que se preparan de nuevo.
 const MARCAS = 'm1';
 const MAX_QUESTION = 600;
+/** Lo que sonaba en el pódcast cuando se pausó para preguntar (una intervención del guion). */
+const MAX_MOMENTO = 900;
 const MAX_USES = 24;
 const DB_URL = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 // Vueltas con herramientas en una respuesta: después la IA responde con lo que tiene.
@@ -95,6 +97,11 @@ type Body = {
   messages?: Turn[];
   taller?: Taller;
   herramienta?: Herramienta;
+  /**
+   * Con «herramienta: 'podcast'» y una conversación: la persona pausó el pódcast para preguntar. Es la intervención que
+   * sonaba («Tomás: …»), para que la IA sepa a qué se refiere «eso».
+   */
+  momento?: string;
   /** «devocional»: el pasaje guiado para orar y vivirlo. Sin él, el estudio profundo. */
   enfoque?: 'devocional' | 'profundo';
   nueva?: boolean;
@@ -221,6 +228,17 @@ Pódcast: además de lo de siempre, recibes los artículos del diccionario bíbl
 - Antes de escribir el guion investiga, pidiendo a la vez lo que no dependa de otra cosa y sin pasar de cuatro consultas: «teologia» con el área «historia» para las costumbres y el trasfondo del capítulo (búsqueda en inglés con sus personas, lugares, grupos o costumbres) y «temas_biblicos» con el tema central del capítulo. Antes de nombrar un pasaje que no esté en los documentos, léelo con «leer_pasaje».
 - Edersheim y Josefo dan contexto histórico; Josefo no es Escritura y a veces exagera cifras. Si el texto bíblico y ellos no coinciden, manda el texto.
 - No escribas nada antes de terminar de investigar: el guion empieza por la primera línea del diálogo.`;
+
+// Preguntas durante el pódcast (src/lib/podcastPreguntas.ts): el guion es la primera respuesta y la persona lo pausó
+// para preguntar. Responde como el estudio, corto, para que vuelva a escuchar.
+const PODCAST_PREGUNTA_SYSTEM = `
+
+Preguntas durante el pódcast: la persona está escuchando el pódcast de Ana y Tomás sobre este capítulo (el guion es tu primera respuesta) y lo pausó para preguntarte algo.
+- Responde tú, como en el estudio, no como guion: sin «ANA:» ni «TOMÁS:», con el formato de siempre y citando las fuentes.
+- Sé breve y ve al grano (unas 120 a 250 palabras, salvo que pida más o la pregunta lo necesite), porque quiere volver a escuchar. Empieza directo por la respuesta, sin títulos al principio.
+- Si pregunta por algo que dijeron Ana o Tomás («¿qué quiso decir?», «eso de…»), parte de esa intervención: aclárala con el texto y las fuentes, y si el guion simplificó o se equivocó, dilo con sencillez y corrígelo.
+- Si se indica en qué momento pausó, úsalo para entender a qué se refiere; no lo repitas entero.
+- No termines con preguntas para la persona.`;
 
 // La búsqueda en la web del Taller con borrador: predicaciones y estudios evangélicos. Se dejan fuera los sitios de
 // grupos que niegan doctrinas centrales y los católicos (decisiones de Mike del 2026-10-18 y 2026-10-27).
@@ -1651,9 +1669,14 @@ export async function POST(request: Request) {
   const jovenes = body.publico === 'jovenes' && !taller;
   if (
     herramienta !== undefined &&
-    (!Object.hasOwn(HERRAMIENTAS, herramienta) || verse !== undefined || taller || semana || turns.length > 0)
+    (!Object.hasOwn(HERRAMIENTAS, herramienta) || verse !== undefined || taller || semana || (turns.length > 0 && herramienta !== 'podcast'))
   ) {
     return badRequest('Herramienta no válida');
+  }
+  // Una pregunta mientras se escucha el pódcast: el guion va como la primera respuesta y no se guarda para todos.
+  const preguntaPodcast = herramienta === 'podcast' && turns.length > 0;
+  if (body.momento !== undefined && (!preguntaPodcast || typeof body.momento !== 'string' || body.momento.length > MAX_MOMENTO)) {
+    return badRequest('Pedido no válido');
   }
   if (body.nueva !== undefined && (typeof body.nueva !== 'boolean' || !herramienta)) return badRequest('Pedido no válido');
   // Las herramientas (tarjetas, mapa…) se guardan por capítulo para todos: siempre con la RV1909. El pódcast, en la
@@ -1663,7 +1686,7 @@ export async function POST(request: Request) {
     herramienta === 'podcast' ? versionPodcast(body.version) : herramienta ? undefined : body.version,
   );
   if (!version) return badRequest('Versión no válida');
-  const guardada = herramienta === 'podcast' ? conVersion(herramienta, version.id) : herramienta;
+  const guardada = preguntaPodcast ? undefined : herramienta === 'podcast' ? conVersion(herramienta, version.id) : herramienta;
 
   // Una pregunta frecuente del capítulo: la respuesta es la misma para todos y se guarda como el estudio.
   let frecuente: { texto: string; versiculo: number | null } | null = null;
@@ -1705,7 +1728,7 @@ export async function POST(request: Request) {
     return senalesPost(request, body, clave, book, chapter, verse);
   }
 
-  if ((herramienta || clave) && !body.nueva) {
+  if ((guardada || clave) && !body.nueva) {
     const saved = guardada ? await savedTool(guardada, book.id, chapter) : await savedStudy(clave!);
     if (saved) {
       return ndjson([
@@ -1717,7 +1740,7 @@ export async function POST(request: Request) {
   }
 
   // Lo que no se guarda para todos gasta la lámpara diaria de la cuenta.
-  const compartido = Boolean(herramienta || clave);
+  const compartido = Boolean(guardada || clave);
   if (!compartido) {
     const vacia = await gastarLampara(request);
     if (vacia) return vacia;
@@ -1762,7 +1785,11 @@ export async function POST(request: Request) {
         },
       ],
     },
-    ...turns.map((t) => ({ role: t.role, content: t.text })),
+    ...turns.map((t, i) => ({
+      role: t.role,
+      // Lo que sonaba cuando pausó el pódcast va con su pregunta (solo la última: es donde está ahora).
+      content: preguntaPodcast && body.momento?.trim() && i === turns.length - 1 ? `(Pausé el pódcast cuando decían: «${body.momento.trim()}»)\n\n${t.text}` : t.text,
+    })),
   ];
 
   // Investigar otros pasajes y fuentes: en las preguntas de la persona y en el estudio profundo, que antes de escribir
@@ -1774,11 +1801,18 @@ export async function POST(request: Request) {
     // Las marcas de versículo se leen donde la respuesta es texto libre: no en el Taller ni en la semana, que tienen su formato.
     versionSystem(version, !taller && !semana) +
     (investiga ? TOOLS_SYSTEM : '') +
-    (detallado ? PROFUNDO_SYSTEM : podcast ? PODCAST_SYSTEM : '') +
+    (detallado ? PROFUNDO_SYSTEM : preguntaPodcast ? PODCAST_PREGUNTA_SYSTEM : podcast ? PODCAST_SYSTEM : '') +
     (jovenes ? JOVENES_SYSTEM : '');
-  const fn = frecuente ? 'frecuente' : semana ? 'semana' : taller ? 'taller' : herramienta ? herramienta : turns.length ? 'seguimiento' : focus && verse ? 'palabra-del-versiculo' : devocional ? 'devocional' : 'estudio';
+  const fn = frecuente ? 'frecuente' : semana ? 'semana' : taller ? 'taller' : preguntaPodcast ? 'pregunta-podcast' : herramienta ? herramienta : turns.length ? 'seguimiento' : focus && verse ? 'palabra-del-versiculo' : devocional ? 'devocional' : 'estudio';
   const pasaje = `${book.name} ${chapter}${verse ? `:${verse}${hasta ? `-${hasta}` : ''}` : ''}`;
-  const nombre = fn === 'estudio' ? `Estudio de ${pasaje}` : fn === 'seguimiento' ? `Pregunta sobre ${pasaje}` : `${fn}: ${pasaje}`;
+  const nombre =
+    fn === 'estudio'
+      ? `Estudio de ${pasaje}`
+      : fn === 'seguimiento'
+        ? `Pregunta sobre ${pasaje}`
+        : fn === 'pregunta-podcast'
+          ? `Pregunta en el pódcast de ${pasaje}`
+          : `${fn}: ${pasaje}`;
   return streamAnswer(
     request,
     { fn, nombre },

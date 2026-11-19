@@ -203,6 +203,10 @@ function answer(body: Body): { text: string; cite: boolean; segments?: Segment[]
     };
   }
   if (first.includes('Cuenta la historia de la palabra')) return { text: '', cite: false, segments: RELATO };
+  // Una pregunta mientras se escucha el pódcast (src/lib/podcastPreguntas.ts): responde a ella, no con otro guion.
+  if (first.includes('guion de un resumen en audio') && followUp) {
+    return { text: `Respuesta simulada a «${followUp.replace(/^\(Pausé el pódcast[^)]*\)\n\n/, '')}» mientras suena el pódcast.`, cite: true };
+  }
   if (first.includes('guion de un resumen en audio')) {
     return {
       text: 'ANA: Este capítulo empieza con una sorpresa.\nTOMÁS: Sí, y el versículo dieciséis lo resume todo.\nANA: ¿Qué pregunta te deja a ti?',
