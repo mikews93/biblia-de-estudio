@@ -67,5 +67,16 @@ export async function abrirFichaPlay() {
     const tienda = `market://details?id=${PAQUETE}&showAllReviews=true`;
     if (await Linking.openURL(tienda).then(() => true, () => false)) return;
   }
+  // En el navegador de un Android (también el que traen Instagram y Facebook, que abre la página web de Play y no
+  // pasa a la tienda), intent:// abre la app Play Store; sin ella, Android sigue con la página web.
+  if (Platform.OS === 'web' && typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) {
+    window.location.href = intentPlay();
+    return;
+  }
   Linking.openURL(ENLACE_PLAY).catch(() => {});
+}
+
+/** Enlace intent:// que abre la ficha en la app Play Store desde un navegador de Android (public/play.html hace lo mismo). */
+export function intentPlay() {
+  return `intent://details?id=${PAQUETE}#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=${encodeURIComponent(ENLACE_PLAY)};end`;
 }
