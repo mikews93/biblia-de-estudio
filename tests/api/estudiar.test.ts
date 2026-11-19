@@ -805,6 +805,54 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     await events(await ask({ book: 'dan', chapter: 2, herramienta: 'tarjetas', nueva: true }));
     expect(lastAiText()).toContain('del hebreo (o del arameo');
 
+    // Preguntar mientras se escucha el pódcast: el guion va como primera respuesta, con lo que sonaba al pausar, y la
+    // respuesta es de la persona (no se guarda para todos ni reemplaza el guion).
+    const guion = 'ANA: Nicodemo llega de noche.\nTOMÁS: Y Jesús le habla de nacer de nuevo.';
+    // Gasta la lámpara del día como las demás preguntas: con una cuenta nueva para no depender de las otras pruebas.
+    const oyente = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Oyente' })).json.llave;
+    const antes = aiRequests.length;
+    const respuesta = await events(
+      await ask({
+        book: 'jhn',
+        chapter: 3,
+        herramienta: 'podcast',
+        messages: [
+          { role: 'assistant', text: guion },
+          { role: 'user', text: '¿Qué significa nacer de nuevo?' },
+        ],
+        momento: 'Tomás: Y Jesús le habla de nacer de nuevo.',
+      }, oyente),
+    );
+    expect(aiRequests.length).toBe(antes + 1);
+    expect(respuesta.at(-1)).toEqual({ type: 'done' });
+    const pregunta = aiRequests.at(-1)!;
+    expect(pregunta.messages[0].content.at(-1).text).toContain('resumen en audio de Juan 3');
+    expect(pregunta.messages[1]).toEqual({ role: 'assistant', content: guion });
+    expect(pregunta.messages.at(-1).content).toBe('(Pausé el pódcast cuando decían: «Tomás: Y Jesús le habla de nacer de nuevo.»)\n\n¿Qué significa nacer de nuevo?');
+    expect(JSON.stringify(pregunta.system)).toContain('Preguntas durante el pódcast');
+    expect(JSON.stringify(pregunta.system)).not.toContain('Antes de escribir el guion investiga');
+    expect(pregunta.tools.map((t: { name: string }) => t.name)).toEqual(expect.arrayContaining(['leer_pasaje']));
+    // El guion guardado sigue siendo el de antes
+    expect(parseScript(textOf(await events(await ask({ book: 'jhn', chapter: 3, herramienta: 'podcast' })))).length).toBe(3);
+    expect(aiRequests.length).toBe(antes + 1);
+    // «momento» solo vale con una pregunta del pódcast, y no muy largo
+    expect(await bad({ book: 'jhn', chapter: 3, herramienta: 'podcast', momento: 'Ana: hola' })).toBe('Pedido no válido');
+    expect(
+      await bad({
+        book: 'jhn',
+        chapter: 3,
+        herramienta: 'podcast',
+        messages: [
+          { role: 'assistant', text: guion },
+          { role: 'user', text: '¿Y eso?' },
+        ],
+        momento: 'x'.repeat(901),
+      }),
+    ).toBe('Pedido no válido');
+    expect(
+      await bad({ book: 'jhn', chapter: 3, herramienta: 'mapa', messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: '¿?' }] }),
+    ).toBe('Herramienta no válida');
+
     const mapa = textOf(await events(await ask({ book: 'jhn', chapter: 3, herramienta: 'mapa' })));
     const m = parseMindMap(mapa);
     expect(m.title).toBe('El nuevo nacimiento y el amor de Dios');

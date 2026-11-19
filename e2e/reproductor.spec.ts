@@ -122,6 +122,41 @@ test.describe('Reproductor único', () => {
     await expect(page.getByRole('button', { name: 'Dramatizar este capítulo' })).toHaveCount(0);
   });
 
+  test('mientras suena el pódcast se pausa para preguntar y luego sigue', async ({ page, request }, info) => {
+    const cap = info.project.name === 'movil' ? 16 : 17;
+    await page.route('**/audio/index.json', (r) => r.fulfill({ json: { dramatizado: [], podcast: [] } }));
+    await page.route('**/api/podcast-grabado**', (r) =>
+      r.fulfill({ json: { estado: 'listo', url: '/prueba/podcast.mp3', duracion: 12, credito: 'Voces de prueba' } }),
+    );
+    await page.route('**/prueba/podcast.mp3', (r) => r.fulfill({ body: TONO, contentType: 'audio/mpeg' }));
+    let pedido: Record<string, unknown> | undefined;
+    page.on('request', (r) => {
+      const body = r.url().endsWith('/api/estudiar') ? r.postDataJSON() : null;
+      if (body?.messages?.length) pedido = body;
+    });
+    await conSesion(page, await cuentaNueva(request, 'Oyente'));
+
+    await page.goto(`/podcast/juan/${cap}`);
+    await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
+    await expect(v(page.getByRole('button', { name: 'Pausa', exact: true }))).toBeVisible();
+    await v(page.getByRole('button', { name: 'Pausar y preguntar sobre lo que escuchas' })).click();
+    // Se pausa y la hoja muestra lo que sonaba
+    await expect(v(page.getByText(/^En pausa · habla/))).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Pausa', exact: true })).toHaveCount(0);
+    await v(page.getByPlaceholder('¿Qué quieres preguntar?')).fill('¿Qué significa nacer de nuevo?');
+    await v(page.getByRole('button', { name: 'Enviar pregunta' })).click();
+    await expect(v(page.getByText('Respuesta simulada a «¿Qué significa nacer de nuevo?»', { exact: false }))).toBeVisible();
+    // La IA recibió el guion como primera respuesta y lo que sonaba al pausar
+    expect(pedido).toMatchObject({ book: 'jhn', chapter: cap, herramienta: 'podcast' });
+    expect((pedido!.messages as { text: string }[])[0].text).toContain('ANA: Este capítulo empieza con una sorpresa.');
+    expect(pedido!.momento).toMatch(/^(Ana|Tomás): /);
+
+    // Seguir escuchando: se cierra y vuelve a sonar; la entrada recuerda la pregunta hecha
+    await v(page.getByText('Seguir escuchando', { exact: true })).click();
+    await expect(v(page.getByRole('button', { name: 'Pausa', exact: true }))).toBeVisible();
+    await expect(v(page.getByRole('button', { name: 'Pausar y preguntar sobre lo que escuchas' }))).toContainText('1');
+  });
+
   test('el pódcast con voces naturales se graba al pedirlo y suena en la barra', async ({ page, request }, info) => {
     // Cada proyecto usa su capítulo: el guion lo prepara la IA simulada y el servidor lo guarda para todos.
     const cap = info.project.name === 'movil' ? 14 : 15;
