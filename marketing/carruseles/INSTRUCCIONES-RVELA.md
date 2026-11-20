@@ -14,24 +14,24 @@ El conector (MCP) y /v1 de Rvela solo publican y programan videos: `publish_vide
 4. Si Rvela ya hace o guarda carruseles en su pantalla, exponer también `list_carousels`. Si no, no hace falta diseñarlos: basta con publicar imágenes ya hechas.
 
 ## Para probar
-Dos carruseles reales de Zarza (PNG 1080 × 1350), con URLs https públicas listas para usar como `images`, en este orden. El texto de cada publicación está en `texto.txt` de su carpeta.
+Dos carruseles reales de Zarza (JPG 1080 × 1350; Instagram solo acepta JPEG por API), con URLs https públicas listas para usar como `images`, en este orden. El texto de cada publicación está en `texto.txt` de su carpeta.
 
 - Carrusel 1, «Juan 3:16» (7 láminas). Texto: https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/texto.txt
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/01.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/02.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/03.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/04.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/05.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/06.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/07.png
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/01.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/02.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/03.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/04.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/05.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/06.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/07.jpg
 - Carrusel 2, «6 funciones» (8 láminas). Texto: https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/texto.txt
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/01.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/02.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/03.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/04.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/05.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/06.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/07.png
-  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/08.png
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/01.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/02.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/03.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/04.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/05.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/06.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/07.jpg
+  - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/08.jpg
 
 Fechas que Mike quiere (hora de Bogotá, Instagram y Facebook de Zarza): carrusel 1 el martes 24 de noviembre de 2026 a las 11 a. m.; carrusel 2 el viernes 27 de noviembre a las 11 a. m. Probar primero sin `confirm`. Nunca publicar de inmediato sin el OK de Mike.
