@@ -16,7 +16,7 @@ El conector (MCP) y /v1 de Rvela solo publican y programan videos: `publish_vide
 ## Para probar
 Dos carruseles reales de Zarza (JPG 1080 × 1350; Instagram solo acepta JPEG por API), con URLs https públicas listas para usar como `images`, en este orden. El texto de cada publicación está en `texto.txt` de su carpeta.
 
-- Carrusel 1, «Juan 3:16» (7 láminas). Texto: https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/texto.txt
+- Carrusel 1, «Juan 3:16» (7 láminas). Texto: lo pasa Mike
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/01.jpg
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/02.jpg
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/03.jpg
@@ -24,7 +24,7 @@ Dos carruseles reales de Zarza (JPG 1080 × 1350; Instagram solo acepta JPEG por
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/05.jpg
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/06.jpg
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/01-juan-3-16/07.jpg
-- Carrusel 2, «6 funciones» (8 láminas). Texto: https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/texto.txt
+- Carrusel 2, «6 funciones» (8 láminas). Texto: lo pasa Mike
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/01.jpg
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/02.jpg
   - https://raw.githubusercontent.com/mikews93/biblia-de-estudio/claude/project-thread-ghqrgd/marketing/carruseles/02-funciones/03.jpg
