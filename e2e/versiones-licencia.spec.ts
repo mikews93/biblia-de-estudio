@@ -12,6 +12,7 @@ const texto = (page: Page, t: string) => visible(page.getByText(t, { exact: fals
 
 const NBLA = LICENSED.find((v) => v.id === 'nbla')!;
 const NTV = LICENSED.find((v) => v.id === 'ntv')!;
+const LBLA = LICENSED.find((v) => v.id === 'lbla')!;
 const JN316 = 'Porque de tal manera amó Dios al mundo, que dio a Su Hijo unigénito, para que todo aquel que cree en Él no se pierda, sino que tenga vida eterna.';
 
 async function simularApiBible(page: Page) {
@@ -19,10 +20,11 @@ async function simularApiBible(page: Page) {
   await page.route('**/api/biblia?*', async (route) => {
     const q = new URL(route.request().url()).searchParams;
     if (q.get('versiones')) {
-      return route.fulfill({ json: { versions: [NBLA, NTV].map(({ bibleId: _, ...v }) => ({ ...v, licensed: true, guardable: true })) } });
+      return route.fulfill({ json: { versions: [NBLA, LBLA, NTV].map(({ bibleId: _, ...v }) => ({ ...v, licensed: true, guardable: true })) } });
     }
     const verses = Array.from({ length: 21 }, (_, i) => [i + 1, i === 15 ? JN316 : `Texto NBLA simulado del versículo ${i + 1}.`]);
-    return route.fulfill({ json: { verses, notes: { 16: ['O único'] }, copyright: NBLA.credit, guardable: true, fums: `ficha-${q.get('book')}-${q.get('chapter')}` } });
+    const copyright = (q.get('v') === 'lbla' ? LBLA : NBLA).credit;
+    return route.fulfill({ json: { verses, notes: { 16: ['O único'] }, copyright, guardable: true, fums: `ficha-${q.get('book')}-${q.get('chapter')}` } });
   });
   await page.route('https://fums.api.bible/**', (route) => {
     fums.push(new URL(route.request().url()).searchParams.get('t') ?? '');
@@ -69,6 +71,33 @@ test('la NBLA se elige en su grupo, se lee con su aviso de derechos y se informa
   await page.screenshot({ path: `test-results/capturas/licencia-3-aviso-${test.info().project.name}.png` });
 });
 
+// Lockman pidió ver dónde está el aviso: tiene que verse al abrir el capítulo, sin bajar hasta el final.
+for (const v of [NBLA, LBLA]) {
+  test(`la ${v.abbr} lleva su aviso de derechos arriba del capítulo y completo al terminar el texto`, async ({ page }) => {
+    await simularApiBible(page);
+    await page.goto('/juan/3');
+    await visible(page.getByRole('button', { name: 'Versión: Reina-Valera 1909. Cambiar versión' })).click();
+    await visible(page.getByRole('button', { name: new RegExp(v.name) })).click();
+    await expect(visible(page.getByRole('button', { name: /Cambiar versión/ }))).toHaveText(v.abbr);
+
+    const corto = visible(page.getByTestId('aviso-derechos-corto'));
+    await expect(corto).toContainText(`${v.abbr} · © `);
+    await expect(corto).toContainText('The Lockman Foundation · Usado con permiso · NuevaBiblia.com');
+    await expect(corto).toBeInViewport();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `test-results/capturas/aviso-${v.id}-1-arriba-${test.info().project.name}.png` });
+
+    const completo = visible(page.getByTestId('aviso-derechos'));
+    await expect(completo).toContainText(v.name);
+    await expect(completo).toContainText(v.credit.split(' · ')[1]);
+    await expect(completo).toContainText('Used by permission. Derechos Reservados - All Rights Reserved');
+    // Va justo después del texto, antes de «Siguiente capítulo»
+    await completo.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `test-results/capturas/aviso-${v.id}-2-final-${test.info().project.name}.png` });
+  });
+}
+
 test('los capítulos ya leídos de API.Bible se pueden volver a leer sin conexión', async ({ page }) => {
   const fums = await simularApiBible(page);
   await page.goto('/juan/3/16');
@@ -95,7 +124,7 @@ test('los capítulos ya leídos de API.Bible se pueden volver a leer sin conexi�
 test('las versiones con derechos no se ofrecen para descargar', async ({ page }) => {
   await simularApiBible(page);
   await page.goto('/descargas');
-  await expect(texto(page, 'NBLA, NTV: sus editores no permiten descargarlas enteras.')).toBeVisible();
+  await expect(texto(page, 'NBLA, LBLA, NTV: sus editores no permiten descargarlas enteras.')).toBeVisible();
   await expect(texto(page, 'se guardan solos los últimos capítulos que leas, durante 14 días')).toBeVisible();
   await expect(visible(page.getByText('Nueva Biblia de las Américas', { exact: true }))).toHaveCount(0);
 });
