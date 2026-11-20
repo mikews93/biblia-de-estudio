@@ -10,6 +10,7 @@ import { Markdown, Sources } from '@/components/StudyText';
 import VerseImage from '@/components/VerseImage';
 import { playChapter } from '@/lib/audio';
 import { Book, Verse } from '@/lib/data';
+import AvisoDerechos from '@/components/AvisoDerechos';
 import { useCapitulo } from '@/lib/enVersion';
 import { parseDevocional, saveEntrada } from '@/lib/diario';
 import { useRacha } from '@/lib/racha';
@@ -214,6 +215,7 @@ export default function Devotional({ book, chapter, verse, text, sources, busy, 
             ) : (
               <ActivityIndicator color={colors.accent} style={{ marginVertical: 24 }} />
             )}
+            {reading.length ? <AvisoDerechos version={capitulo?.sigla} colors={colors} forma="corto" align="left" /> : null}
           </View>
           {marked ? (
             <Appear key={marked} style={[styles.markNote, { backgroundColor: colors.accentSoft }]}>

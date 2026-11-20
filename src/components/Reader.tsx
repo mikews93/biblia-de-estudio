@@ -5,6 +5,7 @@ import { ComponentRef, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, GestureResponderEvent, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Appear from '@/components/Appear';
+import AvisoDerechos, { versionConDerechos } from '@/components/AvisoDerechos';
 import ChapterEnd from '@/components/ChapterEnd';
 import { compareHref } from '@/components/Comparar';
 import NoteEditor from '@/components/NoteEditor';
@@ -685,6 +686,8 @@ export default function Reader() {
                 <Text style={[styles.versionText, { color: colors.muted }]}>Comparar</Text>
               </Pressable>
             </View>
+            {/* Las versiones con licencia llevan su aviso a la vista desde que se abre el capítulo, no solo al final. */}
+            <AvisoDerechos version={version?.id} colors={colors} forma="corto" />
 
             {interlinearOn && (
               <Text style={[styles.studyHint, { color: colors.muted }]}>
@@ -812,6 +815,9 @@ export default function Reader() {
             ),
           )}
 
+        {verses && versionConDerechos(version?.id) && (
+          <AvisoDerechos version={version?.id} colors={colors} deLaApi={extras?.copyright} />
+        )}
         {verses && book && (
           <ChapterEnd
             book={book}
@@ -836,7 +842,7 @@ export default function Reader() {
             ))}
           </View>
         )}
-        {verses && (
+        {verses && !versionConDerechos(version?.id) && (
           <View style={styles.creditBox}>
             <Text style={[styles.credit, { color: colors.muted }]}>
               {extras?.copyright ?? version?.credit ?? 'Reina-Valera 1909 · dominio público'}
