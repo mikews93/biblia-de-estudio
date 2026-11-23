@@ -244,4 +244,34 @@ describe.skipIf(!DB_URL || !HAS_DATA)('Señales y Cuidar Zarza', () => {
     await call()('errorApp', { ...aviso, version: '1.0.1 (4) · def5678' });
     expect(await estado()).toBe(false);
   });
+  it('«Cómo va Zarza» cuenta cuentas y actividad sin contar a quien cuida', async () => {
+    const correo = cuidadora.correo.replace('@', '+uso@');
+    process.env.CUIDADORES = `${process.env.CUIDADORES}, ${correo}`;
+    const cuida = await cuenta('Quien cuida', { correo, clave: 'una clave larga' });
+    // Solo quien cuida: una cuenta cualquiera recibe 403.
+    const curioso = await cuenta('Curioso del uso');
+    expect((await call()('cuidarUso', {}, curioso)).status).toBe(403);
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const ahora = client(comunidades, hoy);
+    const antes = (await ahora('cuidarUso', {}, cuida)).json;
+    expect(antes.semanas).toHaveLength(8);
+    expect(antes.semanas.at(-1).semana <= hoy).toBe(true);
+
+    const lectora = await cuenta('Lectora');
+    expect((await ahora('leido', { libro: 'rut', capitulo: 1 }, lectora)).status).toBe(200);
+    // Quien cuida también lee, pero no suma.
+    await ahora('leido', { libro: 'rut', capitulo: 1 }, cuida);
+
+    const r = await ahora('cuidarUso', {}, cuida);
+    expect(r.status).toBe(200);
+    expect(r.json.cuentas.total).toBe(antes.cuentas.total + 1);
+    expect(r.json.cuentas.semana).toBe(antes.cuentas.semana + 1);
+    expect(r.json.activas.hoy).toBe(antes.activas.hoy + 1);
+    expect(r.json.activas.semana).toBe(antes.activas.semana + 1);
+    expect(r.json.semanas.at(-1).activas).toBe(antes.semanas.at(-1).activas + 1);
+    expect(r.json.capitulos.semana).toBe(antes.capitulos.semana + 1);
+    // Solo totales: ningún nombre ni correo en la respuesta.
+    expect(JSON.stringify(r.json)).not.toMatch(/Lectora|@/);
+  });
 });
