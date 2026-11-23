@@ -5,6 +5,7 @@ import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet
 import Appear from '@/components/Appear';
 import CirculosIglesia from '@/components/circulo/CirculosIglesia';
 import { confirm } from '@/components/comunidad/confirm';
+import UsoZarza from '@/components/UsoZarza';
 import { Button, ErrorText, Field, text, useAction } from '@/components/comunidad/ui';
 import {
   CheckIcon,
@@ -58,7 +59,8 @@ const TABS: Tab[] = ['avisos', 'preguntas', 'iglesias', 'fallos'];
 
 /**
  * «Cuidar Zarza»: lo que revisan quienes cuidan la app (CUIDADORES en Vercel). Los avisos de «Algo suena raro», las
- * preguntas anónimas que ya hicieron cinco o más personas, las iglesias anfitrionas y los fallos de la app.
+ * preguntas anónimas que ya hicieron cinco o más personas, las iglesias anfitrionas y los fallos de la app. Arriba,
+ * «Cómo va Zarza» (src/components/UsoZarza.tsx) con cuánta gente la usa.
  */
 export default function Cuidar() {
   const colors = useColors();
@@ -131,6 +133,10 @@ export default function Cuidar() {
         <Text style={[text.body, { color: colors.muted, marginTop: 4 }]}>
           Lo que la comunidad señaló y lo que más pregunta. Nada se publica solo: lo decides tú.
         </Text>
+      </Appear>
+
+      <Appear delay={40}>
+        <UsoZarza colors={colors} />
       </Appear>
 
       <View style={[styles.tabs, { backgroundColor: colors.surface, borderColor: colors.border }]} accessibilityRole="tablist">

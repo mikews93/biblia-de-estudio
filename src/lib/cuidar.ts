@@ -103,3 +103,18 @@ export type ReporteApp = {
 export const fallos = () => api<{ errores: FalloApp[]; reportes?: ReporteApp[] }>('cuidarErrores');
 export const marcarReporte = (id: string, resuelto: boolean) => api('cuidarReporteResuelto', { id, resuelto });
 export const marcarFallo = (firma: string, resuelto: boolean) => api('cuidarErrorResuelto', { firma, resuelto });
+
+/** Cuánta gente usa Zarza (api/_cuidar.ts cuidarUso): solo totales, sin contar a quienes cuidan. null = aún no hay
+ * esa tabla en la base. */
+export type Uso = {
+  cuentas: { total: number; semana: number; mes: number };
+  activas: { hoy: number; semana: number; mes: number };
+  /** Las últimas semanas, de la más vieja a la actual; `semana` es el lunes (AAAA-MM-DD). */
+  semanas: { semana: string; nuevas: number; activas: number }[];
+  ia: { personas: number; usos: number; personasMes: number; usosMes: number } | null;
+  capitulos: { semana: number; mes: number } | null;
+  invitadas: number | null;
+  avisos: { total: number; sinCuenta: number } | null;
+  enIglesias: number | null;
+};
+export const uso = () => api<Uso>('cuidarUso');

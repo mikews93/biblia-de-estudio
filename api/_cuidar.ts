@@ -4,6 +4,8 @@
 //   propone preguntas frecuentes, reescritas y sin datos personales, y quien cuida las aprueba o las cambia.
 // - Iglesias anfitrionas (api/_iglesias.ts): revisar las postulaciones (aprobar o rechazar), darlas de alta a mano,
 //   pausarlas, reanudar las que se pausaron solas y cambiar sus preguntas al día.
+// - Uso (cuidarUso): cuánta gente usa Zarza, solo con totales. No guarda nada nuevo de nadie: cuenta lo que ya está
+//   en la base (cuentas, capítulos leídos, progreso sincronizado, preguntas a la IA) y deja fuera a quienes cuidan.
 //
 // El guion bajo hace que Vercel no la publique como función: sus acciones (las que empiezan por «cuidar») van por
 // /api/comunidades, con la misma cuenta.
@@ -15,7 +17,7 @@ import { IGLESIAS_SCHEMA, LAMPARA_IGLESIA, nuevoCodigo } from './_iglesias';
 import { notifyUser } from './_push';
 import { conClaude } from './_quilate';
 import { PREGUNTAS_SCHEMA } from './_preguntas';
-import { esCuidador, SENALES_SCHEMA } from './_senales';
+import { cuidadores, esCuidador, SENALES_SCHEMA } from './_senales';
 
 type Sql = ReturnType<typeof postgres>;
 type Json = Record<string, unknown>;
@@ -58,6 +60,20 @@ function partesDe(clave: string) {
     palabra: palabra ? Number(palabra) : null,
   };
 }
+
+/** Una cuenta del panel «Uso»: si la tabla o la columna aún no existe (una base nueva), no hay dato. */
+async function contar<T>(consulta: () => Promise<T>): Promise<T | null> {
+  try {
+    return await consulta();
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === '42P01' || code === '42703') return null;
+    throw err;
+  }
+}
+
+/** Las semanas que muestra el panel «Uso» (la actual incluida). */
+export const SEMANAS_USO = 8;
 
 /** Las acciones de «Cuidar Zarza», para sumarlas a las de api/comunidades.ts. Todas piden ser cuidador. */
 export function cuidarActions({ auth, fail, books }: Helpers): Record<string, (ctx: Ctx) => Promise<Json>> {
@@ -145,6 +161,92 @@ export function cuidarActions({ auth, fail, books }: Helpers): Record<string, (c
         iglesias,
         postulaciones,
       };
+    },
+
+    /** Cuánta gente usa Zarza, solo con totales (sin nombres ni correos) y sin contar a quienes cuidan. «Activa» es
+     * una cuenta que leyó un capítulo, sincronizó su progreso o preguntó a la IA ese día. Quien usa la app sin cuenta
+     * no aparece aquí: eso lo cuentan Google Play y las visitas web (Vercel Web Analytics). */
+    async cuidarUso({ sql, request }) {
+      await cuidador(sql, request);
+      const fuera = cuidadores();
+      // Las cuentas que se cuentan: todas menos las de quienes cuidan.
+      const gente = sql`select id from usuarios where correo is null or not (lower(correo) = any(${fuera}::text[]))`;
+      const cuentas = await sql<{ total: number; semana: number; mes: number }[]>`
+        select count(*)::int as total,
+          count(*) filter (where creado > now() - interval '7 days')::int as semana,
+          count(*) filter (where creado > now() - interval '30 days')::int as mes
+        from usuarios where id in (${gente})`;
+      // Días en que cada cuenta hizo algo: leer, sincronizar o preguntar. Cada fuente puede faltar en una base nueva.
+      const fuentes: string[] = [];
+      for (const [tabla, dia] of [
+        ['lecturas', 'dia'],
+        ['lampara', 'dia'],
+        ['datos', "(to_timestamp(t / 1000.0) at time zone 'UTC')::date"],
+      ] as const) {
+        const ok = await contar(() => sql.unsafe(`select 1 from ${tabla} limit 0`));
+        if (ok) fuentes.push(`select usuario_id, ${dia} as dia from ${tabla} where ${dia} > current_date - ${SEMANAS_USO * 7 + 31}`);
+      }
+      const vacio = { hoy: 0, semana: 0, mes: 0 };
+      let activas = vacio;
+      const semanas: { semana: string; nuevas: number; activas: number }[] = [];
+      const desde = sql`date_trunc('week', current_date) - make_interval(weeks => ${SEMANAS_USO - 1})`;
+      const nuevasPorSemana = await sql<{ semana: string; n: number }[]>`
+        select to_char(date_trunc('week', creado), 'YYYY-MM-DD') as semana, count(*)::int as n
+        from usuarios where id in (${gente}) and creado >= ${desde} group by 1`;
+      let activasPorSemana: { semana: string; n: number }[] = [];
+      if (fuentes.length) {
+        const actividad = sql.unsafe(fuentes.join(' union '));
+        [activas] = await sql<typeof vacio[]>`
+          with a as (${actividad}) select
+            count(distinct usuario_id) filter (where dia >= current_date)::int as hoy,
+            count(distinct usuario_id) filter (where dia > current_date - 7)::int as semana,
+            count(distinct usuario_id) filter (where dia > current_date - 30)::int as mes
+          from a where usuario_id in (${gente})`;
+        activasPorSemana = await sql<{ semana: string; n: number }[]>`
+          with a as (${actividad}) select to_char(date_trunc('week', dia), 'YYYY-MM-DD') as semana,
+            count(distinct usuario_id)::int as n
+          from a where usuario_id in (${gente}) and dia >= ${desde} group by 1`;
+      }
+      const [{ lunes }] = await sql<{ lunes: string }[]>`select to_char(${desde}, 'YYYY-MM-DD') as lunes`;
+      const inicio = new Date(`${lunes}T00:00:00Z`);
+      for (let i = 0; i < SEMANAS_USO; i++) {
+        const d = new Date(inicio.getTime() + i * 7 * 86400000).toISOString().slice(0, 10);
+        semanas.push({
+          semana: d,
+          nuevas: nuevasPorSemana.find((r) => r.semana === d)?.n ?? 0,
+          activas: activasPorSemana.find((r) => r.semana === d)?.n ?? 0,
+        });
+      }
+      const ia = await contar(async () => {
+        const [r] = await sql<{ personas: number; usos: number; personasMes: number; usosMes: number }[]>`
+          select count(distinct usuario_id) filter (where dia > current_date - 7)::int as personas,
+            coalesce(sum(n) filter (where dia > current_date - 7), 0)::int as usos,
+            count(distinct usuario_id)::int as "personasMes", coalesce(sum(n), 0)::int as "usosMes"
+          from lampara where dia > current_date - 30 and usuario_id in (${gente})`;
+        return r;
+      });
+      const capitulos = await contar(async () => {
+        const [r] = await sql<{ semana: number; mes: number }[]>`
+          select count(*) filter (where dia > current_date - 7)::int as semana, count(*)::int as mes
+          from lecturas where dia > current_date - 30 and usuario_id in (${gente})`;
+        return r;
+      });
+      const invitadas = await contar(async () => {
+        const [r] = await sql<{ n: number }[]>`
+          select count(*)::int as n from usuarios where invitado_por is not null and id in (${gente})`;
+        return r.n;
+      });
+      // Teléfonos y navegadores con avisos encendidos, con o sin cuenta: lo más cerca de «aparatos» que hay aquí.
+      const avisos = await contar(async () => {
+        const [r] = await sql<{ total: number; sinCuenta: number }[]>`
+          select count(*)::int as total, count(*) filter (where usuario_id is null)::int as "sinCuenta" from suscripciones`;
+        return r;
+      });
+      const enIglesias = await contar(async () => {
+        const [r] = await sql<{ n: number }[]>`select count(*)::int as n from iglesia_miembros where usuario_id in (${gente})`;
+        return r.n;
+      });
+      return { cuentas: cuentas[0], activas, semanas, ia, capitulos, invitadas, avisos, enIglesias };
     },
 
     async cuidarPasaje({ sql, body, request }) {
