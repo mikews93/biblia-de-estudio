@@ -5,6 +5,7 @@ import {
   FlagIcon,
   GlobeIcon,
   HeartIcon,
+  LampIcon,
   LockIcon,
   PencilIcon,
   PeopleIcon,
@@ -19,7 +20,7 @@ import {
 // Facebook para el inicio de sesión, y las tiendas). Parten de los términos de DeusRex que revisan los abogados de MB
 // Technology Solutions LLC, adaptados a una app gratuita, sin anuncios y con comunidad. Si cambian en algo importante,
 // hay que avisar en la app con 30 días de anticipación (ver «Si cambian estos términos»).
-const ACTUALIZADA = '26 de octubre de 2026';
+const ACTUALIZADA = '24 de noviembre de 2026';
 
 const PARTES: Parte[] = [
   {
@@ -27,7 +28,7 @@ const PARTES: Parte[] = [
     titulo: 'Quiénes somos y qué aceptas',
     puntos: [
       'Zarza (zarzabiblia.com y sus apps) la ofrece MB Technology Solutions LLC, compañía de Nuevo México (Estados Unidos), número de registro 0008106326, con domicilio en 1209 Mountain Road Pl NE, Ste N, Albuquerque, NM 87110.',
-      'Al usar Zarza, o al crear tu cuenta o entrar con Google, Apple o Facebook, aceptas estos términos y la política de Privacidad. Aceptarlos así, por medios electrónicos, vale igual que firmarlos (Ley 527 de 1999 de Colombia).',
+      'Al usar Zarza, o al crear tu cuenta o entrar con Google, Apple o Facebook, aceptas estos términos y la política de Privacidad. Aceptarlos así, por medios electrónicos, vale igual que firmarlos.',
       'Si no estás de acuerdo con ellos, no uses la app.',
     ],
   },
@@ -38,6 +39,16 @@ const PARTES: Parte[] = [
       'Zarza no cobra por leer, estudiar ni usar la comunidad, y no muestra publicidad.',
       'Las donaciones de «Sostén Zarza» son voluntarias: ayudan a que la app siga gratis para otros y no compran funciones ni privilegios.',
       'Algunas funciones tienen un límite diario para que alcancen para todos, como las preguntas a la IA o las grabaciones de pódcast. Podemos añadir, cambiar o retirar funciones cuando haga falta.',
+    ],
+  },
+  {
+    icon: LampIcon,
+    titulo: 'Donaciones, cancelación y devoluciones',
+    puntos: [
+      'Las donaciones se cobran con Stripe a nombre de MB Technology Solutions LLC; en tu extracto aparecen con el prefijo MBTECH.',
+      'El aporte mensual lo cancelas cuando quieras desde «Sostén Zarza» o escribiendo a zarza@migueblanco.com. Deja de cobrarse al terminar el mes ya pagado, sin devolver la parte proporcional.',
+      'Si te arrepientes de una donación, pídenos la devolución dentro de los 14 días siguientes al cobro. Los cobros duplicados o hechos por un error nuestro se devuelven siempre.',
+      'Para pedirla, escribe a zarza@migueblanco.com. Respondemos en máximo 5 días hábiles y el dinero vuelve al mismo medio de pago; según tu banco, puede tardar de 5 a 10 días hábiles en verse. Esto no limita los derechos que te dé la ley de protección al consumidor.',
     ],
   },
   {
@@ -134,7 +145,7 @@ const PARTES: Parte[] = [
     icon: GlobeIcon,
     titulo: 'Ley, quejas y contacto',
     puntos: [
-      'Estos términos se rigen por las leyes de Colombia. Cualquier diferencia la resolverán los jueces competentes de Colombia, sin perjuicio de tus derechos como consumidor, incluido presentar una queja ante la Superintendencia de Industria y Comercio.',
+      'Estos términos se rigen por las leyes del estado de Nuevo México (Estados Unidos), donde está registrada MB Technology Solutions LLC, y cualquier diferencia la resolverán sus jueces competentes. Esto no te quita los derechos que te dé la ley de protección al consumidor de tu país, como presentar una queja ante la autoridad de consumo (en Colombia, la Superintendencia de Industria y Comercio).',
       'Antes de eso, escríbenos a soporte@zarzabiblia.com: casi todo se arregla hablando.',
     ],
   },
