@@ -65,6 +65,32 @@
   .enlaces span { margin: 0 8px; opacity: .5; }
   [hidden] { display: none !important; }
 </style>
+    <!-- Visitas web con Vercel Web Analytics: sin cookies ni identificadores, solo cuenta páginas vistas. Solo en los
+         dominios públicos (no en pruebas ni vistas previas). Antes de enviar se quitan los códigos de las rutas
+         (invitaciones, grupos, iglesias…) y se deja de la dirección solo de dónde vino la visita (?de= o utm_*). -->
+    <script>
+      (function () {
+        if (!/(^|\.)(zarzabiblia\.com|biblia\.migueblanco\.com)$/.test(location.hostname)) return;
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+        var conCodigo = /^\/(i|amigo|unirse|vivo|evento|grupos|iglesia|recuperar|taller|comunidades\/persona|comunidades\/publicacion|pareja\/unirse|circulo\/conocer|circulo\/lider)\/(?!postular$|nuevo$)[^/]+/;
+        window.va('beforeSend', function (e) {
+          try {
+            var u = new URL(e.url);
+            var p = u.pathname.replace(conCodigo, function (_, base) { return '/' + base + '/[codigo]'; });
+            var q = new URLSearchParams();
+            u.searchParams.forEach(function (v, k) { if (/^utm_/.test(k)) q.set(k, v); });
+            if (u.searchParams.get('de') && !q.has('utm_source')) q.set('utm_source', u.searchParams.get('de'));
+            var s = q.toString();
+            e.url = u.origin + p + (s ? '?' + s : '');
+          } catch (err) {}
+          return e;
+        });
+        var s = document.createElement('script');
+        s.defer = true;
+        s.src = '/_vercel/insights/script.js';
+        document.head.appendChild(s);
+      })();
+    </script>
 </head>
 <body>
 <main>

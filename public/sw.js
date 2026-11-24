@@ -46,6 +46,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+  // El contador de visitas (Vercel Web Analytics, public/index.html) va siempre a la red.
+  if (url.pathname.startsWith('/_vercel/')) return;
   // Las descargas piden con no-store y guardan ellas mismas su copia.
   if (request.cache === 'no-store') return;
   // Las grabaciones (MP3 de varios MB) llegan por trozos: el navegador las pide directo, sin pasar por la caché.
