@@ -116,8 +116,18 @@ export const recordingId = (book: string, chapter: number) => `${book}-${chapter
 let catalogLoad: Promise<void> | null = null;
 
 /** Pide el catálogo una vez por sesión; termina cuando ya está en el estado (o no se pudo pedir). */
+/** Lo más que se espera el catálogo. Se pide una vez por sesión: si esa petición se quedaba colgada (la red dormida al
+ * volver a la app), la pantalla del pódcast giraba para siempre hasta cerrar la app del todo. */
+const CATALOGO_MS = 10_000;
+
+function fetchConLimite(url: string, ms: number) {
+  const limite = new AbortController();
+  const timer = setTimeout(() => limite.abort(), ms);
+  return fetch(url, { signal: limite.signal }).finally(() => clearTimeout(timer));
+}
+
 export function cargarCatalogo(): Promise<Catalog> {
-  catalogLoad ??= fetch(`${API}/audio/index.json`)
+  catalogLoad ??= fetchConLimite(`${API}/audio/index.json`, CATALOGO_MS)
     .then((res) => (res.ok ? res.json() : null))
     .then((body: Partial<Catalog> | null) => {
       if (body) set({ catalog: { dramatizado: body.dramatizado ?? [], podcast: body.podcast ?? [], original: body.original ?? [] } });

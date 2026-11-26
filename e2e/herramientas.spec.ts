@@ -89,6 +89,16 @@ test.describe('Herramientas del capítulo con IA', () => {
     await expect(v(page.getByRole('button', { name: `Seguir leyendo: Juan ${cap + 1}` }))).toBeVisible();
   });
 
+  test('resumen en audio: si el servidor no contesta qué está grabado, la pantalla no gira para siempre', async ({ page, request }, info) => {
+    const cap = capitulo(info, 16);
+    await conSesion(page, await cuentaNueva(request, 'Oyente'));
+    // Como al volver a la app con la red dormida: las consultas de la grabación nunca contestan
+    await page.route('**/api/podcast-grabado**', () => new Promise(() => {}));
+    await page.goto(`/podcast/juan/${cap}`);
+    await expect(v(page.getByText('Este capítulo empieza con una sorpresa.'))).toBeVisible({ timeout: 30_000 });
+    await expect(v(page.getByRole('button', { name: 'Escuchar', exact: true }))).toBeEnabled({ timeout: 20_000 });
+  });
+
   test('resumen en audio: la barra de abajo también pasa al capítulo de al lado desde el lector', async ({ page, request }, info) => {
     const cap = capitulo(info, 12);
     await conSesion(page, await cuentaNueva(request, 'Oyente'));
