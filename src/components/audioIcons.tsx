@@ -106,3 +106,11 @@ export const OriginalIcon = ({ size = 22, color, letter = 'α' }: Props & { lett
     <Path d="M16 9.2a4 4 0 0 1 0 5.6M19 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
   </Svg>
 );
+
+/** Auricular de teléfono con ondas: otra app (una llamada) tiene el sonido. */
+export const CallIcon = (p: Props) => (
+  <Line {...p}>
+    <Path d="M5.2 4.5h3l1.4 3.6-1.9 1.2a10.5 10.5 0 0 0 4.9 4.9l1.2-1.9 3.6 1.4v3c0 .9-.7 1.6-1.6 1.6C9.9 18.3 3.6 12 3.6 6.1c0-.9.7-1.6 1.6-1.6z" />
+    <Path d="M15 4.2a5.5 5.5 0 0 1 4.8 4.8M14.6 7.4a2.6 2.6 0 0 1 2 2" />
+  </Line>
+);
