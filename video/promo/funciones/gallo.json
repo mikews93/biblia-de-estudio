@@ -1,0 +1,35 @@
+{
+  "voice": {
+    "name": "Abel",
+    "voiceId": "452WrNT9o8dphaYW5YGU",
+    "model": "eleven_v4"
+  },
+  "_": "Serie «Lo que casi nadie nota» (src/funciones/Funcion.tsx): una idea común, lo que dice el texto y cómo verlo en Zarza. Solo pantallas reales sin IA (lector, interlineal, concordancia, medidas). Las [etiquetas] son entonación de eleven_v4.",
+  "lines": [
+    {
+      "id": "hook",
+      "at": 0,
+      "text": "[curious] ¿Y si lo que oyó Pedro… no fue un gallo?"
+    },
+    {
+      "id": "vigilia",
+      "at": 0,
+      "text": "En tiempos de Jesús, «el canto del gallo» era también el nombre de una hora: la vigilia de la medianoche a las tres de la mañana. Jesús la nombra en Marcos trece."
+    },
+    {
+      "id": "trompeta",
+      "at": 0,
+      "text": "Por eso algunos estudiosos piensan que esa noche sonó la trompeta romana del cambio de guardia. Otros leen un gallo de verdad. Todavía se discute."
+    },
+    {
+      "id": "zarza",
+      "at": 0,
+      "text": "En Zarza abres Marcos catorce, tocas la palabra en griego y ves cada lugar donde aparece… para que lo estudies tú mismo."
+    },
+    {
+      "id": "cta",
+      "at": 0,
+      "text": "[warm] Zarza. Lo que casi nadie nota… gratis en Google Play."
+    }
+  ]
+}

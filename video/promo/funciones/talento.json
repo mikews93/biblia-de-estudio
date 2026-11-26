@@ -1,0 +1,40 @@
+{
+  "voice": {
+    "name": "Abel",
+    "voiceId": "452WrNT9o8dphaYW5YGU",
+    "model": "eleven_v4"
+  },
+  "_": "Serie «Lo que casi nadie nota» (src/funciones/Funcion.tsx): una idea común, lo que dice el texto y cómo verlo en Zarza. Solo pantallas reales sin IA (lector, interlineal, concordancia, medidas). Las [etiquetas] son entonación de eleven_v4.",
+  "lines": [
+    {
+      "id": "hook",
+      "at": 0,
+      "text": "[curious] ¿Y si un talento… no era una habilidad?"
+    },
+    {
+      "id": "parabola",
+      "at": 0,
+      "text": "En la parábola de Mateo veinticinco, un señor reparte talentos a sus siervos: cinco, dos y uno."
+    },
+    {
+      "id": "valor",
+      "at": 0,
+      "text": "Pero un talento era dinero: unos seis mil denarios. Unos veinte años de trabajo de un jornalero."
+    },
+    {
+      "id": "zarza",
+      "at": 0,
+      "text": "En Zarza abres el capítulo, y el estudio te muestra cada medida y cada moneda en números de hoy."
+    },
+    {
+      "id": "uno",
+      "at": 0,
+      "text": "[soft] Al que recibió uno solo… le confiaron una fortuna."
+    },
+    {
+      "id": "cta",
+      "at": 0,
+      "text": "[warm] Zarza. Lo que casi nadie nota… gratis en Google Play."
+    }
+  ]
+}

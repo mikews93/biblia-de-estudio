@@ -1,0 +1,40 @@
+{
+  "voice": {
+    "name": "Abel",
+    "voiceId": "452WrNT9o8dphaYW5YGU",
+    "model": "eleven_v4"
+  },
+  "_": "Serie «Lo que casi nadie nota» (src/funciones/Funcion.tsx): una idea común, lo que dice el texto y cómo verlo en Zarza. Solo pantallas reales sin IA (lector, interlineal, concordancia, medidas). Las [etiquetas] son entonación de eleven_v4.",
+  "lines": [
+    {
+      "id": "hook",
+      "at": 0,
+      "text": "[curious] ¿Por qué Jesús esperó a Pedro… junto a un fuego?"
+    },
+    {
+      "id": "negar",
+      "at": 0,
+      "text": "La noche en que Pedro negó a Jesús, se calentaba junto a un fuego de brasas."
+    },
+    {
+      "id": "playa",
+      "at": 0,
+      "text": "Días después, en la orilla del mar, Jesús lo espera… junto a otro fuego de brasas."
+    },
+    {
+      "id": "palabra",
+      "at": 0,
+      "text": "En Zarza tocas esa palabra en el griego: anthrakiá. Aparece solo dos veces en todo el Nuevo Testamento. Las dos, con Pedro."
+    },
+    {
+      "id": "tres",
+      "at": 0,
+      "text": "[soft] Tres negaciones junto al fuego. Y junto al fuego, tres veces: «¿Me amas?»"
+    },
+    {
+      "id": "cta",
+      "at": 0,
+      "text": "[warm] Zarza. Lo que casi nadie nota… gratis en Google Play."
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 1.6,
+  "duration": 1.646,
   "speechStart": 0.067,
   "speechEnd": 1.44,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -33,7 +33,7 @@
   ]
  },
  "mapa": {
-  "duration": 5.68,
+  "duration": 5.721,
   "speechStart": 0,
   "speechEnd": 5.68,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -126,7 +126,7 @@
   ]
  },
  "tarjetas": {
-  "duration": 3.2,
+  "duration": 3.239,
   "speechStart": 0,
   "speechEnd": 2.64,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -179,7 +179,7 @@
   ]
  },
  "repaso": {
-  "duration": 5.68,
+  "duration": 5.721,
   "speechStart": 0,
   "speechEnd": 5.68,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -272,7 +272,7 @@
   ]
  },
  "cta": {
-  "duration": 4.16,
+  "duration": 4.206,
   "speechStart": 0.2,
   "speechEnd": 3.92,
   "method": "elevenlabs alignment (with-timestamps, per character)",

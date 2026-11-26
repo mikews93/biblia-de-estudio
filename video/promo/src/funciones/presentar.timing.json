@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 4.56,
+  "duration": 4.598,
   "speechStart": 0.067,
   "speechEnd": 4.32,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -78,7 +78,7 @@
   ]
  },
  "empezar": {
-  "duration": 4.56,
+  "duration": 4.598,
   "speechStart": 0,
   "speechEnd": 4.56,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -156,7 +156,7 @@
   ]
  },
  "notas": {
-  "duration": 3.76,
+  "duration": 3.788,
   "speechStart": 0,
   "speechEnd": 3.76,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -224,7 +224,7 @@
   ]
  },
  "cita": {
-  "duration": 3.76,
+  "duration": 3.788,
   "speechStart": 0,
   "speechEnd": 3.76,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -282,7 +282,7 @@
   ]
  },
  "preguntas": {
-  "duration": 6.08,
+  "duration": 6.113,
   "speechStart": 0,
   "speechEnd": 6.08,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -370,7 +370,7 @@
   ]
  },
  "cta": {
-  "duration": 4.08,
+  "duration": 4.127,
   "speechStart": 0.08,
   "speechEnd": 3.84,
   "method": "elevenlabs alignment (with-timestamps, per character)",

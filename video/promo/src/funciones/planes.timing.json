@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 3.6,
+  "duration": 3.631,
   "speechStart": 0.067,
   "speechEnd": 3.36,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -58,7 +58,7 @@
   ]
  },
  "retos": {
-  "duration": 6.4,
+  "duration": 6.426,
   "speechStart": 0,
   "speechEnd": 5.84,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -126,7 +126,7 @@
   ]
  },
  "dia": {
-  "duration": 6.64,
+  "duration": 6.687,
   "speechStart": 0,
   "speechEnd": 6,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -229,7 +229,7 @@
   ]
  },
  "temas": {
-  "duration": 6.72,
+  "duration": 6.766,
   "speechStart": 0,
   "speechEnd": 6.72,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -342,7 +342,7 @@
   ]
  },
  "cta": {
-  "duration": 4,
+  "duration": 4.049,
   "speechStart": 0.14,
   "speechEnd": 3.84,
   "method": "elevenlabs alignment (with-timestamps, per character)",
