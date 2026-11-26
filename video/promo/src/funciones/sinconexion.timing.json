@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 2.508,
+  "duration": 2.48,
   "speechStart": 0.08,
   "speechEnd": 2.32,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -33,7 +33,7 @@
   ]
  },
  "descargar": {
-  "duration": 4.441,
+  "duration": 4.4,
   "speechStart": 0,
   "speechEnd": 4.4,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -101,7 +101,7 @@
   ]
  },
  "leer": {
-  "duration": 4.362,
+  "duration": 4.32,
   "speechStart": 0,
   "speechEnd": 4.32,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -174,7 +174,7 @@
   ]
  },
  "buscar": {
-  "duration": 3.004,
+  "duration": 2.96,
   "speechStart": 0,
   "speechEnd": 2.4,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -227,7 +227,7 @@
   ]
  },
  "cta": {
-  "duration": 4.049,
+  "duration": 4,
   "speechStart": 0.14,
   "speechEnd": 3.84,
   "method": "elevenlabs alignment (with-timestamps, per character)",

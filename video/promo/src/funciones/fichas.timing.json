@@ -1,6 +1,6 @@
 {
  "hook": {
-  "duration": 2.926,
+  "duration": 2.88,
   "speechStart": 0.067,
   "speechEnd": 2.64,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -43,7 +43,7 @@
   ]
  },
  "diccionario": {
-  "duration": 6.531,
+  "duration": 6.48,
   "speechStart": 0,
   "speechEnd": 5.92,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -131,7 +131,7 @@
   ]
  },
  "ficha": {
-  "duration": 5.407,
+  "duration": 5.36,
   "speechStart": 0,
   "speechEnd": 5.2,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -214,7 +214,7 @@
   ]
  },
  "concordancia": {
-  "duration": 6.034,
+  "duration": 6,
   "speechStart": 0,
   "speechEnd": 6,
   "method": "elevenlabs alignment (with-timestamps, per character)",
@@ -317,9 +317,9 @@
   ]
  },
  "cta": {
-  "duration": 4.206,
+  "duration": 4.08,
   "speechStart": 0.14,
-  "speechEnd": 3.92,
+  "speechEnd": 3.84,
   "method": "elevenlabs alignment (with-timestamps, per character)",
   "words": [
    {
@@ -334,38 +334,38 @@
    },
    {
     "w": "Biblia",
-    "start": 1.28,
+    "start": 1.24,
     "end": 1.52
    },
    {
     "w": "de",
-    "start": 1.6,
-    "end": 1.64
+    "start": 1.56,
+    "end": 1.6
    },
    {
     "w": "estudio…",
-    "start": 1.68,
-    "end": 2.16
+    "start": 1.72,
+    "end": 2.08
    },
    {
     "w": "gratis",
-    "start": 2.88,
-    "end": 3.12
+    "start": 2.8,
+    "end": 3.04
    },
    {
     "w": "en",
-    "start": 3.2,
-    "end": 3.28
+    "start": 3.12,
+    "end": 3.2
    },
    {
     "w": "Google",
-    "start": 3.36,
-    "end": 3.6
+    "start": 3.28,
+    "end": 3.52
    },
    {
     "w": "Play.",
-    "start": 3.68,
-    "end": 3.92
+    "start": 3.6,
+    "end": 3.84
    }
   ]
  }

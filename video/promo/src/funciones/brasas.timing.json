@@ -1,0 +1,485 @@
+{
+ "hook": {
+  "duration": 3.68,
+  "speechStart": 0.067,
+  "speechEnd": 3.12,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Por",
+    "start": 0.067,
+    "end": 0.24
+   },
+   {
+    "w": "qué",
+    "start": 0.28,
+    "end": 0.32
+   },
+   {
+    "w": "Jesús",
+    "start": 0.4,
+    "end": 0.8
+   },
+   {
+    "w": "esperó",
+    "start": 0.96,
+    "end": 1.2
+   },
+   {
+    "w": "a",
+    "start": 1.24,
+    "end": 1.28
+   },
+   {
+    "w": "Pedro…",
+    "start": 1.36,
+    "end": 2.16
+   },
+   {
+    "w": "junto",
+    "start": 2.24,
+    "end": 2.48
+   },
+   {
+    "w": "a",
+    "start": 2.52,
+    "end": 2.56
+   },
+   {
+    "w": "un",
+    "start": 2.64,
+    "end": 2.72
+   },
+   {
+    "w": "fuego?",
+    "start": 2.8,
+    "end": 3.12
+   }
+  ]
+ },
+ "negar": {
+  "duration": 5.12,
+  "speechStart": 0,
+  "speechEnd": 5.12,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "La",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "noche",
+    "start": 0.24,
+    "end": 0.4
+   },
+   {
+    "w": "en",
+    "start": 0.48,
+    "end": 0.56
+   },
+   {
+    "w": "que",
+    "start": 0.64,
+    "end": 0.72
+   },
+   {
+    "w": "Pedro",
+    "start": 0.8,
+    "end": 1.04
+   },
+   {
+    "w": "negó",
+    "start": 1.16,
+    "end": 1.32
+   },
+   {
+    "w": "a",
+    "start": 1.36,
+    "end": 1.44
+   },
+   {
+    "w": "Jesús,",
+    "start": 1.48,
+    "end": 2.24
+   },
+   {
+    "w": "se",
+    "start": 2.32,
+    "end": 2.4
+   },
+   {
+    "w": "calentaba",
+    "start": 2.48,
+    "end": 2.96
+   },
+   {
+    "w": "junto",
+    "start": 3,
+    "end": 3.2
+   },
+   {
+    "w": "a",
+    "start": 3.28,
+    "end": 3.32
+   },
+   {
+    "w": "un",
+    "start": 3.36,
+    "end": 3.52
+   },
+   {
+    "w": "fuego",
+    "start": 3.56,
+    "end": 3.84
+   },
+   {
+    "w": "de",
+    "start": 3.88,
+    "end": 3.92
+   },
+   {
+    "w": "brasas.",
+    "start": 4.08,
+    "end": 5.12
+   }
+  ]
+ },
+ "playa": {
+  "duration": 6.48,
+  "speechStart": 0,
+  "speechEnd": 6.48,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Días",
+    "start": 0,
+    "end": 0.32
+   },
+   {
+    "w": "después,",
+    "start": 0.44,
+    "end": 0.96
+   },
+   {
+    "w": "en",
+    "start": 1.28,
+    "end": 1.36
+   },
+   {
+    "w": "la",
+    "start": 1.4,
+    "end": 1.44
+   },
+   {
+    "w": "orilla",
+    "start": 1.52,
+    "end": 1.76
+   },
+   {
+    "w": "del",
+    "start": 1.84,
+    "end": 1.92
+   },
+   {
+    "w": "mar,",
+    "start": 2.04,
+    "end": 2.16
+   },
+   {
+    "w": "Jesús",
+    "start": 2.56,
+    "end": 2.88
+   },
+   {
+    "w": "lo",
+    "start": 2.96,
+    "end": 3
+   },
+   {
+    "w": "espera…",
+    "start": 3.04,
+    "end": 3.92
+   },
+   {
+    "w": "junto",
+    "start": 4,
+    "end": 4.32
+   },
+   {
+    "w": "a",
+    "start": 4.4,
+    "end": 4.44
+   },
+   {
+    "w": "otro",
+    "start": 4.48,
+    "end": 4.8
+   },
+   {
+    "w": "fuego",
+    "start": 4.84,
+    "end": 5.12
+   },
+   {
+    "w": "de",
+    "start": 5.16,
+    "end": 5.2
+   },
+   {
+    "w": "brasas.",
+    "start": 5.28,
+    "end": 6.48
+   }
+  ]
+ },
+ "palabra": {
+  "duration": 9.6,
+  "speechStart": 0,
+  "speechEnd": 9.6,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "Zarza",
+    "start": 0.16,
+    "end": 0.56
+   },
+   {
+    "w": "tocas",
+    "start": 0.64,
+    "end": 0.96
+   },
+   {
+    "w": "esa",
+    "start": 1.08,
+    "end": 1.2
+   },
+   {
+    "w": "palabra",
+    "start": 1.28,
+    "end": 1.52
+   },
+   {
+    "w": "en",
+    "start": 1.6,
+    "end": 1.64
+   },
+   {
+    "w": "el",
+    "start": 1.68,
+    "end": 1.76
+   },
+   {
+    "w": "griego:",
+    "start": 1.84,
+    "end": 2.24
+   },
+   {
+    "w": "anthrakiá.",
+    "start": 2.84,
+    "end": 3.44
+   },
+   {
+    "w": "Aparece",
+    "start": 4.16,
+    "end": 4.56
+   },
+   {
+    "w": "solo",
+    "start": 4.64,
+    "end": 4.96
+   },
+   {
+    "w": "dos",
+    "start": 5.08,
+    "end": 5.2
+   },
+   {
+    "w": "veces",
+    "start": 5.28,
+    "end": 5.52
+   },
+   {
+    "w": "en",
+    "start": 5.6,
+    "end": 5.76
+   },
+   {
+    "w": "todo",
+    "start": 5.88,
+    "end": 6
+   },
+   {
+    "w": "el",
+    "start": 6.04,
+    "end": 6.08
+   },
+   {
+    "w": "Nuevo",
+    "start": 6.16,
+    "end": 6.32
+   },
+   {
+    "w": "Testamento.",
+    "start": 6.4,
+    "end": 7.52
+   },
+   {
+    "w": "Las",
+    "start": 7.6,
+    "end": 7.76
+   },
+   {
+    "w": "dos,",
+    "start": 8.08,
+    "end": 8.4
+   },
+   {
+    "w": "con",
+    "start": 8.48,
+    "end": 8.64
+   },
+   {
+    "w": "Pedro.",
+    "start": 8.76,
+    "end": 9.6
+   }
+  ]
+ },
+ "tres": {
+  "duration": 5.92,
+  "speechStart": 0.064,
+  "speechEnd": 5.76,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Tres",
+    "start": 0.064,
+    "end": 0.32
+   },
+   {
+    "w": "negaciones",
+    "start": 0.4,
+    "end": 0.96
+   },
+   {
+    "w": "junto",
+    "start": 1,
+    "end": 1.2
+   },
+   {
+    "w": "al",
+    "start": 1.28,
+    "end": 1.32
+   },
+   {
+    "w": "fuego.",
+    "start": 1.36,
+    "end": 1.76
+   },
+   {
+    "w": "Y",
+    "start": 2.48,
+    "end": 2.56
+   },
+   {
+    "w": "junto",
+    "start": 2.6,
+    "end": 2.8
+   },
+   {
+    "w": "al",
+    "start": 2.88,
+    "end": 2.96
+   },
+   {
+    "w": "fuego,",
+    "start": 3.04,
+    "end": 3.36
+   },
+   {
+    "w": "tres",
+    "start": 3.84,
+    "end": 4
+   },
+   {
+    "w": "veces:",
+    "start": 4.08,
+    "end": 4.56
+   },
+   {
+    "w": "«¿Me",
+    "start": 5.2,
+    "end": 5.28
+   },
+   {
+    "w": "amas?»",
+    "start": 5.36,
+    "end": 5.76
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.72,
+  "speechStart": 0.16,
+  "speechEnd": 4.56,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.16,
+    "end": 0.64
+   },
+   {
+    "w": "Lo",
+    "start": 1.2,
+    "end": 1.28
+   },
+   {
+    "w": "que",
+    "start": 1.36,
+    "end": 1.44
+   },
+   {
+    "w": "casi",
+    "start": 1.52,
+    "end": 1.84
+   },
+   {
+    "w": "nadie",
+    "start": 1.92,
+    "end": 2.24
+   },
+   {
+    "w": "nota…",
+    "start": 2.32,
+    "end": 2.64
+   },
+   {
+    "w": "gratis",
+    "start": 3.2,
+    "end": 3.68
+   },
+   {
+    "w": "en",
+    "start": 3.76,
+    "end": 3.84
+   },
+   {
+    "w": "Google",
+    "start": 3.92,
+    "end": 4.16
+   },
+   {
+    "w": "Play.",
+    "start": 4.24,
+    "end": 4.56
+   }
+  ]
+ }
+}
