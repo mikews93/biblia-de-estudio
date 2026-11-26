@@ -59,17 +59,29 @@ export default function Podcast() {
  * Las versiones en que el capítulo ya está grabado (en el servidor o, la RV1909, con la app); null mientras se pregunta.
  * Sin servidor, ninguna.
  */
+/** Lo más que gira la pantalla mientras se pregunta qué está grabado. */
+const ESPERA_MAX_MS = 13_000;
+
 function useGrabadas(book: string, chapter: number): string[] | null {
   const [grabadas, setGrabadas] = useState<{ clave: string; versiones: string[] } | null>(null);
   const clave = `${book}-${chapter}`;
   useEffect(() => {
     const controller = new AbortController();
+    // Si el servidor no contesta a tiempo (la red dormida al volver a la app), se sigue sin grabaciones: el pódcast se
+    // prepara o se escucha con la voz del teléfono. Antes esta rueda de pantalla completa podía girar para siempre.
+    const sinEsperarMas = setTimeout(() => {
+      if (!controller.signal.aborted) setGrabadas((g) => (g?.clave === clave ? g : { clave, versiones: [] }));
+    }, ESPERA_MAX_MS);
     Promise.all([versionesGrabadas(book, chapter, controller.signal).catch(() => []), cargarCatalogo()]).then(([versiones, catalogo]) => {
       if (controller.signal.aborted) return;
+      clearTimeout(sinEsperarMas);
       const enLaApp = catalogo.podcast.includes(recordingId(book, chapter));
       setGrabadas({ clave, versiones: enLaApp ? [...versiones, 'rv1909'] : versiones });
     });
-    return () => controller.abort();
+    return () => {
+      clearTimeout(sinEsperarMas);
+      controller.abort();
+    };
   }, [book, chapter, clave]);
   return grabadas?.clave === clave ? grabadas.versiones : null;
 }

@@ -5,6 +5,7 @@ import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AmbienteHoja, Barras } from '@/components/Ambiente';
+import { useSegundos } from '@/components/PreparandoPodcast';
 import { CloseIcon, TalkIcon } from '@/components/audioIcons';
 import { MusicIcon, SparkIcon } from '@/components/icons';
 import { VocesPanel } from '@/components/VocesPodcast';
@@ -30,6 +31,9 @@ export default function PodcastAjustes({ colors, dispositivo, extras }: Props) {
   const grabado = dispositivo ? extras?.grabado : undefined;
   const grabando = grabado?.estado === 'grabando';
   const puedeGrabar = grabado?.estado === 'ninguno' || grabado?.estado === 'error' || grabando;
+  // Cuánto lleva grabándose: sin esto, «Grabando…» un minuto entero parecía colgado.
+  const lleva = useSegundos(grabado?.estado === 'grabando' ? grabado.desde : 0, grabando);
+  const reloj = `${Math.floor(lleva / 60)}:${String(lleva % 60).padStart(2, '0')}`;
 
   return (
     <View style={[styles.row, { borderColor: colors.border }]}>
@@ -60,8 +64,8 @@ export default function PodcastAjustes({ colors, dispositivo, extras }: Props) {
           on={grabando}
           icon={grabando ? <ActivityIndicator color={colors.warm} size="small" /> : <SparkIcon color={colors.text} size={18} />}
           label={grabando ? 'Grabando…' : grabado?.estado === 'error' ? 'Reintentar' : 'Grabar'}
-          detail="Voz natural"
-          a11y={grabando ? 'Grabando con voces naturales' : 'Grabar este pódcast con voces naturales'}
+          detail={grabando ? `${reloj} de ~1:30` : 'Voz natural'}
+          a11y={grabando ? `Grabando con voces naturales, lleva ${reloj}` : 'Grabar este pódcast con voces naturales'}
           onPress={() => setHoja('grabar')}
         />
       )}
@@ -89,7 +93,7 @@ export default function PodcastAjustes({ colors, dispositivo, extras }: Props) {
         <Hoja colors={colors} kicker="Voces naturales" title="Escuchar con voces naturales" onClose={() => setHoja(null)}>
           <Text style={[styles.nota, { color: colors.muted }]}>
             {grabando
-              ? 'Se está grabando. Tarda uno o dos minutos; puedes seguir escuchando o leyendo, y después queda lista para todos.'
+              ? `Se está grabando (lleva ${reloj}). Suele tardar un minuto y medio; puedes seguir escuchando, leyendo o incluso salir de la app: al volver la encuentras lista.`
               : grabado.estado === 'error'
                 ? grabado.error
                 : 'Nadie lo ha grabado aún. Se graba una vez, en uno o dos minutos, y queda lista para todos. Mientras tanto sigue sonando con la voz del teléfono.'}

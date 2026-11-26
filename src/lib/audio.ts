@@ -116,8 +116,18 @@ export const recordingId = (book: string, chapter: number) => `${book}-${chapter
 let catalogLoad: Promise<void> | null = null;
 
 /** Pide el catálogo una vez por sesión; termina cuando ya está en el estado (o no se pudo pedir). */
+/** Lo más que se espera el catálogo. Se pide una vez por sesión: si esa petición se quedaba colgada (la red dormida al
+ * volver a la app), la pantalla del pódcast giraba para siempre hasta cerrar la app del todo. */
+const CATALOGO_MS = 10_000;
+
+function fetchConLimite(url: string, ms: number) {
+  const limite = new AbortController();
+  const timer = setTimeout(() => limite.abort(), ms);
+  return fetch(url, { signal: limite.signal }).finally(() => clearTimeout(timer));
+}
+
 export function cargarCatalogo(): Promise<Catalog> {
-  catalogLoad ??= fetch(`${API}/audio/index.json`)
+  catalogLoad ??= fetchConLimite(`${API}/audio/index.json`, CATALOGO_MS)
     .then((res) => (res.ok ? res.json() : null))
     .then((body: Partial<Catalog> | null) => {
       if (body) set({ catalog: { dramatizado: body.dramatizado ?? [], podcast: body.podcast ?? [], original: body.original ?? [] } });
@@ -159,10 +169,58 @@ export function getPlayer(): AudioPlayer {
   return player;
 }
 
+// ---------------------------------------------------------------- avisos de empezar y terminar un capítulo
+// src/lib/escuchado.ts los usa para que escuchar cuente como leer (el progreso y «Seguir leyendo»). Van como avisos y no
+// como import para que el reproductor no dependa del progreso, la cuenta ni los planes.
+
+type Escucha = { kind: AudioKind; book: string; chapter: number; title: string };
+const alEmpezarListeners = new Set<(e: Escucha) => void>();
+const alTerminarListeners = new Set<(e: Escucha) => void>();
+
+/** Cuando empieza a sonar algo de un capítulo (la lectura, el dramatizado, el pódcast…). */
+export function alEmpezar(fn: (e: Escucha) => void) {
+  alEmpezarListeners.add(fn);
+  return () => alEmpezarListeners.delete(fn);
+}
+
+/** Cuando termina de sonar entero (la última pista llegó al final, o la voz del dispositivo leyó la última intervención). */
+export function alTerminar(fn: (e: Escucha) => void) {
+  alTerminarListeners.add(fn);
+  return () => alTerminarListeners.delete(fn);
+}
+
+/** Escuchar casi todo cuenta como escuchado: quien pasa al siguiente en la pregunta final no lo pierde. */
+const CASI_TODO = 0.9;
+/** Si ya se avisó que el capítulo que suena se escuchó (una vez por cada vez que empieza). */
+let terminoAvisado = false;
+
+function avisarTermino() {
+  if (terminoAvisado || !state.book) return;
+  terminoAvisado = true;
+  avisar(alTerminarListeners, { kind: state.kind, book: state.book, chapter: state.chapter, title: state.title });
+}
+
+function avisar(listeners: Set<(e: Escucha) => void>, e: Escucha) {
+  listeners.forEach((fn) => {
+    try {
+      fn(e);
+    } catch {
+      // un aviso que falla no para el audio
+    }
+  });
+}
+
 function onStatus(status: AudioStatus) {
-  if (!status.didJustFinish || !state.audio) return;
-  if (state.track + 1 < state.audio.tracks.length) playTrack(state.track + 1, 0);
-  else if (state.kind === 'lectura') playNextChapter();
+  if (!state.audio) return;
+  const ultima = state.track + 1 >= state.audio.tracks.length;
+  if (ultima && !terminoAvisado && status.duration > 0 && status.currentTime >= status.duration * CASI_TODO) avisarTermino();
+  if (!status.didJustFinish) return;
+  if (!ultima) {
+    playTrack(state.track + 1, 0);
+    return;
+  }
+  avisarTermino();
+  if (state.kind === 'lectura') playNextChapter();
 }
 
 function playTrack(index: number, at: number) {
@@ -224,6 +282,8 @@ function start(kind: AudioKind, book: string, chapter: number, title: string): n
   getPlayer().pause();
   set({ open: true, kind, book, chapter, title, loading: true, error: null, audio: null, speech: null, track: 0 });
   followWords(kind === 'original');
+  terminoAvisado = false;
+  avisar(alEmpezarListeners, { kind, book, chapter, title });
   return id;
 }
 
@@ -464,9 +524,11 @@ async function speakFrom(index: number) {
   if (!speech) return;
   if (index >= speech.lines.length) {
     set({ speech: { ...speech, index: 0, playing: false } });
+    avisarTermino();
     return;
   }
   set({ speech: { ...speech, index, playing: true } });
+  if (index >= Math.floor(speech.lines.length * CASI_TODO)) avisarTermino();
   const voices = await pickVoices();
   const line = speech.lines[index];
   const parts = chunks(paraHablar(line.text));

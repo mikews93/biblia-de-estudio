@@ -86,3 +86,9 @@ export const chapterHref = (book: string, chapter: number) => `/${BOOK_SLUGS[boo
 
 export const verseHref = (book: string, chapter: number, verse: number) =>
   `/${BOOK_SLUGS[book] ?? book}/${chapter}/${verse}` as const;
+
+/** La pantalla de un capítulo en el lector: /juan/3 o /juan/3/16 (no /podcast/juan/3 ni otras con número). */
+export function enLector(path: string) {
+  const m = /^\/([^/]+)\/\d+(\/\d+)?$/.exec(path);
+  return !!m && (m[1] in SLUG_TO_ID || m[1] in BOOK_SLUGS);
+}
