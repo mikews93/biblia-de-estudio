@@ -117,6 +117,41 @@ def write_concordance(out, concordance, meta, prefix):
             "lemma": lemma, "meaning": meaning, "translit": translit, "related": related,
             "uses": [[ref, FORM_PUNCT.sub("", form) or form, gloss] for ref, form, gloss in concordance[k]],
         })
+    write_raras(out, concordance, meta, keys)
+
+
+def write_raras(out, concordance, meta, keys, por_capitulo=3):
+    """«Lo que casi nadie nota» al final del capítulo: palabras del original que salen solo 2 o 3 veces en toda la
+    Biblia y en más de un capítulo (como ἀνθρακιά, el fuego de brasas de Juan 18:18 y 21:9). Sin nombres propios.
+    raras/<libro>/<capítulo>.json = [{s: Strong, l: lema, g: glosa aquí, v: versículo, otros: [refs]}], las mejores
+    primero: las de 2 apariciones y glosas cortas."""
+    por_cap = defaultdict(list)
+    for k in keys:
+        usos = concordance[k]
+        refs = sorted({ref for ref, _, _ in usos})
+        if not 2 <= len(refs) <= 3 or len({r.rsplit(".", 1)[0] for r in refs}) < 2:
+            continue
+        meaning = meta.get(k, ("", "", ""))[1] or ""
+        if any(g[:1].isupper() for _, _, g in usos) or meaning[:1].isupper():
+            continue
+        for ref in refs:
+            bid, ch, v = ref.split(".")
+            # «y vanidad», «e hizo»: la conjunción pegada del hebreo no es parte de la palabra
+            gloss = re.sub(r"^[ye] ", "", next((g for r, _, g in usos if r == ref and g), ""))
+            if not gloss or "(" in gloss:
+                continue
+            por_cap[(bid, int(ch))].append({
+                "s": k, "l": meta.get(k, ("", "", ""))[0] or FORM_PUNCT.sub("", usos[0][1]),
+                "g": gloss, "v": int(v), "otros": [r for r in refs if r != ref],
+            })
+    for (bid, ch), items in por_cap.items():
+        items.sort(key=lambda x: (len(x["otros"]), len(x["g"].split()) > 3, x["v"], x["s"]))
+        vistos, elegidas = set(), []
+        for x in items:
+            if x["s"] not in vistos:
+                vistos.add(x["s"])
+                elegidas.append(x)
+        write(out, f"raras/{bid}/{ch}.json", elegidas[:por_capitulo])
 
 
 def build_text(out):

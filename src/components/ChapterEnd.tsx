@@ -5,7 +5,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { IconText } from '@/components/comunidad/ui';
 import { CheckIcon } from '@/components/icons';
 import { useAccount } from '@/lib/comunidad';
-import { Book, getBooks, getPlaces } from '@/lib/data';
+import { concordanceHref } from '@/lib/concordancia';
+import { Book, Rara, getBooks, getPlaces, getRaras } from '@/lib/data';
+import { formatRef } from '@/lib/refs';
 import { planDef, plansWaitingFor, todayKey, usePlans } from '@/lib/planes';
 import { questionFor, seasonTint } from '@/lib/retos';
 import { WEEKLY_GOAL, markChapterRead, useProgress, weekDays } from '@/lib/progress';
@@ -39,6 +41,11 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
 
   useEffect(() => {
     getPlaces(book.id, chapter).then((p) => setPlaces(p.length));
+  }, [book, chapter]);
+  const [rara, setRara] = useState<Rara | null>(null);
+  useEffect(() => {
+    setRara(null);
+    getRaras(book.id, chapter).then((r) => setRara(r[0] ?? null)).catch(() => {});
   }, [book, chapter]);
 
   return (
@@ -150,6 +157,8 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
         </Pressable>
       )}
 
+      {rara && books.length > 0 && <CasiNadieNota rara={rara} book={book} chapter={chapter} books={books} colors={colors} />}
+
       {places > 0 && (
         <Pressable
           onPress={() => navigate(() => router.push(`/mapa/${BOOK_SLUGS[book.id] ?? book.id}/${chapter}` as never), 'forward')}
@@ -178,7 +187,36 @@ export default function ChapterEnd({ book, chapter, next, colors, onNext }: Prop
   );
 }
 
+/**
+ * «Lo que casi nadie nota»: una palabra del original de este capítulo que sale solo 2 o 3 veces en toda la Biblia,
+ * y dónde más. Lleva a la concordancia, con el versículo de aquí marcado.
+ */
+function CasiNadieNota({ rara, book, chapter, books, colors }: { rara: Rara; book: Book; chapter: number; books: Book[]; colors: Colors }) {
+  const aqui = `${book.id}.${chapter}.${rara.v}`;
+  const veces = rara.otros.length + 1;
+  const otros = rara.otros.map((r) => formatRef(r, books));
+  const lista = otros.length === 1 ? otros[0] : `${otros.slice(0, -1).join(', ')} y ${otros[otros.length - 1]}`;
+  return (
+    <Pressable
+      onPress={() => navigate(() => router.push(concordanceHref(rara.s, aqui) as never), 'forward')}
+      accessibilityRole="link"
+      accessibilityLabel={`Lo que casi nadie nota: ${rara.l}, «${rara.g}», sale solo ${veces} veces en la Biblia. Ver dónde`}
+      style={({ pressed }) => [styles.rara, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+    >
+      <Text style={[styles.raraKicker, { color: colors.accent }]}>LO QUE CASI NADIE NOTA</Text>
+      <Text style={[styles.raraLema, { color: colors.text }]}>{rara.l}</Text>
+      <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22, textAlign: 'center' }}>
+        «{rara.g}», en el versículo {rara.v}, sale solo <Text style={{ fontWeight: '700' }}>{veces} veces</Text> en toda la Biblia. También en {lista}.
+      </Text>
+      <Text style={{ color: colors.accent, fontWeight: '600', fontSize: 14, marginTop: 10 }}>Ver dónde y compararlos ›</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  rara: { alignSelf: 'stretch', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 18, paddingHorizontal: 20, alignItems: 'center' },
+  raraKicker: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2 },
+  raraLema: { fontSize: 30, fontFamily: serif, marginVertical: 6 },
   think: { alignSelf: 'stretch', borderRadius: 14, padding: 14, marginTop: 12 },
   wrap: { alignItems: 'center', marginTop: 40, gap: 16 },
   ornament: { width: 48, height: 2, borderRadius: 1, marginBottom: 8 },
