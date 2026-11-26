@@ -70,6 +70,25 @@ test.describe('Herramientas del capítulo con IA', () => {
     await page.screenshot({ path: info.outputPath(`podcast-voces-${info.project.name}.png`) });
   });
 
+  test('resumen en audio: «Leer» abre el último capítulo que se escuchó, no el que se abrió en el lector', async ({ page, request }, info) => {
+    const cap = capitulo(info, 14);
+    await conSesion(page, await cuentaNueva(request, 'Oyente'));
+    await page.goto(`/juan/${cap}`);
+    await v(page.getByRole('button', { name: 'Resumen del capítulo en audio, como una conversación' })).click();
+    await v(page.getByRole('button', { name: 'Escuchar', exact: true })).click();
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+    // Se pasa al siguiente desde el pódcast, sin abrir ese capítulo en el lector
+    await v(page.getByRole('button', { name: `Pódcast del capítulo siguiente: Juan ${cap + 1}` })).click();
+    await expect(page).toHaveURL(new RegExp(`/podcast/juan/${cap + 1}\\?seguir=1$`));
+    await expect(v(page.getByText('Pódcast · habla Ana'))).toBeVisible();
+    // «Leer» desde la pantalla del pódcast (antes no hacía nada) lleva al capítulo que sonaba
+    await v(page.getByRole('tab', { name: 'Leer' })).click();
+    await expect(page).toHaveURL(new RegExp(`/juan/${cap + 1}$`));
+    // Y en Hoy, «Seguir leyendo» también
+    await page.goto('/');
+    await expect(v(page.getByRole('button', { name: `Seguir leyendo: Juan ${cap + 1}` }))).toBeVisible();
+  });
+
   test('resumen en audio: la barra de abajo también pasa al capítulo de al lado desde el lector', async ({ page, request }, info) => {
     const cap = capitulo(info, 12);
     await conSesion(page, await cuentaNueva(request, 'Oyente'));

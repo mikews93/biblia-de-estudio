@@ -194,14 +194,18 @@ export async function GET(request: Request) {
   if (!where) return json({ error: 'Pedido no válido' }, 400);
   const s = await db().catch(() => null);
   if (!s) return json({ estado: 'ninguno' });
-  const [row] = await s<(Row & { nivelado: boolean; revision: number; vieja: boolean })[]>`select g.estado, g.url, g.duracion,
-      g.credito, g.tiempos, g.nivelado, g.revision, g.diagnostico, (h.texto is not null and g.guion is not null and g.guion <> h.texto) as vieja
+  const [row] = await s<(Row & { nivelado: boolean; revision: number; vieja: boolean; cortada: boolean })[]>`select g.estado, g.url, g.duracion,
+      g.credito, g.tiempos, g.nivelado, g.revision, g.diagnostico, (h.texto is not null and g.guion is not null and g.guion <> h.texto) as vieja,
+      (g.estado = 'grabando' and g.actualizado < now() - make_interval(mins => ${STALE_MINUTES})) as cortada
     from podcast_grabado g
     left join herramientas_ia h on h.herramienta = ${where.guion.herramienta} and h.libro = ${where.guion.libro}
       and h.capitulo = ${where.guion.capitulo}
     where g.libro = ${where.book} and g.capitulo = ${where.chapter}`;
   // Con «Preparar otra versión» el guion cambió: la grabación de antes ya no es la suya y se puede grabar el nuevo.
   if (row?.estado === 'listo' && row.vieja) return json({ estado: 'ninguno' });
+  // Una grabación que lleva demasiado «grabando» se cortó (la función llegó a su tiempo máximo): se puede volver a pedir.
+  // Antes se seguía contestando «grabando» para siempre y la app esperaba sin fin.
+  if (row?.cortada) return json({ estado: 'ninguno' });
   if (row?.estado === 'listo' && !row.nivelado && row.url) waitUntil(renivelar(s, where, row.url));
   else if (row?.estado === 'listo' && row.revision < REVISION && row.url && row.tiempos && process.env.ELEVENLABS_API_KEY) {
     waitUntil(revisar(s, where, row.url));

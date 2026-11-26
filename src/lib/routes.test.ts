@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { BOOKS } from '../../tests/fixtures/books';
-import { BOOK_SLUGS, bookIdFromParam, chapterHref, verseHref } from './routes';
+import { BOOK_SLUGS, bookIdFromParam, chapterHref, enLector, verseHref } from './routes';
 
 describe('rutas en español', () => {
   it('cada libro tiene un nombre de URL único y sin acentos', () => {
@@ -27,5 +27,18 @@ describe('rutas en español', () => {
 
   it('ida y vuelta: del código a la URL y de la URL al código', () => {
     for (const b of BOOKS) expect(bookIdFromParam(chapterHref(b.id, 1).split('/')[1])).toBe(b.id);
+  });
+});
+
+describe('enLector', () => {
+  it('reconoce el capítulo y el versículo en el lector', () => {
+    expect(enLector('/juan/3')).toBe(true);
+    expect(enLector('/juan/3/16')).toBe(true);
+    expect(enLector('/apocalipsis/7')).toBe(true);
+  });
+  it('no confunde otras pantallas con número', () => {
+    expect(enLector('/podcast/apocalipsis/7')).toBe(false);
+    expect(enLector('/evento/12')).toBe(false);
+    expect(enLector('/')).toBe(false);
   });
 });

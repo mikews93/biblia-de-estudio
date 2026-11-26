@@ -108,7 +108,7 @@ async function palabraHeaders(): Promise<Record<string, string>> {
   return { 'Content-Type': 'application/json', ...(llave && { Authorization: `Bearer ${llave}` }) };
 }
 
-const CORTADA = 'La respuesta se cortó antes de llegar. Inténtalo de nuevo.';
+export const CORTADA = 'La respuesta se cortó antes de llegar. Inténtalo de nuevo.';
 // Al volver a la app, cada cuánto se pregunta por la respuesta que siguió en el servidor, y hasta cuándo (la función
 // puede durar 5 minutos).
 const REANUDAR_CADA_MS = 2500;
@@ -193,17 +193,42 @@ async function recoger(
   throw fila?.texto.trim() || !(original instanceof Error) ? new Error(CORTADA) : original;
 }
 
-/** Llama a onUpdate con el texto, las fuentes y lo consultado, acumulados, cada vez que llega algo nuevo. */
+/**
+ * Si no llega nada en este tiempo, la conexión murió sin avisar (en Android pasa al salir de la app y volver): el
+ * servidor manda un latido cada 10 s aunque la IA esté pensando, así que tanto silencio ya no es espera.
+ */
+const SILENCIO_MS = 45_000;
+
+/** Lo leído antes de que llegue algo, o null si pasan «ms» sin nada (y entonces se cierra la lectura). */
+async function leerConLimite<T>(reader: ReadableStreamDefaultReader<T>, ms: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const silencio = new Promise<null>((r) => (timer = setTimeout(() => r(null), ms)));
+  try {
+    const leido = await Promise.race([reader.read(), silencio]);
+    if (leido === null) reader.cancel().catch(() => {});
+    return leido;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Llama a onUpdate con el texto, las fuentes y lo consultado, acumulados, cada vez que llega algo nuevo.
+ * Con «compartida» (lo que el servidor prepara una vez para todos: el pódcast, las herramientas) no se recoge con
+ * «reanudar»: si se corta, quien llama lo vuelve a pedir y el servidor entrega lo guardado o espera a la preparación
+ * que sigue en marcha (api/_preparando.ts).
+ */
 export async function askStudy(
   req: Request,
   onUpdate: (text: string, sources: Source[], pasos: Paso[]) => void,
   signal?: AbortSignal,
+  { compartida = false }: { compartida?: boolean } = {},
 ): Promise<{ text: string; sources: Source[]; pasos?: Paso[] }> {
   // El Espacio Niños no usa IA: la Biblia se escucha y se conversa con un adulto.
   if (getSettings().modo === 'ninos') throw new Error('En el Espacio Niños no hay IA. Pregúntale a un adulto: ¡conversen juntos!');
   const headers = req.palabra || (req.pregunta?.preparada && !req.messages.length) ? await palabraHeaders() : await aiHeaders();
   // Con cuenta, la respuesta sigue en el servidor aunque se corte la conexión, y se recoge al volver.
-  const seguir = headers.Authorization && !req.palabra ? nuevoId() : undefined;
+  const seguir = headers.Authorization && !req.palabra && !compartida ? nuevoId() : undefined;
   // Si la persona la detiene (o cierra el estudio), también se detiene en el servidor.
   if (seguir) {
     signal?.addEventListener(
@@ -267,7 +292,9 @@ export async function askStudy(
       const decoder = new TextDecoder();
       let buffer = '';
       for (;;) {
-        const { done, value } = await reader.read();
+        const leido = await leerConLimite(reader, SILENCIO_MS);
+        if (!leido) throw new Error(CORTADA);
+        const { done, value } = leido;
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -289,6 +316,8 @@ export async function askStudy(
   avisar.cancelar();
   // La conexión se cerró sin «done» (el servidor llegó a su tiempo máximo, un proxy la cortó): se busca lo guardado.
   if (!terminada && seguir && !signal?.aborted) return recoger(seguir, headers, onUpdate, signal, new Error(CORTADA));
+  // Lo compartido se guarda entero o nada: una parte no sirve, se vuelve a pedir.
+  if (!terminada && compartida) throw new Error(CORTADA);
   onUpdate(text, [...sources], [...pasos]);
   if (failure) throw new Error(failure);
   // La conexión se cerró sin decir nada: no es una respuesta. Sin esto quedaba una respuesta vacía guardada en la

@@ -382,6 +382,18 @@ describe.skipIf(!DB_URL)('/api/podcast-grabado', () => {
     expect((await (await post({ book: 'phm', chapter: 1 }, llaves[1])).json()).estado).toBe('listo');
   });
 
+  it('una grabación que se quedó «grabando» (la función murió) deja de esperarse y se puede volver a pedir', async () => {
+    await sql`delete from podcast_grabado where libro = '3jn'`;
+    await sql`insert into podcast_grabado (libro, capitulo, estado, guion, pedido_por, actualizado)
+      values ('3jn', 1, 'grabando', 'x', null, now() - interval '1 minute')`;
+    // Recién empezada: sigue grabándose
+    expect(await get('3jn', 1)).toEqual({ estado: 'grabando' });
+    // Pasados más de seis minutos ya no viene nada: antes la app esperaba para siempre
+    await sql`update podcast_grabado set actualizado = now() - interval '10 minutes' where libro = '3jn'`;
+    expect(await get('3jn', 1)).toEqual({ estado: 'ninguno' });
+    await sql`delete from podcast_grabado where libro = '3jn'`;
+  });
+
   it('cada cuenta tiene un límite diario', async () => {
     // La segunda cuenta ya grabó Filemón: con Judas llega al límite de dos.
     expect((await post({ book: 'jud', chapter: 1 }, llaves[1])).status).toBe(200);

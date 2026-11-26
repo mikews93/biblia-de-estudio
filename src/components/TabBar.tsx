@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeartIcon, HomeIcon, LecternIcon, OpenBookIcon, PeopleIcon, PlansIcon, StarIcon } from '@/components/icons';
 import { chrome, setChromeHidden } from '@/lib/chrome';
-import { chapterHref } from '@/lib/routes';
+import { chapterHref, enLector } from '@/lib/routes';
 import { Colors, getLastRead, useColors, useSettings } from '@/lib/theme';
 import { useTecladoAbierto } from '@/lib/teclado';
 import { fixedInTransition, navigate } from '@/lib/transition';
@@ -72,7 +72,9 @@ export default function TabBar() {
     if (key === 'historias') navigate(() => router.push('/ninos' as never), 'fade');
     if (key === 'memoria') navigate(() => router.push('/ninos/memoria' as never), 'fade');
     if (key === 'leer') {
-      if (active === 'leer') return;
+      // Ya en el lector, no se mueve. Desde cualquier otra pantalla (también el pódcast, el buscador o un estudio, que
+      // cuentan como «Leer»), abre el último capítulo: el que se leyó o se escuchó (src/lib/escuchado.ts).
+      if (enLector(path)) return;
       const last = await getLastRead();
       navigate(() => router.push(chapterHref(last?.book ?? 'jhn', last?.chapter ?? 1)), 'forward');
     }
