@@ -1,4 +1,10 @@
 import type {VoTiming} from '../audio';
+import galloTaps from './gallo.taps.json';
+import galloTiming from './gallo.timing.json';
+import brasasTaps from './brasas.taps.json';
+import brasasTiming from './brasas.timing.json';
+import talentoTaps from './talento.taps.json';
+import talentoTiming from './talento.timing.json';
 import compartirTaps from './compartir.taps.json';
 import compartirTiming from './compartir.timing.json';
 import compararTaps from './comparar.taps.json';
@@ -634,6 +640,60 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'notas', eyebrow: 'PARA QUIEN GUÍA', title: 'Tus notas y tu reloj'},
       {line: 'cita', eyebrow: 'UN TOQUE', title: 'La cita, en todas las pantallas'},
       {line: 'preguntas', eyebrow: 'PARTICIPAN TODOS', title: 'Preguntas y dinámicas en vivo'},
+    ],
+  },
+  // Serie «Lo que casi nadie nota»: una idea común, lo que dice el texto y cómo verlo en Zarza. Solo pantallas
+  // reales sin IA (lector, interlineal, concordancia, medidas antiguas).
+  gallo: {
+    id: 'gallo',
+    timing: galloTiming as Record<string, VoTiming>,
+    taps: galloTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-marcos-13', line: 'vigilia'},
+      {src: '2-marcos-14', line: 'trompeta'},
+      {src: '3-palabra', line: 'zarza', word: 'tocas', delay: 4},
+      {src: '4-concordancia', line: 'zarza', word: 'lugar'},
+      {src: '5-concordancia-abajo', line: 'zarza', word: 'estudies'},
+    ],
+    titulares: [
+      {line: 'vigilia', eyebrow: 'MARCOS 13:35', title: '«El canto del gallo» era una hora'},
+      {line: 'trompeta', eyebrow: 'SE DISCUTE', title: '¿Gallo… o trompeta romana?'},
+      {line: 'zarza', eyebrow: 'EN ZARZA', title: 'El griego, y dónde más aparece'},
+    ],
+  },
+  brasas: {
+    id: 'brasas',
+    timing: brasasTiming as Record<string, VoTiming>,
+    taps: brasasTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-juan-18', line: 'negar'},
+      {src: '2-juan-21', line: 'playa'},
+      {src: '3-palabra', line: 'palabra', word: 'anthrakiá.', delay: -6},
+      {src: '4-concordancia', line: 'palabra', word: 'dos'},
+    ],
+    titulares: [
+      {line: 'negar', eyebrow: 'JUAN 18:18', title: 'Pedro, junto a un fuego de brasas'},
+      {line: 'playa', eyebrow: 'JUAN 21:9', title: 'Jesús, junto a otro fuego de brasas'},
+      {line: 'palabra', eyebrow: 'ANTHRAKIÁ', title: 'Solo dos veces en el Nuevo Testamento'},
+      {line: 'tres', eyebrow: 'JUAN 21:15-17', title: 'Tres veces: «¿Me amas?»'},
+    ],
+  },
+  talento: {
+    id: 'talento',
+    timing: talentoTiming as Record<string, VoTiming>,
+    taps: talentoTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-mateo-25', line: 'parabola'},
+      {src: '2-versiculo', line: 'parabola', word: 'cinco,'},
+      {src: '3-medidas', line: 'valor', word: 'dinero:'},
+    ],
+    titulares: [
+      {line: 'parabola', eyebrow: 'MATEO 25', title: '¿Un talento era una habilidad?'},
+      {line: 'valor', eyebrow: 'MEDIDAS ANTIGUAS', title: '≈ 6.000 denarios: veinte años de jornal'},
+      {line: 'uno', eyebrow: 'LO QUE CASI NADIE NOTA', title: 'Al que recibió uno, una fortuna'},
     ],
   },
 };
