@@ -605,11 +605,13 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
 
   it('el borrador se adapta a para quién es y a los minutos elegidos', async () => {
     const taller = { modo: 'borrador', tipo: 'sermon', paso: 'bosquejo', desde: 4, hasta: 9, borrador: 'Partes de la estructura:\n1. Introducción', minutos: 15 };
-    await events(await ask({ book: 'php', chapter: 4, taller: { ...taller, publico: 'ninos' } }));
+    // Una cuenta propia: el tope diario de la IA de la cuenta común lo usan las demás pruebas
+    const propia = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Quien predica' })).json.llave;
+    await events(await ask({ book: 'php', chapter: 4, taller: { ...taller, publico: 'ninos' } }, propia));
     const task = aiRequests.at(-1)!.messages[0].content.at(-1).text as string;
     expect(task).toContain('para unos 15 minutos en total');
     expect(task).toContain('Es para niños');
-    await events(await ask({ book: 'php', chapter: 4, taller }));
+    await events(await ask({ book: 'php', chapter: 4, taller }, propia));
     expect(aiRequests.at(-1)!.messages[0].content.at(-1).text).not.toContain('Es para');
   });
 
