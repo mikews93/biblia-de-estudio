@@ -1,11 +1,13 @@
 import { useAudioPlayerStatus } from 'expo-audio';
 import { router, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   AudioKind,
   AudioState,
+  AvisoSonido,
+  cerrarAvisoSonido,
   chapterDuration,
   chapterTime,
   closeAudio,
@@ -40,6 +42,7 @@ import PodcastPreguntas from './PodcastPreguntas';
 
 import {
   BackIcon,
+  CallIcon,
   CloseIcon,
   DramaIcon,
   ForwardIcon,
@@ -237,6 +240,8 @@ function Bar() {
         <SpokenWord book={audio.book} chapter={audio.chapter} hebrew={file?.language === 'hebreo'} colors={colors} />
       )}
 
+      {audio.avisoSonido && !audio.error && <AvisoLlamada aviso={audio.avisoSonido} colors={colors} />}
+
       {audio.error ? (
         <Text style={[styles.message, { color: colors.muted }]}>{audio.error}</Text>
       ) : !ready ? (
@@ -419,6 +424,58 @@ function SpokenWord({ book, chapter, hebrew, colors }: { book: string; chapter: 
   );
 }
 
+/**
+ * Cuando una llamada (WhatsApp, Meet, el teléfono) tiene el sonido: en la app Zarza suena junto a ella; si el sistema no
+ * deja (en el navegador, o si Android se niega), se dice por qué no suena en vez de quedarse callado.
+ */
+function AvisoLlamada({ aviso, colors }: { aviso: Exclude<AvisoSonido, null>; colors: Colors }) {
+  const web = Platform.OS === 'web';
+  const mezclado = aviso === 'mezclado';
+  const titulo = mezclado ? 'Suena junto a tu llamada' : 'Tu llamada tiene el sonido';
+  const texto = mezclado
+    ? 'Otra app estaba usando el audio. Zarza suena a la vez; ajusta el volumen con los botones del lado.'
+    : web
+      ? 'El navegador no deja sonar el audio mientras hay una llamada. La app de Zarza sí suena junto a ella.'
+      : 'El sistema no deja sonar a Zarza mientras dure. Toca ▶ cuando termines y seguirá donde iba.';
+  return (
+    <View
+      style={[
+        styles.aviso,
+        mezclado ? { backgroundColor: colors.accentSoft } : { backgroundColor: colors.warmSoft, borderColor: colors.warm },
+      ]}
+      accessibilityLiveRegion="polite"
+      accessibilityRole="alert"
+    >
+      <View style={[styles.avisoIcono, { backgroundColor: colors.surface }]}>
+        <CallIcon color={mezclado ? colors.accent : colors.warm} size={17} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[styles.avisoTitulo, { color: colors.text }]}>{titulo}</Text>
+        <Text style={[styles.avisoTexto, { color: colors.muted }]}>{texto}</Text>
+        {!mezclado && web && (
+          <Pressable
+            onPress={() => navigate(() => router.push('/instalar' as never), 'forward')}
+            accessibilityRole="link"
+            hitSlop={6}
+            style={({ pressed }) => [styles.avisoEnlace, pressed && styles.pressed]}
+          >
+            <Text style={{ color: colors.warm, fontWeight: '700', fontSize: 12.5 }}>Instalar la app →</Text>
+          </Pressable>
+        )}
+      </View>
+      <Pressable
+        onPress={cerrarAvisoSonido}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Cerrar el aviso"
+        style={({ pressed }) => [styles.avisoCerrar, pressed && styles.pressed]}
+      >
+        <CloseIcon color={colors.muted} size={15} />
+      </Pressable>
+    </View>
+  );
+}
+
 /** Debajo del título: la versión (que se puede cambiar en la lectura), «Audio dramatizado» o quién habla en el pódcast. */
 function Subtitle({ audio, now, colors, canPick, onPick }: { audio: AudioState; now: number; colors: Colors; canPick: boolean; onPick: () => void }) {
   // En el pódcast grabado, quién habla sale de los tiempos de cada intervención.
@@ -481,6 +538,23 @@ const styles = StyleSheet.create({
   versions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   version: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 5 },
   message: { fontSize: 13, marginVertical: 10 },
+  aviso: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 11,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
+    paddingVertical: 10,
+    paddingLeft: 10,
+    paddingRight: 6,
+    marginTop: 10,
+  },
+  avisoIcono: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  avisoTitulo: { fontSize: 13.5, fontWeight: '700' },
+  avisoTexto: { fontSize: 12.5, lineHeight: 17 },
+  avisoEnlace: { alignSelf: 'flex-start', marginTop: 4 },
+  avisoCerrar: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   trackHit: { paddingVertical: 9, marginTop: 4 },
   track: { height: 4, borderRadius: 2, overflow: 'hidden' },
   fill: { height: 4, borderRadius: 2 },

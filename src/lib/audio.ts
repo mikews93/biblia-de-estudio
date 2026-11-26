@@ -62,7 +62,14 @@ export type AudioState = {
   catalog: Catalog;
   /** En el dramatizado, solo las voces: sin música, ambientes ni efectos (se guarda en el dispositivo). */
   soloVoces: boolean;
+  /**
+   * Cuando otra app tiene el sonido (una llamada de WhatsApp, por ejemplo): «mezclado» si Zarza suena junto a ella,
+   * «bloqueado» si el sistema no deja sonar hasta que termine.
+   */
+  avisoSonido: AvisoSonido;
 };
+
+export type AvisoSonido = 'mezclado' | 'bloqueado' | null;
 
 let state: AudioState = {
   open: false,
@@ -79,6 +86,7 @@ let state: AudioState = {
   rate: 1,
   catalog: { dramatizado: [], podcast: [], original: [] },
   soloVoces: false,
+  avisoSonido: null,
 };
 const SOLO_VOCES_KEY = 'drama-solo-voces';
 let soloVocesLeido: Promise<void> | null = null;
@@ -162,11 +170,103 @@ export function getPlayer(): AudioPlayer {
   if (!player) {
     player = createAudioPlayer(null, { updateInterval: 250 });
     player.addListener('playbackStatusUpdate', onStatus);
-    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: 'doNotMix' }).catch(
-      () => {},
-    );
+    modoSonido(false);
   }
   return player;
+}
+
+// ---------------------------------------------------------------- sonar con una llamada abierta
+// En Android, «doNotMix» pide el foco de audio. Durante una llamada (WhatsApp, Meet, el teléfono) la llamada lo tiene y
+// el sistema responde «más tarde»: expo-audio deja el reproductor en pausa sin decir nada y empieza solo al colgar.
+// Por eso, tras pedir que suene, se mira si avanza. Si está cargado y quieto, en la app se pasa a «mixWithOthers»
+// (no pide el foco y suena junto a la llamada); en la web el navegador no deja elegir, así que solo se avisa.
+
+/** Si ahora suena mezclado con las demás apps (solo mientras hace falta: cada audio nuevo vuelve a pedir el foco). */
+let mezclando = false;
+/** Si la persona pidió que suene (y no pausó después). */
+let quiereSonar = false;
+let vigia: ReturnType<typeof setInterval> | null = null;
+/** Cada cuánto se mira, y cuántas miradas quieto (cargado, sin cargar más y sin avanzar) cuentan como «no lo dejan». */
+const VIGIA_MS = 500;
+const QUIETO_VECES = 3;
+/** Hasta cuándo se vigila: después ya no es la llamada (o ya se avisó). */
+const VIGIA_MAX_MS = 20000;
+
+function modoSonido(mezclar: boolean) {
+  mezclando = mezclar;
+  return setAudioModeAsync({
+    playsInSilentMode: true,
+    shouldPlayInBackground: true,
+    interruptionMode: mezclar ? 'mixWithOthers' : 'doNotMix',
+  }).catch(() => {});
+}
+
+/** Reproduce y vigila que de verdad suene. Úsese en vez de player.play(). */
+export function sonar() {
+  const p = getPlayer();
+  quiereSonar = true;
+  p.play();
+  vigilar();
+}
+
+/** Pausa a pedido de la persona (o de la app): ya no se espera que suene. */
+function callar() {
+  quiereSonar = false;
+  pararVigia();
+  player?.pause();
+}
+
+function pararVigia() {
+  if (vigia) clearInterval(vigia);
+  vigia = null;
+}
+
+function vigilar() {
+  pararVigia();
+  const desde = Date.now();
+  let ultimo = -1;
+  let quieto = 0;
+  let probada = mezclando || Platform.OS === 'web';
+  vigia = setInterval(() => {
+    const p = player;
+    if (!p || !quiereSonar || !state.audio || Date.now() - desde > VIGIA_MAX_MS) return pararVigia();
+    const t = p.currentTime;
+    const avanza = ultimo >= 0 && t > ultimo + 0.05;
+    ultimo = t;
+    if (avanza) {
+      // Suena. Si antes no dejaban, el aviso cambia; si suena sin mezclar, ya no hace falta ninguno.
+      if (state.avisoSonido === 'bloqueado') set({ avisoSonido: mezclando ? 'mezclado' : null });
+      else if (!mezclando && state.avisoSonido) set({ avisoSonido: null });
+      return pararVigia();
+    }
+    if (!p.isLoaded || p.isBuffering) {
+      quieto = 0;
+      return;
+    }
+    if (++quieto < QUIETO_VECES) return;
+    quieto = 0;
+    if (!probada) {
+      probada = true;
+      // El foco quedó pedido para «más tarde»: se pausa para que no arranque solo al colgar, y se suena mezclado.
+      p.pause();
+      modoSonido(true).then(() => {
+        if (!quiereSonar || player !== p) return;
+        set({ avisoSonido: 'mezclado' });
+        p.play();
+      });
+      return;
+    }
+    set({ avisoSonido: 'bloqueado' });
+    pararVigia();
+  }, VIGIA_MS);
+}
+
+/** El aviso de la llamada que se ve ahora (para las pruebas y quien no use el hook). */
+export const avisoSonidoAhora = () => state.avisoSonido;
+
+/** Cierra el aviso de la llamada (sigue sonando como esté). */
+export function cerrarAvisoSonido() {
+  set({ avisoSonido: null });
 }
 
 // ---------------------------------------------------------------- avisos de empezar y terminar un capítulo
@@ -230,7 +330,7 @@ function playTrack(index: number, at: number) {
   p.replace({ uri: track.url });
   p.setPlaybackRate(state.rate);
   if (at > 0) p.seekTo(at);
-  p.play();
+  sonar();
   showOnLockScreen(p);
 }
 
@@ -279,7 +379,10 @@ async function loadVersions() {
 function start(kind: AudioKind, book: string, chapter: number, title: string): number {
   const id = ++request;
   stopSpeech();
-  getPlayer().pause();
+  getPlayer();
+  callar();
+  // Cada audio nuevo vuelve a pedir el foco: si la llamada ya terminó, Zarza vuelve a pausar la música de otras apps.
+  if (mezclando) modoSonido(false);
   set({ open: true, kind, book, chapter, title, loading: true, error: null, audio: null, speech: null, track: 0 });
   followWords(kind === 'original');
   terminoAvisado = false;
@@ -369,7 +472,7 @@ export function setSoloVoces(on: boolean) {
   p.replace({ uri: url });
   p.setPlaybackRate(state.rate);
   if (at > 0) p.seekTo(at);
-  if (sonando) p.play();
+  if (sonando) sonar();
 }
 
 /** Lo que guarda la acción de audio original junto a cada capítulo (pipeline/audio_original/alinear.py). */
@@ -455,7 +558,7 @@ export function seekWord(verse: number, index: number): boolean {
   const t = state.kind === 'original' ? state.audio?.words?.[String(verse)]?.[index] : null;
   if (!t) return false;
   seekChapter(t[0]);
-  if (!getPlayer().playing) getPlayer().play();
+  if (!getPlayer().playing) sonar();
   return true;
 }
 
@@ -565,7 +668,7 @@ export const mainPlaying = () => !!player?.playing || !!state.speech?.playing;
 export const podcastAbierto = () => state.open && state.kind === 'podcast';
 
 export function pauseAudio() {
-  if (player?.playing) player.pause();
+  if (player?.playing || quiereSonar) callar();
   if (state.speech?.playing) {
     stopSpeech();
     set({ speech: { ...state.speech, playing: false } });
@@ -580,8 +683,8 @@ export function toggle() {
   }
   const p = getPlayer();
   if (!state.audio) return;
-  if (p.playing) p.pause();
-  else p.play();
+  if (p.playing) callar();
+  else sonar();
 }
 
 /** Tiempo de inicio de cada pista dentro del capítulo (si viene en varias partes). */
@@ -685,12 +788,12 @@ export function closeAudio() {
   followWords(false);
   stopSpeech();
   if (player) {
-    player.pause();
+    callar();
     try {
       player.clearLockScreenControls();
     } catch {
       // igual que arriba
     }
   }
-  set({ open: false, audio: null, speech: null, loading: false, error: null });
+  set({ open: false, audio: null, speech: null, loading: false, error: null, avisoSonido: null });
 }

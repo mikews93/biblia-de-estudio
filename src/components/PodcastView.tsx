@@ -23,6 +23,7 @@ import {
   playRecordedPodcast,
   playSpeech,
   seekChapter,
+  sonar,
   toggle,
   useAudio,
 } from '@/lib/audio';
@@ -276,7 +277,7 @@ function usePodcastPlayer(book: string, chapter: number, title: string, lines: L
         from: to,
       });
     seekChapter(recording.timestamps[to]?.[1] ?? 0);
-    if (!getPlayer().playing) getPlayer().play();
+    if (!getPlayer().playing) sonar();
   };
   return {
     index: recording ? at.index : 0,
