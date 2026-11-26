@@ -165,6 +165,8 @@ type Taller = {
   direccion?: string;
   /** Solo «borrador»: los minutos que tiene para el mensaje. */
   minutos?: number;
+  /** Solo «borrador»: para quién es (sin él, para todas las edades). */
+  publico?: 'adultos' | 'jovenes' | 'ninos';
   /** Solo «cambiar»: lo que la persona pide cambiar, dicho o escrito. */
   pedido?: string;
 };
@@ -541,6 +543,13 @@ function validPregunta(p: unknown): p is Pregunta {
   );
 }
 
+const PUBLICOS_TALLER = ['adultos', 'jovenes', 'ninos'];
+const PUBLICO_REGLA: Record<NonNullable<Taller['publico']>, string> = {
+  adultos: 'Es para adultos: lenguaje sencillo pero sin infantilizar, ejemplos de la vida de trabajo, familia y decisiones.',
+  jovenes: 'Es para jóvenes (de 13 a 25 años): frases cortas, ejemplos de su mundo (estudios, amigos, redes, identidad, decisiones), preguntas que los hagan pensar y participar; sin jerga forzada.',
+  ninos: 'Es para niños (de 6 a 11 años): palabras sencillas, frases cortas, la historia contada con detalles concretos que puedan imaginar, preguntas fáciles de responder y una actividad o dinámica con movimiento; ninguna explicación abstracta, ninguna palabra técnica sin explicarla con un ejemplo.',
+};
+
 // El borrador completo: src/lib/borrador.ts (leerBorrador) lee este formato.
 function borradorAsk(t: Taller) {
   const catalogo = DINAMICAS.map((d) => `${d.id}: ${d.nombre} (${d.minutos} min): ${d.objetivo}`).join('\n');
@@ -570,7 +579,7 @@ Reglas:
       ? 'En un encuentro, el texto de cada parte es la guía de quien dirige: lo que dice, las preguntas que hace al grupo (que lleven al texto, no de sí o no) y cómo pasa a la siguiente parte.'
       : 'Los minutos de las partes suman más o menos el tiempo total; cada parte, de un largo que se pueda decir en sus minutos (unas 120 palabras por minuto).'
   }
-- Como mucho una dinámica por parte, y solo donde ayude.
+- Como mucho una dinámica por parte, y solo donde ayude.${t.publico ? `\n- ${PUBLICO_REGLA[t.publico]}` : ''}
 - Cada vez que leas o cites un versículo, escribe la cita completa con el libro (Lucas 15:20), nunca solo «v. 20»: así la app lo muestra en las pantallas de todos al llegar a esa parte.
 - Si en una parte le haces una pregunta a la gente, escríbela entre «¿» y «?»: la app la ofrece para mandarla a los teléfonos.
 - No escribas anuncios: los pongo yo.`;
@@ -822,6 +831,7 @@ function validTaller(t: unknown): t is Taller {
     (x.pedido === undefined || (typeof x.pedido === 'string' && x.pedido.trim().length > 0 && x.pedido.length <= MAX_TEMA)) &&
     (x.modo !== 'cambiar' || typeof x.pedido === 'string') &&
     optInt(x.minutos) &&
+    (x.publico === undefined || PUBLICOS_TALLER.includes(x.publico as string)) &&
     optInt(x.desde) &&
     optInt(x.hasta)
   );

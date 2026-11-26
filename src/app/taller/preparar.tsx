@@ -37,7 +37,7 @@ import { Book, getBooks, parseRef } from '@/lib/data';
 import { type EstudioGuardado, paraLaIA, preguntasParaBorrador } from '@/lib/estudioASermon';
 import { Source, askStudy } from '@/lib/estudio';
 import { chapterHref, verseHref } from '@/lib/routes';
-import { PLANTILLAS, Pasaje, TIPOS, Tipo, pasajeLabel, plantilla as plantillaDe, tipoInfo } from '@/lib/taller';
+import { DURACIONES, PLANTILLAS, PUBLICOS, Pasaje, Publico, TIPOS, Tipo, pasajeLabel, plantilla as plantillaDe, tipoInfo } from '@/lib/taller';
 import { borrarTallerIa, guardarTallerIa, leerTallerIa } from '@/lib/tallerIa';
 import { useTecladoPantalla } from '@/lib/teclado';
 import { MAX_TEMA, MIN_TEMA, conCitas, estructuraParaIA, leerExploracion } from '@/lib/tallerTema';
@@ -65,6 +65,9 @@ type Guardado = {
   enfoque: number | null;
   direccion: string;
   plantilla: string;
+  /** Para quién es y cuántos minutos dura (si no se eligió, el tiempo sugerido del tipo). */
+  publico?: Publico;
+  minutos?: number;
   pedido?: { pasaje: Pasaje; plantilla: string } | null;
   /** Un estudio profundo convertido en mensaje: la IA parte de él y de las preguntas que hizo la persona. */
   estudio?: EstudioGuardado | null;
@@ -92,6 +95,9 @@ export default function PrepararScreen() {
   const [enfoque, setEnfoque] = useState<number | null>(0);
   const [direccion, setDireccion] = useState('');
   const [plantillaId, setPlantillaId] = useState(PLANTILLAS.find((p) => p.tipo === 'encuentro')!.id);
+  const [publico, setPublico] = useState<Publico>('todos');
+  const [minutos, setMinutos] = useState<number | null>(null);
+  const minutosElegidos = minutos && DURACIONES[tipo].includes(minutos) ? minutos : tipoInfo(tipo).minutos;
   const [pregunta, setPregunta] = useState('');
   const [peek, setPeek] = useState<Source | null>(null);
   const [creando, setCreando] = useState(false);
@@ -139,7 +145,8 @@ export default function PrepararScreen() {
           situacion: texto,
           investigacion: p.investigacion.slice(0, 12_000) || undefined,
           direccion: p.direccion || undefined,
-          minutos: tipoInfo(tipo).minutos,
+          minutos: minutosElegidos,
+          ...(publico !== 'todos' && { publico }),
         },
       },
       onUpdate,
@@ -156,6 +163,8 @@ export default function PrepararScreen() {
         setTexto(g.texto);
         setTipo(g.tipo);
         setPlantillaId(plantillaDe(g.plantilla)?.tipo === g.tipo ? g.plantilla : PLANTILLAS.find((p) => p.tipo === g.tipo)!.id);
+        if (g.publico && PUBLICOS.some((p) => p.value === g.publico)) setPublico(g.publico);
+        if (g.minutos) setMinutos(g.minutos);
         setMarcadas(g.marcadas ?? []);
         setEnfoque(g.enfoque ?? 0);
         setDireccion(g.direccion ?? '');
@@ -177,10 +186,10 @@ export default function PrepararScreen() {
 
   useEffect(() => {
     if (!cargado || creando) return;
-    const vista: Guardado = { texto, tipo, etapa, marcadas, enfoque, direccion, plantilla: plantillaId, pedido: pedidoVisto, estudio, videos };
+    const vista: Guardado = { texto, tipo, etapa, marcadas, enfoque, direccion, plantilla: plantillaId, publico, minutos: minutos ?? undefined, pedido: pedidoVisto, estudio, videos };
     guardarTallerIa(CLAVE, { vista, convs: paraGuardar(convs.all) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [texto, tipo, etapa, marcadas, enfoque, direccion, plantillaId, pedidoVisto, estudio, videos, convs.all, cargado]);
+  }, [texto, tipo, etapa, marcadas, enfoque, direccion, plantillaId, publico, minutos, pedidoVisto, estudio, videos, convs.all, cargado]);
 
   const inv = convs.get('investigar');
   const ultima = [...inv.turns].reverse().find((t) => t.role === 'assistant');
@@ -491,6 +500,16 @@ export default function PrepararScreen() {
               {plantillaDe(plantillaId)?.descripcion} {tipo === 'encuentro' ? 'Con dinámicas del catálogo donde encajen.' : ''}
             </Text>
 
+            <Text style={[styles.label, { color: colors.muted, marginTop: 22 }]}>PARA QUIÉN</Text>
+            <Chips options={PUBLICOS} value={publico} onChange={setPublico} />
+
+            <Text style={[styles.label, { color: colors.muted, marginTop: 22 }]}>DURACIÓN</Text>
+            <Chips
+              options={DURACIONES[tipo].map((m) => ({ value: String(m), label: `${m} min` }))}
+              value={String(minutosElegidos)}
+              onChange={(v) => setMinutos(Number(v))}
+            />
+
             <Button
               label="Escribir el borrador"
               icon={SparkIcon}
@@ -499,7 +518,7 @@ export default function PrepararScreen() {
               style={{ marginTop: 22 }}
             />
             <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 8, textAlign: 'center' }}>
-              Sobre {pasajeBase() ? pasajeLabel(pasajeBase(), books) : 'el pasaje principal'} · {tipoInfo(tipo).duracion}
+              Sobre {pasajeBase() ? pasajeLabel(pasajeBase(), books) : 'el pasaje principal'} · {minutosElegidos} min{publico !== 'todos' ? ` · ${PUBLICOS.find((p) => p.value === publico)!.label.toLowerCase()}` : ''}
               {marcadas.length ? ` · con ${marcadas.length} ${marcadas.length === 1 ? 'idea marcada' : 'ideas marcadas'}` : ''}
             </Text>
           </>

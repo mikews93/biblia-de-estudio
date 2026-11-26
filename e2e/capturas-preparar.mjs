@@ -67,6 +67,11 @@ async function recorrido(prefix, opts, todas) {
   await p.getByText('Célula de las 4 E').click();
   await p.getByLabel('Tu dirección para el mensaje').fill('Muy práctico para los jóvenes, que cierre con oración en parejas.');
   await shot(p, `${prefix}-4-direccion`);
+  await p.getByText('Jóvenes', { exact: true }).click();
+  await p.getByText('75 min', { exact: true }).click();
+  await p.getByText('PARA QUIÉN').scrollIntoViewIfNeeded();
+  await bajar(p, 300);
+  await shot(p, `${prefix}-4b-para-quien`);
   await p.getByRole('button', { name: 'Escribir el borrador' }).click();
   await p.getByRole('button', { name: 'Abrir el borrador para revisarlo' }).waitFor({ timeout: 30000 });
   await p.mouse.move(200, 400);
