@@ -45,7 +45,7 @@ import {
   pasoDe,
   versionSystem,
 } from './_investigar';
-import { corregirRespuesta } from './_corregir';
+import { corregirRespuesta, sinIngles } from './_corregir';
 import { fuentesDetalladas } from './_detalle';
 import { Span, enviarTrazas, quilate, textoDe } from './_quilate';
 import { guardarPregunta } from './_preguntas';
@@ -182,10 +182,10 @@ Fuentes: en cada conversación recibes documentos de la app: el capítulo en la 
 
 Reglas:
 - Basa lo que afirmes en esos documentos y cítalos cada vez que los uses.
-- Los comentarios ayudan a entender el texto (contexto, historia, costumbres, el sentido de una frase), pero son opiniones humanas, no tienen la autoridad de la Biblia. Cuando uses uno, no nombres al autor ni la obra en el texto: la cita ya dice de quién es y la persona la puede tocar. Preséntalo como una ayuda («un comentario señala…», «las notas de estudio explican…», «otro comentarista lo lee distinto…») o di la idea y cítala; dilo con tus palabras en español sin copiar párrafos. Nombra al autor solo si la persona pregunta quién lo dice. Si los comentaristas no coinciden, muéstralo sin tomar partido. Nunca atribuyas a un comentario algo que no dice.
+- Los comentarios ayudan a entender el texto (contexto, historia, costumbres, el sentido de una frase), pero son opiniones humanas, no tienen la autoridad de la Biblia. Cuando uses uno, no nombres al autor ni la obra en el texto: la cita ya dice de quién es y la persona la puede tocar. Preséntalo como una ayuda («un comentario señala…», «las notas de estudio explican…», «otro comentarista lo lee distinto…») o di la idea y cítala; dilo con tus palabras en español sin copiar párrafos. Los comentarios, las teologías y los índices están en inglés: nunca dejes en la respuesta una frase en inglés, ni entre comillas; di siempre su idea en español. Nombra al autor solo si la persona pregunta quién lo dice. Si los comentaristas no coinciden, muéstralo sin tomar partido. Nunca atribuyas a un comentario algo que no dice.
 - Si algo no está en los documentos (autoría, fechas, historia, costumbres), dilo así: «esto no está en las fuentes de la app». Solo si de verdad ayuda, añade contexto general ampliamente aceptado, breve y marcado como «contexto general», sin inventar datos, fechas ni citas de autores.
 - Para el hebreo y el griego usa la glosa, el lema y la gramática del documento; no inventes significados ni etimologías.
-- Cada versículo que nombres o copies tiene que ser exacto. Copia entre comillas solo palabras que tengas delante en los documentos o en lo que leíste con las herramientas, tal cual están, con su libro, capítulo y versículo; nunca de memoria. Si no estás seguro del versículo exacto, léelo antes (si tienes herramientas) o di la idea con tus palabras y cita solo el capítulo. La app revisa cada cita con el texto de la Biblia y quita las que no cuadran.
+- Cada versículo que nombres o copies tiene que ser exacto. Copia entre comillas solo palabras en español que tengas delante en los documentos o en lo que leíste con las herramientas, tal cual están, con su libro, capítulo y versículo; nunca de memoria. Si no estás seguro del versículo exacto, léelo antes (si tienes herramientas) o di la idea con tus palabras y cita solo el capítulo. La app revisa cada cita con el texto de la Biblia y quita las que no cuadran.
 - Responde desde la lectura evangélica del texto. Cuando las tradiciones evangélicas y protestantes lo entienden distinto (el bautismo, la elección, los últimos tiempos), muestra cada postura con respeto y sin tomar partido. No presentes las posturas católica u ortodoxa como opciones; si la persona pregunta por ellas, explícalas con respeto y di con honestidad cuando no se apoyan con claridad en el texto bíblico.
 - No uses ni presentes como interpretación cristiana las enseñanzas de grupos que niegan doctrinas centrales del cristianismo histórico, como la Trinidad o la divinidad de Cristo (por ejemplo, Testigos de Jehová o mormones).
 - Escribe en español claro y cálido para alguien sin formación teológica: párrafos cortos, títulos con "## ", listas con "- " y **negritas** solo para palabras clave. Sin tablas.
@@ -228,6 +228,7 @@ const PODCAST_SYSTEM = `
 Pódcast: además de lo de siempre, recibes los artículos del diccionario bíblico Tyndale sobre el capítulo (en español), el léxico de las Sociedades Bíblicas Unidas de las palabras del original, más referencias del Treasury of Scripture Knowledge y las medidas y objetos del capítulo.
 - Antes de escribir el guion investiga, pidiendo a la vez lo que no dependa de otra cosa y sin pasar de cuatro consultas: «teologia» con el área «historia» para las costumbres y el trasfondo del capítulo (búsqueda en inglés con sus personas, lugares, grupos o costumbres) y «temas_biblicos» con el tema central del capítulo. Antes de nombrar un pasaje que no esté en los documentos, léelo con «leer_pasaje».
 - Edersheim y Josefo dan contexto histórico; Josefo no es Escritura y a veces exagera cifras. Si el texto bíblico y ellos no coinciden, manda el texto.
+- Todo el guion va en español: lo que tomes de un comentario o de una obra en inglés, dilo con tus palabras en español, nunca copiado en inglés (la voz lo leería tal cual).
 - No escribas nada antes de terminar de investigar: el guion empieza por la primera línea del diálogo.`;
 
 // Preguntas durante el pódcast (src/lib/podcastPreguntas.ts): el guion es la primera respuesta y la persona lo pausó
@@ -948,6 +949,20 @@ async function savedTool(herramienta: Guardada | string, libro: string, capitulo
   }
 }
 
+/**
+ * Un pódcast guardado antes del 2026-11-27 puede traer frases en inglés copiadas de un comentario (2 Reyes 2), que la
+ * voz leía tal cual. La primera vez que alguien lo abre se dicen en español y se guarda así; como el guion cambia, su
+ * grabación vieja deja de servirse y se puede grabar otra vez (api/podcast-grabado.ts).
+ */
+async function podcastSinIngles(herramienta: Guardada | string, libro: string, capitulo: number, saved: Saved): Promise<Saved> {
+  if (!String(herramienta).startsWith('podcast') && !String(herramienta).startsWith('palabra-podcast')) return saved;
+  const texto = await sinIngles(saved.texto);
+  if (texto === saved.texto) return saved;
+  const nuevo = { ...saved, texto };
+  await saveTool(herramienta, libro, capitulo, nuevo);
+  return nuevo;
+}
+
 async function saveTool(herramienta: Guardada | string, libro: string, capitulo: number, saved: Saved) {
   try {
     const s = await db();
@@ -1440,7 +1455,8 @@ async function palabraPost(request: Request, body: Body) {
   if (!version) return badRequest('Versión no válida');
   const tool = body.herramienta === 'podcast' ? conVersion('palabra-podcast', version.id) : 'palabra';
   if (!body.nueva) {
-    const saved = await savedTool(tool, palabra.id, 0);
+    const guardado = await savedTool(tool, palabra.id, 0);
+    const saved = guardado && (await podcastSinIngles(tool, palabra.id, 0, guardado));
     if (saved) {
       return ndjson([...saved.fuentes.map((f) => ({ type: 'source', ...f })), { type: 'text', text: saved.texto }, { type: 'done' }]);
     }
@@ -1740,7 +1756,8 @@ export async function POST(request: Request) {
   }
 
   if ((guardada || clave) && !body.nueva) {
-    const saved = guardada ? await savedTool(guardada, book.id, chapter) : await savedStudy(clave!);
+    const guardado = guardada ? await savedTool(guardada, book.id, chapter) : await savedStudy(clave!);
+    const saved = guardado && guardada ? await podcastSinIngles(guardada, book.id, chapter, guardado) : guardado;
     if (saved) {
       return ndjson([
         ...saved.fuentes.map((f) => ({ type: 'source', ...f })),
@@ -2192,7 +2209,7 @@ function streamAnswer(
           if (final.stop_reason === 'end_turn' && texto.trim()) {
             // Las citas que no cuadran con la Biblia se corrigen antes de guardar; la persona recibe el texto nuevo.
             const leer = lector ?? biblia;
-            const corregido = leer ? await corregirRespuesta(request, texto, fuentes, leer) : texto;
+            const corregido = leer ? await corregirRespuesta(request, texto, fuentes, leer) : await sinIngles(texto);
             if (corregido !== texto) {
               texto = corregido;
               send({ type: 'correccion', text: texto });
