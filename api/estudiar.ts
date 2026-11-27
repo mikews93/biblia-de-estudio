@@ -52,6 +52,7 @@ import { guardarPregunta } from './_preguntas';
 import { marcar, SENALES_SCHEMA, senalesDe } from './_senales';
 import { Registro, detener, reanudar } from './_reanudar';
 import { SIN_BUFFER } from './_porPartes';
+import { LATIDO_MS, esperarOtra, soltar, tomar } from './_preparando';
 import { waitUntil } from './_seguir';
 import { DINAMICAS } from '../src/lib/dinamicas';
 import { describeMorph } from '../src/lib/morph';
@@ -1446,10 +1447,18 @@ async function palabraPost(request: Request, body: Body) {
   }
   const denied = await needsAccount(request);
   if (denied) return denied;
+  // Como en los capítulos: si ya se está preparando, se espera a esa preparación.
+  const marca = `herramienta:${tool}:${palabra.id}:0`;
+  const sMarca = await db().catch(() => null);
+  if (!body.nueva && sMarca && !(await tomar(sMarca, marca))) return esperarOtra(sMarca, marca, () => savedTool(tool, palabra.id, 0));
+  if (body.nueva) await tomar(sMarca, marca);
 
   const books = await load<Book[]>('books.json');
   const lector = new Biblia(request, version, books);
-  const docs = await palabraSources(palabra, lector);
+  const docs = await palabraSources(palabra, lector).catch(async (err) => {
+    await soltar(sMarca, marca);
+    throw err;
+  });
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     {
       role: 'user',
@@ -1461,7 +1470,9 @@ async function palabraPost(request: Request, body: Body) {
   ];
   const system = SYSTEM + PALABRA_SYSTEM + versionSystem(version);
   const traza = { fn: tool === 'palabra' ? 'palabra' : 'palabra-podcast', nombre: `Historia de la palabra ${palabra.id}` };
-  return streamAnswer(request, traza, docs, messages, system, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true, lector);
+  return streamAnswer(request, traza, docs, messages, system, MODEL, (saved) => saveTool(tool, palabra.id, 0, saved), undefined, true, lector, null, false, () =>
+    soltar(sMarca, marca),
+  );
 }
 
 /**
@@ -1739,6 +1750,16 @@ export async function POST(request: Request) {
     }
   }
 
+  // Lo que se guarda para todos se prepara una sola vez: si ya se está preparando (la persona cerró la app y volvió a
+  // abrirla), esta petición espera a esa en vez de empezar otra.
+  const marca = guardada ? `herramienta:${guardada}:${book.id}:${chapter}` : clave ? `estudio:${clave}` : null;
+  const sMarca = marca ? await db().catch(() => null) : null;
+  if (marca && !body.nueva && sMarca && !(await tomar(sMarca, marca))) {
+    return esperarOtra(sMarca, marca, () => (guardada ? savedTool(guardada, book.id, chapter) : savedStudy(clave!)));
+  }
+  if (marca && body.nueva) await tomar(sMarca, marca);
+  const soltarMarca = marca ? () => soltar(sMarca, marca) : undefined;
+
   // Lo que no se guarda para todos gasta la lámpara diaria de la cuenta.
   const compartido = Boolean(guardada || clave);
   if (!compartido) {
@@ -1757,6 +1778,7 @@ export async function POST(request: Request) {
   try {
     ({ docs, focus, hasOriginal } = await buildSources(biblia, book, chapter, focusVerse, word, detallado || podcast, hasta));
   } catch (err) {
+    await soltarMarca?.();
     return badRequest(err instanceof Error ? err.message : 'No se pudieron cargar las fuentes', 404);
   }
 
@@ -1828,6 +1850,8 @@ export async function POST(request: Request) {
     compartido,
     biblia,
     compartido ? null : Registro.de(request, body.seguir),
+    false,
+    soltarMarca,
   );
 }
 
@@ -1982,6 +2006,8 @@ function streamAnswer(
   registro?: Registro | null,
   /** Que la IA también pueda buscar en la web (el Taller con borrador). */
   web = false,
+  /** Al terminar, bien o mal (quita la marca de «preparando»: api/_preparando.ts). */
+  fin?: () => Promise<void>,
 ) {
   const sigue = compartido || Boolean(registro);
   const encoder = new TextEncoder();
@@ -2001,11 +2027,23 @@ function streamAnswer(
           abierto = false;
         }
       };
+      // Mientras la IA investiga o piensa puede pasar medio minuto sin texto: un latido cada pocos segundos le dice a la
+      // app que la conexión sigue viva (si deja de llegar nada, la app sabe que se cortó y vuelve a pedirlo).
+      const latido = setInterval(() => {
+        if (!abierto) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify({ type: 'latido' }) + '\n'));
+        } catch {
+          abierto = false;
+        }
+      }, LATIDO_MS);
       const work = generate(send).finally(async () => {
+        clearInterval(latido);
         if (abierto) {
           abierto = false;
           controller.close();
         }
+        await fin?.();
         await registro?.cerrar();
         enviarTrazas();
       });

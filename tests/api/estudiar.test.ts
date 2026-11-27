@@ -629,6 +629,46 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(aiRequests.length).toBe(before + 2);
   });
 
+  it('si otra petición ya prepara la herramienta (la app se cerró y volvió), espera a esa en vez de pagar otra', async () => {
+    const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
+    const clave = 'herramienta:mapa:jhn:7';
+    await sql`delete from herramientas_ia where libro = 'jhn' and capitulo = 7`.catch(() => {});
+    // La primera petición dejó su marca y sigue escribiendo
+    await sql`create table if not exists preparando_ia (clave text primary key, desde timestamptz not null default now())`;
+    await sql`insert into preparando_ia (clave) values (${clave}) on conflict (clave) do update set desde = now()`;
+    const before = aiRequests.length;
+    const esperando = ask({ book: 'jhn', chapter: 7, herramienta: 'mapa' }).then(events);
+    // …y termina un momento después
+    await new Promise((r) => setTimeout(r, 1200));
+    await sql`insert into herramientas_ia (herramienta, libro, capitulo, texto, fuentes)
+      values ('mapa', 'jhn', 7, '# Idea guardada', ${sql.json([{ n: 1, label: 'Juan 7:1' }])})`;
+    await sql`delete from preparando_ia where clave = ${clave}`;
+    const recibido = await esperando;
+    expect(aiRequests.length).toBe(before);
+    expect(textOf(recibido)).toBe('# Idea guardada');
+    expect(recibido.filter((e) => e.type === 'source')).toEqual([{ type: 'source', n: 1, label: 'Juan 7:1' }]);
+    expect(recibido.at(-1)?.type).toBe('done');
+
+    // Si la otra se cortó sin guardar nada, la espera termina con un error para volver a intentarlo
+    await sql`delete from herramientas_ia where libro = 'jhn' and capitulo = 7`;
+    await sql`insert into preparando_ia (clave) values (${clave})`;
+    const cortada = ask({ book: 'jhn', chapter: 7, herramienta: 'mapa' }).then(events);
+    await new Promise((r) => setTimeout(r, 500));
+    await sql`delete from preparando_ia where clave = ${clave}`;
+    const fin = await cortada;
+    expect(fin.at(-1)?.type).toBe('error');
+    expect(aiRequests.length).toBe(before);
+
+    // Una marca vieja (la función murió) no detiene a nadie: se prepara y la marca se quita al terminar
+    await sql`insert into preparando_ia (clave, desde) values (${clave}, now() - interval '10 minutes')`;
+    const nueva = await events(await ask({ book: 'jhn', chapter: 7, herramienta: 'mapa' }));
+    expect(nueva.at(-1)?.type).toBe('done');
+    expect(aiRequests.length).toBe(before + 1);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(await sql`select 1 from preparando_ia where clave = ${clave}`).toHaveLength(0);
+    await sql.end();
+  }, 20_000);
+
   it('el pódcast se escribe en la versión libre que se lee, y con una con derechos en la PDT', async () => {
     const sql = postgres(DB_URL!, { max: 1, onnotice: () => {} });
     await sql`delete from herramientas_ia where libro = 'jhn' and capitulo = 6 and herramienta like 'podcast%'`.catch(() => {});

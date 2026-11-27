@@ -9,6 +9,7 @@ import { PlayIcon } from '@/components/audioIcons';
 
 import { TalkIcon } from '@/components/icons';
 import { Sources } from '@/components/StudyPanel';
+import PreparandoPodcast from '@/components/PreparandoPodcast';
 import { ToolFooter, ToolState } from '@/components/ToolState';
 import { IconText } from '@/components/comunidad/ui';
 import { parseRef } from '@/lib/data';
@@ -22,11 +23,12 @@ import {
   playRecordedPodcast,
   playSpeech,
   seekChapter,
+  sonar,
   toggle,
   useAudio,
 } from '@/lib/audio';
 import { Line, SPEAKERS, minutes, parseScript } from '@/lib/podcast';
-import { usePodcastGrabado } from '@/lib/podcastGrabado';
+import { EstadoGrabacion, usePodcastGrabado } from '@/lib/podcastGrabado';
 import { publicarExtras, retirarExtras } from '@/lib/podcastExtras';
 import { verseHref } from '@/lib/routes';
 import { serif, useColors } from '@/lib/theme';
@@ -95,18 +97,21 @@ export default function PodcastView({
   // El reproductor de abajo ofrece grabarlo con voces naturales mientras suena con la voz del dispositivo.
   const { record } = grabado;
   const errorGrabado = grabado.estado === 'error' ? grabado.error : '';
+  const desdeGrabado = grabado.estado === 'grabando' ? grabado.desde : 0;
   useEffect(() => {
     if (recorded || !ready) return;
-    const estado =
+    const estado: EstadoGrabacion | null =
       grabado.estado === 'error'
-        ? { estado: 'error' as const, error: errorGrabado }
-        : grabado.estado === 'listo'
-          ? null
-          : { estado: grabado.estado };
+        ? { estado: 'error', error: errorGrabado }
+        : grabado.estado === 'grabando'
+          ? { estado: 'grabando', desde: desdeGrabado }
+          : grabado.estado === 'listo'
+            ? null
+            : { estado: grabado.estado };
     if (!estado) return;
     publicarExtras({ book: bookId, chapter, grabado: estado, record });
     return () => retirarExtras(bookId, chapter);
-  }, [bookId, chapter, recorded, ready, grabado.estado, errorGrabado, record]);
+  }, [bookId, chapter, recorded, ready, grabado.estado, errorGrabado, desdeGrabado, record]);
 
   // Si termina de grabarse con voces naturales mientras suena con la voz del dispositivo, sigue en la grabación desde la
   // misma intervención.
@@ -153,7 +158,8 @@ export default function PodcastView({
         </Text>
 
         {/* El reproductor es la barra de abajo; aquí solo se empieza. Mientras suena, la transcripción lo sigue. */}
-        {!player.started && (
+        {/* Mientras se escribe el guion, la tarjeta de abajo dice en qué va: el botón aparece cuando hay algo que escuchar. */}
+        {!player.started && !(tool.busy && !tool.error && !lines.length) && (
           <Pressable
             onPress={player.toggle}
             disabled={!ready || player.loading}
@@ -177,7 +183,11 @@ export default function PodcastView({
           </Pressable>
         )}
 
-        <ToolState colors={colors} busy={tool.busy} error={tool.error} waiting={lines.length ? null : waiting} onRetry={tool.retry} />
+        {tool.busy && !tool.error && !lines.length ? (
+          <PreparandoPodcast colors={colors} retomando={tool.retomando} palabra={!!palabra} />
+        ) : (
+          <ToolState colors={colors} busy={tool.busy} error={tool.error} waiting={lines.length ? null : waiting} onRetry={tool.retry} />
+        )}
 
         <View style={{ marginTop: 16 }} onLayout={(e) => (listY.current = e.nativeEvent.layout.y)}>
           {lines.map((line, i) => {
@@ -267,7 +277,7 @@ function usePodcastPlayer(book: string, chapter: number, title: string, lines: L
         from: to,
       });
     seekChapter(recording.timestamps[to]?.[1] ?? 0);
-    if (!getPlayer().playing) getPlayer().play();
+    if (!getPlayer().playing) sonar();
   };
   return {
     index: recording ? at.index : 0,

@@ -106,4 +106,54 @@ describe('askStudy', () => {
     await expect(p).rejects.toThrow('Aborted');
     expect(bodies.some((b) => b.detener === bodies[0].seguir)).toBe(true);
   });
+
+  it('si la conexión queda muda (sin latidos), la da por cortada en vez de esperar para siempre', async () => {
+    vi.useFakeTimers();
+    // Manda un trozo y después nada: ni cierra ni falla, como un socket muerto al volver a la app en Android.
+    const mudo = () =>
+      new Response(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(new TextEncoder().encode(JSON.stringify({ type: 'text', text: 'Ana:' }) + '\n'));
+          },
+        }),
+      );
+    const bodies = servidor(mudo, () => new Response('', { status: 404 }));
+    const p = askStudy({ book: 'rev', chapter: 7, herramienta: 'podcast', messages: [] }, () => {}, undefined, { compartida: true });
+    const fallo = expect(p).rejects.toThrow('se cortó');
+    await vi.advanceTimersByTimeAsync(46_000);
+    await fallo;
+    // Lo compartido no se recoge con «reanudar»: se vuelve a pedir entero.
+    expect(bodies[0].seguir).toBeUndefined();
+    expect(bodies.some((b) => b.reanudar)).toBe(false);
+  });
+
+  it('los latidos mantienen viva la espera y no se cuentan como texto', async () => {
+    vi.useFakeTimers();
+    const lento = () =>
+      new Response(
+        new ReadableStream({
+          async start(c) {
+            const e = (o: object) => c.enqueue(new TextEncoder().encode(JSON.stringify(o) + '\n'));
+            for (let i = 0; i < 6; i++) {
+              await new Promise((r) => setTimeout(r, 10_000));
+              e({ type: 'latido' });
+            }
+            e({ type: 'text', text: 'ANA: Hola' });
+            e({ type: 'done' });
+            c.close();
+          },
+        }),
+      );
+    servidor(lento, () => new Response('', { status: 404 }));
+    const p = askStudy({ book: 'rev', chapter: 7, herramienta: 'podcast', messages: [] }, () => {}, undefined, { compartida: true });
+    await vi.advanceTimersByTimeAsync(70_000);
+    const r = await p;
+    expect(r.text).toBe('ANA: Hola');
+  });
+
+  it('lo compartido que llega a medias (sin «done») no vale como respuesta', async () => {
+    servidor(() => ndjson([{ type: 'text', text: 'ANA: Hola' }]), () => new Response('', { status: 404 }));
+    await expect(askStudy({ book: 'rev', chapter: 7, herramienta: 'podcast', messages: [] }, () => {}, undefined, { compartida: true })).rejects.toThrow('se cortó');
+  });
 });

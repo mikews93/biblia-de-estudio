@@ -19,6 +19,7 @@ import { OfflineBanner } from '@/components/SinConexion';
 import TabBar from '@/components/TabBar';
 import { init as initDownloads } from '@/lib/descargas';
 import { instalarAvisosDeErrores, seguirRuta } from '@/lib/errores';
+import { instalarEscuchado } from '@/lib/escuchado';
 import { fixedInTransition } from '@/lib/transition';
 import { usarRuta } from '@/lib/usoFunciones';
 import { ESPACIO_NINOS, SettingsProvider, isDark, useColors, useSettings } from '@/lib/theme';
@@ -38,6 +39,8 @@ const SIN_NINOS = /^\/(comunidades|amigo|grupos|unirse|cuenta|entrar|registro|re
 
 // Los fallos se escuchan desde que carga el código, antes de la primera pantalla.
 instalarAvisosDeErrores();
+// Escuchar un capítulo cuenta como leerlo (src/lib/escuchado.ts).
+instalarEscuchado();
 
 // Si una pantalla se rompe, se ve PantallaRota (con reintentar y volver a Hoy) y llega el aviso a /cuidar.
 export const ErrorBoundary = PantallaRota;
