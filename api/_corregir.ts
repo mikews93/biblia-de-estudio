@@ -7,6 +7,7 @@ import { Biblia, RV1909 } from './_investigar';
 import { conClaude } from './_quilate';
 import { buscarEnBiblia, corregirCitas, type Problema, type Reemplazo } from '../src/lib/corregirCitas';
 import type { Source } from '../src/lib/estudio';
+import { aplicarCambios, fragmentosEnIngles } from '../src/lib/textoIngles';
 
 const MODEL = process.env.CORREGIR_MODEL ?? 'claude-sonnet-5-5';
 /** Lo que puede tardar todo: si se pasa, la respuesta queda como la escribió la IA (y la app avisa de lo que falle). */
@@ -53,6 +54,48 @@ async function reparar(texto: string, problemas: Problema[]): Promise<Reemplazo[
   return pedidos.filter((p): p is Reemplazo => typeof p?.de === 'string' && typeof p?.a === 'string');
 }
 
+const SYSTEM_INGLES = `Revisas una respuesta en español de una app de estudio bíblico. La IA que la escribió leyó comentarios y obras en inglés y dejó algunas frases en inglés tal cual. Te paso la respuesta y esas frases.
+Para cada una, di la idea en un español natural, con tus palabras, de modo que la oración entera se lea (o se escuche) bien en español: ajusta lo justo de alrededor si hace falta (por ejemplo «explican que Each time…» → «explican que cada vez…»). Si es un guion con «ANA:» o «TOMÁS:», que suene hablado.
+No cambies nada más, no añadas ideas y deja tal cual las marcas ⟦n⟧ y los nombres propios.
+Responde solo con JSON: una lista de objetos {"de": "fragmento exacto de la respuesta, copiado tal cual, de una frase como mucho", "a": "cómo queda"}.`;
+
+async function traducir(texto: string, frases: string[]): Promise<Reemplazo[]> {
+  if (!process.env.ANTHROPIC_API_KEY) return [];
+  const ia = (client ??= new Anthropic());
+  const pedido = `Respuesta:\n<<<\n${texto}\n>>>\n\nFrases en inglés:\n${frases.map((f, i) => `${i + 1}. ${f}`).join('\n')}`;
+  const res = await conClaude('Traducir frases en inglés', { fn: 'corregir', model: MODEL, input: pedido }, () =>
+    ia.messages.create({
+      model: MODEL,
+      max_tokens: 3000,
+      system: SYSTEM_INGLES,
+      messages: [{ role: 'user', content: pedido }],
+    }),
+  );
+  const salida = res.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
+  const pedidos = JSON.parse(salida.slice(salida.indexOf('['), salida.lastIndexOf(']') + 1)) as unknown;
+  if (!Array.isArray(pedidos)) return [];
+  return pedidos.filter((p): p is Reemplazo => typeof p?.de === 'string' && typeof p?.a === 'string');
+}
+
+/**
+ * La respuesta sin frases en inglés: las que la IA copió de un comentario se dicen en español (src/lib/textoIngles.ts).
+ * Sin frases en inglés, o si la IA falla o tarda, queda igual.
+ */
+export async function sinIngles(texto: string): Promise<string> {
+  const frases = fragmentosEnIngles(texto);
+  if (!frases.length) return texto;
+  const trabajo = traducir(texto, frases).then((cambios) => {
+    const nuevo = aplicarCambios(texto, cambios);
+    if (nuevo !== texto) console.log('estudiar: frases en inglés traducidas', frases.map((f) => f.slice(0, 60)));
+    return nuevo;
+  });
+  const tarde = new Promise<string>((r) => setTimeout(() => r(texto), ESPERA_MS));
+  return Promise.race([trabajo, tarde]).catch((err) => {
+    console.error('estudiar: traducir frases en inglés', err);
+    return texto;
+  });
+}
+
 /**
  * La respuesta con sus citas corregidas, o la misma si estaban bien o si la revisión no termina a tiempo.
  * «lector» es la Biblia de la petición (la versión con la que trabajó la IA).
@@ -71,8 +114,10 @@ export async function corregirRespuesta(request: Request, texto: string, fuentes
     return nuevo;
   });
   const tarde = new Promise<string>((r) => setTimeout(() => r(texto), ESPERA_MS));
-  return Promise.race([trabajo, tarde]).catch((err) => {
+  const citas = await Promise.race([trabajo, tarde]).catch((err) => {
     console.error('estudiar: corregir citas', err);
     return texto;
   });
+  // Después, lo que quedó en inglés (en el pódcast, la voz lo leía tal cual).
+  return sinIngles(citas);
 }
