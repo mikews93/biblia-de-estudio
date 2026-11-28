@@ -173,6 +173,7 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(await bad({ ...base, taller: { ...taller, modo: 'escribir' } })).toBe('Pedido del Taller no válido');
     expect(await bad({ ...base, taller: { ...taller, borrador: 'x'.repeat(12001) } })).toBe('Pedido del Taller no válido');
     expect(await bad({ ...base, taller: { ...taller, desde: 0 } })).toBe('Pedido del Taller no válido');
+    expect(await bad({ ...base, taller: { ...taller, publico: 'bebes' } })).toBe('Pedido del Taller no válido');
     expect(await bad({ ...base, taller: 'sermon' })).toBe('Pedido del Taller no válido');
     expect(await bad({ ...base, herramienta: 'video' })).toBe('Herramienta no válida');
     expect(await bad({ ...base, herramienta: 'constructor' })).toBe('Herramienta no válida');
@@ -600,6 +601,18 @@ describe.skipIf(!DB_URL || !HAS_DATA)('/api/estudiar con cuenta', () => {
     expect(task).toContain('Empecé por esto que quiero tratar, antes de tener el pasaje:\n«Jóvenes ansiosos»');
     expect(task).toContain('Arma la maqueta de este mensaje');
     expect(task).toContain('Lo que llevo:\nPartes de la estructura:');
+  });
+
+  it('el borrador se adapta a para quién es y a los minutos elegidos', async () => {
+    const taller = { modo: 'borrador', tipo: 'sermon', paso: 'bosquejo', desde: 4, hasta: 9, borrador: 'Partes de la estructura:\n1. Introducción', minutos: 15 };
+    // Una cuenta propia: el tope diario de la IA de la cuenta común lo usan las demás pruebas
+    const propia = (await client(comunidades, '2026-10-18')('registrarse', { nombre: 'Quien predica' })).json.llave;
+    await events(await ask({ book: 'php', chapter: 4, taller: { ...taller, publico: 'ninos' } }, propia));
+    const task = aiRequests.at(-1)!.messages[0].content.at(-1).text as string;
+    expect(task).toContain('para unos 15 minutos en total');
+    expect(task).toContain('Es para niños');
+    await events(await ask({ book: 'php', chapter: 4, taller }, propia));
+    expect(aiRequests.at(-1)!.messages[0].content.at(-1).text).not.toContain('Es para');
   });
 
   it('la herramienta de un capítulo se guarda para todos y «nueva» pide otra versión', async () => {

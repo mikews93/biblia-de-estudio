@@ -220,6 +220,22 @@ export const TIPOS: { tipo: Tipo; nombre: string; duracion: string; descripcion:
   },
 ];
 
+/** Para quién es el mensaje: la IA adapta el lenguaje, los ejemplos y las dinámicas. */
+export type Publico = 'todos' | 'adultos' | 'jovenes' | 'ninos';
+export const PUBLICOS: { value: Publico; label: string }[] = [
+  { value: 'todos', label: 'Todas las edades' },
+  { value: 'adultos', label: 'Adultos' },
+  { value: 'jovenes', label: 'Jóvenes' },
+  { value: 'ninos', label: 'Niños' },
+];
+
+/** Las duraciones que se ofrecen por tipo de mensaje (minutos). La primera sugerida es `minutos` del tipo. */
+export const DURACIONES: Record<Tipo, number[]> = {
+  reflexion: [5, 8, 10],
+  sermon: [15, 20, 30, 45],
+  encuentro: [60, 75, 90],
+};
+
 export const tipoInfo = (t: Tipo) => TIPOS.find((x) => x.tipo === t)!;
 export const plantilla = (id: string) => PLANTILLAS.find((p) => p.id === id);
 

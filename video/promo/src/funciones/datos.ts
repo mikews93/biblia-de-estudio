@@ -1,4 +1,10 @@
 import type {VoTiming} from '../audio';
+import galloTaps from './gallo.taps.json';
+import galloTiming from './gallo.timing.json';
+import brasasTaps from './brasas.taps.json';
+import brasasTiming from './brasas.timing.json';
+import talentoTaps from './talento.taps.json';
+import talentoTiming from './talento.timing.json';
 import compartirTaps from './compartir.taps.json';
 import compartirTiming from './compartir.timing.json';
 import compararTaps from './comparar.taps.json';
@@ -52,8 +58,6 @@ import prepararTiming from './preparar.timing.json';
 import presentarTaps from './presentar.taps.json';
 import presentarTiming from './presentar.timing.json';
 import preguntarTaps from './preguntar.taps.json';
-import instalarTaps from './instalar.taps.json';
-import instalarTiming from './instalar.timing.json';
 import preguntarTiming from './preguntar.timing.json';
 
 /**
@@ -638,30 +642,58 @@ export const FUNCIONES: Record<string, Funcion> = {
       {line: 'preguntas', eyebrow: 'PARTICIPAN TODOS', title: 'Preguntas y dinámicas en vivo'},
     ],
   },
-  instalar: {
-    id: 'instalar',
-    timing: instalarTiming as Record<string, VoTiming>,
-    taps: instalarTaps,
+  // Serie «Lo que casi nadie nota»: una idea común, lo que dice el texto y cómo verlo en Zarza. Solo pantallas
+  // reales sin IA (lector, interlineal, concordancia, medidas antiguas).
+  gallo: {
+    id: 'gallo',
+    timing: galloTiming as Record<string, VoTiming>,
+    taps: galloTaps,
     hook: 'hook',
     pantallas: [
-      {src: 'a1', line: 'android'},
-      {src: 'a2', line: 'instalar', word: 'Abrir.'},
-      {src: 'a3', line: 'apk', word: 'web,'},
-      {src: 'i1', line: 'iphone', word: 'zarzabiblia.com'},
-      {src: 'i2', line: 'compartir', word: 'puntos,', delay: 4},
-      {src: 'i3', line: 'compartir', word: 'Compartir.', delay: 4},
-      {src: 'i4', line: 'vermas', word: 'más…', delay: 4},
-      {src: 'i5', line: 'agregar', word: 'Toca', delay: -4},
-      {src: 'i6', line: 'agregar', word: 'listo.'},
-      {src: 'i7', line: 'agregar', word: 'completa,', delay: -6},
+      {src: '1-marcos-13', line: 'vigilia'},
+      {src: '2-marcos-14', line: 'trompeta'},
+      {src: '3-palabra', line: 'zarza', word: 'tocas', delay: 4},
+      {src: '4-concordancia', line: 'zarza', word: 'lugar'},
+      {src: '5-concordancia-abajo', line: 'zarza', word: 'estudies'},
     ],
     titulares: [
-      {line: 'android', eyebrow: 'ANDROID', title: 'Desde Google Play'},
-      {line: 'apk', eyebrow: '¿TENÍAS EL APK DE LA WEB?', title: 'Desinstálalo antes'},
-      {line: 'iphone', eyebrow: 'IPHONE', title: 'Desde Safari, sin App Store'},
-      {line: 'compartir', eyebrow: 'PASO 1', title: '··· y luego Compartir'},
-      {line: 'vermas', eyebrow: 'PASO 2', title: 'Ver más › Agregar a Inicio'},
-      {line: 'agregar', eyebrow: 'PASO 3', title: 'Agregar, y queda como app'},
+      {line: 'vigilia', eyebrow: 'MARCOS 13:35', title: '«El canto del gallo» era una hora'},
+      {line: 'trompeta', eyebrow: 'SE DISCUTE', title: '¿Gallo… o trompeta romana?'},
+      {line: 'zarza', eyebrow: 'EN ZARZA', title: 'El griego, y dónde más aparece'},
+    ],
+  },
+  brasas: {
+    id: 'brasas',
+    timing: brasasTiming as Record<string, VoTiming>,
+    taps: brasasTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-juan-18', line: 'negar'},
+      {src: '2-juan-21', line: 'playa'},
+      {src: '3-palabra', line: 'palabra', word: 'anthrakiá.', delay: -6},
+      {src: '4-concordancia', line: 'palabra', word: 'dos'},
+    ],
+    titulares: [
+      {line: 'negar', eyebrow: 'JUAN 18:18', title: 'Pedro, junto a un fuego de brasas'},
+      {line: 'playa', eyebrow: 'JUAN 21:9', title: 'Jesús, junto a otro fuego de brasas'},
+      {line: 'palabra', eyebrow: 'ANTHRAKIÁ', title: 'Solo dos veces en el Nuevo Testamento'},
+      {line: 'tres', eyebrow: 'JUAN 21:15-17', title: 'Tres veces: «¿Me amas?»'},
+    ],
+  },
+  talento: {
+    id: 'talento',
+    timing: talentoTiming as Record<string, VoTiming>,
+    taps: talentoTaps,
+    hook: 'hook',
+    pantallas: [
+      {src: '1-mateo-25', line: 'parabola'},
+      {src: '2-versiculo', line: 'parabola', word: 'cinco,'},
+      {src: '3-medidas', line: 'valor', word: 'dinero:'},
+    ],
+    titulares: [
+      {line: 'parabola', eyebrow: 'MATEO 25', title: '¿Un talento era una habilidad?'},
+      {line: 'valor', eyebrow: 'MEDIDAS ANTIGUAS', title: '≈ 6.000 denarios: veinte años de jornal'},
+      {line: 'uno', eyebrow: 'LO QUE CASI NADIE NOTA', title: 'Al que recibió uno, una fortuna'},
     ],
   },
 };

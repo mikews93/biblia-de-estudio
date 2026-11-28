@@ -275,6 +275,11 @@ export const getPlaces = (book: string, chapter: number) =>
   load<Place[]>(`places/${book}/${chapter}.json`, true).then((r) => (Array.isArray(r) ? r : []));
 export const getBasemap = () => load<Basemap>('basemap.json');
 
+/** «Lo que casi nadie nota»: una palabra del original que sale solo 2 o 3 veces en toda la Biblia (pipeline/build_data.py). */
+export type Rara = { s: string; l: string; g: string; v: number; otros: string[] };
+export const getRaras = (book: string, chapter: number) =>
+  load<Rara[]>(`raras/${book}/${chapter}.json`, true).then((r) => (Array.isArray(r) ? r : []));
+
 /** Medida antigua que aparece en el capítulo, con su equivalencia moderna aproximada. */
 export type Measure = { id: string; kind: string; name: string; value: string; note: string; verses: number[] };
 

@@ -1,0 +1,537 @@
+{
+ "hook": {
+  "duration": 2.96,
+  "speechStart": 0.114,
+  "speechEnd": 2.72,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "¿Y",
+    "start": 0.114,
+    "end": 0.16
+   },
+   {
+    "w": "si",
+    "start": 0.24,
+    "end": 0.32
+   },
+   {
+    "w": "lo",
+    "start": 0.4,
+    "end": 0.48
+   },
+   {
+    "w": "que",
+    "start": 0.56,
+    "end": 0.64
+   },
+   {
+    "w": "oyó",
+    "start": 0.72,
+    "end": 0.88
+   },
+   {
+    "w": "Pedro…",
+    "start": 0.96,
+    "end": 1.44
+   },
+   {
+    "w": "no",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "fue",
+    "start": 2.08,
+    "end": 2.16
+   },
+   {
+    "w": "un",
+    "start": 2.24,
+    "end": 2.32
+   },
+   {
+    "w": "gallo?",
+    "start": 2.4,
+    "end": 2.72
+   }
+  ]
+ },
+ "vigilia": {
+  "duration": 10.88,
+  "speechStart": 0,
+  "speechEnd": 10.88,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "tiempos",
+    "start": 0.16,
+    "end": 0.4
+   },
+   {
+    "w": "de",
+    "start": 0.48,
+    "end": 0.56
+   },
+   {
+    "w": "Jesús,",
+    "start": 0.6,
+    "end": 1.36
+   },
+   {
+    "w": "«el",
+    "start": 1.413,
+    "end": 1.6
+   },
+   {
+    "w": "canto",
+    "start": 1.64,
+    "end": 1.92
+   },
+   {
+    "w": "del",
+    "start": 2,
+    "end": 2.08
+   },
+   {
+    "w": "gallo»",
+    "start": 2.16,
+    "end": 2.72
+   },
+   {
+    "w": "era",
+    "start": 2.8,
+    "end": 2.96
+   },
+   {
+    "w": "también",
+    "start": 3,
+    "end": 3.28
+   },
+   {
+    "w": "el",
+    "start": 3.36,
+    "end": 3.44
+   },
+   {
+    "w": "nombre",
+    "start": 3.52,
+    "end": 3.76
+   },
+   {
+    "w": "de",
+    "start": 3.84,
+    "end": 3.92
+   },
+   {
+    "w": "una",
+    "start": 4,
+    "end": 4.16
+   },
+   {
+    "w": "hora:",
+    "start": 4.6,
+    "end": 5.04
+   },
+   {
+    "w": "la",
+    "start": 5.12,
+    "end": 5.2
+   },
+   {
+    "w": "vigilia",
+    "start": 5.32,
+    "end": 5.68
+   },
+   {
+    "w": "de",
+    "start": 5.72,
+    "end": 5.76
+   },
+   {
+    "w": "la",
+    "start": 5.8,
+    "end": 5.84
+   },
+   {
+    "w": "medianoche",
+    "start": 5.92,
+    "end": 6.64
+   },
+   {
+    "w": "a",
+    "start": 6.68,
+    "end": 6.72
+   },
+   {
+    "w": "las",
+    "start": 6.84,
+    "end": 6.96
+   },
+   {
+    "w": "tres",
+    "start": 7.08,
+    "end": 7.2
+   },
+   {
+    "w": "de",
+    "start": 7.24,
+    "end": 7.28
+   },
+   {
+    "w": "la",
+    "start": 7.32,
+    "end": 7.36
+   },
+   {
+    "w": "mañana.",
+    "start": 7.44,
+    "end": 8.4
+   },
+   {
+    "w": "Jesús",
+    "start": 8.48,
+    "end": 8.8
+   },
+   {
+    "w": "la",
+    "start": 8.88,
+    "end": 8.96
+   },
+   {
+    "w": "nombra",
+    "start": 9,
+    "end": 9.28
+   },
+   {
+    "w": "en",
+    "start": 9.36,
+    "end": 9.44
+   },
+   {
+    "w": "Marcos",
+    "start": 9.56,
+    "end": 9.84
+   },
+   {
+    "w": "trece.",
+    "start": 9.96,
+    "end": 10.88
+   }
+  ]
+ },
+ "trompeta": {
+  "duration": 9.84,
+  "speechStart": 0,
+  "speechEnd": 9.84,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Por",
+    "start": 0,
+    "end": 0.08
+   },
+   {
+    "w": "eso",
+    "start": 0.16,
+    "end": 0.32
+   },
+   {
+    "w": "algunos",
+    "start": 0.4,
+    "end": 0.72
+   },
+   {
+    "w": "estudiosos",
+    "start": 0.8,
+    "end": 1.44
+   },
+   {
+    "w": "piensan",
+    "start": 1.52,
+    "end": 1.84
+   },
+   {
+    "w": "que",
+    "start": 1.92,
+    "end": 2
+   },
+   {
+    "w": "esa",
+    "start": 2.08,
+    "end": 2.24
+   },
+   {
+    "w": "noche",
+    "start": 2.32,
+    "end": 2.64
+   },
+   {
+    "w": "sonó",
+    "start": 2.72,
+    "end": 2.92
+   },
+   {
+    "w": "la",
+    "start": 2.96,
+    "end": 3.04
+   },
+   {
+    "w": "trompeta",
+    "start": 3.08,
+    "end": 3.52
+   },
+   {
+    "w": "romana",
+    "start": 3.6,
+    "end": 4
+   },
+   {
+    "w": "del",
+    "start": 4.12,
+    "end": 4.24
+   },
+   {
+    "w": "cambio",
+    "start": 4.28,
+    "end": 4.56
+   },
+   {
+    "w": "de",
+    "start": 4.6,
+    "end": 4.64
+   },
+   {
+    "w": "guardia.",
+    "start": 4.72,
+    "end": 5.84
+   },
+   {
+    "w": "Otros",
+    "start": 5.92,
+    "end": 6.24
+   },
+   {
+    "w": "leen",
+    "start": 6.32,
+    "end": 6.56
+   },
+   {
+    "w": "un",
+    "start": 6.64,
+    "end": 6.72
+   },
+   {
+    "w": "gallo",
+    "start": 6.84,
+    "end": 7.04
+   },
+   {
+    "w": "de",
+    "start": 7.08,
+    "end": 7.12
+   },
+   {
+    "w": "verdad.",
+    "start": 7.2,
+    "end": 8.16
+   },
+   {
+    "w": "Todavía",
+    "start": 8.213,
+    "end": 8.64
+   },
+   {
+    "w": "se",
+    "start": 8.68,
+    "end": 8.72
+   },
+   {
+    "w": "discute.",
+    "start": 8.8,
+    "end": 9.84
+   }
+  ]
+ },
+ "zarza": {
+  "duration": 8.08,
+  "speechStart": 0,
+  "speechEnd": 8.08,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "En",
+    "start": 0,
+    "end": 0.16
+   },
+   {
+    "w": "Zarza",
+    "start": 0.24,
+    "end": 0.72
+   },
+   {
+    "w": "abres",
+    "start": 0.8,
+    "end": 1.04
+   },
+   {
+    "w": "Marcos",
+    "start": 1.12,
+    "end": 1.44
+   },
+   {
+    "w": "catorce,",
+    "start": 1.52,
+    "end": 2.32
+   },
+   {
+    "w": "tocas",
+    "start": 2.4,
+    "end": 2.64
+   },
+   {
+    "w": "la",
+    "start": 2.72,
+    "end": 2.8
+   },
+   {
+    "w": "palabra",
+    "start": 2.88,
+    "end": 3.12
+   },
+   {
+    "w": "en",
+    "start": 3.16,
+    "end": 3.2
+   },
+   {
+    "w": "griego",
+    "start": 3.28,
+    "end": 3.92
+   },
+   {
+    "w": "y",
+    "start": 3.96,
+    "end": 4
+   },
+   {
+    "w": "ves",
+    "start": 4.08,
+    "end": 4.32
+   },
+   {
+    "w": "cada",
+    "start": 4.4,
+    "end": 4.64
+   },
+   {
+    "w": "lugar",
+    "start": 4.72,
+    "end": 4.96
+   },
+   {
+    "w": "donde",
+    "start": 5.04,
+    "end": 5.2
+   },
+   {
+    "w": "aparece…",
+    "start": 5.28,
+    "end": 6.16
+   },
+   {
+    "w": "para",
+    "start": 6.24,
+    "end": 6.4
+   },
+   {
+    "w": "que",
+    "start": 6.44,
+    "end": 6.48
+   },
+   {
+    "w": "lo",
+    "start": 6.52,
+    "end": 6.56
+   },
+   {
+    "w": "estudies",
+    "start": 6.68,
+    "end": 7.04
+   },
+   {
+    "w": "tú",
+    "start": 7.08,
+    "end": 7.2
+   },
+   {
+    "w": "mismo.",
+    "start": 7.24,
+    "end": 8.08
+   }
+  ]
+ },
+ "cta": {
+  "duration": 4.64,
+  "speechStart": 0.14,
+  "speechEnd": 4.4,
+  "method": "elevenlabs alignment (with-timestamps, per character)",
+  "words": [
+   {
+    "w": "Zarza.",
+    "start": 0.14,
+    "end": 0.64
+   },
+   {
+    "w": "Lo",
+    "start": 1.2,
+    "end": 1.28
+   },
+   {
+    "w": "que",
+    "start": 1.36,
+    "end": 1.52
+   },
+   {
+    "w": "casi",
+    "start": 1.56,
+    "end": 1.84
+   },
+   {
+    "w": "nadie",
+    "start": 1.92,
+    "end": 2.16
+   },
+   {
+    "w": "nota…",
+    "start": 2.24,
+    "end": 2.56
+   },
+   {
+    "w": "gratis",
+    "start": 3.12,
+    "end": 3.6
+   },
+   {
+    "w": "en",
+    "start": 3.68,
+    "end": 3.76
+   },
+   {
+    "w": "Google",
+    "start": 3.88,
+    "end": 4
+   },
+   {
+    "w": "Play.",
+    "start": 4.08,
+    "end": 4.4
+   }
+  ]
+ }
+}
